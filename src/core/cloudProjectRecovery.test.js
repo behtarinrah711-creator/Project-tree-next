@@ -30,7 +30,7 @@ test('pre-migration ownerEmail project is recovered for the authenticated owner 
   assert.deepEqual(project.tasks.map(task=>task.id),['task-new','task-old']);
 });
 
-test('recovered cloud projects mutate the live legacy array in place and preserve unrelated projects',()=>{
+test('recovered cloud projects mutate the live canonical array in place and preserve unrelated projects',()=>{
   const live=[
     {id:'project-A',name:'A'},
     {id:'local-only',name:'Local'},
@@ -57,6 +57,74 @@ test('active project is preserved when valid and recovery otherwise chooses a re
   assert.equal(chooseRecoveredProjectId(projects,{activeProjectId:'B',contextProjectId:'A'}),'B');
   assert.equal(chooseRecoveredProjectId(projects,{activeProjectId:'missing',contextProjectId:'A'}),'A');
   assert.equal(chooseRecoveredProjectId(projects,{activeProjectId:'missing',contextProjectId:'missing'}),'A');
+});
+
+test('fresh login recovery writes into AppDataStore even when legacy list is a filtered copy',async()=>{
+  const canonical=[];
+  const sourceCallbacks={};
+  let authCallback=null;
+  let persisted=0;
+  let selected=null;
+
+  const auth={
+    onAuthStateChanged(callback){ authCallback=callback; return ()=>{}; },
+  };
+  const projectDoc=doc('project-A',{name:'A',ownerUid:'uid-1',ownerEmail:'owner@example.com'});
+  const db={
+    collection(name){
+      assert.equal(name,'projects');
+      return {
+        where(field){
+          return {onSnapshot(callback){ sourceCallbacks[field]=callback; return ()=>{}; }};
+        },
+        doc(projectId){
+          assert.equal(projectId,'project-A');
+          return {collection(collectionName){
+            assert.equal(collectionName,'tasks');
+            return {async get(){ return {docs:[]}; }};
+          }};
+        },
+      };
+    },
+  };
+  class CustomEvent { constructor(type,options={}){this.type=type;this.detail=options.detail;} }
+  const store={
+    getProjects:()=>canonical,
+    getActiveTab:()=>null,
+    setActiveTab:id=>{selected=String(id);},
+    persistLocal(){persisted++;},
+  };
+  const windowRef={
+    firebase:{auth:()=>auth,firestore:()=>db},
+    CustomEvent,
+    dispatchEvent(){},
+    location:{hash:''},
+    document:{getElementById(){return null;}},
+    KarhaAppData:store,
+    KarhaApp:{
+      projectWorkspace:{selectProject(){return false;}},
+      projectRepository:{find:id=>canonical.find(project=>String(project.id)===String(id)) || null},
+    },
+    KarhaLegacy:{
+      // This intentionally returns a fresh filtered array, matching production.
+      getProjectsList:()=>canonical.filter(Boolean),
+      persist(){throw new Error('legacy persist must not own canonical recovery');},
+      getProject:id=>canonical.find(project=>String(project.id)===String(id)) || null,
+    },
+  };
+  const context={getProjectId:()=>selected,setProjectId:id=>{selected=String(id);}};
+  const router={navigate(){return true;}};
+
+  startCloudProjectRecovery({windowRef,projectContext:context,router});
+  authCallback({uid:'uid-1',email:'owner@example.com'});
+  sourceCallbacks.ownerUid({docs:[projectDoc]});
+  await flush();
+
+  assert.equal(canonical.length,1);
+  assert.equal(canonical[0].id,'project-A');
+  assert.equal(canonical[0].ownerUid,'uid-1');
+  assert.equal(selected,'project-A');
+  assert.ok(persisted>=1);
 });
 
 test('task hydration retries after a transient fresh-login read failure',async()=>{
@@ -103,7 +171,6 @@ test('task hydration retries after a transient fresh-login read failure',async()
     KarhaLegacy:{
       getProjectsList:()=>live,
       getActiveProjectId:()=>activeId,
-      selectProject:id=>{activeId=String(id);},
       persist(){},
       getProject:id=>live.find(project=>String(project.id)===String(id)) || null,
       renderAll(){renderCalls++;},
@@ -120,7 +187,6 @@ test('task hydration retries after a transient fresh-login read failure',async()
   assert.equal(taskGetCalls,1);
   assert.equal(live[0].tasks.length,0);
 
-  // A later ownership source snapshot must retry the failed task collection.
   sourceCallbacks.ownerEmail({docs:[projectDoc]});
   await flush();
   assert.equal(taskGetCalls,2);
