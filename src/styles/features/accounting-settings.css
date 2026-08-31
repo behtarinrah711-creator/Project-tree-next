@@ -1,0 +1,173 @@
+/* C5 owner module: features/accounting-settings.css */
+.required-mark{color:var(--danger);}
+.profile-field-hint{font-size:12px;color:var(--text-dim);margin-top:8px;line-height:1.5;}
+.profile-signature-tip{font-size:12px;color:var(--text-dim);line-height:1.6;}
+  /* ---------- صورت وضعیت ---------- */
+  .st-form{padding:0 0 90px;}
+  .st-row{
+    padding:14px 16px;background:var(--surface);border-bottom:1px solid var(--divider);
+    min-height:52px;display:flex;align-items:center;
+  }
+  .st-row input.st-inp, .st-row textarea.st-inp{
+    width:100%;border:none;outline:none;background:transparent;font-family:inherit;
+    font-size:15px;color:var(--text);text-align:right;direction:rtl;
+  }
+  .st-row input.st-inp::placeholder, .st-row textarea.st-inp::placeholder{color:#b0b3b8;}
+  .st-row textarea.st-inp{resize:none;min-height:44px;line-height:1.5;padding:0;}
+  .st-row.st-tap{cursor:pointer;}
+  .st-row .st-val{width:100%;font-size:15px;color:var(--text);text-align:right;}
+  .st-row .st-val.placeholder{color:#b0b3b8;}
+  .st-section-title{padding:12px 16px 4px;font-size:12px;color:var(--text-dim);background:var(--bg);}
+
+  .st-field{padding:10px 16px 8px;background:var(--surface);border-bottom:1px solid var(--divider);}
+  .st-field-lab{display:block;font-size:11.5px;font-weight:600;color:var(--green);margin-bottom:6px;}
+  .st-field input.st-inp, .st-field textarea.st-inp, .st-field .st-val{
+    width:100%;border:none;outline:none;background:transparent;font-family:inherit;
+    font-size:15px;color:var(--text);text-align:right;direction:rtl;box-sizing:border-box;
+  }
+  .st-field textarea.st-inp{resize:none;min-height:44px;line-height:1.5;padding:0;}
+  .st-field .st-val.placeholder{color:#b0b3b8;}
+  .st-field.st-required-invalid{
+    background:#fff5f5 !important;
+    border-bottom-color:#ef4444 !important;
+    box-shadow:inset 3px 0 0 #ef4444;
+  }
+  .st-field.st-required-invalid .st-field-lab{color:#dc2626 !important;}
+  .st-field.st-required-invalid .st-inp,
+  .st-field.st-required-invalid .st-val{color:#dc2626 !important;}
+  .st-save-bar .st-save:disabled{opacity:.45;cursor:not-allowed;}
+
+  .st-field.st-tap{cursor:pointer;}
+  .st-item-block{
+    margin:10px 12px;border-radius:12px;overflow:hidden;
+    background:var(--support);border:1px solid var(--support-border);
+  }
+  .st-item-block:nth-child(even){background:#f1f3f4;border-color:var(--border);}
+  .st-item-head{
+    display:flex;align-items:center;justify-content:space-between;padding:10px 12px;
+    font-size:13px;font-weight:700;color:var(--text);
+  }
+  .st-item-head button{
+    border:none;background:transparent;color:var(--danger);font-size:12px;cursor:pointer;font-family:inherit;
+  }
+  .st-item-block .st-field{background:transparent;border-bottom-color:rgba(0,0,0,.06);}
+  .st-add-item{
+    display:flex;align-items:center;justify-content:center;gap:8px;
+    margin:12px 16px;padding:12px;border:1.5px dashed var(--green);border-radius:12px;
+    color:var(--green);font-size:14px;font-weight:600;cursor:pointer;background:transparent;width:calc(100% - 32px);
+    font-family:inherit;
+  }
+  .st-add-item:active{background:var(--green-soft);}
+
+  .st-pay-block{padding:12px 16px;background:var(--surface);border-bottom:1px solid var(--divider);}
+  .st-pay-line{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:8px 0;font-size:14px;color:var(--text);}
+  .st-pay-line input[type="text"]{
+    flex:1;min-width:120px;border:none;border-bottom:1px solid var(--divider);outline:none;
+    background:transparent;font-family:inherit;font-size:14px;padding:6px 4px;color:var(--text);
+  }
+  .st-pay-line label.chk{display:flex;align-items:center;gap:6px;font-size:13.5px;color:var(--text);cursor:pointer;}
+  .st-pay-line input[type="checkbox"]{width:18px;height:18px;accent-color:var(--green);}
+  .status-save-footer{
+    flex-shrink:0;padding:10px 16px 12px;background:var(--bg);
+    border-top:1px solid var(--divider);z-index:2;
+  }
+  .st-save-bar{
+    display:flex;gap:10px;width:100%;
+  }
+  .st-save-bar button{
+    flex:1;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;
+  }
+  .st-save-bar .st-save{background:var(--green);color:#fff;}
+  .st-save-bar .st-export{background:#202124;color:#fff;}
+  .jalali-pop{
+    position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:80;display:flex;align-items:center;justify-content:center;padding:20px;
+  }
+  .jalali-pop.hidden{display:none;}
+  .jalali-box{
+    background:var(--surface);border-radius:14px;padding:14px 12px 16px;width:min(320px,100%);
+    box-shadow:0 12px 40px rgba(0,0,0,.18);
+  }
+  .jalali-head{display:flex;align-items:center;justify-content:space-between;direction:ltr;margin-bottom:10px;color:var(--green);font-weight:700;font-size:15px;} .jalali-head span{direction:rtl;}
+  .jalali-head button{border:none;background:transparent;color:var(--green);font-size:18px;cursor:pointer;padding:4px 10px;}
+  .jalali-week{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:12px;color:var(--text-dim);margin-bottom:6px;}
+  .jalali-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;}
+  .jalali-days button{
+    border:none;background:transparent;font-family:inherit;font-size:14px;padding:8px 0;border-radius:50%;cursor:pointer;color:var(--text);
+  }
+  .jalali-days button.today{font-weight:700;}
+  .jalali-days button.selected{background:var(--green);color:#fff;}
+  .jalali-days button.muted{color:#c4c7c5;pointer-events:none;}
+  .st-list-row{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--divider);background:var(--surface);}
+  .st-list-row .st-list-body{flex:1;min-width:0;}
+  .st-list-row .st-list-title{font-size:15px;font-weight:600;color:var(--text);}
+  .st-list-row .st-list-meta{font-size:12px;color:var(--text-dim);margin-top:3px;}
+
+
+  #projectTrashPage .page-body{padding:0 16px 24px;}
+  /* اقدامات شاخص زیرصفحه‌ها: الگوی دکمه‌هایی مثل «حذف همه به صورت همیشگی». */
+  .inner-action-card{
+    width:100%;
+    height:66px;
+    min-height:66px;
+    box-sizing:border-box;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    background:#fff;
+    border:1px solid var(--divider);
+    border-radius:18px;
+    padding:0 18px;
+    margin:14px 0 14px;
+  }
+  .inner-action-card > button{
+    margin:0;
+    padding:0;
+    min-height:0;
+    height:auto;
+    border:0;
+    background:transparent !important;
+    box-shadow:none !important;
+    font-family:inherit;
+    font-size:15px;
+    line-height:1.4;
+    font-weight:700;
+    text-align:center;
+    white-space:nowrap;
+  }
+  .inner-action-card--danger > button{color:#DC2626 !important;}
+  .inner-action-card--primary > button{color:var(--primary) !important;}
+  /* قرارداد UI: هر «اقدام اصلی» در زیرصفحه‌های داخلی باید از همین کارت استفاده کند؛
+     ارتفاع، پس‌زمینه، تراز و اندازه فونت در یک نقطه کنترل می‌شوند. */
+
+  /* «حذف همه» عمداً همان کارت استاندارد «همگام سازی همکاران» را استفاده می‌کند. */
+  .project-trash-clear-wrap{
+    width:100%;
+  }
+  .project-trash-list{display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--divider);border-radius:12px;overflow:hidden;}
+  .project-trash-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 12px;border-bottom:1px solid var(--divider);min-height:72px;}
+  .project-trash-row:last-child{border-bottom:0;}
+  .project-trash-info{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px;overflow:hidden;}
+  .project-trash-title{min-width:0;font-size:15px;line-height:1.55;color:var(--text);font-weight:600;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;overflow-wrap:anywhere;}
+  .project-trash-type{display:block;width:max-content;max-width:100%;padding:0;background:transparent;color:var(--text-dim);font-size:9px;font-weight:500;line-height:1.45;}
+  .project-trash-actions{display:flex;align-items:center;gap:12px;flex-shrink:0;}
+  #projectTrashPage .restore-btn,
+  #projectTrashPage .perm-del-btn{
+    background:transparent !important;
+    border:0 !important;
+    box-shadow:none !important;
+    padding:4px 2px !important;
+    min-height:0 !important;
+    height:auto !important;
+    border-radius:0 !important;
+    font-size:11px !important;
+    font-weight:700 !important;
+    line-height:1.4 !important;
+    white-space:nowrap;
+  }
+  #projectTrashPage .restore-btn{color:#00075D !important;}
+  #projectTrashPage .perm-del-btn{color:#DC2626 !important;}
+  .project-trash-empty{padding:70px 20px;text-align:center;color:var(--text-dim);font-size:15px;}
+  .project-trash-clear{
+    color:#DC2626 !important;
+  }
+

@@ -1,0 +1,33 @@
+/* Classic-runtime compatibility facade. Implementations live in owned Contract modules. */
+function getContractTemplates(project){return window.KarhaContractTemplates?.getContractTemplates(project)||[];}
+function getProjectContracts(project=getCurrentProject()){return project?.id?(window.KarhaRealContracts?.getProjectContracts?.(project.id)||[]):[];}
+function findContractTemplate(id,project){return window.KarhaContractTemplates?.findContractTemplate(id,project)||null;}
+function findProjectContract(id,project=getCurrentProject()){return window.KarhaRealContracts?.findProjectContract?.(id,project)||null;}
+function makeContractItem(text=''){return window.KarhaContractTemplates?.makeContractItem(text);}
+function getDefaultContractTemplateItems(){return window.KarhaContractTemplates?.getDefaultContractTemplateItems?.()||[];}
+function normalizeContractTemplate(template){return window.KarhaContractTemplates?.normalizeContractTemplate(template)||template;}
+function renumberContractItems(items){return window.KarhaContractTemplates?.renumberContractItems(items)||items;}
+function contractTemplateHasContent(template){return window.KarhaContractTemplates?.contractTemplateHasContent?.(template)??false;}
+function makeContractTemplateDraft(existing=null){return window.KarhaContractTemplates?.makeContractTemplateDraft?.(existing);}
+function makeContractTemplateDraftClean(existing){return window.KarhaContractTemplates?.makeContractTemplateDraftClean(existing);}
+function getContractTemplateDraftKey(){return window.KarhaContractTemplates?.getContractTemplateDraftKey?.()||'contract-template-draft-none';}
+function contractItemDepthFromPath(path){return window.KarhaContractTemplates?.contractItemDepthFromPath?.(path)??path.length-1;}
+function moveContractItem(items,fromIndex,toIndex){return window.KarhaContractTemplates?.moveContractItem?.(items,fromIndex,toIndex);}
+function startContractPointerDrag(...args){return window.KarhaContractItemDrag?.startContractPointerDrag?.(...args);}
+function attachContractDrag(...args){return window.KarhaContractItemDrag?.attachContractDrag?.(...args);}
+function openContractTemplatesPage(){return window.KarhaContractShell?.openContractTemplatesPage?.();}
+function closeContractTemplatesPage(){return window.KarhaContractShell?.closeContractTemplatesPage?.();}
+function openContractTemplateForm(id=null){return window.KarhaContractFormLifecycle?.openTemplate?.(id);}
+function closeContractTemplateForm(fromPopState=false){return window.KarhaContractFormLifecycle?.closeTemplate?.(fromPopState);}
+function requestCloseContractTemplateForm(fromPopState=false){return window.KarhaContractTemplateForm?.close?.(fromPopState);}
+function renderContractTemplateFormClean(...args){return window.KarhaContractTemplateForm?.render?.(...args);}
+function renderContractTemplateForm(){return renderContractTemplateFormClean();}
+function saveContractTemplateClean(silent=false){return window.KarhaContractTemplateForm?.save?.(getCurrentProject()?.id,silent)||false;}
+function openContractsPage(projectId=getCurrentProjectScopeId(),options={}){return window.KarhaContractShell?.openContractsPage?.(projectId,options);}
+function closeContractsPage(){return window.KarhaContractShell?.closeContractsPage?.();}
+function renderContractsPage(){return window.KarhaApp?.modules?.get('contracts')?.render?.(getCurrentProject()?.id);}
+function openRealContractFormShell(projectId){return window.KarhaContractShell?.openRealContractFormShell?.(projectId)||false;}
+function closeRealContractFormShell(){return window.KarhaContractShell?.closeRealContractFormShell?.();}
+function openContractForm(id=null){const project=getCurrentProject();return project?window.KarhaRealContractForm?.open?.(id,project.id)||false:false;}
+function closeContractForm(fromPopState=false){return window.KarhaRealContractForm?.close?.(fromPopState)||false;}
+function requestCloseContractForm(fromPopState=false){return window.KarhaRealContractForm?.requestClose?.(fromPopState)||false;}

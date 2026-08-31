@@ -1,0 +1,39 @@
+/* C5 owner module: features/task-details.css */
+
+  .sub-item{display:flex;align-items:center;gap:10px;padding:8px 0;}
+  .sub-item input.sub-text{
+    flex:1;border:none;outline:none;background:transparent;font-family:inherit;font-size:14px;color:var(--text);
+  }
+  .sub-item .circle{width:18px;height:18px;}
+  .sub-item .star-icon{width:17px;height:17px;}
+  .sub-del{
+    width:26px;height:26px;border:none;background:transparent;color:var(--text-dim);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .sub-del:active{color:var(--danger);}
+
+  .add-sub-row{display:flex;gap:8px;margin-top:8px;align-items:center;}
+  .add-sub-row .add-sub-btn{
+    flex-shrink:0;width:36px;height:36px;border-radius:8px;border:none;background:var(--green-soft);
+    color:var(--green);display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+
+  .delete-task-btn{
+    width:100%;margin-top:8px;padding:12px;border-radius:8px;border:1px solid var(--danger-soft);
+    background:var(--danger-soft);color:var(--danger);font-family:inherit;font-size:14px;font-weight:600;
+    cursor:pointer;
+  }
+  .confirm-btn{
+    width:100%;margin-top:8px;padding:13px;border-radius:8px;border:none;
+    background:#00075D;color:#fff;font-family:inherit;font-size:15px;font-weight:700;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;
+  }
+  .confirm-btn:active{background:#00075D;}
+
+  .toast{
+    position:fixed;bottom:96px;left:50%;transform:translateX(-50%);
+    background:#323232;color:#fff;padding:10px 18px;border-radius:8px;font-size:13px;
+    opacity:0;pointer-events:none;transition:opacity .25s ease;z-index:60;
+  }
+  .toast.show{opacity:1;}
+

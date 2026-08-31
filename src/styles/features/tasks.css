@@ -1,0 +1,101 @@
+/* C5 owner module: features/tasks.css */
+  }
+  .cost-summary .cost-unit{font-family:'IRANYekan',IRANYekan,Vazirmatn,Tahoma,sans-serif;font-size:11px;font-weight:500;color:var(--text-dim);}
+
+  .task-block{border-bottom:1px solid var(--divider);position:relative;}
+  .row{
+    display:flex;align-items:center;gap:14px;padding:12px 16px 12px 16px;cursor:pointer;position:relative;
+    padding-right:46px;
+  }
+  .row.sub{padding:9px 16px 9px 16px; padding-right:calc(46px + (var(--item-depth,1) * 18px));} /* متن/محتوا تو در تو می‌شود، اما grip ستون ثابت راست را حفظ می‌کند */
+  .sub-indent{width:32px;flex-shrink:0;} /* فقط دایره و متن جلوتر */
+  .row.completed .row-title{color:var(--text-dim);text-decoration:line-through;}
+  .drag-grip{
+    position:absolute;right:16px;top:50%;transform:translateY(-50%);
+    width:14px;height:22px;display:flex;align-items:center;justify-content:center;
+    color:#c4c7c5;flex-shrink:0;touch-action:none;cursor:grab;z-index:1;
+  }
+  .drag-grip:active{cursor:grabbing;color:var(--text-dim);}
+  .task-block.row-dragging, .row.sub.row-dragging{opacity:.4;}
+  .task-block.drag-over-top{box-shadow:inset 0 2px 0 var(--green);}
+  .task-block.drag-over-bottom{box-shadow:inset 0 -2px 0 var(--green);}
+  .row.sub.drag-over-top{box-shadow:inset 0 2px 0 var(--green);}
+  .row.sub.drag-over-bottom{box-shadow:inset 0 -2px 0 var(--green);}
+
+  .circle{
+    width:22px;height:22px;flex-shrink:0;border-radius:50%;
+    border:1.8px solid #80868b;display:flex;align-items:center;justify-content:center;
+    color:transparent;transition:.15s ease;
+  }
+  .row.sub .circle{width:18px;height:18px;}
+  .circle.checked{background:var(--green);border-color:var(--green);color:#fff;}
+  .row-body{flex:1;min-width:0;}
+  .row-title{font-size:15px;line-height:1.4;overflow-wrap:anywhere;}
+  .row.sub .row-title{font-size:13.5px;color:#3c4043;}
+  .row-cost{
+    font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text);flex-shrink:0;
+    direction:ltr;unicode-bidi:isolate;display:inline-flex;align-items:baseline;gap:4px;
+  }
+  .row-cost .cost-unit{font-family:'IRANYekan',IRANYekan,Vazirmatn,Tahoma,sans-serif;font-size:10px;font-weight:500;color:var(--text-dim);}
+  .star-icon{
+    width:20px;height:20px;flex-shrink:0;color:#c4c7c5;display:flex;align-items:center;justify-content:center;
+  }
+  .star-icon.starred{color:var(--star);}
+  .row.sub .star-icon{width:17px;height:17px;}
+
+  .add-task-row{
+    display:flex;align-items:center;gap:14px;padding:12px 16px;color:var(--text-dim);cursor:pointer;
+  }
+  .add-task-row .plus-circle{
+    width:22px;height:22px;border-radius:50%;border:1.8px dashed #9aa0a6;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+
+  .completed-header{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:14px 16px;font-size:14px;font-weight:600;color:var(--text);cursor:pointer;
+    border-top:1px solid var(--divider);margin-top:6px;
+  }
+  .completed-header .chev{color:var(--text-dim);transition:transform .15s ease;flex-shrink:0;}
+  .completed-header .chev.collapsed{transform:rotate(-90deg);}
+  .completed-header .completed-title{flex:1;}
+  .completed-clear-btn{
+    flex-shrink:0;font-family:inherit;font-size:12px;font-weight:700;color:var(--danger);
+    background:var(--danger-soft);border:none;border-radius:8px;padding:6px 10px;cursor:pointer;
+  }
+  .completed-list.hidden{display:none;}
+
+  .starred-tag{
+    font-size:11px;color:var(--green);background:var(--green-soft);border-radius:6px;
+    padding:2px 6px;flex-shrink:0;margin-inline-start:6px;
+  }
+
+  .empty-state{
+    text-align:center;padding:70px 24px;color:var(--text-dim);font-size:14px;
+  }
+
+  .inline-add-row{
+    display:flex;align-items:center;gap:14px;padding:12px 16px;color:var(--text-dim);cursor:pointer;
+  }
+  .inline-add-row .plus-circle{
+    width:20px;height:20px;border-radius:50%;color:var(--text-dim);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+  .inline-add-row.active{cursor:default;}
+  .inline-add-row .empty-check{
+    width:20px;height:20px;border-radius:3px;border:1.8px solid #80868b;flex-shrink:0;
+  }
+  .inline-confirm-btn{
+    width:28px;height:28px;border-radius:8px;flex-shrink:0;padding:0;
+    background:#00075D;border:none;display:flex;align-items:center;justify-content:center;
+    cursor:pointer;touch-action:manipulation;
+  }
+  .inline-confirm-btn:active{background:#00075D;}
+  .inline-add-row input{
+    flex:1;border:none;outline:none;background:transparent;font-family:inherit;font-size:15px;color:var(--text);
+  }
+  .inline-add-row .x-btn{
+    width:26px;height:26px;border:none;background:transparent;color:var(--text-dim);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  }
+

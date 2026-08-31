@@ -1,0 +1,52 @@
+/* C5 owner module: features/contact-form-template.css */
+/* legacy style contact-form-template-v280 */
+#contactsPage.contact-form-mode .contacts-page-form.form-template{
+  background:#fff !important;
+  padding:4px 18px 28px !important;
+  gap:0 !important;
+  display:flex !important;
+  flex-direction:column !important;
+}
+#contactsPage.contact-form-mode .contacts-page-form.form-template .contact-field,
+#contactsPage.contact-form-mode .contacts-page-form.form-template .contact-section{
+  margin:0 !important;
+  padding:12px 0 !important;
+  border:0 !important;
+  border-bottom:1px solid #e6e8eb !important;
+  background:#fff !important;
+  border-radius:0 !important;
+  box-shadow:none !important;
+}
+#contactsPage.contact-form-mode .contacts-page-form.form-template label{
+  display:block !important;
+  font-size:13px !important;
+  font-weight:500 !important;
+  color:#9aa0a6 !important;
+  margin-bottom:6px !important;
+}
+#contactsPage.contact-form-mode .contacts-page-form.form-template input.contact-input,
+#contactsPage.contact-form-mode .contacts-page-form.form-template input:not([type="radio"]):not([type="checkbox"]):not([type="file"]),
+#contactsPage.contact-form-mode .contacts-page-form.form-template select,
+#contactsPage.contact-form-mode .contacts-page-form.form-template textarea{
+  width:100% !important;
+  border:0 !important;
+  border-radius:0 !important;
+  background:transparent !important;
+  box-shadow:none !important;
+  font-size:15px !important;
+  padding:4px 0 !important;
+  min-height:28px !important;
+  height:auto !important;
+}
+#contactsPage.contact-form-mode .contacts-page-form.form-template .contact-savebar{
+  position:sticky !important;
+  bottom:0 !important;
+  background:#fff !important;
+  padding:12px 0 max(12px, env(safe-area-inset-bottom)) !important;
+  border-top:1px solid #e6e8eb !important;
+  margin-top:12px !important;
+  display:flex !important;
+  gap:8px !important;
+  z-index:5 !important;
+}
+

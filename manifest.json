@@ -1,0 +1,22 @@
+{
+  "name": "کارها — نسخه جدید",
+  "short_name": "کارها جدید",
+  "description": "نسخه مستقل جدید مدیریت ساخت و پروژه‌ها",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f1f3f4",
+  "theme_color": "#1a73e8",
+  "dir": "rtl",
+  "lang": "fa",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "id": "./"
+}

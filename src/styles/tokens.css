@@ -1,0 +1,83 @@
+/* C5 owner module: tokens.css */
+/* legacy style anonymous */
+:root{
+    --workspace-page-top:98px;
+    /* رنگ‌های معنایی؛ حالت روشن فعلی عمداً بدون تغییر بصری حفظ شده است. */
+    --bg:#f1f3f4;
+    --surface:#ffffff;
+    --surface-raised:#ffffff;
+    --surface-soft:#F1F5F9;
+    --text:#202124;
+    --text-strong:#202124;
+    --text-dim:#5f6368;
+    --divider:#e8eaed;
+    --border:#e0e0e0;
+
+    --primary:#00075D;
+    --primary-hover:#00075D;
+    --primary-soft:#F1F5F9;
+    --on-primary:#ffffff;
+
+    --support:#F1F5F9;
+    --support-border:#e0e0e0;
+
+    --danger:#d93025;
+    --danger-soft:#fce8e6;
+    --danger-strong:#dc2626;
+    --success:#16a34a;
+    --star:#fbbc04;
+
+    /* نام‌های قدیمی برای سازگاری با کد موجود */
+    --green:var(--primary);
+    --green-soft:var(--primary-soft);
+    --primary-navy:var(--primary);
+    --support-gray:var(--support);
+
+    /* خروجی‌های اسناد باید همیشه پالت رسمی پروژه را داشته باشند. */
+    --pdf-primary:#00075D;
+    --pdf-support:#F1F5F9;
+    --pdf-surface:#ffffff;
+    --pdf-text:#202124;
+}
+
+/*
+  تم شب از همین حالا پیش‌بینی شده ولی فعال نشده است.
+  بعداً فقط data-theme را روی html به dark تغییر می‌دهیم.
+*/
+html[data-theme="dark"]{
+    --bg:#0F172A;
+    --surface:#111827;
+    --surface-raised:#00075D;
+    --surface-soft:#00075D;
+    --text:#F8FAFC;
+    --text-strong:#FFFFFF;
+    --text-dim:#CBD5E1;
+    --divider:#334155;
+    --border:#475569;
+
+    --primary:#00075D;
+    --primary-hover:#334155;
+    --primary-soft:#334155;
+    --on-primary:#FFFFFF;
+
+    --support:#00075D;
+    --support-border:#475569;
+
+    --danger:#F87171;
+    --danger-soft:#450A0A;
+    --danger-strong:#FCA5A5;
+    --success:#4ADE80;
+    --star:#FACC15;
+
+    --green:var(--primary);
+    --green-soft:var(--primary-soft);
+    --primary-navy:var(--primary);
+    --support-gray:var(--support);
+
+    /* PDF در آینده نیز مستقل از تم صفحه، با پالت روشن/رسمی تولید شود. */
+    --pdf-primary:#00075D;
+    --pdf-support:#F1F5F9;
+    --pdf-surface:#ffffff;
+    --pdf-text:#202124;
+}
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}

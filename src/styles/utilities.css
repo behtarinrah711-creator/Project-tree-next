@@ -1,0 +1,5 @@
+/* Presentation-only state and small layout utilities shared by feature owners. */
+.hidden{display:none !important;}
+.is-invalid{border-color:var(--danger) !important;}
+.is-inert-handle{visibility:hidden;pointer-events:none;}
+.is-static-drag-row,.is-static-drag-row .drag-grip{cursor:default;}

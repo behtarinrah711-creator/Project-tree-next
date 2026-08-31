@@ -1,0 +1,54 @@
+/* C5 owner module: workspace/drawer.css */
+  /* ---------- side drawer ---------- */
+  .drawer-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:70;
+    display:flex;justify-content:flex-end;
+  }
+  .drawer-overlay.hidden{display:none;}
+  .drawer{
+    width:78%;max-width:320px;background:var(--surface);height:100%;
+    padding:22px 18px;box-shadow:-2px 0 10px rgba(0,0,0,.15);
+    display:flex;flex-direction:column;
+  }
+  .drawer-account{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+  .avatar-circle.big{width:44px;height:44px;}
+  .drawer-account-name{font-size:15px;font-weight:600;}
+  .drawer-account-sub{font-size:12.5px;color:var(--text-dim);}
+  .drawer-signin-btn{
+    width:100%;padding:11px;border-radius:8px;border:1px solid var(--divider);
+    background:var(--surface);color:var(--green);font-family:inherit;font-size:14px;font-weight:600;
+    cursor:pointer;margin-bottom:16px;display:flex;align-items:center;justify-content:center;touch-action:manipulation;
+  }
+  .drawer-signin-btn:active{background:var(--green-soft);}
+  .drawer-divider{height:1px;background:var(--divider);margin:6px 0 14px;}
+  .drawer-item{
+    display:flex;align-items:center;gap:14px;padding:10px 4px;cursor:pointer;font-size:14.5px;color:var(--text);
+  }
+  .drawer-item:active{background:var(--divider);border-radius:8px;}
+  .drawer-item-note{font-size:12px;color:var(--text-dim);padding:8px 4px;line-height:1.6;}
+  .shared-project-block{margin-top:14px;}
+  .shared-project-title{font-size:13px;font-weight:700;color:var(--text);margin-bottom:6px;}
+  .shared-email-row{
+    display:flex;align-items:center;justify-content:space-between;gap:8px;
+    font-size:12.5px;color:var(--text-dim);padding:6px 2px;border-bottom:1px solid var(--divider);
+    direction:ltr;text-align:right;
+  }
+  .shared-email-row .remove-share-btn{
+    background:transparent;border:none;color:var(--danger);cursor:pointer;font-size:12px;flex-shrink:0;
+    direction:rtl;
+  }
+  .trash-row{
+    display:flex;align-items:center;justify-content:space-between;gap:10px;
+    padding:12px 4px;border-bottom:1px solid var(--divider);
+  }
+  .trash-row-text{flex:1;min-width:0;}
+  .trash-row-title{font-size:14.5px;color:var(--text);overflow-wrap:anywhere;}
+  .trash-row-path{font-size:11.5px;color:var(--text-dim);margin-top:2px;}
+  .trash-source-badge{display:inline-flex;align-items:center;align-self:flex-start;margin-bottom:5px;padding:3px 8px;border-radius:999px;background:var(--surface-2);border:1px solid var(--divider);font-size:10.5px;color:var(--text-dim);white-space:nowrap;}
+  .project-trash-record{display:flex;flex-direction:column;gap:0;}
+  .restore-btn{
+    flex-shrink:0;font-family:inherit;font-size:12.5px;font-weight:700;color:var(--green);
+    background:var(--green-soft);border:none;border-radius:8px;padding:8px 12px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;touch-action:manipulation;
+  }
+

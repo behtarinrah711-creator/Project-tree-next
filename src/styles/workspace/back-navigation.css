@@ -1,0 +1,21 @@
+/* C5 owner module: workspace/back-navigation.css */
+/* legacy style global-back-left-v273 */
+/* فلش بازگشت در کل سایت سمت چپ */
+.inner-section-bar{position:relative;}
+.inner-section-back{
+  left:8px !important;
+  right:auto !important;
+}
+.inner-section-action{
+  right:8px !important;
+  left:auto !important;
+}
+.workspace-project-context .workspace-context-back{
+  left:8px !important;
+  right:auto !important;
+}
+.workspace-project-context .workspace-context-action{
+  right:8px !important;
+  left:auto !important;
+}
+

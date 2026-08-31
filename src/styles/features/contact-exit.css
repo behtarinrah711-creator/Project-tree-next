@@ -1,0 +1,13 @@
+/* C5 owner module: features/contact-exit.css */
+/* legacy style contact-exit-choice-css */
+.contact-savebar{display:flex;flex-direction:row;direction:ltr;gap:9px;padding:10px 0 max(10px,env(safe-area-inset-bottom));position:sticky;bottom:0;background:var(--surface);z-index:20;border-top:1px solid var(--divider);}
+.contact-savebar .mini-btn{flex:1;height:44px;direction:rtl;}
+.contact-exit-choice{position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.42);display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;}
+.contact-exit-card{width:100%;max-width:440px;background:var(--surface);border-radius:14px;padding:20px;box-sizing:border-box;box-shadow:0 12px 36px rgba(0,0,0,.22);direction:rtl;}
+.contact-exit-title{font-size:17px;font-weight:800;color:var(--text);margin-bottom:8px;}
+.contact-exit-text{font-size:13px;color:var(--text-dim);line-height:1.8;margin-bottom:16px;}
+.contact-exit-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.contact-exit-actions .mini-btn{flex:1;min-width:110px;height:44px;}
+.global-incomplete-exit-choice .contact-exit-actions{direction:ltr;}
+.global-incomplete-exit-choice .contact-exit-actions .mini-btn{direction:rtl;}
+

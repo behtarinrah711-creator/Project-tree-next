@@ -1,0 +1,21 @@
+/* C5 owner module: features/contract-search-trigger.css */
+/* legacy style search-template-field-trigger-v272 */
+.contract-form-body .stpl-field-trigger{
+  width:100% !important;
+  height:48px !important;
+  min-height:48px !important;
+  border:1px solid var(--divider) !important;
+  border-radius:10px !important;
+  background:var(--surface) !important;
+  color:var(--text) !important;
+  font:inherit !important;
+  font-size:15px !important;
+  text-align:right !important;
+  padding:0 14px !important;
+  cursor:pointer !important;
+  box-sizing:border-box !important;
+}
+.contract-form-body .stpl-field-trigger:active{
+  border-color:var(--primary) !important;
+}
+

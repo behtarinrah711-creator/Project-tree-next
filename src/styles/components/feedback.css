@@ -1,0 +1,49 @@
+/* C5 owner module: components/feedback.css */
+  /* ---------- mini dialogs (centered) ---------- */
+  .mini-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:80;
+    display:flex;align-items:center;justify-content:center;padding:24px;
+  }
+  .mini-overlay.hidden{display:none;}
+  .mini-dialog{
+    background:var(--surface);border-radius:14px;padding:20px;width:100%;max-width:340px;
+  }
+  .mini-title{font-size:16.5px;font-weight:700;margin-bottom:10px;text-align:right;}
+  .mini-sub{font-size:13px;color:var(--text-dim);margin-bottom:12px;line-height:1.6;text-align:right;}
+  .mini-input{
+    width:100%;font-family:inherit;font-size:15px;color:var(--text);
+    border:1px solid var(--divider);border-radius:8px;padding:11px 14px;outline:none;
+    text-align:right;margin-bottom:16px;
+  }
+  .mini-input:focus{border-color:var(--green);}
+  .mini-actions{display:flex;justify-content:flex-end;gap:8px;}
+  .mini-btn{
+    font-family:inherit;font-size:14px;font-weight:600;border:none;border-radius:8px;
+    padding:10px 16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;touch-action:manipulation;
+  }
+  .mini-btn.ghost{background:transparent;color:var(--text-dim);}
+  .mini-btn.ghost:active{background:var(--divider);}
+  .mini-btn.primary{background:var(--green);color:#fff;}
+  .mini-btn.primary:active{background:#00075D;}
+  .mini-btn.danger{background:var(--danger-soft);color:var(--danger);}
+  .mini-btn.danger:active{background:#f6c6c1;}
+
+  /* ---------- undo toast ---------- */
+  .undo-toast{
+    position:fixed;bottom:20px;left:16px;right:16px;max-width:420px;margin:0 auto;
+    background:#323232;color:#fff;border-radius:10px;padding:13px 16px;
+    display:flex;align-items:center;justify-content:space-between;gap:12px;
+    z-index:90;overflow:hidden;
+  }
+  .undo-toast.hidden{display:none;}
+  .undo-toast span{font-size:13.5px;flex:1;}
+  .undo-toast button{
+    background:transparent;border:none;color:#00075D;font-family:inherit;font-size:13.5px;font-weight:700;
+    cursor:pointer;flex-shrink:0;
+  }
+  .undo-bar{
+    position:absolute;bottom:0;right:0;left:0;height:2.5px;background:#00075D;
+    transform-origin:right;animation:undoShrink linear forwards;
+  }
+  @keyframes undoShrink{ from{transform:scaleX(1);} to{transform:scaleX(0);} }
+

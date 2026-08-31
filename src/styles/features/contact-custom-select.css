@@ -1,0 +1,10 @@
+/* C5 owner module: features/contact-custom-select.css */
+.contact-custom-select{position:relative;width:100%;}
+.contact-custom-select-trigger{width:100%;min-height:50px;height:50px;border:1px solid #e3e5ea;border-radius:12px;background:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 14px;font:inherit;color:#222;cursor:pointer;box-sizing:border-box;}
+.contact-custom-select-trigger.open{border-color:#080c68;}
+.contact-custom-select-arrow{font-size:19px;line-height:1;transform:translateY(-1px);color:#333;}
+.contact-custom-select-menu{position:absolute;z-index:10000;top:calc(100% + 5px);right:0;left:0;background:#fff;border:1px solid #e3e5ea;border-radius:12px;box-shadow:0 10px 22px rgba(0,0,0,.14);overflow:hidden;display:none;}
+.contact-custom-select-menu.open{display:block;}
+.contact-custom-select-option{display:block;width:100%;min-height:48px;height:48px;padding:0 14px;border:0;border-bottom:1px solid #eee;background:#fff;text-align:right;font:inherit;color:#222;cursor:pointer;}
+.contact-custom-select-option:last-child{border-bottom:0;}
+.contact-custom-select-option:active{background:#f2f4fb;}

@@ -1,0 +1,12 @@
+/* C5 owner module: components/export.css */
+/* legacy style export-theme-contract-v1 */
+/* خروجی سند مستقل از تم رابط کاربری است. */
+.pdf-export, .pdf-export-root, .status-export-root, .export-document{
+  --primary:var(--pdf-primary);
+  --green:var(--pdf-primary);
+  --green-soft:var(--pdf-support);
+  --surface:var(--pdf-surface);
+  --bg:var(--pdf-surface);
+  --text:var(--pdf-text);
+}
+

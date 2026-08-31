@@ -1,0 +1,89 @@
+/* C5 owner module: features/project-management.css */
+/* legacy style project-active-persistence */
+.project-tab.project-active,
+.project-tab.active {
+  color:#00075D !important;
+  border-bottom:3px solid #00075D !important;
+}
+.project-tab.project-active * {
+  color:#00075D !important;
+}
+
+/* legacy style statement-compact-head */
+.compact-one-row{display:flex;align-items:center;justify-content:space-between;min-height:58px}.compact-one-row .statement-add{margin-inline-start:auto}
+
+/* legacy style active-project-underline-fix */
+.tab.active:not(.star-tab){
+  color:var(--green) !important;
+  font-weight:600 !important;
+  box-shadow:inset 0 -3px 0 var(--green) !important;
+}
+
+/* legacy style independent-menu-pages-no-footer */
+/* مدیریت پروژه‌ها و ثبت مشخصات صفحات مستقل هستند؛ فوتر در آنها نمایش داده نمی‌شود و فضای آن نیز رزرو نمی‌شود. */
+body:has(#projectsPage:not(.hidden)) #bottomNav,
+body:has(#profilePage:not(.hidden)) #bottomNav {
+  display: none !important;
+}
+body:has(#projectsPage:not(.hidden)) .content,
+body:has(#profilePage:not(.hidden)) .content {
+  padding-bottom: 0 !important;
+}
+
+/* legacy style workspace-inner-section-bar-v1 */
+/* نوار استاندارد تمام زیرصفحه‌های داخلی حسابداری/تنظیمات/گزارش‌ها.
+   این کامپوننت تنها مرجع اندازه، فاصله، عنوان و دکمه‌های نوار داخلی است. */
+.inner-section-bar{
+  width:100%;
+  height:52px;
+  min-height:52px;
+  flex:0 0 52px;
+  box-sizing:border-box;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  background:var(--primary);
+  color:var(--on-primary);
+  padding:0 56px;
+  flex-shrink:0;
+}
+.inner-section-bar h2{
+  margin:0;
+  max-width:100%;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:14px;
+  font-weight:700;
+  line-height:1.2;
+  color:var(--on-primary);
+  text-align:center;
+}
+.inner-section-back,
+.inner-section-action{
+  position:absolute;
+  top:50%;
+  transform:translateY(-50%);
+  width:38px;
+  height:38px;
+  padding:0;
+  border:0;
+  border-radius:50%;
+  background:transparent;
+  color:var(--on-primary);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  cursor:pointer;
+  flex:0 0 38px;
+}
+.inner-section-back{left:8px;right:auto;}
+.inner-section-action{right:8px;left:auto;}
+.inner-section-back:active,
+.inner-section-action:active{background:rgba(255,255,255,.14);}
+.inner-section-back[hidden],
+.inner-section-action[hidden]{display:none !important;}
+.inner-section-back svg,
+.inner-section-action svg{width:22px;height:22px;}
+

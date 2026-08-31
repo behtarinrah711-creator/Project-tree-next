@@ -1,0 +1,7 @@
+/* C5 owner module: features/contracts-layout.css */
+.contract-parties-activity-row{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px;width:100%;align-items:start;}
+@media (max-width:640px){.contract-parties-activity-row{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;}}
+
+.contract-row{align-items:flex-start;}
+.contract-created{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;gap:1px;white-space:nowrap;direction:ltr;text-align:left;margin-top:1px;font-size:11px;line-height:1.45;color:var(--text-dim);}
+.contract-created-date,.contract-created-time{display:block;white-space:nowrap;}

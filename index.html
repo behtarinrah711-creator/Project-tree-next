@@ -1,0 +1,538 @@
+<!-- VERSION 280 — بخش بالای فرم تا محل انعقاد: پس‌زمینه سفید و حذف فاصله‌های طوسی -->
+<!-- VERSION 232: accounting status menus removed from the Accounting workspace -->
+<!-- VERSION 196: every project is an isolated workspace; project-scoped contacts/activities/trash -->
+<!-- VERSION 120 (based on index119.html) -->
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<script src="src/bootstrap/cacheGuard.js"></script>
+<script type="module" src="src/bootstrap/shellEntry.js"></script>
+<script type="module" src="src/bootstrap/app.js"></script>
+<title>کارها</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00075D">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon.svg">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="کارها">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.cdnfonts.com/css/iranyekan" rel="stylesheet">
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- VERSION 246 — آیتم پروژه: ارتفاع خودکار و بدون نمایش تکراری متن -->
+<link rel="stylesheet" href="src/styles/index.css">
+</head>
+<body>
+
+<div class="topbar" id="topbar">
+  <button type="button" class="hamburger-btn" id="hamburgerBtn" aria-label="منوی اصلی" title="منوی اصلی"><span></span><span></span><span></span></button>
+  <div class="topbar-title" id="topbarTitle"><span class="app-title-lockup"><span class="app-title-main">کارها</span></span><span class="app-title-project" id="topbarProjectName"></span></div>
+  <input type="search" class="topbar-search" id="projectSearch" placeholder="جستجوی آیتم‌های پروژه…" autocomplete="off" enterkeyhint="search">
+  <div class="mode-toggle" id="modeToggle">
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="none"><rect x="2" y="4" width="16" height="12" rx="2" stroke="currentColor" stroke-width="1.5"/><path d="M2 8h16M7 8v8" stroke="currentColor" stroke-width="1.5"/></svg>
+    <span id="modeToggleLabel">نمایش هزینه</span>
+  </div>
+  <div class="account-trigger" id="avatarBtn" title="حساب کاربری">
+    <div class="avatar-circle">
+      <img id="avatarImg" class="avatar-image hidden" alt="">
+      <svg id="avatarDefaultIcon" width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 12c2.5 0 4.5-2 4.5-4.5S14.5 3 12 3 7.5 5 7.5 7.5 9.5 12 12 12zM4 20.5c0-3.6 3.6-6.5 8-6.5s8 2.9 8 6.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </div>
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 5l4 4 4-4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </div>
+</div>
+
+<div class="workspace-project-context" id="workspaceProjectContext" aria-live="polite">
+  <button type="button" class="workspace-context-back" id="workspaceContextBack" aria-label="بازگشت">
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M15 5l-7 7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <span class="workspace-project-name" id="workspaceProjectName" aria-current="page"></span>
+  <button type="button" class="workspace-context-action" id="workspaceContextAction" aria-label="افزودن" hidden>
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+  </button>
+</div>
+
+<div class="tabbar" id="tabbar"></div>
+<div class="content" id="content"></div>
+<nav class="bottom-nav" id="bottomNav" aria-label="ناوبری اصلی">
+  <button type="button" class="bottom-nav-item active" id="bottomProjectsBtn">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M4 7.5h16v11H4zM4 7.5l2-3h5l2 3M13 4.5h3l2 3" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></svg>
+    <span>پروژه‌ها</span>
+  </button>
+  <button type="button" class="bottom-nav-item" id="bottomReportsBtn">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M5 19V11M12 19V5M19 19v-8" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><path d="M4 19.5h16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+    <span>گزارش</span>
+  </button>
+  <button type="button" class="bottom-nav-item" id="bottomAccountingBtn">
+    <svg viewBox="0 0 24 24" fill="none"><rect x="4" y="5" width="16" height="14" rx="2" stroke="currentColor" stroke-width="1.7"/><path d="M7 9h10M7 13h3M14 13h3M7 16h5M15 16h2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+    <span>حسابداری</span>
+  </button>
+  <button type="button" class="bottom-nav-item" id="bottomSettingsBtn">
+    <svg viewBox="0 0 24 24" fill="none"><path d="M12 3.8l1 1.8 2.1.5 1.7-1 1.8 1.8-1 1.7.5 2.1 1.8 1v2.6l-1.8 1-.5 2.1 1 1.7-1.8 1.8-1.7-1-2.1.5-1 1.8H9.4l-1-1.8-2.1-.5-1.7 1-1.8-1.8 1-1.7-.5-2.1-1.8-1v-2.6l1.8-1 .5-2.1-1-1.7 1.8-1.8 1.7 1 2.1-.5 1-1.8H12z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="10.7" cy="12" r="2.3" stroke="currentColor" stroke-width="1.4"/></svg>
+    <span>تنظیمات</span>
+  </button>
+</nav>
+
+
+<div class="overlay hidden" id="overlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <button class="close-btn" id="deleteSheetBtn" title="حذف">
+        <svg width="18" height="18" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M6 4V2.6c0-.4.3-.7.7-.7h2.6c.4 0 .7.3.7.7V4M6.6 7v5M9.4 7v5M3.7 4l.6 9.2c0 .6.5 1 1.1 1h5.2c.6 0 1.1-.4 1.1-1L12.3 4" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+      <span class="sheet-caption">جزئیات</span>
+      <button class="close-btn" id="closeSheetBtn">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 4l12 12M16 4L4 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body" id="sheetBody"></div>
+  </div>
+</div>
+
+<div class="overlay hidden" id="trashOverlay">
+  <div class="sheet">
+    <div class="sheet-head">
+      <span class="sheet-head-spacer"></span>
+      <span class="sheet-caption">حذف شده ها</span>
+      <button class="close-btn" id="closeTrashBtn">
+        <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M4 4l12 12M16 4L4 16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+      </button>
+    </div>
+    <div class="sheet-body" id="trashBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- side menu drawer -->
+<div class="drawer-overlay hidden" id="drawerOverlay">
+  <div class="drawer">
+    <div class="drawer-account">
+      <div class="avatar-circle big" id="drawerAvatarWrap">
+        <img id="drawerAvatarImg" class="avatar-image hidden" alt="">
+        <svg id="drawerAvatarDefaultIcon" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 12c2.5 0 4.5-2 4.5-4.5S14.5 3 12 3 7.5 5 7.5 7.5 9.5 12 12 12zM4 20.5c0-3.6 3.6-6.5 8-6.5s8 2.9 8 6.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="drawer-account-info">
+        <div class="drawer-account-name" id="drawerAccountName">مهمان</div>
+        <div class="drawer-account-sub" id="drawerAccountSub">وارد نشده‌اید</div>
+      </div>
+    </div>
+    <div class="drawer-section-title">پروژه‌ها</div>
+    <div class="drawer-project-list" id="drawerProjectList"></div>
+    <button class="drawer-signin-btn drawer-add-project" id="drawerAddProjectBtn" type="button">+ پروژه جدید</button>
+    <button class="drawer-item" id="drawerProjectsBtn" type="button">
+      <span>مدیریت پروژه‌ها</span>
+    </button>
+</div>
+</div>
+
+<div class="drawer-overlay hidden" id="globalMenuOverlay">
+  <div class="drawer" role="dialog" aria-label="منوی عمومی">
+    <div class="drawer-account">
+      <div class="drawer-account-info">
+        <div class="drawer-account-name">حساب کاربری</div>
+      </div>
+    </div>
+    <button class="drawer-signin-btn" id="drawerSigninBtn" type="button">ورود با گوگل</button>
+    <button class="drawer-item" id="globalNotebookBtn" type="button">دفترچه یادداشت</button>
+    <button class="drawer-item" id="drawerProfileBtn" type="button">ثبت مشخصات</button>
+    <button class="drawer-item" id="drawerGlobalTrashBtn" type="button">حذف‌شده‌ها</button>
+  </div>
+</div>
+
+<div class="page-overlay workspace-page hidden" id="notebookPage">
+  <div class="page-head">
+    <button type="button" id="closeNotebookPage">بازگشت</button>
+    <h1>دفترچه یادداشت</h1>
+  </div>
+  <div class="page-body" id="notebookPageBody"></div>
+</div>
+<div class="page-overlay workspace-page hidden" id="notebookExportPage">
+  <div class="page-head">
+    <button type="button" id="closeNotebookExportPage">بازگشت</button>
+    <h1>خروجی دفترچه</h1>
+  </div>
+  <div class="page-body" id="notebookExportBody"></div>
+</div>
+
+<!-- generic small prompt dialog (used for add project / rename) -->
+<div class="mini-overlay hidden" id="promptOverlay">
+  <div class="mini-dialog">
+    <div class="mini-title" id="promptTitle">نام پروژه جدید</div>
+    <input type="text" class="mini-input" id="promptInput" placeholder="مثلاً «پروژه زیتون»">
+    <div class="mini-actions">
+      <button class="mini-btn ghost" id="promptCancelBtn">انصراف</button>
+      <button class="mini-btn primary" id="promptConfirmBtn">تایید</button>
+      <button class="mini-btn primary hidden" id="promptConfirmNextBtn">ثبت و بعدی</button>
+    </div>
+  </div>
+</div>
+
+<div class="mini-overlay hidden" id="numpadOverlay">
+  <div class="numpad-dialog">
+    <div class="numpad-display empty" id="numpadDisplay">وارد کنید…</div>
+    <div class="numpad-grid">
+      <button type="button" class="numpad-key" data-d="7">۷</button>
+      <button type="button" class="numpad-key" data-d="8">۸</button>
+      <button type="button" class="numpad-key" data-d="9">۹</button>
+      <button type="button" class="numpad-key" data-d="4">۴</button>
+      <button type="button" class="numpad-key" data-d="5">۵</button>
+      <button type="button" class="numpad-key" data-d="6">۶</button>
+      <button type="button" class="numpad-key" data-d="1">۱</button>
+      <button type="button" class="numpad-key" data-d="2">۲</button>
+      <button type="button" class="numpad-key" data-d="3">۳</button>
+      <button type="button" class="numpad-key numpad-backspace" id="numpadBackspace">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M9 6h11a1 1 0 011 1v10a1 1 0 01-1 1H9l-6-6 6-6z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M13 10l5 5M18 10l-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+      </button>
+      <button type="button" class="numpad-key" data-d="0">۰</button>
+      <button type="button" class="numpad-key numpad-done" id="numpadDoneBtn">
+        <svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M4 10.5l3.5 3.5L16 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button>
+    </div>
+    <button type="button" class="numpad-cancel" id="numpadCancelBtn">انصراف</button>
+  </div>
+</div>
+
+
+
+
+<div class="page-overlay workspace-page hidden" id="profilePage">
+  <div class="page-head profile-page-head">
+    <span></span><h2>ثبت مشخصات</h2><span></span>
+  </div>
+  <div class="page-body profile-page-body" id="profilePageBody"></div>
+  <div class="profile-page-actions" aria-label="عملیات ثبت مشخصات">
+    <button type="button" class="mini-btn ghost" id="profileCancelBtn">انصراف</button>
+    <button type="button" class="mini-btn primary" id="profileSaveBtn">ذخیره</button>
+  </div>
+</div>
+
+<div class="page-overlay workspace-page hidden" id="projectsPage">
+  <div class="page-head management-page-head">
+    <button class="icon-btn" id="closeProjectsPage"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <h2>مدیریت پروژه‌ها</h2>
+    <span class="page-head-spacer"></span>
+  </div>
+  <div class="page-body" id="projectsPageBody"></div>
+</div>
+
+<div class="page-overlay workspace-page hidden" id="settingsPage">
+  <div class="inner-section-bar">
+    <button class="inner-section-back" id="closeSettingsPage" type="button" aria-label="بازگشت"><svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <h2>تنظیمات</h2>
+    <span class="inner-section-spacer"></span>
+  </div>
+  <div class="page-body" id="settingsPageBody"></div>
+</div>
+
+<div class="page-overlay workspace-page hidden" id="contractTemplatesPage">
+  <div class="inner-section-bar">
+    <button class="inner-section-back" id="closeContractTemplatesPage" type="button" aria-label="بازگشت"><svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <h2>قراردادها</h2>
+    <button class="inner-section-action" id="contractTemplateAddBtn" type="button" title="ایجاد قالب قرارداد" aria-label="ایجاد قالب قرارداد"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+  </div>
+  <div class="page-body" id="contractTemplatesPageBody"></div>
+</div>
+
+<div class="page-overlay workspace-page hidden" id="contractTemplateFormPage">
+  <div class="inner-section-bar">
+    <button class="inner-section-back" id="closeContractTemplateFormPage" type="button" aria-label="بازگشت"><svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <h2 id="contractTemplateFormTitle">قالب قرارداد جدید</h2><span class="inner-section-spacer"></span>
+  </div>
+  <div class="page-body ctf-body" id="contractTemplateFormBody"></div>
+  <div class="internal-form-actions" id="contractTemplateFormActions"></div>
+</div>
+
+<div class="page-overlay workspace-page hidden" id="contractsPage">
+  <div class="inner-section-bar">
+    <button class="inner-section-back" id="closeContractsPage" type="button" aria-label="بازگشت"><svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <h2>قراردادها</h2>
+    <button class="inner-section-action" id="contractAddBtn" type="button" title="ایجاد قرارداد" aria-label="ایجاد قرارداد"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+  </div>
+  <div class="page-body" id="contractsPageBody"></div>
+</div>
+<div class="page-overlay workspace-page hidden" id="contractFormPage">
+  <div class="inner-section-bar">
+    <button class="inner-section-back" id="closeContractFormPage" type="button" aria-label="بازگشت"><svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <h2 id="contractFormTitle">قرارداد جدید</h2><span class="inner-section-spacer"></span>
+  </div>
+  <div class="page-body contract-form-body" id="contractFormBody"></div>
+  <div id="contractFormActions"></div>
+</div>
+
+
+<!-- تمپلیت جستجو — صفحه تمام‌صفحه انتخاب از لیست (قابل استفاده مجدد) -->
+<div class="page-overlay search-template-page hidden" id="searchTemplatePage" aria-hidden="true">
+  <div class="stpl-topbar" id="searchTemplateTopbar">
+    <button type="button" class="stpl-back" id="searchTemplateBack" aria-label="بازگشت">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M15 6l-6 6 6 6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="stpl-title-wrap" id="searchTemplateTitleWrap">
+      <h2 class="stpl-title" id="searchTemplateTitle">انتخاب</h2>
+    </div>
+    <button type="button" class="stpl-search-btn" id="searchTemplateSearchBtn" aria-label="جستجو">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none"><circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="2"/><path d="M16.5 16.5L21 21" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+    <div class="stpl-search-field hidden" id="searchTemplateSearchField">
+      <input type="search" id="searchTemplateInput" class="stpl-search-input" placeholder="جستجو…" autocomplete="off" enterkeyhint="search">
+    </div>
+  </div>
+  <div class="stpl-body" id="searchTemplateBody"></div>
+  <button type="button" class="stpl-fab" id="searchTemplateFab" aria-label="افزودن" title="افزودن">
+    <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>
+  </button>
+</div>
+
+<div class="page-overlay workspace-page hidden" id="activityFormPage">
+  <div class="inner-section-bar">
+    <button class="inner-section-back" id="closeActivityFormPage" type="button" aria-label="بازگشت"><svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <h2>ثبت فعالیت</h2><span class="inner-section-spacer"></span>
+  </div>
+  <div class="page-body internal-form-body" id="activityFormBody"></div>
+  <div class="internal-form-actions" id="activityFormActions"></div>
+</div>
+<div class="page-overlay workspace-page hidden" id="projectActivitiesPage">
+  <div class="inner-section-bar">
+    <button class="inner-section-back" id="closeProjectActivitiesPage" type="button" aria-label="بازگشت">
+      <svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <h2>فعالیت‌ها</h2>
+    <button class="inner-section-action" id="activityAddBtn" type="button" title="افزودن فعالیت" aria-label="افزودن فعالیت">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+  <div class="page-body" id="projectActivitiesPageBody"></div>
+</div>
+
+<div class="page-overlay workspace-page hidden" id="contactsPage">
+  <div class="inner-section-bar">
+    <button class="inner-section-back" id="closeContactsPage" type="button" aria-label="بازگشت"><svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <h2>مخاطبین</h2>
+    <button class="inner-section-action" id="contactAddBtn" type="button" title="افزودن مخاطب" aria-label="افزودن مخاطب"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></button>
+  </div>
+  <div class="page-body" id="contactsPageBody"></div>
+</div>
+
+<div class="page-overlay workspace-page hidden" id="projectTrashPage">
+  <div class="inner-section-bar">
+    <button class="inner-section-back" id="closeProjectTrashPage" type="button" aria-label="بازگشت">
+      <svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <h2>حذف شده ها</h2>
+    <span class="inner-section-spacer"></span>
+  </div>
+  <div class="page-body" id="projectTrashPageBody"></div>
+</div>
+
+<div class="page-overlay workspace-page hidden" id="reportsPage">
+  <div class="inner-section-bar">
+    <button class="inner-section-back" id="closeReportsPage" type="button" aria-label="بازگشت"><svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <h2>گزارش</h2>
+    <span class="inner-section-spacer"></span>
+  </div>
+  <div class="page-body" id="reportsPageBody"></div>
+</div>
+
+<div class="page-overlay workspace-page hidden" id="accountingPage">
+  <div class="page-head">
+    <button class="icon-btn" id="closeAccountingPage"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <h2>حسابداری</h2>
+    <span class="page-head-spacer"></span>
+  </div>
+  <div class="page-body" id="accountingPageBody"></div>
+</div>
+
+<div class="page-overlay hidden" id="createPage">
+  <div class="page-head">
+    <button class="icon-btn" id="closeCreatePage" type="button" aria-label="بازگشت">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <h2 id="createPageTitle">ساخت پروژه جدید</h2>
+    <span class="page-head-spacer"></span>
+  </div>
+  <div class="page-body create-page-body" id="createPageBody">
+    <div class="create-page-form">
+      <label class="create-page-label" id="createNameLabel" for="createPageInput">نام پروژه جدید</label>
+      <input id="createPageInput" class="create-page-input" type="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" inputmode="text" enterkeyhint="done" placeholder="مثلاً «پروژه زیتون»">
+      <div class="create-page-actions">
+        <button class="mini-btn ghost" id="createPageCancelBtn" type="button">انصراف</button>
+        <button class="mini-btn primary" id="createPageConfirmBtn" type="button" >تأیید</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="page-overlay hidden" id="exportPage">
+  <div class="page-head">
+    <button class="icon-btn" id="closeExportPage"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <h2 id="exportPageTitle">خروجی PDF</h2>
+    <span class="page-head-spacer"></span>
+  </div>
+  <div class="export-toolbar" id="exportToolbar"></div>
+  <div class="export-options" id="exportOptions">
+    <label><input type="checkbox" id="exportNumberedCb"> حالت شماره‌دار</label>
+    <label><input type="checkbox" id="exportCostCb"> نمایش هزینه</label>
+    <label><input type="checkbox" id="exportIncludeSig"> درج امضا</label>
+    <span class="hint" id="exportSigHint"></span>
+  </div>
+  <div class="export-note-wrap" id="exportNoteWrap">
+    <label for="exportNoteInput">توضیحات کلی (پایین PDF)</label>
+    <textarea id="exportNoteInput" placeholder="توضیحات اختیاری برای این خروجی…"></textarea>
+  </div>
+  <div class="page-body" id="exportPageBody"></div>
+</div>
+
+<div class="page-overlay hidden" id="statusExportPage">
+  <div class="page-head">
+    <button class="icon-btn" id="closeStatusExportPage" type="button"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <h2 id="statusExportTitle">خروجی صورت وضعیت</h2>
+    <span class="page-head-spacer"></span>
+  </div>
+  <div class="export-toolbar" id="statusExportToolbar"></div>
+  <div class="page-body" id="statusExportBody"></div>
+</div>
+<div class="jalali-pop hidden" id="jalaliPop">
+  <div class="jalali-box" id="jalaliBox"></div>
+</div>
+
+<div class="confirm-overlay hidden" id="confirmOverlay">
+  <div class="confirm-box">
+    <p id="confirmText">آیا مطمئن هستید؟</p>
+    <div class="mini-actions">
+      <button class="mini-btn ghost" id="confirmCancelBtn">انصراف</button>
+      <button class="mini-btn danger" id="confirmOkBtn">تایید</button>
+    </div>
+  </div>
+</div>
+<!-- undo toast (soft delete) -->
+<div class="undo-toast hidden" id="undoToast">
+  <span id="undoToastText">حذف شد</span>
+  <button id="undoToastBtn">بازگشت</button>
+  <div class="undo-bar" id="undoToastBar"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<!-- v255: centralized reference guard for contact/activity deletion -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+</body>
+</html>
