@@ -35,3 +35,35 @@ body.global-surface #workspaceProjectContext { display: none !important; }
 .nb-tab.active { background:#1d4ed8; color:#fff; }
 .nb-tree { list-style:none; padding:0; }
 .nb-item { display:flex; gap:8px; align-items:center; min-height:44px; }
+
+/* Unified application header: project switcher on the right, account on the left. */
+#hamburgerBtn[hidden]{display:none !important;}
+.topbar{min-height:56px;}
+.topbar-title.project-menu-trigger{cursor:pointer;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:4px 8px;border-radius:10px;}
+.topbar-title.project-menu-trigger:active{background:var(--divider);}
+.topbar-title.project-menu-trigger.has-active-project .app-title-main{max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;}
+.topbar-title.project-menu-trigger.has-active-project .app-title-main::after{content:' ▾';font-size:11px;color:var(--text-dim);}
+.topbar-title.project-menu-trigger .app-title-project{font-size:11px;color:var(--text-dim);}
+.topbar .account-trigger{margin-inline-start:auto;}
+.account-trigger > svg{display:none;}
+.account-trigger.is-guest .avatar-circle{background:transparent;color:var(--green);border:1px solid var(--divider);}
+
+/* WBS used to render a second header. The global shell now owns that chrome. */
+.wbs-home-header{display:none !important;}
+
+/* The right drawer is project-only; account identity belongs to the left drawer. */
+#drawerOverlay > .drawer > .drawer-account,
+#drawerOverlay > .drawer > .drawer-section-title{display:none !important;}
+#drawerOverlay .drawer-add-project{order:1;margin-top:0;margin-bottom:6px;}
+#drawerOverlay #drawerProjectList{order:2;}
+#drawerOverlay #drawerProjectsBtn{order:0;font-weight:600;border-bottom:1px solid var(--divider);margin-bottom:8px;}
+
+/* Account drawer opens from the left and starts with the authenticated identity. */
+#globalMenuOverlay{justify-content:flex-start;}
+#globalMenuOverlay > .drawer{box-shadow:2px 0 10px rgba(0,0,0,.15);}
+#globalMenuOverlay > .drawer > .drawer-account:not(#globalAccountHead){display:none;}
+.global-account-head{padding-bottom:12px;border-bottom:1px solid var(--divider);margin-bottom:10px;}
+#globalMenuOverlay #drawerSigninBtn{order:1;margin-top:auto;margin-bottom:0;color:var(--danger);}
+#globalMenuOverlay #globalNotebookBtn,
+#globalMenuOverlay #drawerProfileBtn,
+#globalMenuOverlay #drawerGlobalTrashBtn{order:0;}
