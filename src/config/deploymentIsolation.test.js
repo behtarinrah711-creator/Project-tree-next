@@ -19,9 +19,10 @@ function runtimeFiles(dir){
   return out;
 }
 
-test('isolated deployment has its own storage namespace and cloud is disabled until configured',()=>{
-  assert.equal(DEPLOYMENT_CONFIG.cloudEnabled,false);
-  assert.equal(DEPLOYMENT_CONFIG.firebase,null);
+test('isolated deployment has its own storage namespace and uses only its configured Firebase project',()=>{
+  assert.equal(DEPLOYMENT_CONFIG.cloudEnabled,true);
+  assert.equal(DEPLOYMENT_CONFIG.firebase?.projectId,'project-tree-next');
+  assert.equal(DEPLOYMENT_CONFIG.firebase?.authDomain,'project-tree-next.firebaseapp.com');
   for(const value of Object.values(STORAGE_KEYS)) assert.match(value,/^ptnext-v1:/);
 });
 
