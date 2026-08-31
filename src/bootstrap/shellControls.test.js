@@ -7,7 +7,17 @@ function element(id){
   const classes = new Set(id in {drawerOverlay:1, globalMenuOverlay:1} ? ['hidden'] : []);
   return {
     id, dataset: {}, textContent:'',
-    classList: { add:value=>classes.add(value), remove:value=>classes.delete(value), contains:value=>classes.has(value) },
+    classList: {
+      add:value=>classes.add(value),
+      remove:value=>classes.delete(value),
+      contains:value=>classes.has(value),
+      toggle(value,force){
+        if(force === true){ classes.add(value); return true; }
+        if(force === false){ classes.delete(value); return false; }
+        if(classes.has(value)){ classes.delete(value); return false; }
+        classes.add(value); return true;
+      },
+    },
     addEventListener(type, handler){ (listeners[type] ||= []).push(handler); },
     async click(target=this){
       for(const handler of (listeners.click || [])) await handler({target});
