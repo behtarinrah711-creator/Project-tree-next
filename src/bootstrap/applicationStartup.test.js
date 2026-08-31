@@ -10,11 +10,22 @@ function shellHarness(){
   const element = id => ({
     id,
     dataset: {},
-    classList: { add:value=>hidden.add(value), remove:value=>hidden.delete(value), contains:value=>hidden.has(value) },
+    classList: {
+      add:value=>hidden.add(value),
+      remove:value=>hidden.delete(value),
+      contains:value=>hidden.has(value),
+      toggle(value, force){
+        if(force === true){ hidden.add(value); return true; }
+        if(force === false){ hidden.delete(value); return false; }
+        if(hidden.has(value)){ hidden.delete(value); return false; }
+        hidden.add(value); return true;
+      },
+    },
+    setAttribute(){},
     addEventListener(type, callback){ (listeners[`${id}:${type}`] ||= []).push(callback); },
     click(){ (listeners[`${id}:click`] || []).forEach(callback => callback({ target:this })); },
   });
-  const elements = Object.fromEntries(['drawerOverlay','hamburgerBtn','avatarBtn','drawerSigninBtn'].map(id => [id, element(id)]));
+  const elements = Object.fromEntries(['drawerOverlay','globalMenuOverlay','topbarTitle','avatarBtn','drawerSigninBtn'].map(id => [id, element(id)]));
   class CustomEvent { constructor(type, options={}){ this.type=type; this.detail=options.detail; } }
   const events = [];
   const windowRef = { CustomEvent, dispatchEvent:event=>events.push(event) };
@@ -47,7 +58,7 @@ test('an application import failure is observable while Menu remains usable', as
     consoleRef: { error:(...args)=>errors.push(args) },
   });
 
-  shell.elements.hamburgerBtn.click();
+  shell.elements.topbarTitle.click();
   assert.equal(result, null);
   assert.equal(shell.elements.drawerOverlay.classList.contains('hidden'), false);
   assert.equal(errors.length, 1);
