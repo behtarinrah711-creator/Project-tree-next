@@ -1,0 +1,54 @@
+name: Deploy isolated site
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  test-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: Run unit tests
+        run: node --test $(find src -name '*.test.js' -print)
+
+      - name: Run Playwright E2E
+        run: npm run test:e2e
+
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload site
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
