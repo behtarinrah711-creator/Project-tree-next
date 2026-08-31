@@ -21,6 +21,20 @@ function shellHarness(){
   return { elements, events, windowRef, documentRef:{ getElementById:id=>elements[id] } };
 }
 
+function firebaseHarness(){
+  const authInstance={ currentUser:null, onAuthStateChanged(){ return () => {}; } };
+  const db={ enablePersistence(){ return Promise.resolve(); } };
+  const firebase={
+    apps:[],
+    initializeApp(){ const app={name:'[TEST]'}; this.apps.push(app); return app; },
+    auth(){ return authInstance; },
+    firestore(){ return db; },
+  };
+  firebase.auth.GoogleAuthProvider=class GoogleAuthProvider {};
+  firebase.firestore.FieldValue={};
+  return firebase;
+}
+
 test('an application import failure is observable while Menu remains usable', async () => {
   const shell = shellHarness();
   const errors = [];
@@ -45,6 +59,7 @@ test('successful startup publishes KarhaApp before Legacy and starts Router afte
   class CustomEvent { constructor(type){ this.type=type; } }
   const windowRef = {
     CustomEvent,
+    firebase: firebaseHarness(),
     dispatchEvent(event){ order.push(event.type); },
   };
   const registry = {
