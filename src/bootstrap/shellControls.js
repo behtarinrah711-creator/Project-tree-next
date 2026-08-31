@@ -99,13 +99,16 @@ function installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avata
   }
 
   const syncProjectHeader = () => {
+    const moduleId = windowRef.KarhaRoute?.moduleId || 'dashboard';
+    if(moduleId !== 'dashboard' && moduleId !== 'tasks') return;
+
     const project = windowRef.KarhaApp?.projectWorkspace?.getActiveProject?.();
     if(project?.name){
       if(main) main.textContent = project.name;
-      if(projectLabel) projectLabel.textContent = 'مدیریت ساخت';
+      if(projectLabel) projectLabel.textContent = '';
       title?.classList.add('has-active-project');
     }else{
-      if(main) main.textContent = 'مدیریت ساخت';
+      if(main) main.textContent = 'پروژه‌ها';
       if(projectLabel) projectLabel.textContent = '';
       title?.classList.remove('has-active-project');
     }
@@ -159,6 +162,8 @@ function installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avata
   windowRef.addEventListener?.('karha:ready', syncProjectHeader);
   windowRef.addEventListener?.('popstate', () => windowRef.setTimeout(syncProjectHeader, 0));
   windowRef.addEventListener?.('karha:drawer-open', syncProjectHeader);
+  windowRef.addEventListener?.('karha:projects-recovered', syncProjectHeader);
+  windowRef.addEventListener?.('karha:workspace-route-synced', () => windowRef.setTimeout(syncProjectHeader, 0));
   syncProjectHeader();
 
   return { syncProjectHeader };
