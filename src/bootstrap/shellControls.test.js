@@ -7,6 +7,7 @@ function element(id){
   const classes = new Set(id in {drawerOverlay:1, globalMenuOverlay:1} ? ['hidden'] : []);
   return {
     id, dataset: {}, textContent:'',
+    setAttribute(){},
     classList: {
       add:value=>classes.add(value),
       remove:value=>classes.delete(value),
@@ -27,7 +28,7 @@ function element(id){
 }
 
 function harness({user=null,popupErrors=[],redirectErrors=[]}={}){
-  const elements = Object.fromEntries(['drawerOverlay','globalMenuOverlay','hamburgerBtn','avatarBtn','drawerSigninBtn','toast','globalNotebookBtn'].map(id=>[id,element(id)]));
+  const elements = Object.fromEntries(['drawerOverlay','globalMenuOverlay','topbarTitle','avatarBtn','drawerSigninBtn','toast','globalNotebookBtn'].map(id=>[id,element(id)]));
   const events=[];
   class CustomEvent { constructor(type,options={}){ this.type=type; this.detail=options.detail; } }
   const popupQueue=[...popupErrors];
@@ -63,7 +64,7 @@ function harness({user=null,popupErrors=[],redirectErrors=[]}={}){
 test('empty-storage shell opens the drawer before project startup', async () => {
   const h=harness();
   assert.equal(bindShellControls(h),true);
-  await h.elements.hamburgerBtn.click();
+  await h.elements.topbarTitle.click();
   assert.equal(h.elements.drawerOverlay.classList.contains('hidden'),false);
   assert.deepEqual(h.events.map(event=>event.type),['karha:drawer-open']);
 });
@@ -81,7 +82,7 @@ test('logged-out login starts the default Firebase popup and binding is idempote
 test('logged-in account action signs out and closes the drawer', async () => {
   const h=harness({user:{uid:'user-1'}});
   bindShellControls(h);
-  await h.elements.hamburgerBtn.click();
+  await h.elements.topbarTitle.click();
   await h.elements.drawerSigninBtn.click();
   assert.equal(h.auth.signoutCalls,1);
   assert.equal(h.elements.drawerOverlay.classList.contains('hidden'),true);
@@ -119,10 +120,10 @@ test('redirect failure is surfaced after a popup failure', async () => {
   assert.equal(h.events.at(-1).type,'karha:auth-error');
 });
 
-test('hamburger opens project menu only and avatar opens a separate global menu', async () => {
+test('project title opens project menu only and avatar opens a separate global menu', async () => {
   const h=harness();
   bindShellControls(h);
-  await h.elements.hamburgerBtn.click();
+  await h.elements.topbarTitle.click();
   assert.equal(h.elements.drawerOverlay.classList.contains('hidden'),false);
   assert.equal(h.elements.globalMenuOverlay.classList.contains('hidden'),true);
   await h.elements.avatarBtn.click();

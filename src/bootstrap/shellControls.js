@@ -84,11 +84,9 @@ async function signInWithGoogle({firebaseRef, auth, windowRef, documentRef}){
 }
 
 function installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avatar, signin}){
-  const hamburger = byId(documentRef, 'hamburgerBtn');
   const title = byId(documentRef, 'topbarTitle');
   const main = title?.querySelector?.('.app-title-main');
   const projectLabel = byId(documentRef, 'topbarProjectName');
-  if(hamburger) hamburger.hidden = true;
 
   if(title){
     title.classList.add('project-menu-trigger');
@@ -173,7 +171,6 @@ function installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avata
 export function bindShellControls({ windowRef = window, documentRef = document } = {}){
   const drawer = byId(documentRef, 'drawerOverlay');
   const globalMenu = byId(documentRef, 'globalMenuOverlay');
-  const hamburger = byId(documentRef, 'hamburgerBtn');
   const avatar = byId(documentRef, 'avatarBtn');
   const signin = byId(documentRef, 'drawerSigninBtn');
   const title = byId(documentRef, 'topbarTitle');
@@ -197,7 +194,6 @@ export function bindShellControls({ windowRef = window, documentRef = document }
 
   installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avatar, signin});
 
-  hamburger?.addEventListener('click', openProjectMenu);
   title?.addEventListener('click', openProjectMenu);
   title?.addEventListener('keydown', event => {
     if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); openProjectMenu(); }

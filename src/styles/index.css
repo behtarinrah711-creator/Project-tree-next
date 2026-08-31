@@ -37,7 +37,6 @@ body.global-surface #workspaceProjectContext { display: none !important; }
 .nb-item { display:flex; gap:8px; align-items:center; min-height:44px; }
 
 /* Unified application header: project switcher right, title centered, account left. */
-#hamburgerBtn{display:none !important;}
 #projectSearch,
 #modeToggle{display:none !important;}
 .topbar{
@@ -115,9 +114,6 @@ body.global-surface #workspaceProjectContext { display: none !important; }
 .topbar.workspace-context .topbar-title.project-menu-trigger .app-title-main::before,
 .topbar.workspace-context .topbar-title.project-menu-trigger .app-title-main::after{content:none;}
 .topbar.workspace-context .topbar-title.project-menu-trigger .app-title-project{display:inline;}
-
-/* WBS used to render a second header. The global shell now owns that chrome. */
-.wbs-home-header{display:none !important;}
 
 /* The right drawer is project-only; account identity belongs to the left drawer. */
 #drawerOverlay > .drawer > .drawer-account,

@@ -76,30 +76,6 @@ function handleTreeDrop({ draggedId, targetId, targetKind }){
   if(ok) render();
 }
 
-function renderHomeHeader(project){
-  const header = document.createElement('header');
-  header.className = 'wbs-home-header';
-  header.setAttribute('role', 'banner');
-  const projectBtn = document.createElement('button');
-  projectBtn.type = 'button';
-  projectBtn.className = 'wbs-project-switch';
-  projectBtn.setAttribute('aria-haspopup', 'true');
-  projectBtn.setAttribute('aria-label', 'فهرست پروژه‌ها');
-  projectBtn.innerHTML = `<span class="wbs-project-name">${escapeHtml(project.name || 'پروژه')}</span><span aria-hidden="true">▾</span>`;
-  projectBtn.addEventListener('click', () => document.getElementById('hamburgerBtn')?.click());
-  const title = document.createElement('p');
-  title.className = 'wbs-app-title';
-  title.textContent = 'مدیریت ساخت';
-  const avatar = document.createElement('button');
-  avatar.type = 'button';
-  avatar.className = 'wbs-avatar-btn';
-  avatar.setAttribute('aria-label', 'منوی عمومی');
-  avatar.textContent = '👤';
-  avatar.addEventListener('click', () => document.getElementById('avatarBtn')?.click());
-  header.append(projectBtn, title, avatar);
-  return header;
-}
-
 function escapeHtml(value){
   return String(value ?? '').replace(/[&<>"']/g, ch => ({
     '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;',
@@ -369,7 +345,6 @@ export function renderWbsHome(target = document.getElementById('content'), proje
 
   const root = document.createElement('div');
   root.className = 'wbs-home-root';
-  root.appendChild(renderHomeHeader(project));
   target.appendChild(root);
 
   const tabs = document.createElement('div');
