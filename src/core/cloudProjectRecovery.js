@@ -97,8 +97,8 @@ function refreshOpenDrawer(windowRef){
 /**
  * Recovery bridge for project documents created before the ownerUid migration.
  * It never deletes or rewrites cloud documents. It only merges every readable
- * ownership source into the live legacy project array and restores a valid
- * active project when the legacy listeners temporarily emptied that array.
+ * ownership source into the canonical AppDataStore project array and restores
+ * a valid active project when another asynchronous listener temporarily emptied it.
  */
 export function startCloudProjectRecovery({windowRef=window,projectContext,router}={}){
   const firebaseRef=windowRef?.firebase;
@@ -138,7 +138,10 @@ export function startCloudProjectRecovery({windowRef=window,projectContext,route
           if(!docs.length) continue;
 
           const legacy=windowRef.KarhaLegacy;
-          const live=legacy?.getProjectsList?.();
+          // KarhaLegacy.getProjectsList() is a visibility-filtered view and may
+          // return a fresh array. Recovery must mutate the canonical Store list.
+          const storeProjects=windowRef.KarhaAppData?.getProjects?.();
+          const live=Array.isArray(storeProjects) ? storeProjects : legacy?.getProjectsList?.();
           if(!Array.isArray(live)) continue;
           const existingById=new Map(live.map(project=>[String(project?.id ?? project?.projectId ?? ''),project]));
           const recovered=docs.map(doc=>projectFromCloudDoc(doc,user,existingById.get(String(doc.id))));
@@ -153,9 +156,6 @@ export function startCloudProjectRecovery({windowRef=window,projectContext,route
             routeProjectId:routeProjectId(windowRef),
           });
 
-          // If the legacy snapshot race erased the active project, route through
-          // the modular selection lifecycle so activeTab, Context, Router and UI
-          // are restored together. Otherwise keep the user's current project.
           const activeStillExists=activeId && live.some(project=>String(project.id)===String(activeId) && !project.trashed && !project.archived);
           if(preferred && !activeStillExists){
             const selected=windowRef.KarhaApp?.projectWorkspace?.selectProject?.(preferred,{moduleId:'dashboard',replace:true});
@@ -168,7 +168,10 @@ export function startCloudProjectRecovery({windowRef=window,projectContext,route
             projectContext?.setProjectId?.(preferred);
             router?.navigate?.(preferred,'dashboard',{replace:true});
           }
-          legacy?.persist?.();
+          // Persist the canonical Store snapshot. Legacy persist remains a
+          // compatibility fallback for older harnesses that do not expose it.
+          if(windowRef.KarhaAppData?.persistLocal) windowRef.KarhaAppData.persistLocal();
+          else legacy?.persist?.();
           refreshOpenDrawer(windowRef);
 
           for(const project of recovered){
@@ -180,18 +183,18 @@ export function startCloudProjectRecovery({windowRef=window,projectContext,route
               if(token!==generation) return;
               const taskDocs=snap.docs.map(taskDoc=>({id:taskDoc.id,...(taskDoc.data?.() || {})}));
               if(taskDocs.length){
-                const current=legacy?.getProject?.(project.id) || live.find(item=>String(item.id)===projectId);
+                const current=windowRef.KarhaApp?.projectRepository?.find?.(project.id)
+                  || legacy?.getProject?.(project.id)
+                  || live.find(item=>String(item.id)===projectId);
                 if(current){
                   current.tasks=mergeById(taskDocs,current.tasks);
-                  legacy?.persist?.();
-                  const active=legacy?.getActiveProjectId?.();
+                  if(windowRef.KarhaAppData?.persistLocal) windowRef.KarhaAppData.persistLocal();
+                  else legacy?.persist?.();
+                  const active=windowRef.KarhaAppData?.getActiveTab?.() || legacy?.getActiveProjectId?.();
                   const moduleId=windowRef?.KarhaRoute?.moduleId || 'dashboard';
                   if(String(active)===projectId && moduleId==='dashboard') legacy?.renderAll?.();
                 }
               }
-              // Mark hydration complete only after Firestore answered successfully.
-              // A transient failure during a fresh login must be retried by the
-              // next ownership/shared snapshot instead of hiding tasks all session.
               hydrated.add(projectId);
             }catch(err){
               console.warn('project task recovery skipped; will retry',project.id,err);
@@ -229,8 +232,6 @@ export function startCloudProjectRecovery({windowRef=window,projectContext,route
     // if(email) listen('shared',...);
   };
 
-  // Firebase immediately emits the current auth state to this listener, so do
-  // not attach a second copy from auth.currentUser.
   authUnsub=auth.onAuthStateChanged(attach);
   return ()=>{generation++;stopSources();try{authUnsub?.();}catch{}};
 }
