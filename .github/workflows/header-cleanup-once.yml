@@ -1,0 +1,91 @@
+name: One-time safe header cleanup
+
+on:
+  push:
+    paths:
+      - '.github/workflows/header-cleanup-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+      - name: Remove obsolete header code safely
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          def replace_exact(path, old, new, expected=1):
+              p = Path(path)
+              text = p.read_text()
+              count = text.count(old)
+              if count != expected:
+                  raise SystemExit(f'{path}: expected {expected} matches, found {count}')
+              p.write_text(text.replace(old, new))
+
+          # 1) Remove the obsolete hamburger from the initial HTML, not merely hide it.
+          replace_exact(
+              'index.html',
+              '  <button type="button" class="hamburger-btn" id="hamburgerBtn" aria-label="منوی اصلی" title="منوی اصلی"><span></span><span></span><span></span></button>\n',
+              ''
+          )
+
+          # 2) Remove dead hamburger compatibility code from the shell controller.
+          replace_exact('src/bootstrap/shellControls.js', "  const hamburger = byId(documentRef, 'hamburgerBtn');\n", '', expected=2)
+          replace_exact('src/bootstrap/shellControls.js', '  if(hamburger) hamburger.hidden = true;\n', '')
+          replace_exact('src/bootstrap/shellControls.js', "  hamburger?.addEventListener('click', openProjectMenu);\n", '')
+
+          # 3) Remove the old WBS second-header producer entirely.
+          p = Path('src/modules/wbs/homeView.js')
+          text = p.read_text()
+          start = text.index('function renderHomeHeader(project){')
+          end = text.index('\nfunction escapeHtml(value){', start)
+          text = text[:start] + text[end+1:]
+          old_call = '  root.appendChild(renderHomeHeader(project));\n'
+          if text.count(old_call) != 1:
+              raise SystemExit('homeView.js: unexpected renderHomeHeader call count')
+          text = text.replace(old_call, '')
+          p.write_text(text)
+
+          # 4) Remove CSS whose only job was hiding code that no longer exists.
+          replace_exact('src/styles/index.css', '#hamburgerBtn{display:none !important;}\n', '')
+          replace_exact(
+              'src/styles/index.css',
+              '/* WBS used to render a second header. The global shell now owns that chrome. */\n.wbs-home-header{display:none !important;}\n\n',
+              ''
+          )
+
+          # 5) Keep tests on the real project-title trigger instead of the removed hamburger.
+          p = Path('src/bootstrap/shellControls.test.js')
+          text = p.read_text()
+          old_ids = "['drawerOverlay','globalMenuOverlay','hamburgerBtn','avatarBtn','drawerSigninBtn','toast','globalNotebookBtn']"
+          new_ids = "['drawerOverlay','globalMenuOverlay','topbarTitle','avatarBtn','drawerSigninBtn','toast','globalNotebookBtn']"
+          if text.count(old_ids) != 1:
+              raise SystemExit('shellControls.test.js: harness id list changed unexpectedly')
+          text = text.replace(old_ids, new_ids)
+          text = text.replace("    id, dataset: {}, textContent:'',\n", "    id, dataset: {}, textContent:'',\n    setAttribute(){},\n")
+          if text.count('h.elements.hamburgerBtn.click()') != 3:
+              raise SystemExit('shellControls.test.js: unexpected hamburger click count')
+          text = text.replace('h.elements.hamburgerBtn.click()', 'h.elements.topbarTitle.click()')
+          text = text.replace("test('hamburger opens project menu only and avatar opens a separate global menu'", "test('project title opens project menu only and avatar opens a separate global menu'")
+          p.write_text(text)
+          PY
+
+      - name: Verify obsolete producers are gone
+        run: |
+          ! grep -R "hamburgerBtn" index.html src/bootstrap/shellControls.js src/modules/wbs/homeView.js src/styles/index.css
+          ! grep -R "renderHomeHeader" src/modules/wbs/homeView.js
+
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html src/bootstrap/shellControls.js src/bootstrap/shellControls.test.js src/modules/wbs/homeView.js src/styles/index.css
+          git commit -m "refactor: remove obsolete header producers"
+          git push origin HEAD:main
