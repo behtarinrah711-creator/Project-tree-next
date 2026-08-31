@@ -36,17 +36,85 @@ body.global-surface #workspaceProjectContext { display: none !important; }
 .nb-tree { list-style:none; padding:0; }
 .nb-item { display:flex; gap:8px; align-items:center; min-height:44px; }
 
-/* Unified application header: project switcher on the right, account on the left. */
-#hamburgerBtn[hidden]{display:none !important;}
-.topbar{min-height:56px;}
-.topbar-title.project-menu-trigger{cursor:pointer;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:4px 8px;border-radius:10px;}
+/* Unified application header: project switcher right, title centered, account left. */
+#hamburgerBtn{display:none !important;}
+#projectSearch,
+#modeToggle{display:none !important;}
+.topbar{
+  min-height:56px;
+  position:relative;
+  justify-content:space-between;
+  padding-inline:10px;
+}
+.topbar:not(.workspace-context)::before{
+  content:'مدیریت ساخت';
+  position:absolute;
+  left:50%;
+  top:50%;
+  transform:translate(-50%,-50%);
+  font-family:'IRANYekan',IRANYekan,Vazirmatn,Tahoma,sans-serif;
+  font-size:16px;
+  font-weight:700;
+  color:var(--text);
+  pointer-events:none;
+  white-space:nowrap;
+}
+.topbar-title.project-menu-trigger{
+  cursor:pointer;
+  min-width:0;
+  max-width:42vw;
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+  gap:4px;
+  padding:4px 8px;
+  border-radius:10px;
+  margin-inline-end:auto;
+}
 .topbar-title.project-menu-trigger:active{background:var(--divider);}
-.topbar-title.project-menu-trigger.has-active-project .app-title-main{max-width:46vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:16px;}
-.topbar-title.project-menu-trigger.has-active-project .app-title-main::after{content:' ▾';font-size:11px;color:var(--text-dim);}
-.topbar-title.project-menu-trigger .app-title-project{font-size:11px;color:var(--text-dim);}
-.topbar .account-trigger{margin-inline-start:auto;}
+.topbar:not(.workspace-context) .topbar-title.project-menu-trigger:not(.has-active-project) .app-title-main{
+  font-size:0;
+}
+.topbar:not(.workspace-context) .topbar-title.project-menu-trigger:not(.has-active-project) .app-title-main::before{
+  content:'پروژه‌ها';
+  font-size:15px;
+  font-weight:600;
+  color:var(--text);
+}
+.topbar:not(.workspace-context) .topbar-title.project-menu-trigger:not(.has-active-project) .app-title-main::after,
+.topbar:not(.workspace-context) .topbar-title.project-menu-trigger.has-active-project .app-title-main::after{
+  content:' ▾';
+  font-size:11px;
+  color:var(--text-dim);
+}
+.topbar:not(.workspace-context) .topbar-title.project-menu-trigger.has-active-project .app-title-main{
+  max-width:34vw;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  font-size:15px;
+  font-weight:600;
+}
+.topbar:not(.workspace-context) .topbar-title.project-menu-trigger .app-title-project{display:none;}
+.topbar .account-trigger{
+  margin-inline-start:auto;
+  margin-inline-end:0;
+  z-index:1;
+}
 .account-trigger > svg{display:none;}
 .account-trigger.is-guest .avatar-circle{background:transparent;color:var(--green);border:1px solid var(--divider);}
+
+/* On internal footer workspaces the existing section-title behavior remains authoritative. */
+.topbar.workspace-context::before{content:none;}
+.topbar.workspace-context .topbar-title.project-menu-trigger{
+  max-width:100%;
+  flex:1 1 auto;
+  margin-inline-end:0;
+  cursor:default;
+}
+.topbar.workspace-context .topbar-title.project-menu-trigger .app-title-main::before,
+.topbar.workspace-context .topbar-title.project-menu-trigger .app-title-main::after{content:none;}
+.topbar.workspace-context .topbar-title.project-menu-trigger .app-title-project{display:inline;}
 
 /* WBS used to render a second header. The global shell now owns that chrome. */
 .wbs-home-header{display:none !important;}
