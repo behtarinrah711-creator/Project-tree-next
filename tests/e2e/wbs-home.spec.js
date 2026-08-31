@@ -33,10 +33,11 @@ test.beforeEach(async ({ page }) => {
   await page.waitForFunction(() => Boolean(window.KarhaLegacy && window.KarhaApp));
 });
 
-test('WBS home shows locked header tabs and does not hide project footer', async ({ page }) => {
+test('WBS home uses the unified project header, keeps tabs, and does not hide project footer', async ({ page }) => {
   await expect(page.locator('.wbs-home-root')).toBeVisible();
-  await expect(page.locator('.wbs-app-title')).toHaveText('مدیریت ساخت');
-  await expect(page.locator('.wbs-project-switch')).toContainText('پروژه WBS');
+  await expect(page.locator('#topbar')).toBeVisible();
+  await expect(page.locator('#topbarTitle .app-title-main')).toHaveText('پروژه WBS');
+  await expect(page.locator('.wbs-home-header')).toHaveCount(0);
   await expect(page.locator('.wbs-tab', { hasText: 'ثبت' })).toBeVisible();
   await expect(page.locator('.wbs-tab', { hasText: 'برآورد' })).toBeVisible();
   await expect(page.locator('.wbs-tab', { hasText: 'پیشرفت' })).toBeVisible();
