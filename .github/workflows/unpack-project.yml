@@ -1,6 +1,7 @@
 name: Unpack project archive
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
 
