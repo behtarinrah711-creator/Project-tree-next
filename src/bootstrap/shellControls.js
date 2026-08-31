@@ -83,17 +83,96 @@ async function signInWithGoogle({firebaseRef, auth, windowRef, documentRef}){
   }
 }
 
-/**
- * Bind the global shell independently of project/task startup.
- * Authentication itself deliberately uses one Firebase app and one Auth instance.
- */
+function installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avatar, signin}){
+  const hamburger = byId(documentRef, 'hamburgerBtn');
+  const title = byId(documentRef, 'topbarTitle');
+  const main = title?.querySelector?.('.app-title-main');
+  const projectLabel = byId(documentRef, 'topbarProjectName');
+  if(hamburger) hamburger.hidden = true;
+
+  if(title){
+    title.classList.add('project-menu-trigger');
+    title.setAttribute('role', 'button');
+    title.setAttribute('tabindex', '0');
+    title.setAttribute('aria-haspopup', 'true');
+    title.setAttribute('aria-label', 'فهرست پروژه‌ها');
+  }
+
+  const syncProjectHeader = () => {
+    const project = windowRef.KarhaApp?.projectWorkspace?.getActiveProject?.();
+    if(project?.name){
+      if(main) main.textContent = project.name;
+      if(projectLabel) projectLabel.textContent = 'مدیریت ساخت';
+      title?.classList.add('has-active-project');
+    }else{
+      if(main) main.textContent = 'مدیریت ساخت';
+      if(projectLabel) projectLabel.textContent = '';
+      title?.classList.remove('has-active-project');
+    }
+  };
+
+  const accountDrawer = globalMenu?.querySelector?.('.drawer');
+  let accountHead = byId(documentRef, 'globalAccountHead');
+  if(accountDrawer && !accountHead){
+    accountHead = documentRef.createElement('div');
+    accountHead.id = 'globalAccountHead';
+    accountHead.className = 'drawer-account global-account-head';
+    accountHead.innerHTML = `
+      <div class="avatar-circle big">
+        <img id="globalAccountImg" class="avatar-image hidden" alt="">
+        <svg id="globalAccountDefaultIcon" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 12c2.5 0 4.5-2 4.5-4.5S14.5 3 12 3 7.5 5 7.5 7.5 9.5 12 12 12zM4 20.5c0-3.6 3.6-6.5 8-6.5s8 2.9 8 6.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+      <div class="drawer-account-info">
+        <div class="drawer-account-name" id="globalAccountName">مهمان</div>
+        <div class="drawer-account-sub" id="globalAccountEmail">وارد نشده‌اید</div>
+      </div>`;
+    accountDrawer.prepend(accountHead);
+  }
+
+  const syncUser = user => {
+    const avatarImg = byId(documentRef, 'avatarImg');
+    const avatarDefault = byId(documentRef, 'avatarDefaultIcon');
+    const globalImg = byId(documentRef, 'globalAccountImg');
+    const globalDefault = byId(documentRef, 'globalAccountDefaultIcon');
+    const name = byId(documentRef, 'globalAccountName');
+    const email = byId(documentRef, 'globalAccountEmail');
+    const photo = user?.photoURL || '';
+    [avatarImg, globalImg].forEach(img => {
+      if(!img) return;
+      if(photo){ img.src = photo; img.classList.remove('hidden'); }
+      else { img.removeAttribute('src'); img.classList.add('hidden'); }
+    });
+    [avatarDefault, globalDefault].forEach(icon => icon?.classList?.toggle?.('hidden', !!photo));
+    if(name) name.textContent = user?.displayName || (user ? 'کاربر' : 'مهمان');
+    if(email) email.textContent = user?.email || 'وارد نشده‌اید';
+    if(signin) signin.textContent = user ? 'خروج از حساب' : 'ورود با گوگل';
+    avatar?.classList.toggle('is-guest', !user);
+    avatar?.setAttribute('aria-label', user ? 'حساب کاربری' : 'ورود');
+  };
+
+  try{
+    const auth = windowRef.firebase?.auth?.();
+    syncUser(auth?.currentUser || null);
+    auth?.onAuthStateChanged?.(syncUser);
+  }catch{ syncUser(null); }
+
+  windowRef.addEventListener?.('karha:ready', syncProjectHeader);
+  windowRef.addEventListener?.('popstate', () => windowRef.setTimeout(syncProjectHeader, 0));
+  windowRef.addEventListener?.('karha:drawer-open', syncProjectHeader);
+  syncProjectHeader();
+
+  return { syncProjectHeader };
+}
+
+/** Bind project/account drawers and authentication controls. */
 export function bindShellControls({ windowRef = window, documentRef = document } = {}){
   const drawer = byId(documentRef, 'drawerOverlay');
   const globalMenu = byId(documentRef, 'globalMenuOverlay');
   const hamburger = byId(documentRef, 'hamburgerBtn');
   const avatar = byId(documentRef, 'avatarBtn');
   const signin = byId(documentRef, 'drawerSigninBtn');
-  if(!drawer || !hamburger || !avatar || !signin) return false;
+  const title = byId(documentRef, 'topbarTitle');
+  if(!drawer || !avatar || !signin) return false;
   if(drawer.dataset.shellControlsBound === 'true') return true;
   drawer.dataset.shellControlsBound = 'true';
 
@@ -109,10 +188,15 @@ export function bindShellControls({ windowRef = window, documentRef = document }
     windowRef.dispatchEvent(new windowRef.CustomEvent('karha:global-menu-open'));
   };
   const closeGlobalMenu = () => globalMenu?.classList?.add?.('hidden');
-  const open = openProjectMenu;
   const close = () => { closeProjectMenu(); closeGlobalMenu(); };
 
-  hamburger.addEventListener('click', openProjectMenu);
+  installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avatar, signin});
+
+  hamburger?.addEventListener('click', openProjectMenu);
+  title?.addEventListener('click', openProjectMenu);
+  title?.addEventListener('keydown', event => {
+    if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); openProjectMenu(); }
+  });
   avatar.addEventListener('click', openGlobalMenu);
   drawer.addEventListener('click', event => {
     if(event.target === drawer) closeProjectMenu();
