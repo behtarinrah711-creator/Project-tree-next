@@ -34,7 +34,7 @@ async function openRealContractForm(page, errors) {
   await page.goto('/index.html#/projects/e2e-contract-project/dashboard');
   await page.waitForFunction(() => Boolean(window.KarhaLegacy && window.KarhaApp));
 
-  await page.locator('#hamburgerBtn').click();
+  await page.locator('#topbarTitle').click();
   const drawer = page.locator('#drawerOverlay');
   await expect(drawer).not.toHaveClass(/\bhidden\b/);
   const projectRow = page.locator('#drawerProjectList .drawer-project-row[data-project-id="e2e-contract-project"]');

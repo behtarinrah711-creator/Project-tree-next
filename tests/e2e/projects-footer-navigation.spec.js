@@ -39,7 +39,7 @@ test('Projects remains active and its drawer list survives every footer round tr
 
   const assertProjectsHome = async () => {
     await expect(projects).toHaveClass(/\bactive\b/);
-    await page.locator('#hamburgerBtn').click();
+    await page.locator('#topbarTitle').click();
     await expect(drawer).not.toHaveClass(/\bhidden\b/);
     await expect(projectRow).toBeVisible();
     await expect(projectRow).toHaveClass(/\bactive\b/);

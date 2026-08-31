@@ -28,7 +28,7 @@ async function openDirtyContract(page,{dirty=true}={}){
     }
   }, project.id);
   const projectRow = page.locator('#drawerProjectList .drawer-project-row[data-project-id="e2e-contract-back-stress"]');
-  await page.locator('#hamburgerBtn').click();
+  await page.locator('#topbarTitle').click();
   await projectRow.click();
   await page.locator('#bottomReportsBtn').click();
   await page.getByText('قرارداد پیمانکاران', { exact: true }).first().click();

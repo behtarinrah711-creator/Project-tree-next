@@ -20,7 +20,7 @@ async function openContractsList(page, project = baseProject){
 
   await page.goto('/index.html#/projects/e2e-transient-back-project/dashboard');
   await page.waitForFunction(() => Boolean(window.KarhaLegacy && window.KarhaApp && window.KarhaChildHistory));
-  await page.locator('#hamburgerBtn').click();
+  await page.locator('#topbarTitle').click();
   const projectRow = page.locator('#drawerProjectList .drawer-project-row[data-project-id="e2e-transient-back-project"]');
   await expect(projectRow).toBeVisible();
   await projectRow.click();

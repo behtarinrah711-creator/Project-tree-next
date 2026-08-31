@@ -16,7 +16,7 @@ async function openNewContract(page){
 
   await page.goto('/index.html#/projects/e2e-final-save-project/dashboard');
   await page.waitForFunction(() => Boolean(window.KarhaLegacy && window.KarhaApp && window.KarhaChildHistory));
-  await page.locator('#hamburgerBtn').click();
+  await page.locator('#topbarTitle').click();
   await page.locator('#drawerProjectList .drawer-project-row[data-project-id="e2e-final-save-project"]').click();
   await page.locator('#bottomReportsBtn').click();
   await page.getByText('قرارداد پیمانکاران', { exact: true }).first().click();
