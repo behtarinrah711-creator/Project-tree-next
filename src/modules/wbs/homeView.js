@@ -519,9 +519,9 @@ function renderRow(item, codes, view, depth){
   const code = stage ? (codes.get(String(item.id)) || '') : '';
   const meta = [];
   if(view === 'estimate' && isWork(item)){
-    meta.push(`${item.quantity || 0} ${item.unit || ''} × ${item.unitCost || 0} = ${lineTotal(item)}`);
+    meta.push(new Intl.NumberFormat('fa-IR').format(lineTotal(item)));
   }
-  if(view === 'estimate' && stage) meta.push(String(rollupEstimate([item])));
+  if(view === 'estimate' && stage) meta.push(new Intl.NumberFormat('fa-IR').format(rollupEstimate([item])));
   if(view === 'progress'){
     meta.push(stage ? `${rollupProgress([item])}%` : `${item.progress || (item.done ? 100 : 0)}%`);
   }
@@ -535,7 +535,7 @@ function renderRow(item, codes, view, depth){
     <button type="button" class="wbs-check" aria-label="وضعیت">${item.done ? '✓' : ''}</button>
     ${kids.length ? `<button type="button" class="wbs-chev" aria-label="${open?'بستن':'باز کردن'}">${open?'▾':'▸'}</button>` : '<span class="wbs-chev-spacer"></span>'}
     <button type="button" class="wbs-title">${code ? `<b>${escapeHtml(code)}</b> ` : ''}${escapeHtml(item.text || '')}</button>
-    <span class="wbs-meta">${escapeHtml(meta.join(' · '))}</span>
+    <span class="wbs-meta${view === 'estimate' ? ' is-estimate' : ''}">${escapeHtml(meta.join(' · '))}</span>
     ${stage ? `<button type="button" class="wbs-add" aria-label="افزودن">+</button>` : ''}
   `;
   row.querySelector('.wbs-check')?.addEventListener('click', ev => {
@@ -653,7 +653,8 @@ export function renderWbsHome(target = document.getElementById('content'), proje
       const row = document.createElement('button');
       row.type = 'button';
       row.className = 'wbs-general-row';
-      row.textContent = `${item.title} — ${(Number(item.quantity)||0)} × ${(Number(item.unitCost)||0)}`;
+      const amount = (Number(item.quantity) || 0) * (Number(item.unitCost) || 0);
+      row.innerHTML = `<span>${escapeHtml(item.title || '')}</span><span class="wbs-general-amount">${escapeHtml(new Intl.NumberFormat('fa-IR').format(amount))}</span>`;
       row.addEventListener('click', () => openGeneralDetailSheet(item));
       box.appendChild(row);
     });
@@ -664,7 +665,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     box.appendChild(addG);
     const total = document.createElement('div');
     total.className = 'wbs-total';
-    total.textContent = `جمع برآورد پروژه: ${wbsApi.estimate(project.id).projectTotal}`;
+    total.textContent = `جمع برآورد پروژه: ${new Intl.NumberFormat('fa-IR').format(wbsApi.estimate(project.id).projectTotal)}`;
     box.appendChild(total);
     root.appendChild(box);
   }
