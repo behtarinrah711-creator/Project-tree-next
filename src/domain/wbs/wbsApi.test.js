@@ -28,6 +28,13 @@ test('estimate is quantity times unit cost and rolls up through stages', () => {
   assert.equal(projectEstimateTotal([stage], [{ quantity:2, unitCost:3 }]), 31);
 });
 
+test('trashed stage excludes its full descendant branch from estimate', () => {
+  const hiddenWork = { kind:'work', quantity:3, unitCost:10, subtasks:[] };
+  const hiddenStage = { kind:'stage', trashed:true, subtasks:[hiddenWork] };
+  const visibleWork = { kind:'work', quantity:2, unitCost:5, subtasks:[] };
+  assert.equal(rollupEstimate([hiddenStage, visibleWork]), 10);
+});
+
 test('timestamps create then update createdAt stays', () => {
   const created = stampCreate({ id:'1' }, () => new Date('2026-01-01T00:00:00.000Z'));
   const updated = stampUpdate(created, () => new Date('2026-01-02T00:00:00.000Z'));
