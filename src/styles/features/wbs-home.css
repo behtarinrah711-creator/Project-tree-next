@@ -4,8 +4,11 @@ body:has(.wbs-home-root) #tabbar{display:none;}
 .wbs-tabs{display:flex;gap:8px;padding:10px 12px 4px;}
 .wbs-tab{flex:1 1 25%;width:25%;min-width:0;border:0;background:#ece7df;border-radius:5px;padding:5px 11px;min-height:40px;}
 .wbs-tab.active{background:#2f2a24;color:#fff;}
-.wbs-toolbar{display:flex;gap:8px;padding:0 12px 10px;}
-.wbs-root-add{border:0;background:#d7cfc3;border-radius:12px;padding:8px 12px;}
+.wbs-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px 10px;direction:rtl;}
+.wbs-root-add{border:0;background:#d7cfc3;border-radius:12px;padding:8px 12px;min-height:40px;}
+.wbs-tree-toggle{box-sizing:border-box;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cfc7bb;border-radius:10px;background:#ece7df;color:#77706a;padding:0;}
+.wbs-tree-toggle svg{width:24px;height:24px;fill:currentColor;display:block;}
+.wbs-tree-toggle.is-active{background:#2f2a24;color:#fff;border-color:#2f2a24;}
 .wbs-tree{padding:0 10px 24px;}
 .wbs-card{background:#fff;border:1px solid #e4ddd3;border-radius:16px;margin-bottom:12px;overflow:hidden;}
 .wbs-row{display:flex;align-items:center;gap:8px;min-height:48px;padding:6px 8px;}
@@ -19,7 +22,8 @@ body:has(.wbs-home-root) #tabbar{display:none;}
 .wbs-grip{color:#bbb;font-size:12px;width:16px;flex:0 0 16px;order:99;}
 .wbs-check{box-sizing:border-box;appearance:none;-webkit-appearance:none;width:12px;height:12px;min-width:12px;max-width:12px;min-height:12px;max-height:12px;border:1.5px solid #8a8176;border-radius:3px;background:#fff;padding:0;margin:0;flex:0 0 12px;line-height:9px;font-size:9px;}
 .wbs-row.depth-0 .wbs-check,.wbs-simple-row.depth-0 .wbs-check{width:18px;height:18px;min-width:18px;max-width:18px;min-height:18px;max-height:18px;flex:0 0 18px;line-height:15px;font-size:12px;}
-.wbs-title{border:0;background:transparent;text-align:right;flex:1;font-size:14px;}
+.wbs-title{border:0;background:transparent;text-align:right;flex:1;min-width:0;display:flex;align-items:center;gap:4px;font-size:14px;}
+.wbs-title-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .wbs-meta{font-size:11px;color:#6f675d;max-width:42%;}
 .wbs-meta.is-estimate{white-space:nowrap;}
 .wbs-meta.is-estimate,.wbs-general-amount,.wbs-total{font-family:'IRANYekan',IRANYekan,Tahoma,sans-serif;}
