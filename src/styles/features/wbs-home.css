@@ -32,5 +32,25 @@ body:has(.wbs-home-root) #tabbar{display:none;}
 .wbs-note{font-size:13px;color:#6f675d;margin-bottom:12px;}
 .wbs-activity-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;}
 .wbs-activity-remove{border:0;background:transparent;color:#b45309;min-height:40px;}
+.wbs-detail-summary{padding:2px 0 14px;border-bottom:1px solid #ece7df;margin-bottom:14px;}
+.wbs-detail-kind{font-size:12px;color:#77706a;margin-bottom:5px;}
+.wbs-detail-title{font-size:20px;font-weight:700;line-height:1.6;color:#26221e;}
+.wbs-detail-breadcrumb{font-size:12px;color:#8a8176;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wbs-stage-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px;}
+.wbs-stage-metrics>div{background:#f7f4ef;border-radius:12px;padding:10px 8px;text-align:center;min-width:0;}
+.wbs-stage-metrics b{display:block;font-size:14px;line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wbs-stage-metrics span{display:block;font-size:11px;color:#7b746d;margin-top:2px;}
+.wbs-primary-action{width:100%;min-height:48px;border:0;border-radius:12px;background:#2f2a24;color:#fff;font:inherit;font-weight:600;margin-bottom:14px;}
+.wbs-primary-action.is-secondary{background:#eee8df;color:#2f2a24;}
+.wbs-info-section{border-top:1px solid #ece7df;margin-top:4px;}
+.wbs-info-row{width:100%;display:flex;align-items:center;justify-content:space-between;gap:14px;min-height:50px;padding:10px 2px;border:0;border-bottom:1px solid #f0ece6;background:transparent;font:inherit;text-align:right;color:#2f2a24;}
+.wbs-info-row.is-action{cursor:pointer;}
+.wbs-info-row.is-danger{color:#c62828;}
+.wbs-info-label{font-size:14px;font-weight:500;}
+.wbs-info-value{font-size:13px;color:#77706a;max-width:58%;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.wbs-info-row.is-danger .wbs-info-value{color:#c62828;}
+.wbs-work-total{background:#f7f4ef;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.wbs-work-total span{font-size:12px;color:#77706a;}
+.wbs-work-total b{font-size:18px;color:#2f2a24;}
 .topbar{background:#ebe6de;}
 body{background:#f3efe8;}
