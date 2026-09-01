@@ -179,29 +179,30 @@ body:not(.global-surface){background:#f2f3f5;}
   box-sizing:border-box;
   appearance:none;
   -webkit-appearance:none;
-  border:0;
-  border-radius:0;
-  background:transparent;
+  border:1px solid var(--divider);
+  border-radius:8px;
+  background:var(--surface);
   color:var(--danger);
-  font:inherit;
+  font-family:inherit;
+  font-size:14px;
   font-weight:600;
-  min-height:48px;
-  padding:10px 4px;
+  padding:11px;
   margin:0 0 12px;
-  justify-content:flex-start;
-  border-bottom:1px solid var(--divider);
+  justify-content:center;
 }
 #globalMenuOverlay #globalNotebookBtn,
 #globalMenuOverlay #drawerProfileBtn,
 #globalMenuOverlay #drawerGlobalTrashBtn{
   order:2;
   width:100%;
-  min-height:48px;
+  min-height:52px;
   box-sizing:border-box;
   border:0;
   border-radius:0;
   background:transparent;
-  padding:10px 4px;
+  font:inherit;
+  font-weight:600;
+  padding:12px 4px;
   margin:0 0 12px;
   justify-content:space-between;
   border-bottom:1px solid var(--divider);
