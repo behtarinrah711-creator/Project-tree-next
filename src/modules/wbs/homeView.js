@@ -28,7 +28,6 @@ import {
   collapseAll,
   expandAll,
   isExpanded,
-  seedRootLevel,
   toggleExpanded,
 } from './wbsExpandState.js';
 
@@ -50,6 +49,8 @@ const SIMPLE_TYPE_CLASSES = new Map([
 
 let currentView = 'simple';
 let explicitProjectId = null;
+let tabRenderFrame = 0;
+const treeOpenByProject = new Map();
 
 function projectIdOf(){
   return explicitProjectId || projectContext.getProjectId?.() || projectContext.getActiveProjectId?.() || null;
@@ -57,6 +58,26 @@ function projectIdOf(){
 function projectOf(){
   const id = projectIdOf();
   return id ? projectRepository.getActiveProject(id) : null;
+}
+function treeOpen(projectId){
+  const key = String(projectId || '');
+  return treeOpenByProject.has(key) ? treeOpenByProject.get(key) : true;
+}
+function setTreeOpen(projectId, value){
+  treeOpenByProject.set(String(projectId || ''), Boolean(value));
+}
+function ensureTreeState(project){
+  const key = String(project?.id || '');
+  if(!key || treeOpenByProject.has(key)) return;
+  treeOpenByProject.set(key, true);
+  expandAll(project.id, project.tasks || []);
+}
+function scheduleTabRender(target, projectId){
+  if(tabRenderFrame) cancelAnimationFrame(tabRenderFrame);
+  tabRenderFrame = requestAnimationFrame(() => {
+    tabRenderFrame = 0;
+    renderWbsHome(target, projectId);
+  });
 }
 
 function parentIdOf(itemId){
@@ -483,6 +504,7 @@ function openGeneralDetailSheet(item){
 function renderSimpleRow(item, depth){
   const stage = isStage(item);
   const kids = (item.subtasks || []).filter(x => !x.trashed);
+  const open = !stage || isExpanded(projectIdOf(), item.id);
   const rawType = isWork(item) && WORK_TYPES.includes(item.type) ? item.type : '';
   const chipLabel = rawType || '؟';
   const chipClass = rawType ? (SIMPLE_TYPE_CLASSES.get(rawType) || 'type-7') : 'type-7';
@@ -508,7 +530,7 @@ function renderSimpleRow(item, depth){
   const wrap = document.createElement('div');
   wrap.className = depth === 0 ? 'wbs-card wbs-simple-card' : 'wbs-branch wbs-simple-branch';
   wrap.appendChild(row);
-  kids.forEach(child => wrap.appendChild(renderSimpleRow(child, depth + 1)));
+  if(open) kids.forEach(child => wrap.appendChild(renderSimpleRow(child, depth + 1)));
   return wrap;
 }
 
@@ -538,7 +560,11 @@ function renderRow(item, codes, view, depth){
     ${readOnlyView ? '' : '<span class="wbs-grip" aria-hidden="true">⋮⋮</span>'}
     <button type="button" class="wbs-check" aria-label="وضعیت">${item.done ? '✓' : ''}</button>
     ${kids.length ? `<button type="button" class="wbs-chev" aria-label="${open?'بستن':'باز کردن'}">${open?'▾':'▸'}</button>` : '<span class="wbs-chev-spacer"></span>'}
-    <button type="button" class="wbs-title">${stage ? '' : `<span class="wbs-type-chip ${chipClass}">${escapeHtml(chipLabel)}</span> `}${code ? `<b>${escapeHtml(code)}</b> ` : ''}${escapeHtml(item.text || '')}</button>
+    <button type="button" class="wbs-title">
+      ${stage ? '' : `<span class="wbs-type-chip ${chipClass}">${escapeHtml(chipLabel)}</span>`}
+      ${code ? `<b>${escapeHtml(code)}</b>` : ''}
+      <span class="wbs-title-text">${escapeHtml(item.text || '')}</span>
+    </button>
     <span class="wbs-meta${view === 'estimate' ? ' is-estimate' : ''}">${escapeHtml(meta.join(' · '))}</span>
     ${stage && !readOnlyView ? `<button type="button" class="wbs-add" aria-label="افزودن">+</button>` : ''}
   `;
@@ -549,8 +575,7 @@ function renderRow(item, codes, view, depth){
   });
   row.querySelector('.wbs-chev')?.addEventListener('click', ev => {
     ev.stopPropagation();
-    const key = String(item.id);
-    toggleExpanded(projectIdOf(), key);
+    toggleExpanded(projectIdOf(), String(item.id));
     render();
   });
   row.querySelector('.wbs-title')?.addEventListener('click', ev => {
@@ -585,6 +610,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     target.innerHTML = '<div class="workspace-no-project">برای ورود به Workspace، از منوی سه‌خطی بالای صفحه یک پروژه را انتخاب کنید.</div>';
     return;
   }
+  ensureTreeState(project);
 
   const root = document.createElement('div');
   root.className = 'wbs-home-root' + (currentView === 'simple' ? ' is-simple-view' : '');
@@ -600,7 +626,11 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     btn.setAttribute('role', 'tab');
     btn.setAttribute('aria-selected', currentView === view.id ? 'true' : 'false');
     btn.textContent = view.label;
-    btn.addEventListener('click', () => { currentView = view.id; renderWbsHome(target, project.id); });
+    btn.addEventListener('click', () => {
+      if(currentView === view.id) return;
+      currentView = view.id;
+      scheduleTabRender(target, project.id);
+    });
     tabs.appendChild(btn);
   });
   root.appendChild(tabs);
@@ -612,38 +642,31 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   addRoot.className = 'wbs-root-add';
   addRoot.textContent = '+ مرحله';
   addRoot.addEventListener('click', () => openCreateStageSheet(null));
-  const addWork = document.createElement('button');
-  addWork.type = 'button';
-  addWork.className = 'wbs-root-add';
-  addWork.textContent = '+ کار';
-  addWork.addEventListener('click', () => openCreateWorkSheet(null));
-  toolbar.append(addRoot, addWork);
-  if(currentView !== 'simple'){
-    const expandAllBtn = document.createElement('button');
-    expandAllBtn.type = 'button';
-    expandAllBtn.className = 'wbs-root-add';
-    expandAllBtn.textContent = 'همه باز';
-    expandAllBtn.addEventListener('click', () => {
-      expandAll(project.id, project.tasks);
-      renderWbsHome(target, project.id);
-    });
-    const collapseAllBtn = document.createElement('button');
-    collapseAllBtn.type = 'button';
-    collapseAllBtn.className = 'wbs-root-add';
-    collapseAllBtn.textContent = 'همه بسته';
-    collapseAllBtn.addEventListener('click', () => {
-      collapseAll(project.id);
-      renderWbsHome(target, project.id);
-    });
-    toolbar.append(expandAllBtn, collapseAllBtn);
-  }
+
+  const treeToggle = document.createElement('button');
+  const isTreeOpen = treeOpen(project.id);
+  treeToggle.type = 'button';
+  treeToggle.className = 'wbs-tree-toggle' + (isTreeOpen ? ' is-active' : '');
+  treeToggle.setAttribute('aria-label', isTreeOpen ? 'بستن نمودار' : 'باز کردن نمودار');
+  treeToggle.setAttribute('aria-pressed', isTreeOpen ? 'true' : 'false');
+  treeToggle.innerHTML = `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M4 3h6v5H8v3h8V9h-2V4h6v5h-2v3a1 1 0 0 1-1 1h-4v2h2v-1h6v6h-6v-3h-6v3H3v-6h6v1h2v-2H7a1 1 0 0 1-1-1V8H4V3Zm2 2v1h2V5H6Zm10 1h2V5h-2v1ZM5 16v2h2v-2H5Zm12 0v2h2v-2h-2Z"/>
+    </svg>`;
+  treeToggle.addEventListener('click', () => {
+    const nextOpen = !treeOpen(project.id);
+    setTreeOpen(project.id, nextOpen);
+    if(nextOpen) expandAll(project.id, project.tasks || []);
+    else collapseAll(project.id);
+    renderWbsHome(target, project.id);
+  });
+  toolbar.append(addRoot, treeToggle);
   root.appendChild(toolbar);
 
   const tree = document.createElement('div');
   tree.className = 'wbs-tree';
   const items = (project.tasks || []).filter(x => !x.trashed);
   const simple = currentView === 'simple';
-  if(!simple) seedRootLevel(project.id, items);
   const codes = simple ? new Map() : wbsCodeMap(items);
   if(!items.length) tree.innerHTML = '<div class="empty-state">مرحله یا کاری ثبت نشده است.</div>';
   else items.forEach(item => tree.appendChild(simple ? renderSimpleRow(item, 0) : renderRow(item, codes, currentView, 0)));
