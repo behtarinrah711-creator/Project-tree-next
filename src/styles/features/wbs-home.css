@@ -38,7 +38,7 @@ body:has(.wbs-home-root) #tabbar{display:none;}
 .wbs-simple-row.is-stage .wbs-simple-title-text{font-weight:650;}
 .wbs-simple-row.is-work .wbs-simple-title-text{font-weight:400;}
 .wbs-simple-title-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;}
-.wbs-type-chip{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:24px;min-height:20px;padding:1px 7px;border-radius:6px;font-size:10px;font-weight:700;line-height:18px;color:#202124;}
+.wbs-type-chip{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:24px;min-height:20px;padding:1px 3px;border-radius:6px;font-size:9px;font-weight:700;line-height:18px;color:#fff;}
 .wbs-type-chip.type-1{background:#66c2a5;}
 .wbs-type-chip.type-2{background:#fc8d62;}
 .wbs-type-chip.type-3{background:#8da0cb;}
