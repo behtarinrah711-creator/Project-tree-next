@@ -22,6 +22,7 @@ body:has(.wbs-home-root) #tabbar{display:none;}
 .wbs-title{border:0;background:transparent;text-align:right;flex:1;font-size:14px;}
 .wbs-meta{font-size:11px;color:#6f675d;max-width:42%;}
 .wbs-meta.is-estimate{white-space:nowrap;}
+.wbs-meta.is-estimate,.wbs-general-amount,.wbs-total{font-family:'IRANYekan',IRANYekan,Tahoma,sans-serif;}
 .wbs-meta.is-estimate::after,.wbs-general-amount::after,.wbs-total::after{content:' تومان';font-size:8px;font-weight:400;color:#8a8176;margin-inline-start:2px;}
 .wbs-add,.wbs-chev{border:0;background:transparent;min-width:32px;min-height:32px;}
 .wbs-add{order:98;}
