@@ -84,8 +84,7 @@ export function findInTree(items, id){
 
 export function canAcceptChild(parent, childKind){
   if(!parent) return childKind === KIND_STAGE || childKind === KIND_WORK;
-  if(isStage(parent)) return childKind === KIND_STAGE || childKind === KIND_WORK;
-  return childKind === KIND_WORK;
+  return isStage(parent) && (childKind === KIND_STAGE || childKind === KIND_WORK);
 }
 
 export function normalizeItem(item){
