@@ -22,6 +22,17 @@ if(routedProjectId && findProject(routedProjectId)){
   setActiveTab(null);
 }
 
+// Cloud recovery may finish after login while the project drawer or management
+// page is already visible. Refresh those project surfaces immediately so the
+// recovered list appears without requiring a browser reload.
+window.addEventListener('karha:projects-recovered', ()=>{
+  renderDrawerProjectList();
+  const projectsPage=document.getElementById('projectsPage');
+  if(projectsPage && !projectsPage.classList.contains('hidden')){
+    renderManagementPage();
+  }
+});
+
 // قراردادها: صفحه قالب‌ها و فرم مستقل قالب قرارداد
 (function(){
   const add=document.getElementById('contractTemplateAddBtn'); if(add) add.onclick=()=>openContractTemplateForm(null);
