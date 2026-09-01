@@ -487,13 +487,19 @@ function renderSimpleRow(item, depth){
   const chipLabel = rawType || '؟';
   const chipClass = rawType ? (SIMPLE_TYPE_CLASSES.get(rawType) || 'type-7') : 'type-7';
   const row = document.createElement('div');
-  row.className = 'wbs-simple-row depth-' + Math.min(6, depth) + (stage ? ' is-stage' : ' is-work');
+  row.className = 'wbs-simple-row depth-' + Math.min(6, depth) + (item.done ? ' is-done' : '') + (stage ? ' is-stage' : ' is-work');
   row.innerHTML = `
+    <button type="button" class="wbs-check" aria-label="وضعیت">${item.done ? '✓' : ''}</button>
     <button type="button" class="wbs-simple-title">
       ${stage ? '' : `<span class="wbs-type-chip ${chipClass}">${escapeHtml(chipLabel)}</span>`}
       <span class="wbs-simple-title-text">${escapeHtml(item.text || '')}</span>
     </button>
   `;
+  row.querySelector('.wbs-check')?.addEventListener('click', ev => {
+    ev.stopPropagation();
+    if(isWork(item)) wbsApi.updateItem(projectIdOf(), item.id, { done: !item.done, status: item.done ? 'not_started' : 'completed' });
+    render();
+  });
   row.querySelector('.wbs-simple-title')?.addEventListener('click', ev => {
     ev.stopPropagation();
     if(isWork(item)) openWorkDetailSheet(item);
