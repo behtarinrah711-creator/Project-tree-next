@@ -17,7 +17,7 @@ body:has(.wbs-home-root) #tabbar{display:none;}
 .wbs-row.depth-5,.wbs-row.depth-6{padding-inline-start:88px;}
 .wbs-row.is-done .wbs-title{opacity:.7;}
 .wbs-grip{color:#bbb;font-size:12px;width:16px;order:99;}
-.wbs-check{width:22px;height:22px;border:1.5px solid #8a8176;border-radius:5px;background:#fff;}
+.wbs-check{width:12px;height:12px;border:1.5px solid #8a8176;border-radius:3px;background:#fff;padding:0;flex:0 0 12px;}
 .wbs-title{border:0;background:transparent;text-align:right;flex:1;font-size:14px;}
 .wbs-meta{font-size:11px;color:#6f675d;max-width:42%;}
 .wbs-add,.wbs-chev{border:0;background:transparent;min-width:32px;min-height:32px;}
