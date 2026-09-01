@@ -52,7 +52,7 @@ body:not(.global-surface){background:#f2f3f5;}
   left:50%;
   top:50%;
   transform:translate(-50%,-50%);
-  font-family:'IRANYekan',IRANYekan,Vazirmatn,Tahoma,sans-serif;
+  font-family:'IRANYekan',IRANYekan,Tahoma,sans-serif;
   font-size:16px;
   font-weight:700;
   color:var(--text);
@@ -182,13 +182,16 @@ body:not(.global-surface){background:#f2f3f5;}
   border:1px solid var(--divider);
   border-radius:8px;
   background:var(--surface);
-  color:var(--danger);
+  color:var(--primary);
   font-family:inherit;
   font-size:14px;
   font-weight:600;
   padding:11px;
   margin:0 0 12px;
   justify-content:center;
+}
+#globalMenuOverlay #drawerSigninBtn[data-auth-action="signout"]{
+  color:var(--danger);
 }
 #globalMenuOverlay #globalNotebookBtn,
 #globalMenuOverlay #drawerProfileBtn,
