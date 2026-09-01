@@ -112,6 +112,10 @@ export function normalizeItem(item){
   };
 }
 
+function toPersianDigits(value){
+  return String(value).replace(/\d/g, digit => '۰۱۲۳۴۵۶۷۸۹'[Number(digit)]);
+}
+
 export function wbsCodeMap(items){
   const codes = new Map();
   let stageIndex = 0;
@@ -121,9 +125,9 @@ export function wbsCodeMap(items){
       if(node?.trashed) return;
       if(isStage(node)){
         local += 1;
-        const code = prefix ? `${prefix}.${local}` : String(++stageIndex);
-        codes.set(String(node.id), code);
-        visit(node.subtasks, code);
+        const rawCode = prefix ? `${prefix}.${local}` : String(++stageIndex);
+        codes.set(String(node.id), `${toPersianDigits(rawCode)} -`);
+        visit(node.subtasks, rawCode);
       }else{
         visit(node.subtasks, prefix);
       }
