@@ -2,7 +2,7 @@ body:has(.wbs-home-root) #workspaceProjectContext,
 body:has(.wbs-home-root) #tabbar{display:none;}
 .wbs-row.is-drop{background:#efe8dc;}
 .wbs-tabs{display:flex;gap:8px;padding:10px 12px 4px;}
-.wbs-tab{border:0;background:#ece7df;border-radius:999px;padding:8px 14px;min-height:40px;}
+.wbs-tab{flex:1 1 25%;width:25%;min-width:0;border:0;background:#ece7df;border-radius:5px;padding:5px 11px;min-height:40px;}
 .wbs-tab.active{background:#2f2a24;color:#fff;}
 .wbs-toolbar{display:flex;gap:8px;padding:0 12px 10px;}
 .wbs-root-add{border:0;background:#d7cfc3;border-radius:12px;padding:8px 12px;}
