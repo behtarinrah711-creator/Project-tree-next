@@ -1,5 +1,6 @@
 body:has(.wbs-home-root) #workspaceProjectContext,
 body:has(.wbs-home-root) #tabbar{display:none;}
+body:has(.wbs-home-root) .content{padding-top:0;}
 .wbs-home-root{padding-top:10px;}
 .wbs-row.is-drop{background:#efe8dc;}
 .wbs-tabs{display:flex;gap:8px;padding:0 12px;margin:0 0 10px;}
