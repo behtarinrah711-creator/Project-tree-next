@@ -33,12 +33,22 @@ import {
 } from './wbsExpandState.js';
 
 const VIEWS = [
+  { id:'simple', label:'ساده' },
   { id:'register', label:'ثبت' },
   { id:'estimate', label:'برآورد' },
   { id:'progress', label:'پیشرفت' },
 ];
 
-let currentView = 'register';
+const SIMPLE_TYPE_CLASSES = new Map([
+  ['اجرا', 'type-1'],
+  ['خرید', 'type-2'],
+  ['نیروی کار', 'type-3'],
+  ['پیمانکار', 'type-4'],
+  ['کرایه', 'type-5'],
+  ['خدمات', 'type-6'],
+]);
+
+let currentView = 'simple';
 let explicitProjectId = null;
 
 function projectIdOf(){
@@ -470,6 +480,32 @@ function openGeneralDetailSheet(item){
   });
 }
 
+function renderSimpleRow(item, depth){
+  const stage = isStage(item);
+  const kids = (item.subtasks || []).filter(x => !x.trashed);
+  const rawType = isWork(item) && WORK_TYPES.includes(item.type) ? item.type : '';
+  const chipLabel = rawType || '؟';
+  const chipClass = rawType ? (SIMPLE_TYPE_CLASSES.get(rawType) || 'type-7') : 'type-7';
+  const row = document.createElement('div');
+  row.className = 'wbs-simple-row depth-' + Math.min(6, depth) + (stage ? ' is-stage' : ' is-work');
+  row.innerHTML = `
+    <button type="button" class="wbs-simple-title">
+      ${stage ? '' : `<span class="wbs-type-chip ${chipClass}">${escapeHtml(chipLabel)}</span>`}
+      <span class="wbs-simple-title-text">${escapeHtml(item.text || '')}</span>
+    </button>
+  `;
+  row.querySelector('.wbs-simple-title')?.addEventListener('click', ev => {
+    ev.stopPropagation();
+    if(isWork(item)) openWorkDetailSheet(item);
+    else openStageDetailSheet(item);
+  });
+  const wrap = document.createElement('div');
+  wrap.className = depth === 0 ? 'wbs-card wbs-simple-card' : 'wbs-branch wbs-simple-branch';
+  wrap.appendChild(row);
+  kids.forEach(child => wrap.appendChild(renderSimpleRow(child, depth + 1)));
+  return wrap;
+}
+
 function renderRow(item, codes, view, depth){
   const stage = isStage(item);
   const kids = (item.subtasks || []).filter(x => !x.trashed);
@@ -539,7 +575,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   }
 
   const root = document.createElement('div');
-  root.className = 'wbs-home-root';
+  root.className = 'wbs-home-root' + (currentView === 'simple' ? ' is-simple-view' : '');
   target.appendChild(root);
 
   const tabs = document.createElement('div');
@@ -569,32 +605,36 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   addWork.className = 'wbs-root-add';
   addWork.textContent = '+ کار';
   addWork.addEventListener('click', () => openCreateWorkSheet(null));
-  const expandAllBtn = document.createElement('button');
-  expandAllBtn.type = 'button';
-  expandAllBtn.className = 'wbs-root-add';
-  expandAllBtn.textContent = 'همه باز';
-  expandAllBtn.addEventListener('click', () => {
-    expandAll(project.id, project.tasks);
-    renderWbsHome(target, project.id);
-  });
-  const collapseAllBtn = document.createElement('button');
-  collapseAllBtn.type = 'button';
-  collapseAllBtn.className = 'wbs-root-add';
-  collapseAllBtn.textContent = 'همه بسته';
-  collapseAllBtn.addEventListener('click', () => {
-    collapseAll(project.id);
-    renderWbsHome(target, project.id);
-  });
-  toolbar.append(addRoot, addWork, expandAllBtn, collapseAllBtn);
+  toolbar.append(addRoot, addWork);
+  if(currentView !== 'simple'){
+    const expandAllBtn = document.createElement('button');
+    expandAllBtn.type = 'button';
+    expandAllBtn.className = 'wbs-root-add';
+    expandAllBtn.textContent = 'همه باز';
+    expandAllBtn.addEventListener('click', () => {
+      expandAll(project.id, project.tasks);
+      renderWbsHome(target, project.id);
+    });
+    const collapseAllBtn = document.createElement('button');
+    collapseAllBtn.type = 'button';
+    collapseAllBtn.className = 'wbs-root-add';
+    collapseAllBtn.textContent = 'همه بسته';
+    collapseAllBtn.addEventListener('click', () => {
+      collapseAll(project.id);
+      renderWbsHome(target, project.id);
+    });
+    toolbar.append(expandAllBtn, collapseAllBtn);
+  }
   root.appendChild(toolbar);
 
   const tree = document.createElement('div');
   tree.className = 'wbs-tree';
   const items = (project.tasks || []).filter(x => !x.trashed);
-  seedRootLevel(project.id, items);
-  const codes = wbsCodeMap(items);
+  const simple = currentView === 'simple';
+  if(!simple) seedRootLevel(project.id, items);
+  const codes = simple ? new Map() : wbsCodeMap(items);
   if(!items.length) tree.innerHTML = '<div class="empty-state">مرحله یا کاری ثبت نشده است.</div>';
-  else items.forEach(item => tree.appendChild(renderRow(item, codes, currentView, 0)));
+  else items.forEach(item => tree.appendChild(simple ? renderSimpleRow(item, 0) : renderRow(item, codes, currentView, 0)));
   root.appendChild(tree);
 
   if(currentView === 'estimate'){
