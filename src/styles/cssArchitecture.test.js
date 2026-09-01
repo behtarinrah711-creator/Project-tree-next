@@ -7,6 +7,7 @@ import test from 'node:test';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const stylesRoot = join(root, 'src', 'styles');
 const read = path => readFileSync(join(root, path), 'utf8');
+const stripQuery = value => String(value || '').split('?')[0];
 const walk = directory => readdirSync(directory, { withFileTypes: true }).flatMap(entry => {
   const path = join(directory, entry.name);
   return entry.isDirectory() ? walk(path) : [path];
@@ -16,12 +17,15 @@ const jsFiles = walk(join(root, 'src')).filter(path => path.endsWith('.js') && !
 
 test('the application has one deterministic CSS manifest and no embedded application CSS', () => {
   const html = read('index.html');
-  assert.deepEqual([...html.matchAll(/<link\b[^>]*href="([^"]+\.css)"[^>]*>/g)].map(match => match[1]), ['src/styles/index.css']);
+  const linkedCss = [...html.matchAll(/<link\b[^>]*href="([^"]+\.css(?:\?[^\"]*)?)"[^>]*>/g)]
+    .map(match => stripQuery(match[1]));
+  assert.deepEqual(linkedCss, ['src/styles/index.css']);
   assert.equal(/<style\b/i.test(html), false);
   assert.equal(/\sstyle\s*=/i.test(html), false);
 
   const manifest = read('src/styles/index.css');
-  const imports = [...manifest.matchAll(/@import url\("\.\/([^"\n]+\.css)"\);/g)].map(match => match[1]);
+  const imports = [...manifest.matchAll(/@import url\("\.\/([^"\n]+\.css(?:\?[^\"]*)?)"\);/g)]
+    .map(match => stripQuery(match[1]));
   assert.equal(imports.length, new Set(imports).size, 'each owner must be imported once');
   assert.deepEqual(imports, [
     'tokens.css', 'base.css', 'utilities.css', 'workspace/chrome.css', 'features/tasks.css',
