@@ -5,8 +5,8 @@ body:has(.wbs-home-root) #tabbar{display:none;}
 .wbs-tab{flex:1 1 25%;width:25%;min-width:0;border:0;background:#ece7df;border-radius:5px;padding:2px 11px;min-height:40px;}
 .wbs-tab.active{background:#2f2a24;color:#fff;}
 .wbs-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 12px 10px;direction:rtl;}
-.wbs-root-add{border:0;background:#d7cfc3;border-radius:12px;padding:8px 12px;min-height:40px;}
-.wbs-tree-toggle{box-sizing:border-box;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cfc7bb;border-radius:10px;background:#ece7df;color:#77706a;padding:0;}
+.wbs-root-add{border:0;background:#d7cfc3;border-radius:5px;padding:2px 12px;min-height:40px;}
+.wbs-tree-toggle{box-sizing:border-box;width:40px;min-height:40px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cfc7bb;border-radius:5px;background:#ece7df;color:#77706a;padding:2px 0;}
 .wbs-tree-toggle svg{width:24px;height:24px;fill:currentColor;display:block;}
 .wbs-tree-toggle.is-active{background:#2f2a24;color:#fff;border-color:#2f2a24;}
 .wbs-tree{padding:0 10px 24px;}
