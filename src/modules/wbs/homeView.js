@@ -517,6 +517,9 @@ function renderRow(item, codes, view, depth){
   const kids = (item.subtasks || []).filter(x => !x.trashed);
   const open = isExpanded(projectIdOf(), item.id);
   const code = stage ? (codes.get(String(item.id)) || '') : '';
+  const rawType = isWork(item) && WORK_TYPES.includes(item.type) ? item.type : '';
+  const chipLabel = rawType || '؟';
+  const chipClass = rawType ? (SIMPLE_TYPE_CLASSES.get(rawType) || 'type-7') : 'type-7';
   const meta = [];
   if(view === 'estimate' && isWork(item)){
     meta.push(new Intl.NumberFormat('fa-IR').format(lineTotal(item)));
@@ -534,7 +537,7 @@ function renderRow(item, codes, view, depth){
     <span class="wbs-grip" aria-hidden="true">⋮⋮</span>
     <button type="button" class="wbs-check" aria-label="وضعیت">${item.done ? '✓' : ''}</button>
     ${kids.length ? `<button type="button" class="wbs-chev" aria-label="${open?'بستن':'باز کردن'}">${open?'▾':'▸'}</button>` : '<span class="wbs-chev-spacer"></span>'}
-    <button type="button" class="wbs-title">${code ? `<b>${escapeHtml(code)}</b> ` : ''}${escapeHtml(item.text || '')}</button>
+    <button type="button" class="wbs-title">${stage ? '' : `<span class="wbs-type-chip ${chipClass}">${escapeHtml(chipLabel)}</span> `}${code ? `<b>${escapeHtml(code)}</b> ` : ''}${escapeHtml(item.text || '')}</button>
     <span class="wbs-meta${view === 'estimate' ? ' is-estimate' : ''}">${escapeHtml(meta.join(' · '))}</span>
     ${stage ? `<button type="button" class="wbs-add" aria-label="افزودن">+</button>` : ''}
   `;
