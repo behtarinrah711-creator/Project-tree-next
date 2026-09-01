@@ -1,7 +1,8 @@
 body:has(.wbs-home-root) #workspaceProjectContext,
 body:has(.wbs-home-root) #tabbar{display:none;}
-body:has(.wbs-home-root) .content{padding-top:0;}
-.wbs-home-root{padding-top:10px;}
+body:has(.wbs-home-root) .content{padding-top:0;background:#f8f5f0;}
+body:has(.wbs-home-root){background:#f8f5f0;}
+.wbs-home-root{padding-top:10px;background:#f8f5f0;}
 .wbs-row.is-drop{background:#efe8dc;}
 .wbs-tabs{display:flex;gap:8px;padding:0 12px;margin:0 0 10px;}
 .wbs-tab{flex:1 1 25%;width:25%;min-width:0;border:1px solid #cfc7bb;background:#ece7df;border-radius:5px;padding:2px 11px;min-height:40px;}
@@ -69,7 +70,7 @@ body:has(.wbs-home-root) .content{padding-top:0;}
 .wbs-field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px;}
 .wbs-field-label{font-size:12px;color:#6f675d;}
 .wbs-input{width:100%;min-height:44px;border:1px solid #e4ddd3;border-radius:10px;padding:8px 12px;font:inherit;}
-.wbs-choice{display:block;width:100%;min-height:48px;border:0;background:#f3efe8;border-radius:12px;margin-bottom:8px;}
+.wbs-choice{display:block;width:100%;min-height:48px;border:0;background:#f8f5f0;border-radius:12px;margin-bottom:8px;}
 .wbs-note{font-size:13px;color:#6f675d;margin-bottom:12px;}
 .wbs-activity-row{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;}
 .wbs-activity-remove{border:0;background:transparent;color:#b45309;min-height:40px;}
@@ -94,4 +95,3 @@ body:has(.wbs-home-root) .content{padding-top:0;}
 .wbs-work-total span{font-size:12px;color:#77706a;}
 .wbs-work-total b{font-size:18px;color:#2f2a24;}
 .topbar{background:#d7cfc3;}
-body{background:#f3efe8;}
