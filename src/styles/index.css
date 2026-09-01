@@ -147,14 +147,14 @@ body:not(.global-surface){background:#f2f3f5;}
 #drawerOverlay .drawer-add-project{
   order:1;
   position:relative;
-  margin:0 0 14px;
+  margin:0 0 28px;
 }
 #drawerOverlay .drawer-add-project::after{
   content:'';
   position:absolute;
   left:0;
   right:0;
-  bottom:-7px;
+  bottom:-14px;
   height:1px;
   background:var(--divider);
   pointer-events:none;
