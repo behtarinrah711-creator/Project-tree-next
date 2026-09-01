@@ -30,6 +30,7 @@
 body.global-surface #bottomNav,
 body.global-surface #tabbar,
 body.global-surface #workspaceProjectContext { display: none !important; }
+body:not(.global-surface){background:#f2f3f5;}
 .nb-tabs { display:flex; gap:8px; overflow-x:auto; padding:8px 0; }
 .nb-tab { border:0; background:#eee; border-radius:16px; padding:6px 12px; white-space:nowrap; }
 .nb-tab.active { background:#1d4ed8; color:#fff; }
