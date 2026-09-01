@@ -520,6 +520,7 @@ function renderRow(item, codes, view, depth){
   const rawType = isWork(item) && WORK_TYPES.includes(item.type) ? item.type : '';
   const chipLabel = rawType || '؟';
   const chipClass = rawType ? (SIMPLE_TYPE_CLASSES.get(rawType) || 'type-7') : 'type-7';
+  const readOnlyView = view === 'estimate' || view === 'progress';
   const meta = [];
   if(view === 'estimate' && isWork(item)){
     meta.push(new Intl.NumberFormat('fa-IR').format(lineTotal(item)));
@@ -534,12 +535,12 @@ function renderRow(item, codes, view, depth){
   const row = document.createElement('div');
   row.className = 'wbs-row depth-' + Math.min(6, depth) + (item.done ? ' is-done' : '') + (stage ? ' is-stage' : ' is-work');
   row.innerHTML = `
-    <span class="wbs-grip" aria-hidden="true">⋮⋮</span>
+    ${readOnlyView ? '' : '<span class="wbs-grip" aria-hidden="true">⋮⋮</span>'}
     <button type="button" class="wbs-check" aria-label="وضعیت">${item.done ? '✓' : ''}</button>
     ${kids.length ? `<button type="button" class="wbs-chev" aria-label="${open?'بستن':'باز کردن'}">${open?'▾':'▸'}</button>` : '<span class="wbs-chev-spacer"></span>'}
     <button type="button" class="wbs-title">${stage ? '' : `<span class="wbs-type-chip ${chipClass}">${escapeHtml(chipLabel)}</span> `}${code ? `<b>${escapeHtml(code)}</b> ` : ''}${escapeHtml(item.text || '')}</button>
     <span class="wbs-meta${view === 'estimate' ? ' is-estimate' : ''}">${escapeHtml(meta.join(' · '))}</span>
-    ${stage ? `<button type="button" class="wbs-add" aria-label="افزودن">+</button>` : ''}
+    ${stage && !readOnlyView ? `<button type="button" class="wbs-add" aria-label="افزودن">+</button>` : ''}
   `;
   row.querySelector('.wbs-check')?.addEventListener('click', ev => {
     ev.stopPropagation();
@@ -561,11 +562,13 @@ function renderRow(item, codes, view, depth){
     ev.stopPropagation();
     openAddMenu(item.id);
   });
-  bindRowDrag(row, {
-    id: item.id,
-    kind: stage ? 'stage' : 'work',
-    onDrop: handleTreeDrop,
-  });
+  if(!readOnlyView){
+    bindRowDrag(row, {
+      id: item.id,
+      kind: stage ? 'stage' : 'work',
+      onDrop: handleTreeDrop,
+    });
+  }
   const wrap = document.createElement('div');
   wrap.className = depth === 0 ? 'wbs-card' : 'wbs-branch';
   wrap.appendChild(row);
