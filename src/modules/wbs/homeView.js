@@ -78,7 +78,7 @@ function handleTreeDrop({ draggedId, targetId, targetKind }){
 
 function escapeHtml(value){
   return String(value ?? '').replace(/[&<>"']/g, ch => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;',
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;',
   }[ch]));
 }
 
@@ -101,7 +101,7 @@ function openCreateStageSheet(parentId = null){
 
 function openCreateWorkSheet(parentId = null){
   openWbsSheet({
-    title: parentId ? 'افزودن کار' : 'افزودن کار',
+    title: 'افزودن کار',
     saveLabel: 'ذخیره',
     body(root){
       root.appendChild(fieldRow('عنوان کار', textInput('', { name:'title', placeholder:'عنوان کار' })));
@@ -200,12 +200,6 @@ function openWorkDetailSheet(item){
       root.appendChild(total);
       bindLiveTotal(qty, cost, total);
       root.appendChild(fieldRow('توضیح', textInput(current.description || '', { name:'description' })));
-      const addChild = document.createElement('button');
-      addChild.type = 'button';
-      addChild.className = 'wbs-choice';
-      addChild.textContent = 'افزودن زیرکار';
-      addChild.addEventListener('click', () => { closeWbsSheet(); openCreateWorkSheet(current.id); });
-      root.appendChild(addChild);
     },
     onSave(root){
       const title = root.querySelector('[name="title"]').value.trim();
@@ -374,23 +368,23 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   addWork.className = 'wbs-root-add';
   addWork.textContent = '+ کار';
   addWork.addEventListener('click', () => openCreateWorkSheet(null));
-  const expandAll = document.createElement('button');
-  expandAll.type = 'button';
-  expandAll.className = 'wbs-root-add';
-  expandAll.textContent = 'همه باز';
-  expandAll.addEventListener('click', () => {
+  const expandAllBtn = document.createElement('button');
+  expandAllBtn.type = 'button';
+  expandAllBtn.className = 'wbs-root-add';
+  expandAllBtn.textContent = 'همه باز';
+  expandAllBtn.addEventListener('click', () => {
     expandAll(project.id, project.tasks);
     renderWbsHome(target, project.id);
   });
-  const collapseAll = document.createElement('button');
-  collapseAll.type = 'button';
-  collapseAll.className = 'wbs-root-add';
-  collapseAll.textContent = 'همه بسته';
-  collapseAll.addEventListener('click', () => {
+  const collapseAllBtn = document.createElement('button');
+  collapseAllBtn.type = 'button';
+  collapseAllBtn.className = 'wbs-root-add';
+  collapseAllBtn.textContent = 'همه بسته';
+  collapseAllBtn.addEventListener('click', () => {
     collapseAll(project.id);
     renderWbsHome(target, project.id);
   });
-  toolbar.append(addRoot, addWork, expandAll, collapseAll);
+  toolbar.append(addRoot, addWork, expandAllBtn, collapseAllBtn);
   root.appendChild(toolbar);
 
   const tree = document.createElement('div');
