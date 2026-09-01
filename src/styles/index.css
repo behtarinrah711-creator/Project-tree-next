@@ -136,7 +136,7 @@ body.global-surface #workspaceProjectContext { display: none !important; }
   box-shadow:inset 0 -1px 0 var(--divider);
 }
 #drawerOverlay #drawerProjectsBtn::after{
-  content:'‹';
+  content:'›';
   color:var(--text-dim);
   font-size:24px;
   font-weight:400;
@@ -148,16 +148,18 @@ body.global-surface #workspaceProjectContext { display: none !important; }
   position:relative;
   margin:0 0 14px;
 }
+#drawerOverlay .drawer-add-project::before,
 #drawerOverlay .drawer-add-project::after{
   content:'';
   position:absolute;
   left:0;
   right:0;
-  bottom:-8px;
   height:1px;
   background:var(--divider);
   pointer-events:none;
 }
+#drawerOverlay .drawer-add-project::before{top:-7px;}
+#drawerOverlay .drawer-add-project::after{bottom:-7px;}
 #drawerOverlay > .drawer > .drawer-section-title{
   display:block !important;
   order:2;
