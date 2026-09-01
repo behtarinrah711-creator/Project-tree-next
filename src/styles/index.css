@@ -25,7 +25,7 @@
 @import url("./components/form-template.css");
 @import url("./features/contact-form-template.css");
 @import url("./workspace/navigation.css");
-@import url("./features/wbs-home.css?v=20260901-1538");
+@import url("./features/wbs-home.css?v=20260902-0218");
 
 body.global-surface #bottomNav,
 body.global-surface #tabbar,
@@ -102,7 +102,8 @@ body:not(.global-surface){background:#f2f3f5;}
   z-index:1;
 }
 .account-trigger > svg{display:none;}
-.account-trigger.is-guest .avatar-circle{background:transparent;color:var(--green);border:1px solid var(--divider);}
+.account-trigger.is-guest .avatar-circle{background:transparent;color:#000;border:1px solid #000;}
+.account-trigger.is-guest #avatarDefaultIcon path{stroke:currentColor;}
 
 /* On internal footer workspaces the existing section-title behavior remains authoritative. */
 .topbar.workspace-context::before{content:none;}
