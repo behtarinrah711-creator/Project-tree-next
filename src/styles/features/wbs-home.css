@@ -1,14 +1,5 @@
-body:has(.wbs-home-root) #topbarTitle,
-body:has(.wbs-home-root) #projectSearch,
-body:has(.wbs-home-root) #modeToggle,
-body:has(.wbs-home-root) #avatarBtn,
 body:has(.wbs-home-root) #workspaceProjectContext,
 body:has(.wbs-home-root) #tabbar{display:none;}
-.wbs-home-header{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:10px 12px;min-height:56px;background:#ebe6de;}
-.wbs-project-switch{display:flex;align-items:center;gap:6px;border:0;background:transparent;min-height:44px;max-width:42%;}
-.wbs-project-name{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.wbs-app-title{margin:0;font-size:14px;font-weight:600;}
-.wbs-avatar-btn{border:0;background:#2f2a24;color:#fff;width:40px;height:40px;border-radius:50%;}
 .wbs-row.is-drop{background:#efe8dc;}
 .wbs-tabs{display:flex;gap:8px;padding:10px 12px 4px;}
 .wbs-tab{border:0;background:#ece7df;border-radius:999px;padding:8px 14px;min-height:40px;}
