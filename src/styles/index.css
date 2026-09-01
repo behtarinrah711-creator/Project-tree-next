@@ -163,12 +163,56 @@ body:not(.global-surface){background:#f2f3f5;}
 #drawerOverlay > .drawer > .drawer-section-title::after{content:none !important;}
 #drawerOverlay #drawerProjectList{order:3;}
 
-/* Account drawer opens from the left and starts with the authenticated identity. */
+/* Account drawer: identity, auth action, then uniformly separated navigation items. */
 #globalMenuOverlay{justify-content:flex-end;}
 #globalMenuOverlay > .drawer{box-shadow:2px 0 10px rgba(0,0,0,.15);}
 #globalMenuOverlay > .drawer > .drawer-account:not(#globalAccountHead){display:none;}
-.global-account-head{padding-bottom:12px;border-bottom:1px solid var(--divider);margin-bottom:10px;}
-#globalMenuOverlay #drawerSigninBtn{order:1;margin-top:auto;margin-bottom:0;color:var(--danger);}
+.global-account-head{
+  order:0;
+  padding-bottom:12px;
+  border-bottom:1px solid var(--divider);
+  margin:0 0 12px;
+}
+#globalMenuOverlay #drawerSigninBtn{
+  order:1;
+  width:100%;
+  box-sizing:border-box;
+  appearance:none;
+  -webkit-appearance:none;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  color:var(--danger);
+  font:inherit;
+  font-weight:600;
+  min-height:48px;
+  padding:10px 4px;
+  margin:0 0 12px;
+  justify-content:flex-start;
+  border-bottom:1px solid var(--divider);
+}
 #globalMenuOverlay #globalNotebookBtn,
 #globalMenuOverlay #drawerProfileBtn,
-#globalMenuOverlay #drawerGlobalTrashBtn{order:0;}
+#globalMenuOverlay #drawerGlobalTrashBtn{
+  order:2;
+  width:100%;
+  min-height:48px;
+  box-sizing:border-box;
+  border:0;
+  border-radius:0;
+  background:transparent;
+  padding:10px 4px;
+  margin:0 0 12px;
+  justify-content:space-between;
+  border-bottom:1px solid var(--divider);
+}
+#globalMenuOverlay #globalNotebookBtn::after,
+#globalMenuOverlay #drawerProfileBtn::after,
+#globalMenuOverlay #drawerGlobalTrashBtn::after{
+  content:'›';
+  color:var(--text-dim);
+  font-size:24px;
+  font-weight:400;
+  line-height:1;
+  flex:0 0 auto;
+}
