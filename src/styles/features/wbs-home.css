@@ -6,7 +6,7 @@ body:has(.wbs-home-root) #tabbar{display:none;}
 .wbs-tab{flex:1 1 25%;width:25%;min-width:0;border:0;background:#ece7df;border-radius:5px;padding:2px 11px;min-height:40px;}
 .wbs-tab.active{background:#2f2a24;color:#fff;}
 .wbs-toolbar{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,1fr);gap:8px;padding:0 12px 10px;margin:0;direction:rtl;}
-.wbs-root-add{box-sizing:border-box;width:100%;min-width:0;border:0;background:#d7cfc3;border-radius:5px;padding:2px 12px;min-height:40px;}
+.wbs-root-add{box-sizing:border-box;width:100%;min-width:0;border:0;background:#ece7df;border-radius:5px;padding:2px 12px;min-height:40px;}
 .wbs-tree-toggle{box-sizing:border-box;width:100%;min-width:0;min-height:40px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cfc7bb;border-radius:5px;background:#ece7df;color:#77706a;padding:2px 0;}
 .wbs-tree-toggle svg{width:24px;height:24px;display:block;fill:none;background:center/24px 24px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2377706a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 3h4v4h-4zM3 17h4v4H3zm14 0h4v4h-4zM7 17l5-4 5 4M12 7v6'/%3E%3C/svg%3E");}
 .wbs-tree-toggle svg path{display:none;}
@@ -85,5 +85,5 @@ body:has(.wbs-home-root) #tabbar{display:none;}
 .wbs-work-total{background:#f7f4ef;border-radius:14px;padding:14px 16px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
 .wbs-work-total span{font-size:12px;color:#77706a;}
 .wbs-work-total b{font-size:18px;color:#2f2a24;}
-.topbar{background:#ebe6de;}
+.topbar{background:#d7cfc3;}
 body{background:#f3efe8;}
