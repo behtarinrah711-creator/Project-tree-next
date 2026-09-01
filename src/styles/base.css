@@ -2,7 +2,7 @@
   html,body{height:100%;}
   body{
     margin:0;background:var(--bg);color:var(--text);
-    font-family:'IRANYekan', IRANYekan, Vazirmatn, Tahoma, sans-serif;
+    font-family:'IRANYekan', IRANYekan, Tahoma, sans-serif;
     display:flex;flex-direction:column;overflow:hidden;
   }
 
