@@ -1,13 +1,20 @@
-import { isWork, lineTotal, walkTree } from './normalize.js';
+import { isWork, lineTotal } from './normalize.js';
 
 export function workItemEstimate(item){
   return lineTotal(item);
 }
 
+function walkVisible(items, visit){
+  (items || []).forEach(item => {
+    if(!item || item.trashed) return;
+    visit(item);
+    walkVisible(item.subtasks, visit);
+  });
+}
+
 export function rollupEstimate(items){
   let total = 0;
-  walkTree(items, item => {
-    if(item?.trashed) return;
+  walkVisible(items, item => {
     if(isWork(item)) total += lineTotal(item);
   });
   return total;
@@ -28,8 +35,8 @@ export function projectEstimateTotal(tasks, generalConditions){
 
 export function rollupProgress(items){
   const works = [];
-  walkTree(items, item => {
-    if(item?.trashed || !isWork(item)) return;
+  walkVisible(items, item => {
+    if(!isWork(item)) return;
     works.push(Number(item.progress) || (item.done ? 100 : 0));
   });
   if(!works.length) return 0;
