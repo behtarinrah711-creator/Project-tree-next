@@ -9,7 +9,7 @@ body:has(.wbs-home-root) #tabbar{display:none;}
 .wbs-tree{padding:0 10px 24px;}
 .wbs-card{background:#fff;border:1px solid #e4ddd3;border-radius:16px;margin-bottom:12px;overflow:hidden;}
 .wbs-row{display:flex;align-items:center;gap:8px;min-height:48px;padding:6px 8px;}
-.wbs-row.depth-0{padding-inline-start:8px;}
+.wbs-row.depth-0{padding-inline-start:8px;background:#e8e4de;}
 .wbs-row.depth-1{padding-inline-start:24px;}
 .wbs-row.depth-2{padding-inline-start:40px;}
 .wbs-row.depth-3{padding-inline-start:56px;}
