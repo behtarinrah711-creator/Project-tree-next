@@ -154,6 +154,23 @@ function installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avata
     avatar?.setAttribute('aria-label', user ? 'حساب کاربری' : 'ورود');
   };
 
+  const syncAccountDrawerImmediately = () => {
+    const auth = windowRef.firebase?.auth?.();
+    if(auth?.currentUser){
+      syncUser(auth.currentUser);
+      return;
+    }
+    const avatarImg = byId(documentRef, 'avatarImg');
+    const globalImg = byId(documentRef, 'globalAccountImg');
+    const globalDefault = byId(documentRef, 'globalAccountDefaultIcon');
+    const photo = avatarImg?.src || '';
+    if(photo && globalImg){
+      globalImg.src = photo;
+      globalImg.classList.remove('hidden');
+      globalDefault?.classList?.add?.('hidden');
+    }
+  };
+
   const attachAuthState = auth => {
     syncUser(auth?.currentUser || null);
     auth?.onAuthStateChanged?.(syncUser);
@@ -176,13 +193,15 @@ function installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avata
   }
 
   windowRef.addEventListener?.('karha:ready', syncProjectHeader);
+  windowRef.addEventListener?.('karha:project-context-changed', syncProjectHeader);
   windowRef.addEventListener?.('popstate', () => windowRef.setTimeout(syncProjectHeader, 0));
   windowRef.addEventListener?.('karha:drawer-open', syncProjectHeader);
+  windowRef.addEventListener?.('karha:global-menu-open', syncAccountDrawerImmediately);
   windowRef.addEventListener?.('karha:projects-recovered', syncProjectHeader);
   windowRef.addEventListener?.('karha:workspace-route-synced', () => windowRef.setTimeout(syncProjectHeader, 0));
   syncProjectHeader();
 
-  return { syncProjectHeader };
+  return { syncProjectHeader, syncAccountDrawerImmediately };
 }
 
 /** Bind project/account drawers and authentication controls. */
