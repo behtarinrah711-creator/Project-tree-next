@@ -6,3 +6,12 @@
     display:flex;flex-direction:column;overflow:hidden;
   }
 
+  /* Native form controls do not reliably inherit the body font across browsers. */
+  button,
+  input,
+  select,
+  textarea,
+  option{
+    font-family:inherit;
+  }
+
