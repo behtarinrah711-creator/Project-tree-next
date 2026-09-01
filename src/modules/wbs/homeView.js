@@ -60,6 +60,75 @@ function parentIdOf(itemId){
   return walk(wbsApi.list(projectIdOf()), null) ?? null;
 }
 
+function locateUiItem(itemId){
+  const project = projectOf();
+  let found = null;
+  const walk = (nodes, parent = null, rootId = null, path = []) => {
+    for(const node of nodes || []){
+      const root = rootId || node.id;
+      const nextPath = [...path, node];
+      if(String(node.id) === String(itemId)){
+        found = { item:node, parent, rootId:root, path:nextPath };
+        return true;
+      }
+      if(walk(node.subtasks, node, root, nextPath)) return true;
+    }
+    return false;
+  };
+  walk(project?.tasks || []);
+  return found;
+}
+
+function formatMoney(value){
+  const n = Number(value) || 0;
+  return new Intl.NumberFormat('fa-IR').format(n) + ' تومان';
+}
+
+function breadcrumbFor(itemId){
+  const located = locateUiItem(itemId);
+  if(!located) return '';
+  const names = located.path.slice(0, -1).map(node => node.text).filter(Boolean);
+  return names.join(' ← ');
+}
+
+function descendantSummary(stage){
+  let stages = 0;
+  let works = 0;
+  const walk = nodes => (nodes || []).forEach(node => {
+    if(!node || node.trashed) return;
+    if(isStage(node)) stages += 1;
+    else works += 1;
+    walk(node.subtasks);
+  });
+  walk(stage.subtasks);
+  return { stages, works };
+}
+
+function requestDelete(item){
+  const located = locateUiItem(item.id);
+  if(!located) return;
+  const stage = isStage(item);
+  const perform = () => {
+    const type = located.parent ? 'sub' : 'task';
+    const sid = located.parent ? item.id : null;
+    const label = stage ? 'مرحله حذف شد' : 'کار حذف شد';
+    const softDelete = window.KarhaSoftDelete?.softDelete;
+    if(typeof softDelete !== 'function') return;
+    if(softDelete(type, projectIdOf(), located.rootId, sid, label)){
+      closeWbsSheet();
+      render();
+    }
+  };
+  const message = stage
+    ? 'این مرحله و تمام زیرمجموعه‌های آن حذف شوند؟'
+    : 'این کار حذف شود؟';
+  if(typeof window.KarhaUI?.openConfirm === 'function'){
+    window.KarhaUI.openConfirm(message, perform, 'حذف');
+  }else if(window.confirm(message)){
+    perform();
+  }
+}
+
 function handleTreeDrop({ draggedId, targetId, targetKind }){
   const projectId = projectIdOf();
   const ok = applyDrop({
@@ -78,8 +147,42 @@ function handleTreeDrop({ draggedId, targetId, targetKind }){
 
 function escapeHtml(value){
   return String(value ?? '').replace(/[&<>"']/g, ch => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;',
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;',
   }[ch]));
+}
+
+function summaryHeader(root, kind, current, subtitle = ''){
+  const wrap = document.createElement('div');
+  wrap.className = 'wbs-detail-summary';
+  const kindEl = document.createElement('div');
+  kindEl.className = 'wbs-detail-kind';
+  kindEl.textContent = kind;
+  const title = document.createElement('div');
+  title.className = 'wbs-detail-title';
+  title.textContent = current.text || '';
+  wrap.append(kindEl, title);
+  if(subtitle){
+    const trail = document.createElement('div');
+    trail.className = 'wbs-detail-breadcrumb';
+    trail.textContent = subtitle;
+    wrap.appendChild(trail);
+  }
+  root.appendChild(wrap);
+}
+
+function infoRow(label, value, { action = false, danger = false, onClick = null } = {}){
+  const row = document.createElement(onClick ? 'button' : 'div');
+  if(onClick) row.type = 'button';
+  row.className = 'wbs-info-row' + (action ? ' is-action' : '') + (danger ? ' is-danger' : '');
+  const labelEl = document.createElement('span');
+  labelEl.className = 'wbs-info-label';
+  labelEl.textContent = label;
+  const valueEl = document.createElement('span');
+  valueEl.className = 'wbs-info-value';
+  valueEl.textContent = value ?? '';
+  row.append(labelEl, valueEl);
+  if(onClick) row.addEventListener('click', onClick);
+  return row;
 }
 
 function openCreateStageSheet(parentId = null){
@@ -137,10 +240,68 @@ function openAddMenu(stageId){
   });
 }
 
-function openWorkDetailSheet(item){
+function openStageEditSheet(item){
   const current = wbsApi.get(projectIdOf(), item.id) || item;
   openWbsSheet({
-    title: 'جزئیات کار',
+    title: 'ویرایش مرحله',
+    saveLabel: 'ذخیره',
+    body(root){
+      root.appendChild(fieldRow('نام مرحله', textInput(current.text || '', { name:'title' })));
+      root.appendChild(fieldRow('توضیحات', textInput(current.description || '', { name:'description' })));
+    },
+    onSave(root){
+      const title = root.querySelector('[name="title"]').value.trim();
+      if(!title) return false;
+      wbsApi.updateItem(projectIdOf(), current.id, {
+        text:title,
+        description:root.querySelector('[name="description"]').value,
+      });
+      render();
+      return true;
+    },
+  });
+}
+
+function openStageDetailSheet(item){
+  const current = wbsApi.get(projectIdOf(), item.id) || item;
+  const summary = descendantSummary(current);
+  openWbsSheet({
+    title: 'جزئیات مرحله',
+    saveLabel: 'بستن',
+    body(root){
+      summaryHeader(root, 'مرحله', current, breadcrumbFor(current.id));
+      const metrics = document.createElement('div');
+      metrics.className = 'wbs-stage-metrics';
+      metrics.innerHTML = `
+        <div><b>${summary.stages}</b><span>زیرمرحله</span></div>
+        <div><b>${summary.works}</b><span>کار</span></div>
+        <div><b>${escapeHtml(formatMoney(rollupEstimate([current])))}</b><span>برآورد</span></div>
+      `;
+      root.appendChild(metrics);
+
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'wbs-primary-action';
+      add.textContent = '+ افزودن';
+      add.addEventListener('click', () => { closeWbsSheet(); openAddMenu(current.id); });
+      root.appendChild(add);
+
+      const section = document.createElement('div');
+      section.className = 'wbs-info-section';
+      section.appendChild(infoRow('توضیحات', current.description || 'بدون توضیح'));
+      section.appendChild(infoRow('ویرایش مرحله', '›', { action:true, onClick:()=>{ closeWbsSheet(); openStageEditSheet(current); } }));
+      section.appendChild(infoRow('جابجایی مرحله', 'از دستگیره فهرست', { action:true, onClick:()=>closeWbsSheet() }));
+      section.appendChild(infoRow('حذف مرحله', 'حذف', { action:true, danger:true, onClick:()=>requestDelete(current) }));
+      root.appendChild(section);
+    },
+    onSave(){ return true; },
+  });
+}
+
+function openWorkEditSheet(item){
+  const current = wbsApi.get(projectIdOf(), item.id) || item;
+  openWbsSheet({
+    title: 'ویرایش کار',
     saveLabel: 'ذخیره',
     body(root){
       root.appendChild(fieldRow('عنوان', textInput(current.text || '', { name:'title' })));
@@ -218,6 +379,46 @@ function openWorkDetailSheet(item){
       render();
       return true;
     },
+  });
+}
+
+function openWorkDetailSheet(item){
+  const current = wbsApi.get(projectIdOf(), item.id) || item;
+  const activities = activityIdsOf(current);
+  openWbsSheet({
+    title: 'جزئیات کار',
+    saveLabel: 'بستن',
+    body(root){
+      summaryHeader(root, 'کار', current, breadcrumbFor(current.id));
+
+      const total = document.createElement('div');
+      total.className = 'wbs-work-total';
+      total.innerHTML = `<span>هزینه کل</span><b>${escapeHtml(formatMoney(lineTotal(current)))}</b>`;
+      root.appendChild(total);
+
+      const section = document.createElement('div');
+      section.className = 'wbs-info-section';
+      section.appendChild(infoRow('مقدار', new Intl.NumberFormat('fa-IR').format(Number(current.quantity) || 0)));
+      section.appendChild(infoRow('واحد', current.unit || '—'));
+      section.appendChild(infoRow('فی', formatMoney(current.unitCost || 0)));
+      section.appendChild(infoRow('فعالیت‌ها', `${activities.length}  ›`, { action:true, onClick:()=>{ closeWbsSheet(); openWorkEditSheet(current); } }));
+      section.appendChild(infoRow('توضیحات', current.description || 'بدون توضیح'));
+      root.appendChild(section);
+
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'wbs-primary-action is-secondary';
+      edit.textContent = 'ویرایش اطلاعات کار';
+      edit.addEventListener('click', () => { closeWbsSheet(); openWorkEditSheet(current); });
+      root.appendChild(edit);
+
+      const actions = document.createElement('div');
+      actions.className = 'wbs-info-section';
+      actions.appendChild(infoRow('جابجایی کار', 'از دستگیره فهرست', { action:true, onClick:()=>closeWbsSheet() }));
+      actions.appendChild(infoRow('حذف کار', 'حذف', { action:true, danger:true, onClick:()=>requestDelete(current) }));
+      root.appendChild(actions);
+    },
+    onSave(){ return true; },
   });
 }
 
@@ -309,7 +510,7 @@ function renderRow(item, codes, view, depth){
   row.querySelector('.wbs-title')?.addEventListener('click', ev => {
     ev.stopPropagation();
     if(isWork(item)) openWorkDetailSheet(item);
-    else openAddMenu(item.id);
+    else openStageDetailSheet(item);
   });
   row.querySelector('.wbs-add')?.addEventListener('click', ev => {
     ev.stopPropagation();
