@@ -1,5 +1,5 @@
 (function(){
-  const DEV_CACHE_VERSION = '20260902-0038';
+  const DEV_CACHE_VERSION = '20260902-0055';
   const refreshKey = `karha:dev-cache-refresh:${DEV_CACHE_VERSION}`;
 
   if('serviceWorker' in navigator){
@@ -12,8 +12,7 @@
   }
 
   // Temporary development policy: after each deploy version, force the browser
-  // to revalidate every loaded local JS module once, then reload the page.
-  // This avoids stale GitHub Pages module-cache results while the UI is changing.
+  // to revalidate loaded local JS and CSS once, then reload the page.
   // Remove this development refresh when the design stabilizes so normal cache
   // behavior can be restored for production performance.
   window.addEventListener('load', async () => {
@@ -26,7 +25,7 @@
         .filter(url => {
           try{
             const parsed = new URL(url, window.location.href);
-            return parsed.origin === window.location.origin && /\.js(?:$|\?)/.test(parsed.href);
+            return parsed.origin === window.location.origin && /\.(?:js|css)(?:$|\?)/.test(parsed.href);
           }catch(_error){
             return false;
           }
