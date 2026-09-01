@@ -161,23 +161,14 @@ body.global-surface #workspaceProjectContext { display: none !important; }
 #drawerOverlay > .drawer > .drawer-section-title{
   display:block !important;
   order:2;
-  position:relative;
   margin:0 0 14px;
-  padding:8px 4px 7px;
+  padding:8px 4px 14px;
+  border-bottom:1px solid var(--divider);
   color:var(--text-dim);
   font-size:12.5px;
   font-weight:500;
 }
-#drawerOverlay > .drawer > .drawer-section-title::after{
-  content:'';
-  position:absolute;
-  left:0;
-  right:0;
-  bottom:-7px;
-  height:1px;
-  background:var(--divider);
-  pointer-events:none;
-}
+#drawerOverlay > .drawer > .drawer-section-title::after{content:none !important;}
 #drawerOverlay #drawerProjectList{order:3;}
 
 /* Account drawer opens from the left and starts with the authenticated identity. */
