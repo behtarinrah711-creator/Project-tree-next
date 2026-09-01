@@ -151,11 +151,26 @@ function installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avata
     avatar?.setAttribute('aria-label', user ? 'حساب کاربری' : 'ورود');
   };
 
-  try{
-    const auth = windowRef.firebase?.auth?.();
+  const attachAuthState = auth => {
     syncUser(auth?.currentUser || null);
     auth?.onAuthStateChanged?.(syncUser);
-  }catch{ syncUser(null); }
+  };
+
+  try{
+    const auth = windowRef.firebase?.auth?.();
+    if(auth) attachAuthState(auth);
+    else {
+      syncUser(null);
+      void waitForFirebaseAuth(windowRef).then(ready => {
+        if(ready?.auth) attachAuthState(ready.auth);
+      });
+    }
+  }catch{
+    syncUser(null);
+    void waitForFirebaseAuth(windowRef).then(ready => {
+      if(ready?.auth) attachAuthState(ready.auth);
+    });
+  }
 
   windowRef.addEventListener?.('karha:ready', syncProjectHeader);
   windowRef.addEventListener?.('popstate', () => windowRef.setTimeout(syncProjectHeader, 0));
