@@ -11,18 +11,19 @@ test('old tasks without kind read as work items', () => {
   assert.equal(isStage({ id:'a', text:'بتن' }), false);
 });
 
-test('stage may hold stage or work; work may not hold stage', () => {
+test('stage may hold stage or work; work is always a terminal leaf', () => {
   assert.equal(canAcceptChild({ kind:'stage' }, 'stage'), true);
   assert.equal(canAcceptChild({ kind:'stage' }, 'work'), true);
-  assert.equal(canAcceptChild({ kind:'work' }, 'work'), true);
+  assert.equal(canAcceptChild({ kind:'work' }, 'work'), false);
   assert.equal(canAcceptChild({ kind:'work' }, 'stage'), false);
 });
 
-test('estimate is quantity times unit cost and rolls up', () => {
-  const child = { kind:'work', quantity:2, unitCost:10, subtasks:[] };
-  const nested = { kind:'work', quantity:1, unitCost:5, subtasks:[child] };
-  const stage = { kind:'stage', subtasks:[nested] };
-  assert.equal(lineTotal(child), 20);
+test('estimate is quantity times unit cost and rolls up through stages', () => {
+  const first = { kind:'work', quantity:2, unitCost:10, subtasks:[] };
+  const second = { kind:'work', quantity:1, unitCost:5, subtasks:[] };
+  const nestedStage = { kind:'stage', subtasks:[first, second] };
+  const stage = { kind:'stage', subtasks:[nestedStage] };
+  assert.equal(lineTotal(first), 20);
   assert.equal(rollupEstimate([stage]), 25);
   assert.equal(projectEstimateTotal([stage], [{ quantity:2, unitCost:3 }]), 31);
 });
