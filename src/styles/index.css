@@ -25,7 +25,7 @@
 @import url("./components/form-template.css");
 @import url("./features/contact-form-template.css");
 @import url("./workspace/navigation.css");
-@import url("./features/wbs-home.css?v=20260902-0230");
+@import url("./features/wbs-home.css?v=20260902-0240");
 
 body.global-surface #bottomNav,
 body.global-surface #tabbar,
@@ -83,9 +83,13 @@ body:not(.global-surface){background:#f2f3f5;}
 }
 .topbar:not(.workspace-context) .topbar-title.project-menu-trigger:not(.has-active-project) .app-title-main::after,
 .topbar:not(.workspace-context) .topbar-title.project-menu-trigger.has-active-project .app-title-main::after{
-  content:' ▾';
-  font-size:11px;
-  color:var(--text-dim);
+  content:'';
+  display:inline-block;
+  width:12px;
+  height:12px;
+  margin-inline-start:4px;
+  vertical-align:-2px;
+  background:center/12px 12px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath d='M7 10l5 5 5-5' fill='none' stroke='%23000' stroke-width='2'/%3E%3C/svg%3E");
 }
 .topbar:not(.workspace-context) .topbar-title.project-menu-trigger.has-active-project .app-title-main{
   max-width:34vw;
