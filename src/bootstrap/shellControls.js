@@ -146,7 +146,10 @@ function installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avata
     [avatarDefault, globalDefault].forEach(icon => icon?.classList?.toggle?.('hidden', !!photo));
     if(name) name.textContent = user?.displayName || (user ? 'کاربر' : 'مهمان');
     if(email) email.textContent = user?.email || 'وارد نشده‌اید';
-    if(signin) signin.textContent = user ? 'خروج از حساب' : 'ورود با گوگل';
+    if(signin){
+      signin.textContent = user ? 'خروج از حساب' : 'ورود با گوگل';
+      signin.dataset.authAction = user ? 'signout' : 'signin';
+    }
     avatar?.classList.toggle('is-guest', !user);
     avatar?.setAttribute('aria-label', user ? 'حساب کاربری' : 'ورود');
   };
@@ -224,6 +227,8 @@ export function bindShellControls({ windowRef = window, documentRef = document }
     close();
     windowRef.dispatchEvent(new windowRef.CustomEvent('karha:open-notebook'));
   });
+  byId(documentRef, 'drawerProfileBtn')?.addEventListener?.('click', closeGlobalMenu);
+  byId(documentRef, 'drawerGlobalTrashBtn')?.addEventListener?.('click', closeGlobalMenu);
   byId(documentRef, 'closeNotebookPage')?.addEventListener?.('click', () => {
     windowRef.dispatchEvent(new windowRef.CustomEvent('karha:close-notebook'));
   });
