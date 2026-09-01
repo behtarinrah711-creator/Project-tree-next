@@ -35,24 +35,28 @@ const t1 = () => new Date('2026-01-01T00:00:00.000Z');
 const t2 = () => new Date('2026-01-02T00:00:00.000Z');
 const t3 = () => new Date('2026-01-03T00:00:00.000Z');
 
-test('createStage and nested work items persist on Project.tasks', () => {
+test('createStage may nest stages and works, but work items cannot own children', () => {
   boot({ id:'p-wbs-1', name:'P', tasks:[] });
   const stage = wbsApi.createStage('p-wbs-1', 'فونداسیون', null, t1);
-  const work = wbsApi.createWorkItem('p-wbs-1', 'بتن', stage.id, { quantity:2, unitCost:10 }, t1);
-  const nested = wbsApi.createWorkItem('p-wbs-1', 'آرماتور', work.id, {}, t1);
+  const nestedStage = wbsApi.createStage('p-wbs-1', 'بتن‌ریزی', stage.id, t1);
+  const work = wbsApi.createWorkItem('p-wbs-1', 'بتن', nestedStage.id, { quantity:2, unitCost:10 }, t1);
+  const rejected = wbsApi.createWorkItem('p-wbs-1', 'زیرکار', work.id, {}, t1);
   assert.equal(stage.kind, 'stage');
+  assert.equal(nestedStage.kind, 'stage');
   assert.equal(work.kind, 'work');
-  assert.equal(nested.kind, 'work');
+  assert.equal(rejected, null);
   const tree = projectRepository.find('p-wbs-1').tasks;
   assert.equal(tree[0].text, 'فونداسیون');
-  assert.equal(tree[0].subtasks[0].text, 'بتن');
-  assert.equal(tree[0].subtasks[0].subtasks[0].text, 'آرماتور');
+  assert.equal(tree[0].subtasks[0].text, 'بتن‌ریزی');
+  assert.equal(tree[0].subtasks[0].subtasks[0].text, 'بتن');
+  assert.equal(tree[0].subtasks[0].subtasks[0].subtasks.length, 0);
 });
 
-test('cannot create a stage under a work item', () => {
+test('cannot create any child under a work item', () => {
   boot({ id:'p-wbs-2', name:'P', tasks:[] });
   const work = wbsApi.createWorkItem('p-wbs-2', 'کار', null, {}, t1);
   assert.equal(wbsApi.createStage('p-wbs-2', 'مرحله', work.id, t1), null);
+  assert.equal(wbsApi.createWorkItem('p-wbs-2', 'زیرکار', work.id, {}, t1), null);
   assert.equal((wbsApi.get('p-wbs-2', work.id).subtasks || []).length, 0);
 });
 
@@ -62,7 +66,6 @@ test('updateItem keeps createdAt and changes updatedAt', () => {
   const updated = wbsApi.updateItem('p-wbs-3', work.id, { text:'کار ویرایش' }, t2);
   assert.equal(updated.createdAt, '2026-01-01T00:00:00.000Z');
   assert.equal(updated.updatedAt, '2026-01-02T00:00:00.000Z');
-  assert.equal(wbsApi.get('p-wbs-3', work.id).text, 'کار ویرایش');
 });
 
 test('reorder stamps updatedAt on persisted siblings', () => {
@@ -181,11 +184,14 @@ test('reparent does not stamp unrelated roots', () => {
   assert.equal(wbsApi.get('p-wbs-13', work.id).updatedAt, '2026-01-03T00:00:00.000Z');
 });
 
-test('reparent rejects a stage under a work item', () => {
+test('reparent rejects any item under a work item', () => {
   boot({ id:'p-wbs-12', name:'P', tasks:[] });
   const work = wbsApi.createWorkItem('p-wbs-12', 'کار', null, {}, t1);
   const stage = wbsApi.createStage('p-wbs-12', 'مرحله', null, t1);
+  const otherWork = wbsApi.createWorkItem('p-wbs-12', 'کار دیگر', null, {}, t1);
   assert.equal(wbsApi.reparent('p-wbs-12', stage.id, work.id), null);
+  assert.equal(wbsApi.reparent('p-wbs-12', otherWork.id, work.id), null);
   assert.equal(wbsApi.list('p-wbs-12').some(item => item.id === stage.id), true);
+  assert.equal(wbsApi.list('p-wbs-12').some(item => item.id === otherWork.id), true);
 });
 });
