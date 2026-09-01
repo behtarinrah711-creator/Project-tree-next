@@ -116,6 +116,7 @@ body.global-surface #workspaceProjectContext { display: none !important; }
 .topbar.workspace-context .topbar-title.project-menu-trigger .app-title-project{display:inline;}
 
 /* The right drawer is project-only; account identity belongs to the left drawer. */
+#drawerOverlay{justify-content:flex-start;}
 #drawerOverlay > .drawer > .drawer-account,
 #drawerOverlay > .drawer > .drawer-section-title{display:none !important;}
 #drawerOverlay .drawer-add-project{order:1;margin-top:0;margin-bottom:6px;}
@@ -123,7 +124,7 @@ body.global-surface #workspaceProjectContext { display: none !important; }
 #drawerOverlay #drawerProjectsBtn{order:0;font-weight:600;border-bottom:1px solid var(--divider);margin-bottom:8px;}
 
 /* Account drawer opens from the left and starts with the authenticated identity. */
-#globalMenuOverlay{justify-content:flex-start;}
+#globalMenuOverlay{justify-content:flex-end;}
 #globalMenuOverlay > .drawer{box-shadow:2px 0 10px rgba(0,0,0,.15);}
 #globalMenuOverlay > .drawer > .drawer-account:not(#globalAccountHead){display:none;}
 .global-account-head{padding-bottom:12px;border-bottom:1px solid var(--divider);margin-bottom:10px;}
