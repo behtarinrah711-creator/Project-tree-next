@@ -16,9 +16,9 @@ body:has(.wbs-home-root) #tabbar{display:none;}
 .wbs-row.depth-4{padding-inline-start:72px;}
 .wbs-row.depth-5,.wbs-row.depth-6{padding-inline-start:88px;}
 .wbs-row.is-done .wbs-title{opacity:.7;}
-.wbs-grip{color:#bbb;font-size:12px;width:16px;order:99;}
-.wbs-check{width:12px;height:12px;border:1.5px solid #8a8176;border-radius:3px;background:#fff;padding:0;flex:0 0 12px;}
-.wbs-row.depth-0 .wbs-check{width:18px;height:18px;flex-basis:18px;}
+.wbs-grip{color:#bbb;font-size:12px;width:16px;flex:0 0 16px;order:99;}
+.wbs-check{box-sizing:border-box;appearance:none;-webkit-appearance:none;width:12px;height:12px;min-width:12px;max-width:12px;min-height:12px;max-height:12px;border:1.5px solid #8a8176;border-radius:3px;background:#fff;padding:0;margin:0;flex:0 0 12px;line-height:9px;font-size:9px;}
+.wbs-row.depth-0 .wbs-check{width:18px;height:18px;min-width:18px;max-width:18px;min-height:18px;max-height:18px;flex:0 0 18px;line-height:15px;font-size:12px;}
 .wbs-title{border:0;background:transparent;text-align:right;flex:1;font-size:14px;}
 .wbs-meta{font-size:11px;color:#6f675d;max-width:42%;}
 .wbs-add,.wbs-chev{border:0;background:transparent;min-width:32px;min-height:32px;}
