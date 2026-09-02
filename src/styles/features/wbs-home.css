@@ -5,10 +5,10 @@ body:has(.wbs-home-root){background:#f8f5f0;}
 .wbs-home-root{padding-top:10px;background:#f8f5f0;}
 .wbs-row.is-drop{background:#efe8dc;}
 .wbs-tabs{display:flex;gap:8px;padding:0 12px;margin:0 0 10px;}
-.wbs-tab{flex:1 1 25%;width:25%;min-width:0;border:1px solid #cfc7bb;background:#ece7df;color:#77706a;border-radius:5px;padding:2px 11px;min-height:40px;}
+.wbs-tab{flex:1 1 25%;width:25%;min-width:0;border:1px solid #cfc7bb;background:#fff;color:#77706a;border-radius:5px;padding:2px 11px;min-height:40px;}
 .wbs-tab.active{background:#2f2a24;color:#fff;border-color:#cfc7bb;}
 .wbs-toolbar{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,1fr);gap:8px;padding:0 12px 10px;margin:0;direction:rtl;}
-.wbs-root-add{box-sizing:border-box;width:100%;min-width:0;border:1px solid #cfc7bb;background:#ece7df;color:#77706a;border-radius:5px;padding:2px 12px;min-height:40px;}
+.wbs-root-add{box-sizing:border-box;width:100%;min-width:0;border:1px solid #cfc7bb;background:#fff;color:#77706a;border-radius:5px;padding:2px 12px;min-height:40px;}
 .wbs-tree-toggle{box-sizing:border-box;width:100%;min-width:0;min-height:40px;display:inline-flex;align-items:center;justify-content:center;border:1px solid #cfc7bb;border-radius:5px;background:#ece7df;color:#77706a;padding:2px 0;}
 .wbs-tree-toggle svg{width:24px;height:24px;display:block;fill:none;background:center/24px 24px no-repeat url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2377706a' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 3h4v4h-4zM3 17h4v4H3zm14 0h4v4h-4zM7 17l5-4 5 4M12 7v6'/%3E%3C/svg%3E");}
 .wbs-tree-toggle svg path{display:none;}
@@ -16,7 +16,7 @@ body:has(.wbs-home-root){background:#f8f5f0;}
 .wbs-tree-toggle.is-active svg{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M10 3h4v4h-4zM3 17h4v4H3zm14 0h4v4h-4zM7 17l5-4 5 4M12 7v6'/%3E%3C/svg%3E");}
 .wbs-tree{padding:0 10px 24px;}
 .wbs-card{background:transparent;border:1px solid #e4ddd3;border-radius:5px;margin-bottom:10px;overflow:hidden;}
-.wbs-card> .wbs-branch:first-of-type,.wbs-simple-card> .wbs-simple-branch:first-of-type{border-top:10px solid #fff;}
+.wbs-card> .wbs-branch:first-of-type,.wbs-simple-card> .wbs-simple-branch:first-of-type{display:block;margin-top:10px;border-top:0;}
 .wbs-row{display:flex;align-items:center;gap:8px;min-height:48px;padding:6px 8px;background:transparent;}
 .wbs-row.is-stage{background:#ece7df;border-radius:5px;}
 .wbs-row.is-stage.depth-0{background:#ddd5c9;border-radius:5px;}
