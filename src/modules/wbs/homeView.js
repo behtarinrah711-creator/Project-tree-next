@@ -115,6 +115,11 @@ function formatMoney(value){
   return new Intl.NumberFormat('fa-IR').format(n) + ' تومان';
 }
 
+function formatProgress(value){
+  const n = Number(value) || 0;
+  return `٪${new Intl.NumberFormat('fa-IR', { useGrouping:false, maximumFractionDigits:2 }).format(n)}`;
+}
+
 function breadcrumbFor(itemId){
   const located = locateUiItem(itemId);
   if(!located) return '';
@@ -178,7 +183,7 @@ function handleTreeDrop({ draggedId, targetId, targetKind }){
 
 function escapeHtml(value){
   return String(value ?? '').replace(/[&<>"']/g, ch => ({
-    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;',
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;',
   }[ch]));
 }
 
@@ -549,7 +554,7 @@ function renderRow(item, codes, view, depth){
   }
   if(view === 'estimate' && stage) meta.push(new Intl.NumberFormat('fa-IR').format(rollupEstimate([item])));
   if(view === 'progress'){
-    meta.push(stage ? `${rollupProgress([item])}%` : `${item.progress || (item.done ? 100 : 0)}%`);
+    meta.push(formatProgress(stage ? rollupProgress([item]) : (item.progress || (item.done ? 100 : 0))));
   }
   if(view === 'register' && isWork(item) && activityIdsOf(item).length){
     meta.push(`${activityIdsOf(item).length} فعالیت`);
@@ -565,7 +570,7 @@ function renderRow(item, codes, view, depth){
       ${code ? `<b>${escapeHtml(code)}</b>` : ''}
       <span class="wbs-title-text">${escapeHtml(item.text || '')}</span>
     </button>
-    <span class="wbs-meta${view === 'estimate' ? ' is-estimate' : ''}">${escapeHtml(meta.join(' · '))}</span>
+    <span class="wbs-meta${view === 'estimate' ? ' is-estimate' : ''}${view === 'progress' ? ' is-progress' : ''}">${escapeHtml(meta.join(' · '))}</span>
     ${stage && !readOnlyView ? `<button type="button" class="wbs-add" aria-label="افزودن">+</button>` : ''}
   `;
   row.querySelector('.wbs-check')?.addEventListener('click', ev => {
