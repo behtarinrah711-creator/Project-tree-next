@@ -1,1 +1,708 @@
-PLACEHOLDER
+import { projectContext } from '../../core/projectContext.js';
+import { projectRepository } from '../../data/projectRepository.js';
+import { wbsApi } from '../../domain/wbs/wbsApi.js';
+import { generalCostApi } from '../../domain/wbs/generalCostApi.js';
+import {
+  WORK_TYPES,
+  UNITS,
+  activityIdsOf,
+  isStage,
+  isWork,
+  lineTotal,
+  wbsCodeMap,
+} from '../../domain/wbs/normalize.js';
+import { rollupEstimate, rollupProgress } from '../../domain/wbs/estimate.js';
+import { activityRepository } from '../../data/activityRepository.js';
+import {
+  bindLiveTotal,
+  closeWbsSheet,
+  fieldRow,
+  openActivitySearchPicker,
+  openWbsSheet,
+  renderAttachedActivities,
+  selectInput,
+  textInput,
+} from './wbsSheet.js';
+import { applyDrop, bindRowDrag } from './wbsDrag.js';
+import {
+  collapseAll,
+  expandAll,
+  isExpanded,
+  toggleExpanded,
+} from './wbsExpandState.js';
+
+const VIEWS = [
+  { id:'simple', label:'ساده' },
+  { id:'register', label:'ثبت' },
+  { id:'estimate', label:'برآورد' },
+  { id:'progress', label:'پیشرفت' },
+];
+
+const SIMPLE_TYPE_CLASSES = new Map([
+  ['اجرا', 'type-1'],
+  ['خرید', 'type-2'],
+  ['نیروی کار', 'type-3'],
+  ['پیمانکار', 'type-4'],
+  ['کرایه', 'type-5'],
+  ['خدمات', 'type-6'],
+]);
+
+let currentView = 'simple';
+let explicitProjectId = null;
+let tabRenderFrame = 0;
+const treeOpenByProject = new Map();
+
+function projectIdOf(){
+  return explicitProjectId || projectContext.getProjectId?.() || projectContext.getActiveProjectId?.() || null;
+}
+function projectOf(){
+  const id = projectIdOf();
+  return id ? projectRepository.getActiveProject(id) : null;
+}
+function treeOpen(projectId){
+  const key = String(projectId || '');
+  return treeOpenByProject.has(key) ? treeOpenByProject.get(key) : true;
+}
+function setTreeOpen(projectId, value){
+  treeOpenByProject.set(String(projectId || ''), Boolean(value));
+}
+function ensureTreeState(project){
+  const key = String(project?.id || '');
+  if(!key || treeOpenByProject.has(key)) return;
+  treeOpenByProject.set(key, true);
+  expandAll(project.id, project.tasks || []);
+}
+function scheduleTabRender(target, projectId){
+  if(tabRenderFrame) cancelAnimationFrame(tabRenderFrame);
+  tabRenderFrame = requestAnimationFrame(() => {
+    tabRenderFrame = 0;
+    renderWbsHome(target, projectId);
+  });
+}
+
+function parentIdOf(itemId){
+  const walk = (nodes, parentId = null) => {
+    for(const node of nodes || []){
+      if(String(node.id) === String(itemId)) return parentId;
+      const hit = walk(node.subtasks, node.id);
+      if(hit !== undefined) return hit;
+    }
+  };
+  return walk(wbsApi.list(projectIdOf()), null) ?? null;
+}
+
+function locateUiItem(itemId){
+  const project = projectOf();
+  let found = null;
+  const walk = (nodes, parent = null, rootId = null, path = []) => {
+    for(const node of nodes || []){
+      const root = rootId || node.id;
+      const nextPath = [...path, node];
+      if(String(node.id) === String(itemId)){
+        found = { item:node, parent, rootId:root, path:nextPath };
+        return true;
+      }
+      if(walk(node.subtasks, node, root, nextPath)) return true;
+    }
+    return false;
+  };
+  walk(project?.tasks || []);
+  return found;
+}
+
+function formatMoney(value){
+  const n = Number(value) || 0;
+  return new Intl.NumberFormat('fa-IR').format(n) + ' تومان';
+}
+
+function breadcrumbFor(itemId){
+  const located = locateUiItem(itemId);
+  if(!located) return '';
+  const names = located.path.slice(0, -1).map(node => node.text).filter(Boolean);
+  return names.join(' ← ');
+}
+
+function descendantSummary(stage){
+  let stages = 0;
+  let works = 0;
+  const walk = nodes => (nodes || []).forEach(node => {
+    if(!node || node.trashed) return;
+    if(isStage(node)) stages += 1;
+    else works += 1;
+    walk(node.subtasks);
+  });
+  walk(stage.subtasks);
+  return { stages, works };
+}
+
+function requestDelete(item){
+  const located = locateUiItem(item.id);
+  if(!located) return;
+  const stage = isStage(item);
+  const perform = () => {
+    const type = located.parent ? 'sub' : 'task';
+    const sid = located.parent ? item.id : null;
+    const label = stage ? 'مرحله حذف شد' : 'کار حذف شد';
+    const softDelete = window.KarhaSoftDelete?.softDelete;
+    if(typeof softDelete !== 'function') return;
+    if(softDelete(type, projectIdOf(), located.rootId, sid, label)){
+      closeWbsSheet();
+      render();
+    }
+  };
+  const message = stage
+    ? 'این مرحله و تمام زیرمجموعه‌های آن حذف شوند؟'
+    : 'این کار حذف شود؟';
+  if(typeof window.KarhaUI?.openConfirm === 'function'){
+    window.KarhaUI.openConfirm(message, perform, 'حذف');
+  }else if(window.confirm(message)){
+    perform();
+  }
+}
+
+function handleTreeDrop({ draggedId, targetId, targetKind }){
+  const projectId = projectIdOf();
+  const ok = applyDrop({
+    draggedId,
+    targetId,
+    targetKind,
+    onReparentInto(id, parentId){
+      return wbsApi.reparent(projectId, id, parentId);
+    },
+    onReorderSiblings(id, beforeId){
+      return wbsApi.reparent(projectId, id, parentIdOf(beforeId), beforeId);
+    },
+  });
+  if(ok) render();
+}
+
+function escapeHtml(value){
+  return String(value ?? '').replace(/[&<>"']/g, ch => ({
+    '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;',
+  }[ch]));
+}
+
+function summaryHeader(root, kind, current, subtitle = ''){
+  const wrap = document.createElement('div');
+  wrap.className = 'wbs-detail-summary';
+  const kindEl = document.createElement('div');
+  kindEl.className = 'wbs-detail-kind';
+  kindEl.textContent = kind;
+  const title = document.createElement('div');
+  title.className = 'wbs-detail-title';
+  title.textContent = current.text || '';
+  wrap.append(kindEl, title);
+  if(subtitle){
+    const trail = document.createElement('div');
+    trail.className = 'wbs-detail-breadcrumb';
+    trail.textContent = subtitle;
+    wrap.appendChild(trail);
+  }
+  root.appendChild(wrap);
+}
+
+function infoRow(label, value, { action = false, danger = false, onClick = null } = {}){
+  const row = document.createElement(onClick ? 'button' : 'div');
+  if(onClick) row.type = 'button';
+  row.className = 'wbs-info-row' + (action ? ' is-action' : '') + (danger ? ' is-danger' : '');
+  const labelEl = document.createElement('span');
+  labelEl.className = 'wbs-info-label';
+  labelEl.textContent = label;
+  const valueEl = document.createElement('span');
+  valueEl.className = 'wbs-info-value';
+  valueEl.textContent = value ?? '';
+  row.append(labelEl, valueEl);
+  if(onClick) row.addEventListener('click', onClick);
+  return row;
+}
+
+function openCreateStageSheet(parentId = null){
+  openWbsSheet({
+    title: parentId ? 'افزودن زیرمرحله' : 'افزودن مرحله',
+    saveLabel: 'ذخیره',
+    body(root){
+      root.appendChild(fieldRow('نام مرحله', textInput('', { name:'title', placeholder:'نام مرحله' })));
+    },
+    onSave(root){
+      const title = root.querySelector('[name="title"]').value.trim();
+      if(!title) return false;
+      wbsApi.createStage(projectIdOf(), title, parentId);
+      render();
+      return true;
+    },
+  });
+}
+
+function openCreateWorkSheet(parentId = null){
+  openWbsSheet({
+    title: 'افزودن کار',
+    saveLabel: 'ذخیره',
+    body(root){
+      root.appendChild(fieldRow('عنوان کار', textInput('', { name:'title', placeholder:'عنوان کار' })));
+    },
+    onSave(root){
+      const title = root.querySelector('[name="title"]').value.trim();
+      if(!title) return false;
+      wbsApi.createWorkItem(projectIdOf(), title, parentId);
+      render();
+      return true;
+    },
+  });
+}
+
+function openAddMenu(stageId){
+  openWbsSheet({
+    title: 'افزودن',
+    saveLabel: 'بستن',
+    body(root){
+      const stageBtn = document.createElement('button');
+      stageBtn.type = 'button';
+      stageBtn.className = 'wbs-choice';
+      stageBtn.textContent = 'افزودن زیرمرحله';
+      stageBtn.addEventListener('click', () => { closeWbsSheet(); openCreateStageSheet(stageId); });
+      const workBtn = document.createElement('button');
+      workBtn.type = 'button';
+      workBtn.className = 'wbs-choice';
+      workBtn.textContent = 'افزودن کار';
+      workBtn.addEventListener('click', () => { closeWbsSheet(); openCreateWorkSheet(stageId); });
+      root.append(stageBtn, workBtn);
+    },
+    onSave(){ return true; },
+  });
+}
+
+function openStageEditSheet(item){
+  const current = wbsApi.get(projectIdOf(), item.id) || item;
+  openWbsSheet({
+    title: 'ویرایش مرحله',
+    saveLabel: 'ذخیره',
+    body(root){
+      root.appendChild(fieldRow('نام مرحله', textInput(current.text || '', { name:'title' })));
+      root.appendChild(fieldRow('توضیحات', textInput(current.description || '', { name:'description' })));
+    },
+    onSave(root){
+      const title = root.querySelector('[name="title"]').value.trim();
+      if(!title) return false;
+      wbsApi.updateItem(projectIdOf(), current.id, {
+        text:title,
+        description:root.querySelector('[name="description"]').value,
+      });
+      render();
+      return true;
+    },
+  });
+}
+
+function openStageDetailSheet(item){
+  const current = wbsApi.get(projectIdOf(), item.id) || item;
+  const summary = descendantSummary(current);
+  openWbsSheet({
+    title: 'جزئیات مرحله',
+    saveLabel: 'بستن',
+    body(root){
+      summaryHeader(root, 'مرحله', current, breadcrumbFor(current.id));
+      const metrics = document.createElement('div');
+      metrics.className = 'wbs-stage-metrics';
+      metrics.innerHTML = `
+        <div><b>${summary.stages}</b><span>زیرمرحله</span></div>
+        <div><b>${summary.works}</b><span>کار</span></div>
+        <div><b>${escapeHtml(formatMoney(rollupEstimate([current])))}</b><span>برآورد</span></div>
+      `;
+      root.appendChild(metrics);
+
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'wbs-primary-action';
+      add.textContent = '+ افزودن';
+      add.addEventListener('click', () => { closeWbsSheet(); openAddMenu(current.id); });
+      root.appendChild(add);
+
+      const section = document.createElement('div');
+      section.className = 'wbs-info-section';
+      section.appendChild(infoRow('توضیحات', current.description || 'بدون توضیح'));
+      section.appendChild(infoRow('ویرایش مرحله', '›', { action:true, onClick:()=>{ closeWbsSheet(); openStageEditSheet(current); } }));
+      section.appendChild(infoRow('جابجایی مرحله', 'از دستگیره فهرست', { action:true, onClick:()=>closeWbsSheet() }));
+      section.appendChild(infoRow('حذف مرحله', 'حذف', { action:true, danger:true, onClick:()=>requestDelete(current) }));
+      root.appendChild(section);
+    },
+    onSave(){ return true; },
+  });
+}
+
+function openWorkEditSheet(item){
+  const current = wbsApi.get(projectIdOf(), item.id) || item;
+  openWbsSheet({
+    title: 'ویرایش کار',
+    saveLabel: 'ذخیره',
+    body(root){
+      root.appendChild(fieldRow('عنوان', textInput(current.text || '', { name:'title' })));
+      root.appendChild(fieldRow('وضعیت', selectInput([
+        { value:'not_started', label:'شروع نشده' },
+        { value:'in_progress', label:'در حال انجام' },
+        { value:'completed', label:'انجام‌شده' },
+      ], current.status || (current.done ? 'completed' : 'not_started'))));
+      root.lastChild.querySelector('select').name = 'status';
+      root.appendChild(fieldRow('پیشرفت ٪', textInput(String(current.progress || 0), { name:'progress', type:'number' })));
+      root.appendChild(fieldRow('اولویت', selectInput([
+        { value:'', label:'—' },
+        { value:'low', label:'کم' },
+        { value:'normal', label:'عادی' },
+        { value:'high', label:'زیاد' },
+      ], current.priority || '')));
+      root.lastChild.querySelector('select').name = 'priority';
+      root.appendChild(fieldRow('نوع', selectInput(
+        [{ value:'', label:'—' }, ...WORK_TYPES.map(t => ({ value:t, label:t }))],
+        current.type || ''
+      )));
+      root.lastChild.querySelector('select').name = 'type';
+      const acts = document.createElement('div');
+      const paintActivities = () => {
+        const latest = wbsApi.get(projectIdOf(), current.id) || current;
+        const catalog = (activityRepository.list(projectIdOf()) || []).filter(item => !item.trashed);
+        renderAttachedActivities(acts, {
+          attached: activityIdsOf(latest),
+          catalog,
+          onDetach(id){
+            wbsApi.detachActivity(projectIdOf(), current.id, id);
+            paintActivities();
+          },
+          onAdd(){
+            const attached = new Set(activityIdsOf(wbsApi.get(projectIdOf(), current.id) || current));
+            const catalog = (activityRepository.list(projectIdOf()) || []).filter(item => !item.trashed && !attached.has(String(item.id)));
+            openActivitySearchPicker(catalog, activityId => {
+              wbsApi.attachActivity(projectIdOf(), current.id, activityId);
+              paintActivities();
+            });
+          },
+        });
+      };
+      paintActivities();
+      root.appendChild(acts);
+      const qty = textInput(String(current.quantity || 0), { name:'quantity', type:'number' });
+      const cost = textInput(String(current.unitCost || 0), { name:'unitCost', type:'number' });
+      root.appendChild(fieldRow('مقدار', qty));
+      root.appendChild(fieldRow('واحد', selectInput(
+        [{ value:'', label:'—' }, ...UNITS.map(u => ({ value:u, label:u }))],
+        current.unit || ''
+      )));
+      root.lastChild.querySelector('select').name = 'unit';
+      root.appendChild(fieldRow('فی', cost));
+      const total = document.createElement('div');
+      total.className = 'wbs-note wbs-live-total';
+      root.appendChild(total);
+      bindLiveTotal(qty, cost, total);
+      root.appendChild(fieldRow('توضیح', textInput(current.description || '', { name:'description' })));
+    },
+    onSave(root){
+      const title = root.querySelector('[name="title"]').value.trim();
+      if(!title) return false;
+      wbsApi.updateItem(projectIdOf(), current.id, {
+        text: title,
+        status: root.querySelector('[name="status"]').value,
+        progress: Number(root.querySelector('[name="progress"]').value) || 0,
+        priority: root.querySelector('[name="priority"]').value,
+        type: root.querySelector('[name="type"]').value,
+        quantity: Number(root.querySelector('[name="quantity"]').value) || 0,
+        unit: root.querySelector('[name="unit"]').value,
+        unitCost: Number(root.querySelector('[name="unitCost"]').value) || 0,
+        description: root.querySelector('[name="description"]').value,
+      });
+      render();
+      return true;
+    },
+  });
+}
+
+function openWorkDetailSheet(item){
+  const current = wbsApi.get(projectIdOf(), item.id) || item;
+  const activities = activityIdsOf(current);
+  openWbsSheet({
+    title: 'جزئیات کار',
+    saveLabel: 'بستن',
+    body(root){
+      summaryHeader(root, 'کار', current, breadcrumbFor(current.id));
+
+      const total = document.createElement('div');
+      total.className = 'wbs-work-total';
+      total.innerHTML = `<span>هزینه کل</span><b>${escapeHtml(formatMoney(lineTotal(current)))}</b>`;
+      root.appendChild(total);
+
+      const section = document.createElement('div');
+      section.className = 'wbs-info-section';
+      section.appendChild(infoRow('مقدار', new Intl.NumberFormat('fa-IR').format(Number(current.quantity) || 0)));
+      section.appendChild(infoRow('واحد', current.unit || '—'));
+      section.appendChild(infoRow('فی', formatMoney(current.unitCost || 0)));
+      section.appendChild(infoRow('فعالیت‌ها', `${activities.length}  ›`, { action:true, onClick:()=>{ closeWbsSheet(); openWorkEditSheet(current); } }));
+      section.appendChild(infoRow('توضیحات', current.description || 'بدون توضیح'));
+      root.appendChild(section);
+
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'wbs-primary-action is-secondary';
+      edit.textContent = 'ویرایش اطلاعات کار';
+      edit.addEventListener('click', () => { closeWbsSheet(); openWorkEditSheet(current); });
+      root.appendChild(edit);
+
+      const actions = document.createElement('div');
+      actions.className = 'wbs-info-section';
+      actions.appendChild(infoRow('جابجایی کار', 'از دستگیره فهرست', { action:true, onClick:()=>closeWbsSheet() }));
+      actions.appendChild(infoRow('حذف کار', 'حذف', { action:true, danger:true, onClick:()=>requestDelete(current) }));
+      root.appendChild(actions);
+    },
+    onSave(){ return true; },
+  });
+}
+
+function openGeneralCreateSheet(){
+  openWbsSheet({
+    title: 'هزینه عمومی',
+    body(root){
+      root.appendChild(fieldRow('عنوان', textInput('', { name:'title', placeholder:'عنوان' })));
+    },
+    onSave(root){
+      const title = root.querySelector('[name="title"]').value.trim();
+      if(!title) return false;
+      generalCostApi.create(projectIdOf(), title);
+      render();
+      return true;
+    },
+  });
+}
+
+function openGeneralDetailSheet(item){
+  openWbsSheet({
+    title: 'جزئیات هزینه عمومی',
+    body(root){
+      root.appendChild(fieldRow('عنوان', textInput(item.title || '', { name:'title' })));
+      const qty = textInput(String(item.quantity || 0), { name:'quantity', type:'number' });
+      const cost = textInput(String(item.unitCost || 0), { name:'unitCost', type:'number' });
+      root.appendChild(fieldRow('مقدار', qty));
+      root.appendChild(fieldRow('واحد', selectInput(
+        [{ value:'', label:'—' }, ...UNITS.map(u => ({ value:u, label:u }))],
+        item.unit || ''
+      )));
+      root.lastChild.querySelector('select').name = 'unit';
+      root.appendChild(fieldRow('فی', cost));
+      const total = document.createElement('div');
+      total.className = 'wbs-note wbs-live-total';
+      root.appendChild(total);
+      bindLiveTotal(qty, cost, total);
+    },
+    onSave(root){
+      generalCostApi.update(projectIdOf(), item.id, {
+        title: root.querySelector('[name="title"]').value.trim() || item.title,
+        quantity: Number(root.querySelector('[name="quantity"]').value) || 0,
+        unit: root.querySelector('[name="unit"]').value,
+        unitCost: Number(root.querySelector('[name="unitCost"]').value) || 0,
+      });
+      render();
+      return true;
+    },
+  });
+}
+
+function renderSimpleRow(item, depth){
+  const stage = isStage(item);
+  const kids = (item.subtasks || []).filter(x => !x.trashed);
+  const open = !stage || isExpanded(projectIdOf(), item.id);
+  const rawType = isWork(item) && WORK_TYPES.includes(item.type) ? item.type : '';
+  const chipLabel = rawType || '؟';
+  const chipClass = rawType ? (SIMPLE_TYPE_CLASSES.get(rawType) || 'type-7') : 'type-7';
+  const row = document.createElement('div');
+  row.className = 'wbs-simple-row depth-' + Math.min(6, depth) + (item.done ? ' is-done' : '') + (stage ? ' is-stage' : ' is-work');
+  row.innerHTML = `
+    <button type="button" class="wbs-check" aria-label="وضعیت">${item.done ? '✓' : ''}</button>
+    <button type="button" class="wbs-simple-title">
+      ${stage ? '' : `<span class="wbs-type-chip ${chipClass}">${escapeHtml(chipLabel)}</span>`}
+      <span class="wbs-simple-title-text">${escapeHtml(item.text || '')}</span>
+    </button>
+  `;
+  row.querySelector('.wbs-check')?.addEventListener('click', ev => {
+    ev.stopPropagation();
+    if(isWork(item)) wbsApi.updateItem(projectIdOf(), item.id, { done: !item.done, status: item.done ? 'not_started' : 'completed' });
+    render();
+  });
+  row.querySelector('.wbs-simple-title')?.addEventListener('click', ev => {
+    ev.stopPropagation();
+    if(isWork(item)) openWorkDetailSheet(item);
+    else openStageDetailSheet(item);
+  });
+  const wrap = document.createElement('div');
+  wrap.className = depth === 0 ? 'wbs-card wbs-simple-card' : 'wbs-branch wbs-simple-branch';
+  wrap.appendChild(row);
+  if(open) kids.forEach(child => wrap.appendChild(renderSimpleRow(child, depth + 1)));
+  return wrap;
+}
+
+function renderRow(item, codes, view, depth){
+  const stage = isStage(item);
+  const kids = (item.subtasks || []).filter(x => !x.trashed);
+  const open = isExpanded(projectIdOf(), item.id);
+  const code = stage ? (codes.get(String(item.id)) || '') : '';
+  const rawType = isWork(item) && WORK_TYPES.includes(item.type) ? item.type : '';
+  const chipLabel = rawType || '؟';
+  const chipClass = rawType ? (SIMPLE_TYPE_CLASSES.get(rawType) || 'type-7') : 'type-7';
+  const readOnlyView = view === 'estimate' || view === 'progress';
+  const meta = [];
+  if(view === 'estimate' && isWork(item)){
+    meta.push(new Intl.NumberFormat('fa-IR').format(lineTotal(item)));
+  }
+  if(view === 'estimate' && stage) meta.push(new Intl.NumberFormat('fa-IR').format(rollupEstimate([item])));
+  if(view === 'progress'){
+    meta.push(stage ? `${rollupProgress([item])}%` : `${item.progress || (item.done ? 100 : 0)}%`);
+  }
+  if(view === 'register' && isWork(item) && activityIdsOf(item).length){
+    meta.push(`${activityIdsOf(item).length} فعالیت`);
+  }
+  const row = document.createElement('div');
+  row.className = 'wbs-row depth-' + Math.min(6, depth) + (item.done ? ' is-done' : '') + (stage ? ' is-stage' : ' is-work');
+  row.innerHTML = `
+    ${readOnlyView ? '' : '<span class="wbs-grip" aria-hidden="true">⋮⋮</span>'}
+    <button type="button" class="wbs-check" aria-label="وضعیت">${item.done ? '✓' : ''}</button>
+    ${kids.length ? `<button type="button" class="wbs-chev" aria-label="${open?'بستن':'باز کردن'}">${open?'▾':'▸'}</button>` : '<span class="wbs-chev-spacer"></span>'}
+    <button type="button" class="wbs-title">
+      ${stage ? '' : `<span class="wbs-type-chip ${chipClass}">${escapeHtml(chipLabel)}</span>`}
+      ${code ? `<b>${escapeHtml(code)}</b>` : ''}
+      <span class="wbs-title-text">${escapeHtml(item.text || '')}</span>
+    </button>
+    <span class="wbs-meta${view === 'estimate' ? ' is-estimate' : ''}">${escapeHtml(meta.join(' · '))}</span>
+    ${stage && !readOnlyView ? `<button type="button" class="wbs-add" aria-label="افزودن">+</button>` : ''}
+  `;
+  row.querySelector('.wbs-check')?.addEventListener('click', ev => {
+    ev.stopPropagation();
+    if(isWork(item)) wbsApi.updateItem(projectIdOf(), item.id, { done: !item.done, status: item.done ? 'not_started' : 'completed' });
+    render();
+  });
+  row.querySelector('.wbs-chev')?.addEventListener('click', ev => {
+    ev.stopPropagation();
+    toggleExpanded(projectIdOf(), String(item.id));
+    render();
+  });
+  row.querySelector('.wbs-title')?.addEventListener('click', ev => {
+    ev.stopPropagation();
+    if(isWork(item)) openWorkDetailSheet(item);
+    else openStageDetailSheet(item);
+  });
+  row.querySelector('.wbs-add')?.addEventListener('click', ev => {
+    ev.stopPropagation();
+    openAddMenu(item.id);
+  });
+  if(!readOnlyView){
+    bindRowDrag(row, {
+      id: item.id,
+      kind: stage ? 'stage' : 'work',
+      onDrop: handleTreeDrop,
+    });
+  }
+  const wrap = document.createElement('div');
+  wrap.className = depth === 0 ? 'wbs-card' : 'wbs-branch';
+  wrap.appendChild(row);
+  if(open) kids.forEach(child => wrap.appendChild(renderRow(child, codes, view, depth + 1)));
+  return wrap;
+}
+
+export function renderWbsHome(target = document.getElementById('content'), projectId = null){
+  if(!target) return;
+  explicitProjectId = projectId || explicitProjectId;
+  const project = projectOf();
+  target.innerHTML = '';
+  if(!project || project.archived || project.trashed){
+    target.innerHTML = '<div class="workspace-no-project">برای ورود به Workspace، از منوی سه‌خطی بالای صفحه یک پروژه را انتخاب کنید.</div>';
+    return;
+  }
+  ensureTreeState(project);
+
+  const root = document.createElement('div');
+  root.className = 'wbs-home-root' + (currentView === 'simple' ? ' is-simple-view' : '');
+  target.appendChild(root);
+
+  const tabs = document.createElement('div');
+  tabs.className = 'wbs-tabs';
+  tabs.setAttribute('role', 'tablist');
+  VIEWS.forEach(view => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'wbs-tab' + (currentView === view.id ? ' active' : '');
+    btn.setAttribute('role', 'tab');
+    btn.setAttribute('aria-selected', currentView === view.id ? 'true' : 'false');
+    btn.textContent = view.label;
+    btn.addEventListener('click', () => {
+      if(currentView === view.id) return;
+      currentView = view.id;
+      scheduleTabRender(target, project.id);
+    });
+    tabs.appendChild(btn);
+  });
+  root.appendChild(tabs);
+
+  const toolbar = document.createElement('div');
+  toolbar.className = 'wbs-toolbar';
+  const addRoot = document.createElement('button');
+  addRoot.type = 'button';
+  addRoot.className = 'wbs-root-add';
+  addRoot.textContent = '+ مرحله';
+  addRoot.addEventListener('click', () => openCreateStageSheet(null));
+
+  const treeToggle = document.createElement('button');
+  const isTreeOpen = treeOpen(project.id);
+  treeToggle.type = 'button';
+  treeToggle.className = 'wbs-tree-toggle' + (isTreeOpen ? ' is-active' : '');
+  treeToggle.setAttribute('aria-label', isTreeOpen ? 'بستن نمودار' : 'باز کردن نمودار');
+  treeToggle.setAttribute('aria-pressed', isTreeOpen ? 'true' : 'false');
+  treeToggle.innerHTML = `
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M4 3h6v5H8v3h8V9h-2V4h6v5h-2v3a1 1 0 0 1-1 1h-4v2h2v-1h6v6h-6v-3h-6v3H3v-6h6v1h2v-2H7a1 1 0 0 1-1-1V8H4V3Zm2 2v1h2V5H6Zm10 1h2V5h-2v1ZM5 16v2h2v-2H5Zm12 0v2h2v-2h-2Z"/>
+    </svg>`;
+  treeToggle.addEventListener('click', () => {
+    const nextOpen = !treeOpen(project.id);
+    setTreeOpen(project.id, nextOpen);
+    if(nextOpen) expandAll(project.id, project.tasks || []);
+    else collapseAll(project.id);
+    renderWbsHome(target, project.id);
+  });
+  toolbar.append(addRoot, treeToggle);
+  root.appendChild(toolbar);
+
+  const tree = document.createElement('div');
+  tree.className = 'wbs-tree';
+  const items = (project.tasks || []).filter(x => !x.trashed);
+  const simple = currentView === 'simple';
+  const codes = simple ? new Map() : wbsCodeMap(items);
+  if(!items.length) tree.innerHTML = '<div class="empty-state">مرحله یا کاری ثبت نشده است.</div>';
+  else items.forEach(item => tree.appendChild(simple ? renderSimpleRow(item, 0) : renderRow(item, codes, currentView, 0)));
+  root.appendChild(tree);
+
+  if(currentView === 'estimate'){
+    const box = document.createElement('section');
+    box.className = 'wbs-general';
+    const heading = document.createElement('h3');
+    heading.textContent = 'هزینه‌های عمومی';
+    box.appendChild(heading);
+    generalCostApi.list(project.id).forEach(item => {
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'wbs-general-row';
+      const amount = (Number(item.quantity) || 0) * (Number(item.unitCost) || 0);
+      row.innerHTML = `<span>${escapeHtml(item.title || '')}</span><span class="wbs-general-amount">${escapeHtml(new Intl.NumberFormat('fa-IR').format(amount))}</span>`;
+      row.addEventListener('click', () => openGeneralDetailSheet(item));
+      box.appendChild(row);
+    });
+    const addG = document.createElement('button');
+    addG.type = 'button';
+    addG.textContent = '+ افزودن هزینه عمومی';
+    addG.addEventListener('click', openGeneralCreateSheet);
+    box.appendChild(addG);
+    const total = document.createElement('div');
+    total.className = 'wbs-total';
+    total.textContent = `جمع برآورد پروژه: ${new Intl.NumberFormat('fa-IR').format(wbsApi.estimate(project.id).projectTotal)}`;
+    box.appendChild(total);
+    root.appendChild(box);
+  }
+}
+
+export function render(){
+  const content = document.getElementById('content');
+  renderWbsHome(content, explicitProjectId);
+}
+
+export default { renderWbsHome };
