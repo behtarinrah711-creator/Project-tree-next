@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { canAcceptChild, itemKind, isStage, isWork, lineTotal, normalizeItem } from './normalize.js';
-import { projectEstimateTotal, rollupEstimate } from './estimate.js';
+import { canAcceptChild, itemKind, isStage, isWork, lineTotal, normalizeItem, progressWeightOf } from './normalize.js';
+import { projectEstimateTotal, rollupEstimate, rollupProgress } from './estimate.js';
 import { stampCreate, stampUpdate } from './timestamps.js';
 import { validateWbsExport, WBS_EXPORT_SCHEMA } from './exportSchema.js';
 
@@ -16,6 +16,27 @@ test('stage may hold stage or work; work is always a terminal leaf', () => {
   assert.equal(canAcceptChild({ kind:'stage' }, 'work'), true);
   assert.equal(canAcceptChild({ kind:'work' }, 'work'), false);
   assert.equal(canAcceptChild({ kind:'work' }, 'stage'), false);
+});
+
+test('a stage cannot mix stage children with work children', () => {
+  assert.equal(canAcceptChild({ kind:'stage', subtasks:[{ kind:'stage' }] }, 'stage'), true);
+  assert.equal(canAcceptChild({ kind:'stage', subtasks:[{ kind:'stage' }] }, 'work'), false);
+  assert.equal(canAcceptChild({ kind:'stage', subtasks:[{ kind:'work' }] }, 'work'), true);
+  assert.equal(canAcceptChild({ kind:'stage', subtasks:[{ kind:'work' }] }, 'stage'), false);
+});
+
+test('progress weights default to one and roll up recursively', () => {
+  const tree = [{ kind:'stage', progressWeight:2, subtasks:[
+    { kind:'stage', progressWeight:1, subtasks:[
+      { kind:'work', progressWeight:1, progress:100 },
+      { kind:'work', progressWeight:3, progress:0 },
+    ] },
+    { kind:'stage', progressWeight:3, subtasks:[
+      { kind:'work', progressWeight:1, progress:100 },
+    ] },
+  ] }];
+  assert.equal(progressWeightOf({}), 1);
+  assert.equal(rollupProgress(tree), 81);
 });
 
 test('estimate is quantity times unit cost and rolls up through stages', () => {

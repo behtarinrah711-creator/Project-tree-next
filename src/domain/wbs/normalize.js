@@ -42,6 +42,11 @@ export function progressOf(item){
   return Math.max(0, Math.min(100, n));
 }
 
+export function progressWeightOf(item){
+  const n = Number(item?.progressWeight);
+  return Number.isFinite(n) && n > 0 ? n : 1;
+}
+
 export function quantityOf(item){
   const n = Number(item?.quantity);
   return Number.isFinite(n) ? n : 0;
@@ -84,7 +89,11 @@ export function findInTree(items, id){
 
 export function canAcceptChild(parent, childKind){
   if(!parent) return childKind === KIND_STAGE || childKind === KIND_WORK;
-  return isStage(parent) && (childKind === KIND_STAGE || childKind === KIND_WORK);
+  if(!isStage(parent) || (childKind !== KIND_STAGE && childKind !== KIND_WORK)) return false;
+  const existingKinds = new Set((parent.subtasks || [])
+    .filter(child => child && !child.trashed)
+    .map(itemKind));
+  return existingKinds.size === 0 || (existingKinds.size === 1 && existingKinds.has(childKind));
 }
 
 export function normalizeItem(item){
@@ -102,6 +111,7 @@ export function normalizeItem(item){
     status,
     done,
     progress: progressOf(item),
+    progressWeight: progressWeightOf(item),
     quantity: quantityOf(item),
     unit: item.unit || '',
     unitCost: unitCostOf(item),
