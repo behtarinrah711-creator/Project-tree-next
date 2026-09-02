@@ -1,7 +1,7 @@
 export const KIND_STAGE = 'stage';
 export const KIND_WORK = 'work';
 
-export const WORK_TYPES = ['اجرا', 'خرید', 'نیروی کار', 'پیمانکار', 'کرایه', 'خدمات'];
+export const WORK_TYPES = ['اجرا', 'خرید', 'نیروی کار', 'پیمانکار', 'کرایه', 'خدمات', 'پیگیری'];
 export const UNITS = ['متر', 'مترمربع', 'مترمکعب', 'کیلوگرم', 'تن', 'عدد', 'دستگاه', 'ست', 'ساعت', 'روز', 'ماه'];
 
 export function itemKind(item){
