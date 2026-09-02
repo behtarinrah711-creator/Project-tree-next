@@ -38,7 +38,7 @@
   .undo-toast.hidden{display:none;}
   .undo-toast span{font-size:13.5px;flex:1;}
   .undo-toast button{
-    background:transparent;border:none;color:#00075D;font-family:inherit;font-size:13.5px;font-weight:700;
+    background:transparent;border:none;color:#fff;font-family:inherit;font-size:13.5px;font-weight:700;
     cursor:pointer;flex-shrink:0;
   }
   .undo-bar{
@@ -46,4 +46,3 @@
     transform-origin:right;animation:undoShrink linear forwards;
   }
   @keyframes undoShrink{ from{transform:scaleX(1);} to{transform:scaleX(0);} }
-

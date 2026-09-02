@@ -24,7 +24,7 @@ export function installSoftDelete({ windowRef = globalThis, documentRef = null }
     if(bar){
       bar.style.animation = 'none';
       void bar.offsetWidth;
-      bar.style.animation = 'undoShrink 4s linear forwards';
+      bar.style.animation = 'undoShrink 5s linear forwards';
     }
     if(t) t.classList.remove('hidden');
   }
@@ -92,7 +92,7 @@ export function installSoftDelete({ windowRef = globalThis, documentRef = null }
       if(type === 'project' && pp && !pp.classList.contains('hidden')) call('renderManagementPage');
     }catch(e){}
     showUndoToast(label);
-    pendingDelete.timeoutId = setTimeout(finalizePendingDelete, 4000);
+    pendingDelete.timeoutId = setTimeout(finalizePendingDelete, 5000);
     return true;
   }
 
@@ -113,7 +113,7 @@ export function installSoftDelete({ windowRef = globalThis, documentRef = null }
     if(type === 'contact') call('renderContactsPage');
     if(type === 'activity') call('renderProjectActivitiesPage');
     showUndoToast(label);
-    pendingDelete.timeoutId = setTimeout(finalizePendingDelete, 4000);
+    pendingDelete.timeoutId = setTimeout(finalizePendingDelete, 5000);
     return true;
   }
 
@@ -131,6 +131,17 @@ export function installSoftDelete({ windowRef = globalThis, documentRef = null }
   if(documentRef){
     const btn = documentRef.getElementById('undoToastBtn');
     if(btn) btn.onclick = undoPendingDelete;
+    const toast = documentRef.getElementById('undoToast');
+    if(toast){
+      toast.setAttribute('role', 'button');
+      toast.tabIndex = 0;
+      toast.onclick = undoPendingDelete;
+      toast.onkeydown = event => {
+        if(event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
+        undoPendingDelete();
+      };
+    }
   }
 
   const api = Object.freeze({
