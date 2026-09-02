@@ -5,8 +5,12 @@ const project = {
   name: 'پروژه WBS',
   location: 'تهران',
   tasks: [
-    { id:'s1', kind:'stage', text:'فونداسیون', subtasks:[
-      { id:'w1', kind:'work', text:'بتن مگر', quantity:1, unitCost:10, subtasks:[] },
+    { id:'s1', kind:'stage', text:'فونداسیون', progressWeight:2, subtasks:[
+      { id:'w1', kind:'work', text:'خرید آهن', progress:100, progressWeight:1, quantity:1, unitCost:10, subtasks:[] },
+      { id:'w2', kind:'work', text:'اجرای فونداسیون', progress:0, progressWeight:3, subtasks:[] },
+    ] },
+    { id:'s2', kind:'stage', text:'ساختمان', progressWeight:1, subtasks:[
+      { id:'s3', kind:'stage', text:'نازک‌کاری', progressWeight:1, subtasks:[] },
     ] },
   ],
   contacts: [],
@@ -31,6 +35,31 @@ test.beforeEach(async ({ page }) => {
   }, project);
   await page.goto('/index.html#/projects/e2e-wbs-home/dashboard');
   await page.waitForFunction(() => Boolean(window.KarhaLegacy && window.KarhaApp));
+});
+
+test('progress is weighted, work checkbox resets progress, and stage checkbox is derived', async ({ page }) => {
+  await page.locator('.wbs-tab', { hasText: 'پیشرفت' }).click();
+  const foundation = page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' });
+  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۲۵');
+  await expect(foundation.locator('.wbs-check')).toBeDisabled();
+
+  const execution = page.locator('.wbs-row.is-work', { hasText:'اجرای فونداسیون' });
+  await execution.locator('.wbs-check').click();
+  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۱۰۰');
+  await execution.locator('.wbs-check').click();
+  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۲۵');
+});
+
+test('add menu does not create an incompatible option', async ({ page }) => {
+  await page.locator('.wbs-tab', { hasText: 'ثبت' }).click();
+  await page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' }).locator('.wbs-add').click();
+  await expect(page.locator('#wbsSheetOverlay .wbs-choice', { hasText:'افزودن کار' })).toBeVisible();
+  await expect(page.locator('#wbsSheetOverlay .wbs-choice', { hasText:'افزودن زیرمرحله' })).toHaveCount(0);
+  await page.locator('#wbsSheetOverlay .close-btn').click();
+
+  await page.locator('.wbs-row.is-stage', { hasText:'ساختمان' }).locator('.wbs-add').click();
+  await expect(page.locator('#wbsSheetOverlay .wbs-choice', { hasText:'افزودن زیرمرحله' })).toBeVisible();
+  await expect(page.locator('#wbsSheetOverlay .wbs-choice', { hasText:'افزودن کار' })).toHaveCount(0);
 });
 
 test('WBS home uses the unified project header, keeps tabs, and does not hide project footer', async ({ page }) => {

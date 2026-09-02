@@ -13,6 +13,7 @@ function strip(item){
     text: node.text,
     status: node.status,
     progress: node.progress,
+    progressWeight: node.progressWeight,
     type: node.type,
     priority: node.priority,
     quantity: node.quantity,

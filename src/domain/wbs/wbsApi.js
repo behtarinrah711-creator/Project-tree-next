@@ -41,6 +41,8 @@ function persistNode(projectId, located, next){
 }
 
 function makeNode(kind, text, extra = {}, clock){
+  const rawWeight = Number(extra.progressWeight);
+  const progressWeight = Number.isFinite(rawWeight) && rawWeight > 0 ? rawWeight : 1;
   return stampCreate({
     id: extra.id || uid(),
     kind,
@@ -54,6 +56,7 @@ function makeNode(kind, text, extra = {}, clock){
     completedAt: null,
     status: 'not_started',
     progress: 0,
+    progressWeight,
     quantity: extra.quantity ?? 0,
     unit: extra.unit || '',
     unitCost: extra.unitCost ?? 0,
@@ -73,10 +76,14 @@ export const wbsApi = {
     return found ? normalizeItem(found.item) : null;
   },
 
-  createStage(projectId, text, parentId = null, clock){
+  createStage(projectId, text, parentId = null, extra = {}, clock){
     const title = String(text || '').trim();
     if(!projectId || !title) return null;
-    const node = makeNode(KIND_STAGE, title, {}, clock);
+    if(typeof extra === 'function'){
+      clock = extra;
+      extra = {};
+    }
+    const node = makeNode(KIND_STAGE, title, extra, clock);
     if(!parentId){
       const saved = projectItemRepository.save(projectId, node);
       if(saved) publish(projectId);
@@ -109,12 +116,27 @@ export const wbsApi = {
     const found = locate(projectId, itemId);
     if(!found) return null;
     const current = found.item;
-    const applied = typeof patch === 'function' ? patch(current) : { ...current, ...patch };
+    const patchValue = typeof patch === 'function' ? patch(current) : patch;
+    const applied = typeof patch === 'function' ? patchValue : { ...current, ...patchValue };
     if(isWork(current) && isStage({ ...applied, kind: applied.kind })) return null;
-    if(applied.status === 'completed') { applied.done = true; applied.progress = 100; applied.completedAt = applied.completedAt || Date.now(); }
-    if(applied.status === 'not_started') { applied.done = false; }
-    if(applied.done === true) { applied.status = 'completed'; applied.progress = 100; }
-    if(applied.done === false && applied.status === 'completed') applied.status = 'not_started';
+    if(isWork(applied)){
+      const explicit = patchValue && typeof patchValue === 'object' ? patchValue : {};
+      const has = key => Object.prototype.hasOwnProperty.call(explicit, key)
+        && (typeof patch !== 'function' || explicit[key] !== current[key]);
+      let progress = has('progress') ? Number(explicit.progress) : Number(current.progress);
+      if(!Number.isFinite(progress)) progress = current.done ? 100 : 0;
+      progress = Math.max(0, Math.min(100, progress));
+      if(has('done')) progress = explicit.done ? 100 : 0;
+      else if(has('status') && explicit.status === 'completed') progress = 100;
+      applied.progress = progress;
+      applied.progressWeight = Number(applied.progressWeight) > 0 ? Number(applied.progressWeight) : 1;
+      applied.done = progress === 100;
+      applied.status = progress === 100 ? 'completed' : (progress > 0 ? 'in_progress' : 'not_started');
+      applied.completedAt = progress === 100 ? (applied.completedAt || Date.now()) : null;
+    }else if(isStage(applied)){
+      const weight = Number(applied.progressWeight);
+      applied.progressWeight = Number.isFinite(weight) && weight > 0 ? weight : 1;
+    }
     const ids = activityIdsOf(applied);
     applied.activities = ids;
     applied.activityIds = ids;

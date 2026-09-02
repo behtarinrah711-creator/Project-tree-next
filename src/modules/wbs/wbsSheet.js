@@ -53,6 +53,10 @@ export function textInput(value = '', attrs = {}){
   input.value = value ?? '';
   if(attrs.placeholder) input.placeholder = attrs.placeholder;
   if(attrs.name) input.name = attrs.name;
+  if(attrs.min !== undefined) input.min = attrs.min;
+  if(attrs.max !== undefined) input.max = attrs.max;
+  if(attrs.step !== undefined) input.step = attrs.step;
+  if(attrs.required) input.required = true;
   return input;
 }
 

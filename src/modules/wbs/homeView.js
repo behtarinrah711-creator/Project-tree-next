@@ -9,6 +9,8 @@ import {
   isStage,
   isWork,
   lineTotal,
+  progressOf,
+  progressWeightOf,
   wbsCodeMap,
 } from '../../domain/wbs/normalize.js';
 import { rollupEstimate, rollupProgress } from '../../domain/wbs/estimate.js';
@@ -227,11 +229,17 @@ function openCreateStageSheet(parentId = null){
     saveLabel: 'ذخیره',
     body(root){
       root.appendChild(fieldRow('نام مرحله', textInput('', { name:'title', placeholder:'نام مرحله' })));
+      root.appendChild(fieldRow('وزن پیشرفت', textInput('1', { name:'progressWeight', type:'number', min:'0.01', step:'0.01', required:true })));
+      const note = document.createElement('div');
+      note.className = 'wbs-note';
+      note.textContent = 'وزن نسبی است؛ لازم نیست مجموع وزن‌ها ۱۰۰ شود.';
+      root.appendChild(note);
     },
     onSave(root){
       const title = root.querySelector('[name="title"]').value.trim();
-      if(!title) return false;
-      wbsApi.createStage(projectIdOf(), title, parentId);
+      const progressWeight = Number(root.querySelector('[name="progressWeight"]').value);
+      if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
+      wbsApi.createStage(projectIdOf(), title, parentId, { progressWeight });
       render();
       return true;
     },
@@ -244,11 +252,17 @@ function openCreateWorkSheet(parentId = null){
     saveLabel: 'ذخیره',
     body(root){
       root.appendChild(fieldRow('عنوان کار', textInput('', { name:'title', placeholder:'عنوان کار' })));
+      root.appendChild(fieldRow('وزن پیشرفت', textInput('1', { name:'progressWeight', type:'number', min:'0.01', step:'0.01', required:true })));
+      const note = document.createElement('div');
+      note.className = 'wbs-note';
+      note.textContent = 'وزن نسبی است؛ لازم نیست مجموع وزن‌ها ۱۰۰ شود.';
+      root.appendChild(note);
     },
     onSave(root){
       const title = root.querySelector('[name="title"]').value.trim();
-      if(!title) return false;
-      wbsApi.createWorkItem(projectIdOf(), title, parentId);
+      const progressWeight = Number(root.querySelector('[name="progressWeight"]').value);
+      if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
+      wbsApi.createWorkItem(projectIdOf(), title, parentId, { progressWeight });
       render();
       return true;
     },
@@ -256,21 +270,36 @@ function openCreateWorkSheet(parentId = null){
 }
 
 function openAddMenu(stageId){
+  const stage = wbsApi.get(projectIdOf(), stageId);
+  const childKinds = new Set((stage?.subtasks || []).filter(item => !item.trashed).map(item => isStage(item) ? 'stage' : 'work'));
+  const mayAddStage = childKinds.size === 0 || (childKinds.size === 1 && childKinds.has('stage'));
+  const mayAddWork = childKinds.size === 0 || (childKinds.size === 1 && childKinds.has('work'));
   openWbsSheet({
     title: 'افزودن',
     saveLabel: 'بستن',
     body(root){
-      const stageBtn = document.createElement('button');
-      stageBtn.type = 'button';
-      stageBtn.className = 'wbs-choice';
-      stageBtn.textContent = 'افزودن زیرمرحله';
-      stageBtn.addEventListener('click', () => { closeWbsSheet(); openCreateStageSheet(stageId); });
-      const workBtn = document.createElement('button');
-      workBtn.type = 'button';
-      workBtn.className = 'wbs-choice';
-      workBtn.textContent = 'افزودن کار';
-      workBtn.addEventListener('click', () => { closeWbsSheet(); openCreateWorkSheet(stageId); });
-      root.append(stageBtn, workBtn);
+      if(mayAddStage){
+        const stageBtn = document.createElement('button');
+        stageBtn.type = 'button';
+        stageBtn.className = 'wbs-choice';
+        stageBtn.textContent = 'افزودن زیرمرحله';
+        stageBtn.addEventListener('click', () => { closeWbsSheet(); openCreateStageSheet(stageId); });
+        root.appendChild(stageBtn);
+      }
+      if(mayAddWork){
+        const workBtn = document.createElement('button');
+        workBtn.type = 'button';
+        workBtn.className = 'wbs-choice';
+        workBtn.textContent = 'افزودن کار';
+        workBtn.addEventListener('click', () => { closeWbsSheet(); openCreateWorkSheet(stageId); });
+        root.appendChild(workBtn);
+      }
+      if(!mayAddStage && !mayAddWork){
+        const note = document.createElement('div');
+        note.className = 'wbs-note';
+        note.textContent = 'این مرحله داده‌های ترکیبی قدیمی دارد؛ ابتدا ساختار آن را اصلاح کنید.';
+        root.appendChild(note);
+      }
     },
     onSave(){ return true; },
   });
@@ -283,13 +312,16 @@ function openStageEditSheet(item){
     saveLabel: 'ذخیره',
     body(root){
       root.appendChild(fieldRow('نام مرحله', textInput(current.text || '', { name:'title' })));
+      root.appendChild(fieldRow('وزن پیشرفت', textInput(String(progressWeightOf(current)), { name:'progressWeight', type:'number', min:'0.01', step:'0.01', required:true })));
       root.appendChild(fieldRow('توضیحات', textInput(current.description || '', { name:'description' })));
     },
     onSave(root){
       const title = root.querySelector('[name="title"]').value.trim();
-      if(!title) return false;
+      const progressWeight = Number(root.querySelector('[name="progressWeight"]').value);
+      if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
       wbsApi.updateItem(projectIdOf(), current.id, {
         text:title,
+        progressWeight,
         description:root.querySelector('[name="description"]').value,
       });
       render();
@@ -341,13 +373,12 @@ function openWorkEditSheet(item){
     saveLabel: 'ذخیره',
     body(root){
       root.appendChild(fieldRow('عنوان', textInput(current.text || '', { name:'title' })));
-      root.appendChild(fieldRow('وضعیت', selectInput([
-        { value:'not_started', label:'شروع نشده' },
-        { value:'in_progress', label:'در حال انجام' },
-        { value:'completed', label:'انجام‌شده' },
-      ], current.status || (current.done ? 'completed' : 'not_started'))));
-      root.lastChild.querySelector('select').name = 'status';
-      root.appendChild(fieldRow('پیشرفت ٪', textInput(String(current.progress || 0), { name:'progress', type:'number' })));
+      root.appendChild(fieldRow('پیشرفت ٪', textInput(String(progressOf(current)), { name:'progress', type:'number', min:'0', max:'100', step:'1' })));
+      root.appendChild(fieldRow('وزن پیشرفت', textInput(String(progressWeightOf(current)), { name:'progressWeight', type:'number', min:'0.01', step:'0.01', required:true })));
+      const progressNote = document.createElement('div');
+      progressNote.className = 'wbs-note';
+      progressNote.textContent = 'وضعیت از درصد ساخته می‌شود؛ وزن نسبی است و لازم نیست مجموع وزن‌ها ۱۰۰ شود.';
+      root.appendChild(progressNote);
       root.appendChild(fieldRow('اولویت', selectInput([
         { value:'', label:'—' },
         { value:'low', label:'کم' },
@@ -400,11 +431,12 @@ function openWorkEditSheet(item){
     },
     onSave(root){
       const title = root.querySelector('[name="title"]').value.trim();
-      if(!title) return false;
+      const progressWeight = Number(root.querySelector('[name="progressWeight"]').value);
+      if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
       wbsApi.updateItem(projectIdOf(), current.id, {
         text: title,
-        status: root.querySelector('[name="status"]').value,
         progress: Number(root.querySelector('[name="progress"]').value) || 0,
+        progressWeight,
         priority: root.querySelector('[name="priority"]').value,
         type: root.querySelector('[name="type"]').value,
         quantity: Number(root.querySelector('[name="quantity"]').value) || 0,
@@ -508,15 +540,17 @@ function openGeneralDetailSheet(item){
 
 function renderSimpleRow(item, depth){
   const stage = isStage(item);
+  const displayedProgress = stage ? rollupProgress([item]) : progressOf(item);
+  const checked = displayedProgress === 100;
   const kids = (item.subtasks || []).filter(x => !x.trashed);
   const open = !stage || isExpanded(projectIdOf(), item.id);
   const rawType = isWork(item) && WORK_TYPES.includes(item.type) ? item.type : '';
   const chipLabel = rawType || '؟';
   const chipClass = rawType ? (SIMPLE_TYPE_CLASSES.get(rawType) || 'type-7') : 'type-7';
   const row = document.createElement('div');
-  row.className = 'wbs-simple-row depth-' + Math.min(6, depth) + (item.done ? ' is-done' : '') + (stage ? ' is-stage' : ' is-work');
+  row.className = 'wbs-simple-row depth-' + Math.min(6, depth) + (checked ? ' is-done' : '') + (stage ? ' is-stage' : ' is-work');
   row.innerHTML = `
-    <button type="button" class="wbs-check" aria-label="وضعیت">${item.done ? '✓' : ''}</button>
+    <button type="button" class="wbs-check" aria-label="${stage ? 'پیشرفت محاسبه‌شده مرحله' : 'وضعیت'}" ${stage ? 'disabled' : ''}>${checked ? '✓' : ''}</button>
     <button type="button" class="wbs-simple-title">
       ${stage ? '' : `<span class="wbs-type-chip ${chipClass}">${escapeHtml(chipLabel)}</span>`}
       <span class="wbs-simple-title-text">${escapeHtml(item.text || '')}</span>
@@ -524,7 +558,7 @@ function renderSimpleRow(item, depth){
   `;
   row.querySelector('.wbs-check')?.addEventListener('click', ev => {
     ev.stopPropagation();
-    if(isWork(item)) wbsApi.updateItem(projectIdOf(), item.id, { done: !item.done, status: item.done ? 'not_started' : 'completed' });
+    if(isWork(item)) wbsApi.updateItem(projectIdOf(), item.id, { progress: checked ? 0 : 100 });
     render();
   });
   row.querySelector('.wbs-simple-title')?.addEventListener('click', ev => {
@@ -541,6 +575,8 @@ function renderSimpleRow(item, depth){
 
 function renderRow(item, codes, view, depth){
   const stage = isStage(item);
+  const displayedProgress = stage ? rollupProgress([item]) : progressOf(item);
+  const checked = displayedProgress === 100;
   const kids = (item.subtasks || []).filter(x => !x.trashed);
   const open = isExpanded(projectIdOf(), item.id);
   const code = stage ? (codes.get(String(item.id)) || '') : '';
@@ -554,16 +590,16 @@ function renderRow(item, codes, view, depth){
   }
   if(view === 'estimate' && stage) meta.push(new Intl.NumberFormat('fa-IR').format(rollupEstimate([item])));
   if(view === 'progress'){
-    meta.push(formatProgress(stage ? rollupProgress([item]) : (item.progress || (item.done ? 100 : 0))));
+    meta.push(formatProgress(displayedProgress));
   }
   if(view === 'register' && isWork(item) && activityIdsOf(item).length){
     meta.push(`${activityIdsOf(item).length} فعالیت`);
   }
   const row = document.createElement('div');
-  row.className = 'wbs-row depth-' + Math.min(6, depth) + (item.done ? ' is-done' : '') + (stage ? ' is-stage' : ' is-work');
+  row.className = 'wbs-row depth-' + Math.min(6, depth) + (checked ? ' is-done' : '') + (stage ? ' is-stage' : ' is-work');
   row.innerHTML = `
     ${readOnlyView ? '' : '<span class="wbs-grip" aria-hidden="true">⋮⋮</span>'}
-    <button type="button" class="wbs-check" aria-label="وضعیت">${item.done ? '✓' : ''}</button>
+    <button type="button" class="wbs-check" aria-label="${stage ? 'پیشرفت محاسبه‌شده مرحله' : 'وضعیت'}" ${stage ? 'disabled' : ''}>${checked ? '✓' : ''}</button>
     ${kids.length ? `<button type="button" class="wbs-chev" aria-label="${open?'بستن':'باز کردن'}">${open?'▾':'▸'}</button>` : '<span class="wbs-chev-spacer"></span>'}
     <button type="button" class="wbs-title">
       ${stage ? '' : `<span class="wbs-type-chip ${chipClass}">${escapeHtml(chipLabel)}</span>`}
@@ -575,7 +611,7 @@ function renderRow(item, codes, view, depth){
   `;
   row.querySelector('.wbs-check')?.addEventListener('click', ev => {
     ev.stopPropagation();
-    if(isWork(item)) wbsApi.updateItem(projectIdOf(), item.id, { done: !item.done, status: item.done ? 'not_started' : 'completed' });
+    if(isWork(item)) wbsApi.updateItem(projectIdOf(), item.id, { progress: checked ? 0 : 100 });
     render();
   });
   row.querySelector('.wbs-chev')?.addEventListener('click', ev => {

@@ -114,6 +114,40 @@ test('done maps to completed status and 100 progress', () => {
   assert.equal(item.progress, 100);
 });
 
+test('progress is canonical and checkbox-style reset clears completed state', () => {
+  boot({ id:'p-wbs-progress', name:'P', tasks:[] });
+  const work = wbsApi.createWorkItem('p-wbs-progress', 'کار', null, { progressWeight:10 }, t1);
+  const completed = wbsApi.updateItem('p-wbs-progress', work.id, { progress:100 }, t2);
+  assert.equal(completed.done, true);
+  assert.equal(completed.status, 'completed');
+  const reset = wbsApi.updateItem('p-wbs-progress', work.id, { progress:0 }, t3);
+  assert.equal(reset.done, false);
+  assert.equal(reset.status, 'not_started');
+  assert.equal(reset.progress, 0);
+  assert.equal(reset.completedAt, null);
+  assert.equal(reset.progressWeight, 10);
+});
+
+test('unrelated functional updates preserve partial progress', () => {
+  boot({ id:'p-wbs-partial', name:'P', tasks:[] });
+  const work = wbsApi.createWorkItem('p-wbs-partial', 'کار', null, {}, t1);
+  wbsApi.updateItem('p-wbs-partial', work.id, { progress:40 }, t2);
+  const attached = wbsApi.attachActivity('p-wbs-partial', work.id, 'activity-1', t3);
+  assert.equal(attached.progress, 40);
+  assert.equal(attached.status, 'in_progress');
+  assert.equal(attached.done, false);
+});
+
+test('stage child type is locked by its first active child', () => {
+  boot({ id:'p-wbs-child-kind', name:'P', tasks:[] });
+  const stageParent = wbsApi.createStage('p-wbs-child-kind', 'مراحل', null, { progressWeight:2 }, t1);
+  wbsApi.createStage('p-wbs-child-kind', 'زیرمرحله', stageParent.id, { progressWeight:3 }, t1);
+  assert.equal(wbsApi.createWorkItem('p-wbs-child-kind', 'کار نامعتبر', stageParent.id, {}, t1), null);
+  const workParent = wbsApi.createStage('p-wbs-child-kind', 'کارها', null, { progressWeight:4 }, t1);
+  wbsApi.createWorkItem('p-wbs-child-kind', 'کار', workParent.id, {}, t1);
+  assert.equal(wbsApi.createStage('p-wbs-child-kind', 'زیرمرحله نامعتبر', workParent.id, { progressWeight:1 }, t1), null);
+});
+
 test('general cost create update soft-delete restore', () => {
   boot({ id:'p-wbs-8', name:'P', tasks:[] });
   const created = generalCostApi.create('p-wbs-8', 'نگهبانی', t1);
