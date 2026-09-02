@@ -1,8 +1,8 @@
 body:has(.wbs-home-root) #workspaceProjectContext,
 body:has(.wbs-home-root) #tabbar{display:none;}
-body:has(.wbs-home-root) .content{padding-top:0;background:#f8f5f0;}
-body:has(.wbs-home-root){background:#f8f5f0;}
-.wbs-home-root{padding-top:10px;background:#f8f5f0;}
+body:has(.wbs-home-root) .content{padding-top:0;background:#fff;}
+body:has(.wbs-home-root){background:#fff;}
+.wbs-home-root{padding-top:10px;background:#fff;}
 .wbs-row.is-drop{background:#efe8dc;}
 .wbs-tabs{display:flex;gap:8px;padding:0 12px;margin:0 0 10px;}
 .wbs-tab{flex:1 1 25%;width:25%;min-width:0;border:1px solid #cfc7bb;background:#fff;color:#77706a;border-radius:5px;padding:2px 11px;min-height:40px;}
