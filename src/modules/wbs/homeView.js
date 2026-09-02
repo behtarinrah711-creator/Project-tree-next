@@ -68,6 +68,13 @@ function treeOpen(projectId){
 function setTreeOpen(projectId, value){
   treeOpenByProject.set(String(projectId || ''), Boolean(value));
 }
+function isPendingUiDelete(itemId){
+  const pending = window.KarhaSoftDelete?.getPendingDelete?.();
+  if(!pending || String(pending.pid) !== String(projectIdOf())) return false;
+  if(pending.type === 'task') return String(pending.tid) === String(itemId);
+  if(pending.type === 'sub') return String(pending.sid) === String(itemId);
+  return false;
+}
 function ensureTreeState(project){
   const key = String(project?.id || '');
   if(!key || treeOpenByProject.has(key)) return;
@@ -542,7 +549,7 @@ function renderSimpleRow(item, depth){
   const stage = isStage(item);
   const displayedProgress = stage ? rollupProgress([item]) : progressOf(item);
   const checked = displayedProgress === 100;
-  const kids = (item.subtasks || []).filter(x => !x.trashed);
+  const kids = (item.subtasks || []).filter(x => !x.trashed && !isPendingUiDelete(x.id));
   const open = !stage || isExpanded(projectIdOf(), item.id);
   const rawType = isWork(item) && WORK_TYPES.includes(item.type) ? item.type : '';
   const chipLabel = rawType || '؟';
@@ -577,7 +584,7 @@ function renderRow(item, codes, view, depth){
   const stage = isStage(item);
   const displayedProgress = stage ? rollupProgress([item]) : progressOf(item);
   const checked = displayedProgress === 100;
-  const kids = (item.subtasks || []).filter(x => !x.trashed);
+  const kids = (item.subtasks || []).filter(x => !x.trashed && !isPendingUiDelete(x.id));
   const open = isExpanded(projectIdOf(), item.id);
   const code = stage ? (codes.get(String(item.id)) || '') : '';
   const rawType = isWork(item) && WORK_TYPES.includes(item.type) ? item.type : '';
@@ -706,7 +713,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
 
   const tree = document.createElement('div');
   tree.className = 'wbs-tree';
-  const items = (project.tasks || []).filter(x => !x.trashed);
+  const items = (project.tasks || []).filter(x => !x.trashed && !isPendingUiDelete(x.id));
   const simple = currentView === 'simple';
   const codes = simple ? new Map() : wbsCodeMap(items);
   if(!items.length) tree.innerHTML = '<div class="empty-state">مرحله یا کاری ثبت نشده است.</div>';
