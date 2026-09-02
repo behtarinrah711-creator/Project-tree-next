@@ -44,6 +44,7 @@ body:has(.wbs-home-root){background:#fff;}
 .wbs-simple-card{overflow:hidden;border-radius:5px;margin-bottom:10px;}
 .wbs-simple-row{display:flex;align-items:center;gap:8px;min-height:46px;padding:4px 10px;background:transparent;}
 .wbs-simple-row.is-stage{background:#ece7df;border-radius:0;padding-top:0;padding-bottom:0;}
+.wbs-simple-row.is-stage:not(.depth-0){min-height:35px;}
 .wbs-simple-row.is-stage.depth-0{background:#ddd5c9;border-radius:5px;padding-top:4px;padding-bottom:4px;}
 .wbs-simple-card:has(> .wbs-simple-branch) > .wbs-simple-row.is-stage.depth-0{border-radius:5px 5px 0 0;}
 .wbs-simple-row.is-work{background:transparent;}
