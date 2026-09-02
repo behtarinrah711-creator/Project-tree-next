@@ -71,7 +71,7 @@ export function installSoftDelete({ windowRef = globalThis, documentRef = null }
     hideUndoToast();
   }
 
-  function softDelete(type, pid, tid, sid, label){
+  function softDelete(type, pid, tid, sid, label, options = {}){
     if(type === 'task' || type === 'sub'){
       const checkId = type === 'task' ? tid : sid;
       const checkType = type === 'task' ? 'task' : 'subtask';
@@ -83,6 +83,10 @@ export function installSoftDelete({ windowRef = globalThis, documentRef = null }
     }
     if(pendingDelete) finalizePendingDelete();
     pendingDelete = { type, pid, tid, sid };
+    if(options.undo === false){
+      finalizePendingDelete();
+      return true;
+    }
     call('renderAll');
     try{
       if(windowRef.taskUI?.hasCurrentDetail?.()) call('renderSheet');

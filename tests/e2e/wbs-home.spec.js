@@ -62,7 +62,7 @@ test('add menu does not create an incompatible option', async ({ page }) => {
   await expect(page.locator('#wbsSheetOverlay .wbs-choice', { hasText:'افزودن کار' })).toHaveCount(0);
 });
 
-test('confirmed delete removes the row immediately and the whole undo message restores it', async ({ page }) => {
+test('confirmed WBS delete is immediate and does not show redundant undo feedback', async ({ page }) => {
   const foundation = page.locator('.wbs-simple-row.is-stage', { hasText:'فونداسیون' });
   await foundation.locator('.wbs-simple-title').click();
   await page.locator('#wbsSheetOverlay .wbs-info-row', { hasText:'حذف مرحله' }).click();
@@ -70,11 +70,9 @@ test('confirmed delete removes the row immediately and the whole undo message re
   await page.locator('#confirmOkBtn').click();
 
   await expect(foundation).toHaveCount(0);
-  const undo = page.locator('#undoToast');
-  await expect(undo).toBeVisible();
-  await expect(page.locator('#undoToastBtn')).toHaveCSS('color', 'rgb(255, 255, 255)');
-  await undo.click({ position:{ x:20, y:20 } });
-  await expect(page.locator('.wbs-simple-row.is-stage', { hasText:'فونداسیون' })).toBeVisible();
+  await expect(page.locator('#undoToast')).toBeHidden();
+  await page.reload();
+  await expect(page.locator('.wbs-simple-row.is-stage', { hasText:'فونداسیون' })).toHaveCount(0);
 });
 
 test('WBS home uses the unified project header, keeps tabs, and does not hide project footer', async ({ page }) => {
