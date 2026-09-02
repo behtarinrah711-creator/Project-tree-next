@@ -59,13 +59,13 @@ body:has(.wbs-home-root){background:#fff;}
 .wbs-simple-row.is-work .wbs-simple-title-text{font-weight:400;}
 .wbs-simple-title-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:14px;}
 .wbs-type-chip{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:24px;min-height:20px;padding:1px 3px;border-radius:6px;font-size:9px;font-weight:700;line-height:18px;color:#fff;}
-.wbs-type-chip.type-1{background:#66c2a5;}
-.wbs-type-chip.type-2{background:#fc8d62;}
-.wbs-type-chip.type-3{background:#8da0cb;}
-.wbs-type-chip.type-4{background:#e78ac3;}
-.wbs-type-chip.type-5{background:#5f8f3e;}
-.wbs-type-chip.type-6{background:#3f6fa8;}
-.wbs-type-chip.type-7{background:#e5c494;}
+.wbs-type-chip.type-1{background:#03045E;}
+.wbs-type-chip.type-2{background:#033E8A;}
+.wbs-type-chip.type-3{background:#0078B7;}
+.wbs-type-chip.type-4{background:#0096C8;}
+.wbs-type-chip.type-5{background:#00B4D7;}
+.wbs-type-chip.type-6{background:#48CAE4;}
+.wbs-type-chip.type-7{background:#91E0EF;}
 .wbs-general{margin:8px 12px 24px;padding:12px;background:#fff;border-radius:16px;border:1px solid #e4ddd3;}
 .wbs-total{margin-top:10px;font-weight:600;}
 .wbs-general-row{display:flex;width:100%;align-items:center;justify-content:space-between;gap:12px;border:0;background:transparent;text-align:right;padding:8px 0;min-height:44px;}
