@@ -40,6 +40,7 @@ test.beforeEach(async ({ page }) => {
 
 test('progress is weighted, work checkbox resets progress, and stage checkbox is derived', async ({ page }) => {
   await page.locator('.wbs-tab[aria-label="پیشرفت"]').click();
+  await page.locator('.wbs-tree-toggle').click();
   const foundation = page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' });
   await expect(foundation.locator('.wbs-meta')).toHaveText('٪۲۵');
   await expect(foundation.locator('.wbs-check')).toBeDisabled();
@@ -87,6 +88,7 @@ test('pointer drag reorders sibling stages before or after without nesting', asy
 
 test('pointer drag persists the order of sibling substages', async ({ page }) => {
   await page.locator('.wbs-tab[aria-label="ثبت"]').click();
+  await page.locator('.wbs-tree-toggle').click();
   const source = page.locator('.wbs-row.is-stage', { hasText:'تأسیسات' });
   const target = page.locator('.wbs-row.is-stage', { hasText:'نازک‌کاری' });
   const gripBox = await source.locator('.wbs-grip').boundingBox();
@@ -103,6 +105,20 @@ test('pointer drag persists the order of sibling substages', async ({ page }) =>
     const project = window.KarhaAppData?.getSnapshot?.().projects?.find(item => item.id === 'e2e-wbs-home');
     return project?.tasks?.find(item => item.id === 's2')?.subtasks?.map(item => item.id);
   })).toEqual(['s4', 's3']);
+});
+
+test('tree toggle reveals one depth per press and collapses after the deepest level', async ({ page }) => {
+  await page.locator('.wbs-tab[aria-label="ثبت"]').click();
+  await expect(page.locator('.wbs-row.depth-0')).toHaveCount(2);
+  await expect(page.locator('.wbs-row.depth-1')).toHaveCount(0);
+
+  await page.locator('.wbs-tree-toggle').click();
+  await expect(page.locator('.wbs-row.depth-1')).toHaveCount(4);
+  await expect(page.locator('.wbs-row.depth-2')).toHaveCount(0);
+
+  await page.locator('.wbs-tree-toggle').click();
+  await expect(page.locator('.wbs-row.depth-2')).toHaveCount(0);
+  await expect(page.locator('.wbs-row.depth-1')).toHaveCount(0);
 });
 
 test('confirmed WBS delete is immediate and does not show redundant undo feedback', async ({ page }) => {

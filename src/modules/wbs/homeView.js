@@ -27,9 +27,10 @@ import {
 } from './wbsSheet.js';
 import { bindRowDrag } from './wbsDrag.js';
 import {
-  collapseAll,
-  expandAll,
+  advanceExpansionLevel,
+  getExpandedIds,
   isExpanded,
+  seedCollapsed,
   toggleExpanded,
 } from './wbsExpandState.js';
 
@@ -58,7 +59,6 @@ const SIMPLE_TYPE_CLASSES = new Map([
 let currentView = 'simple';
 let explicitProjectId = null;
 let tabRenderFrame = 0;
-const treeOpenByProject = new Map();
 
 function projectIdOf(){
   return explicitProjectId || projectContext.getProjectId?.() || projectContext.getActiveProjectId?.() || null;
@@ -66,13 +66,6 @@ function projectIdOf(){
 function projectOf(){
   const id = projectIdOf();
   return id ? projectRepository.getActiveProject(id) : null;
-}
-function treeOpen(projectId){
-  const key = String(projectId || '');
-  return treeOpenByProject.has(key) ? treeOpenByProject.get(key) : true;
-}
-function setTreeOpen(projectId, value){
-  treeOpenByProject.set(String(projectId || ''), Boolean(value));
 }
 function isPendingUiDelete(itemId){
   const pending = window.KarhaSoftDelete?.getPendingDelete?.();
@@ -83,9 +76,8 @@ function isPendingUiDelete(itemId){
 }
 function ensureTreeState(project){
   const key = String(project?.id || '');
-  if(!key || treeOpenByProject.has(key)) return;
-  treeOpenByProject.set(key, true);
-  expandAll(project.id, project.tasks || []);
+  if(!key) return;
+  seedCollapsed(project.id);
 }
 function scheduleTabRender(target, projectId){
   if(tabRenderFrame) cancelAnimationFrame(tabRenderFrame);
@@ -676,17 +668,14 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   addRoot.addEventListener('click', () => openCreateStageSheet(null));
 
   const treeToggle = document.createElement('button');
-  const isTreeOpen = treeOpen(project.id);
+  const isTreeOpen = getExpandedIds(project.id).size > 0;
   treeToggle.type = 'button';
   treeToggle.className = 'wbs-tree-toggle' + (isTreeOpen ? ' is-active' : '');
-  treeToggle.setAttribute('aria-label', isTreeOpen ? 'بستن نمودار' : 'باز کردن نمودار');
+  treeToggle.setAttribute('aria-label', 'تغییر سطح نمایش نمودار');
   treeToggle.setAttribute('aria-pressed', isTreeOpen ? 'true' : 'false');
   treeToggle.innerHTML = materialIcon(EXPAND_ICON);
   treeToggle.addEventListener('click', () => {
-    const nextOpen = !treeOpen(project.id);
-    setTreeOpen(project.id, nextOpen);
-    if(nextOpen) expandAll(project.id, project.tasks || []);
-    else collapseAll(project.id);
+    advanceExpansionLevel(project.id, project.tasks || []);
     renderWbsHome(target, project.id);
   });
   toolbar.append(addRoot, treeToggle);
