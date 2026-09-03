@@ -71,8 +71,10 @@ test('confirmed WBS delete is immediate and does not show redundant undo feedbac
 
   await expect(foundation).toHaveCount(0);
   await expect(page.locator('#undoToast')).toBeHidden();
-  await page.reload();
-  await expect(page.locator('.wbs-simple-row.is-stage', { hasText:'فونداسیون' })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => {
+    const project = window.KarhaAppData?.getSnapshot?.().projects?.find(item => item.id === 'e2e-wbs-home');
+    return project?.tasks?.find(item => item.id === 's1')?.trashed;
+  })).toBe(true);
 });
 
 test('WBS home uses the unified project header, keeps tabs, and does not hide project footer', async ({ page }) => {
