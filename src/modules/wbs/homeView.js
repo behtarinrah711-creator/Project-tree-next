@@ -43,6 +43,7 @@ const VIEWS = [
 ];
 
 const EXPAND_ICON = 'M200-200v-240h80v160h160v80H200Zm480-320v-160H520v-80h240v240h-80Z';
+const ADD_WORK_PACKAGE_ICON = 'M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h640q33 0 56.5 23.5T880-720v480q0 33-23.5 56.5T800-160H160Zm0-80h640v-480H160v480Zm0 0v-480 480Zm280-80h80v-120h120v-80H520v-120h-80v120H320v80h120v120Z';
 
 function materialIcon(path){
   return `<svg viewBox="0 -960 960 960" aria-hidden="true" focusable="false"><path d="${path}"/></svg>`;
@@ -204,7 +205,7 @@ function infoRow(label, value, { action = false, danger = false, onClick = null 
 
 function openCreateStageSheet(parentId = null){
   openWbsSheet({
-    title: parentId ? 'افزودن زیرمرحله' : 'افزودن مرحله',
+    title: parentId ? 'افزودن زیرمرحله' : 'افزودن بسته کار',
     saveLabel: 'ذخیره',
     body(root){
       root.appendChild(fieldRow('نام مرحله', textInput('', { name:'title', placeholder:'نام مرحله' })));
@@ -665,7 +666,8 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   const addRoot = document.createElement('button');
   addRoot.type = 'button';
   addRoot.className = 'wbs-root-add';
-  addRoot.textContent = '+ مرحله';
+  addRoot.setAttribute('aria-label', 'افزودن بسته کار');
+  addRoot.innerHTML = `${materialIcon(ADD_WORK_PACKAGE_ICON)}<span>بسته کار</span>`;
   addRoot.addEventListener('click', () => openCreateStageSheet(null));
 
   const treeToggle = document.createElement('button');
