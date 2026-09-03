@@ -62,6 +62,28 @@ test('add menu does not create an incompatible option', async ({ page }) => {
   await expect(page.locator('#wbsSheetOverlay .wbs-choice', { hasText:'افزودن کار' })).toHaveCount(0);
 });
 
+test('pointer drag reorders sibling stages before or after without nesting', async ({ page }) => {
+  await page.locator('.wbs-tab[aria-label="ثبت"]').click();
+  await page.locator('.wbs-tree-toggle').click();
+  const source = page.locator('.wbs-row.is-stage', { hasText:'ساختمان' });
+  const target = page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' });
+  const gripBox = await source.locator('.wbs-grip').boundingBox();
+  const targetBox = await target.boundingBox();
+  if(!gripBox || !targetBox) throw new Error('WBS drag geometry is unavailable');
+
+  await page.mouse.move(gripBox.x + gripBox.width / 2, gripBox.y + gripBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + 2, { steps:5 });
+  await expect(target.locator('..')).toHaveClass(/wbs-drop-before/);
+  await page.mouse.up();
+
+  await expect.poll(() => page.evaluate(() => {
+    const project = window.KarhaAppData?.getSnapshot?.().projects?.find(item => item.id === 'e2e-wbs-home');
+    return project?.tasks?.filter(item => !item.trashed).map(item => item.id);
+  })).toEqual(['s2', 's1']);
+  await expect(page.locator('.wbs-row.is-stage', { hasText:'ساختمان' }).locator('..').locator(':scope > .wbs-row')).toHaveCount(1);
+});
+
 test('confirmed WBS delete is immediate and does not show redundant undo feedback', async ({ page }) => {
   const foundation = page.locator('.wbs-simple-row.is-stage', { hasText:'فونداسیون' });
   await foundation.locator('.wbs-simple-title').click();
