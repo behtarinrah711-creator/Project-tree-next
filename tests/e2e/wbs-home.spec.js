@@ -38,7 +38,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('progress is weighted, work checkbox resets progress, and stage checkbox is derived', async ({ page }) => {
-  await page.locator('.wbs-tab', { hasText: 'پیشرفت' }).click();
+  await page.locator('.wbs-tab[aria-label="پیشرفت"]').click();
   const foundation = page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' });
   await expect(foundation.locator('.wbs-meta')).toHaveText('٪۲۵');
   await expect(foundation.locator('.wbs-check')).toBeDisabled();
@@ -51,7 +51,7 @@ test('progress is weighted, work checkbox resets progress, and stage checkbox is
 });
 
 test('add menu does not create an incompatible option', async ({ page }) => {
-  await page.locator('.wbs-tab', { hasText: 'ثبت' }).click();
+  await page.locator('.wbs-tab[aria-label="ثبت"]').click();
   await page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' }).locator('.wbs-add').click();
   await expect(page.locator('#wbsSheetOverlay .wbs-choice', { hasText:'افزودن کار' })).toBeVisible();
   await expect(page.locator('#wbsSheetOverlay .wbs-choice', { hasText:'افزودن زیرمرحله' })).toHaveCount(0);
@@ -82,11 +82,15 @@ test('WBS home uses the unified project header, keeps tabs, and does not hide pr
   await expect(page.locator('#topbar')).toBeVisible();
   await expect(page.locator('#topbarTitle .app-title-main')).toHaveText('پروژه WBS');
   await expect(page.locator('.wbs-home-header')).toHaveCount(0);
-  await expect(page.locator('.wbs-tab', { hasText: 'ثبت' })).toBeVisible();
-  await expect(page.locator('.wbs-tab', { hasText: 'برآورد' })).toBeVisible();
-  await expect(page.locator('.wbs-tab', { hasText: 'پیشرفت' })).toBeVisible();
+  await expect(page.locator('.wbs-tab[aria-label="ثبت"]')).toBeVisible();
+  await expect(page.locator('.wbs-tab[aria-label="برآورد"]')).toBeVisible();
+  await expect(page.locator('.wbs-tab[aria-label="پیشرفت"]')).toBeVisible();
+  await expect(page.locator('.wbs-tab')).toHaveCount(4);
+  await expect(page.locator('.wbs-tab svg')).toHaveCount(4);
+  await expect(page.locator('.wbs-tab').first()).toHaveText('');
+  await expect(page.locator('.wbs-tree-toggle svg')).toHaveCount(1);
   await expect(page.locator('#bottomNav')).toBeVisible();
   await expect(page.locator('#bottomProjectsBtn')).toBeVisible();
-  await page.locator('.wbs-tab', { hasText: 'برآورد' }).click();
+  await page.locator('.wbs-tab[aria-label="برآورد"]').click();
   await expect(page.locator('.wbs-general')).toBeVisible();
 });
