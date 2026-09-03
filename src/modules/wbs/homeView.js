@@ -159,7 +159,7 @@ function requestDelete(item){
     const label = stage ? 'مرحله حذف شد' : 'کار حذف شد';
     const softDelete = window.KarhaSoftDelete?.softDelete;
     if(typeof softDelete !== 'function') return;
-    if(softDelete(type, projectIdOf(), located.rootId, sid, label)){
+    if(softDelete(type, projectIdOf(), located.rootId, sid, label, { undo:false })){
       closeWbsSheet();
       render();
     }
