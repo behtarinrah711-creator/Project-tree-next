@@ -77,6 +77,9 @@ test('pointer drag reorders sibling stages before or after without nesting', asy
   await page.mouse.down();
   await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + 2, { steps:5 });
   await expect(target.locator('..')).toHaveClass(/wbs-drop-before/);
+  await expect.poll(() => target.locator('..').evaluate(element =>
+    getComputedStyle(element, '::before').backgroundColor
+  )).toBe('rgb(0, 7, 93)');
   await page.mouse.up();
 
   await expect.poll(() => page.evaluate(() => {
@@ -99,6 +102,9 @@ test('pointer drag persists the order of sibling substages', async ({ page }) =>
   await page.mouse.down();
   await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + 2, { steps:5 });
   await expect(target.locator('..')).toHaveClass(/wbs-drop-before/);
+  await expect.poll(() => target.locator('..').evaluate(element =>
+    getComputedStyle(element, '::before').backgroundColor
+  )).toBe('rgb(0, 7, 93)');
   await page.mouse.up();
 
   await expect.poll(() => page.evaluate(() => {
