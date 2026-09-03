@@ -28,6 +28,7 @@ import {
 import { bindRowDrag } from './wbsDrag.js';
 import {
   advanceExpansionLevel,
+  getExpansionProgress,
   getExpandedIds,
   isExpanded,
   seedCollapsed,
@@ -669,11 +670,14 @@ export function renderWbsHome(target = document.getElementById('content'), proje
 
   const treeToggle = document.createElement('button');
   const isTreeOpen = getExpandedIds(project.id).size > 0;
+  const expansionProgress = getExpansionProgress(project.id, project.tasks || []);
   treeToggle.type = 'button';
-  treeToggle.className = 'wbs-tree-toggle' + (isTreeOpen ? ' is-active' : '');
+  treeToggle.className = 'wbs-tree-toggle' + (isTreeOpen ? ' is-active' : '') + (expansionProgress.ratio >= .5 ? ' is-past-midpoint' : '');
   treeToggle.setAttribute('aria-label', 'تغییر سطح نمایش نمودار');
   treeToggle.setAttribute('aria-pressed', isTreeOpen ? 'true' : 'false');
-  treeToggle.innerHTML = materialIcon(EXPAND_ICON);
+  treeToggle.dataset.expandedLevels = String(expansionProgress.expandedLevels);
+  treeToggle.dataset.totalLevels = String(expansionProgress.totalLevels);
+  treeToggle.innerHTML = `<svg class="wbs-expand-shade" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect width="1" height="1" fill="currentColor" opacity="${expansionProgress.ratio}"/></svg>${materialIcon(EXPAND_ICON)}`;
   treeToggle.addEventListener('click', () => {
     advanceExpansionLevel(project.id, project.tasks || []);
     renderWbsHome(target, project.id);

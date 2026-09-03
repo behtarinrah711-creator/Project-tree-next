@@ -5,6 +5,7 @@ import {
   collapseAll,
   expandAll,
   getExpandedIds,
+  getExpansionProgress,
   isExpanded,
   resetExpandState,
   seedCollapsed,
@@ -37,12 +38,15 @@ test('global expansion opens one depth per press and then collapses in a loop', 
   ] }];
   seedCollapsed('loop');
   assert.deepEqual([...getExpandedIds('loop')], []);
+  assert.deepEqual(getExpansionProgress('loop', tree), { expandedLevels:0, totalLevels:2, ratio:0 });
 
   assert.deepEqual(advanceExpansionLevel('loop', tree), { collapsed:false, visibleDepth:1 });
   assert.deepEqual([...getExpandedIds('loop')], ['root']);
+  assert.deepEqual(getExpansionProgress('loop', tree), { expandedLevels:1, totalLevels:2, ratio:.5 });
 
   assert.deepEqual(advanceExpansionLevel('loop', tree), { collapsed:false, visibleDepth:2 });
   assert.deepEqual([...getExpandedIds('loop')], ['root', 'deep']);
+  assert.deepEqual(getExpansionProgress('loop', tree), { expandedLevels:2, totalLevels:2, ratio:1 });
 
   assert.deepEqual(advanceExpansionLevel('loop', tree), { collapsed:true, visibleDepth:0 });
   assert.deepEqual([...getExpandedIds('loop')], []);
