@@ -95,17 +95,6 @@ function scheduleTabRender(target, projectId){
   });
 }
 
-function parentIdOf(itemId){
-  const walk = (nodes, parentId = null) => {
-    for(const node of nodes || []){
-      if(String(node.id) === String(itemId)) return parentId;
-      const hit = walk(node.subtasks, node.id);
-      if(hit !== undefined) return hit;
-    }
-  };
-  return walk(wbsApi.list(projectIdOf()), null) ?? null;
-}
-
 function locateUiItem(itemId){
   const project = projectOf();
   let found = null;
@@ -632,7 +621,9 @@ function renderRow(item, codes, view, depth){
     bindRowDrag(row, {
       id:item.id,
       onReorder(orderedIds){
-        if(wbsApi.reorder(projectIdOf(), item.id, orderedIds, parentIdOf(item.id))) render();
+        const located = locateUiItem(item.id);
+        if(!located) return;
+        if(wbsApi.reorder(projectIdOf(), located.rootId, orderedIds, located.parent?.id || null)) render();
       },
     });
   }

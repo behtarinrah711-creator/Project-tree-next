@@ -11,6 +11,7 @@ const project = {
     ] },
     { id:'s2', kind:'stage', text:'ساختمان', progressWeight:1, subtasks:[
       { id:'s3', kind:'stage', text:'نازک‌کاری', progressWeight:1, subtasks:[] },
+      { id:'s4', kind:'stage', text:'تأسیسات', progressWeight:1, subtasks:[] },
     ] },
   ],
   contacts: [],
@@ -82,6 +83,26 @@ test('pointer drag reorders sibling stages before or after without nesting', asy
     return project?.tasks?.filter(item => !item.trashed).map(item => item.id);
   })).toEqual(['s2', 's1']);
   await expect(page.locator('.wbs-row.is-stage', { hasText:'ساختمان' }).locator('..').locator(':scope > .wbs-row')).toHaveCount(1);
+});
+
+test('pointer drag persists the order of sibling substages', async ({ page }) => {
+  await page.locator('.wbs-tab[aria-label="ثبت"]').click();
+  const source = page.locator('.wbs-row.is-stage', { hasText:'تأسیسات' });
+  const target = page.locator('.wbs-row.is-stage', { hasText:'نازک‌کاری' });
+  const gripBox = await source.locator('.wbs-grip').boundingBox();
+  const targetBox = await target.boundingBox();
+  if(!gripBox || !targetBox) throw new Error('Nested WBS drag geometry is unavailable');
+
+  await page.mouse.move(gripBox.x + gripBox.width / 2, gripBox.y + gripBox.height / 2);
+  await page.mouse.down();
+  await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + 2, { steps:5 });
+  await expect(target.locator('..')).toHaveClass(/wbs-drop-before/);
+  await page.mouse.up();
+
+  await expect.poll(() => page.evaluate(() => {
+    const project = window.KarhaAppData?.getSnapshot?.().projects?.find(item => item.id === 'e2e-wbs-home');
+    return project?.tasks?.find(item => item.id === 's2')?.subtasks?.map(item => item.id);
+  })).toEqual(['s4', 's3']);
 });
 
 test('confirmed WBS delete is immediate and does not show redundant undo feedback', async ({ page }) => {
