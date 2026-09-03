@@ -26,6 +26,7 @@ import {
   textInput,
 } from './wbsSheet.js';
 import { bindRowDrag } from './wbsDrag.js';
+import { toEnglishDigits } from '../../ui/digits.js';
 import {
   advanceExpansionLevel,
   getExpansionProgress,
@@ -116,6 +117,10 @@ function formatMoney(value){
 function formatProgress(value){
   const n = Number(value) || 0;
   return `٪${new Intl.NumberFormat('fa-IR', { useGrouping:false, maximumFractionDigits:2 }).format(n)}`;
+}
+
+function numberFromInput(input){
+  return Number(toEnglishDigits(input?.value ?? ''));
 }
 
 function breadcrumbFor(itemId){
@@ -217,7 +222,7 @@ function openCreateStageSheet(parentId = null){
     },
     onSave(root){
       const title = root.querySelector('[name="title"]').value.trim();
-      const progressWeight = Number(root.querySelector('[name="progressWeight"]').value);
+      const progressWeight = numberFromInput(root.querySelector('[name="progressWeight"]'));
       if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
       wbsApi.createStage(projectIdOf(), title, parentId, { progressWeight });
       render();
@@ -240,7 +245,7 @@ function openCreateWorkSheet(parentId = null){
     },
     onSave(root){
       const title = root.querySelector('[name="title"]').value.trim();
-      const progressWeight = Number(root.querySelector('[name="progressWeight"]').value);
+      const progressWeight = numberFromInput(root.querySelector('[name="progressWeight"]'));
       if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
       wbsApi.createWorkItem(projectIdOf(), title, parentId, { progressWeight });
       render();
@@ -297,7 +302,7 @@ function openStageEditSheet(item){
     },
     onSave(root){
       const title = root.querySelector('[name="title"]').value.trim();
-      const progressWeight = Number(root.querySelector('[name="progressWeight"]').value);
+      const progressWeight = numberFromInput(root.querySelector('[name="progressWeight"]'));
       if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
       wbsApi.updateItem(projectIdOf(), current.id, {
         text:title,
@@ -411,17 +416,17 @@ function openWorkEditSheet(item){
     },
     onSave(root){
       const title = root.querySelector('[name="title"]').value.trim();
-      const progressWeight = Number(root.querySelector('[name="progressWeight"]').value);
+      const progressWeight = numberFromInput(root.querySelector('[name="progressWeight"]'));
       if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
       wbsApi.updateItem(projectIdOf(), current.id, {
         text: title,
-        progress: Number(root.querySelector('[name="progress"]').value) || 0,
+        progress: numberFromInput(root.querySelector('[name="progress"]')) || 0,
         progressWeight,
         priority: root.querySelector('[name="priority"]').value,
         type: root.querySelector('[name="type"]').value,
-        quantity: Number(root.querySelector('[name="quantity"]').value) || 0,
+        quantity: numberFromInput(root.querySelector('[name="quantity"]')) || 0,
         unit: root.querySelector('[name="unit"]').value,
-        unitCost: Number(root.querySelector('[name="unitCost"]').value) || 0,
+        unitCost: numberFromInput(root.querySelector('[name="unitCost"]')) || 0,
         description: root.querySelector('[name="description"]').value,
       });
       render();

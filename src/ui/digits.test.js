@@ -5,6 +5,7 @@ import { toPersianDigits,toEnglishDigits,formatCost,formatCostDisplay } from './
 test('canonical formatting preserves foundation outputs',()=>{
   assert.equal(toPersianDigits('123'),'۱۲۳');
   assert.equal(toEnglishDigits('۱۲۳'),'123');
+  assert.equal(toEnglishDigits('١٢٣'),'123');
   assert.equal(formatCost(1234567),'۱,۲۳۴,۵۶۷');
   assert.equal(formatCost('bad'),'۰');
   assert.equal(formatCostDisplay(-1234),'۱,۲۳۴ تومان');
