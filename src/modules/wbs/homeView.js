@@ -536,6 +536,7 @@ function renderSimpleRow(item, depth){
   row.className = 'wbs-simple-row depth-' + Math.min(6, depth) + (checked ? ' is-done' : '') + (stage ? ' is-stage' : ' is-work');
   row.innerHTML = `
     <button type="button" class="wbs-check" aria-label="${stage ? 'پیشرفت محاسبه‌شده مرحله' : 'وضعیت'}" ${stage ? 'disabled' : ''}>${checked ? '✓' : ''}</button>
+    ${kids.length ? `<button type="button" class="wbs-chev" aria-label="${open?'بستن':'باز کردن'}">${open?'▾':'▸'}</button>` : '<span class="wbs-chev-spacer"></span>'}
     <button type="button" class="wbs-simple-title">
       ${stage ? '' : `<span class="wbs-type-chip ${chipClass}">${escapeHtml(chipLabel)}</span>`}
       <span class="wbs-simple-title-text">${escapeHtml(item.text || '')}</span>
@@ -544,6 +545,11 @@ function renderSimpleRow(item, depth){
   row.querySelector('.wbs-check')?.addEventListener('click', ev => {
     ev.stopPropagation();
     if(isWork(item)) wbsApi.updateItem(projectIdOf(), item.id, { progress: checked ? 0 : 100 });
+    render();
+  });
+  row.querySelector('.wbs-chev')?.addEventListener('click', ev => {
+    ev.stopPropagation();
+    toggleExpanded(projectIdOf(), String(item.id));
     render();
   });
   row.querySelector('.wbs-simple-title')?.addEventListener('click', ev => {
