@@ -40,8 +40,7 @@ export function seedCollapsed(projectId){
   return state.ids;
 }
 
-export function advanceExpansionLevel(projectId, items){
-  const state = bucket(projectId);
+function expandableLevels(items){
   const levels = [];
   const walk = (nodes, depth = 0) => {
     (nodes || []).filter(node => node && !node.trashed).forEach(node => {
@@ -54,6 +53,24 @@ export function advanceExpansionLevel(projectId, items){
     });
   };
   walk(items);
+  return levels;
+}
+
+export function getExpansionProgress(projectId, items){
+  const ids = bucket(projectId).ids;
+  const levels = expandableLevels(items);
+  const expandedLevels = levels.findIndex(level => level.some(id => !ids.has(id)));
+  const completedLevels = expandedLevels < 0 ? levels.length : expandedLevels;
+  return {
+    expandedLevels:completedLevels,
+    totalLevels:levels.length,
+    ratio:levels.length ? completedLevels / levels.length : 0,
+  };
+}
+
+export function advanceExpansionLevel(projectId, items){
+  const state = bucket(projectId);
+  const levels = expandableLevels(items);
   const expandableIds = levels.flat();
   if(!expandableIds.length || expandableIds.every(id => state.ids.has(id))){
     state.ids.clear();

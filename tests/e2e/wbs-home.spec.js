@@ -10,7 +10,9 @@ const project = {
       { id:'w2', kind:'work', text:'اجرای فونداسیون', progress:0, progressWeight:3, subtasks:[] },
     ] },
     { id:'s2', kind:'stage', text:'ساختمان', progressWeight:1, subtasks:[
-      { id:'s3', kind:'stage', text:'نازک‌کاری', progressWeight:1, subtasks:[] },
+      { id:'s3', kind:'stage', text:'نازک‌کاری', progressWeight:1, subtasks:[
+        { id:'s5', kind:'stage', text:'رنگ نهایی', progressWeight:1, subtasks:[] },
+      ] },
       { id:'s4', kind:'stage', text:'تأسیسات', progressWeight:1, subtasks:[] },
     ] },
   ],
@@ -115,16 +117,27 @@ test('pointer drag persists the order of sibling substages', async ({ page }) =>
 
 test('tree toggle reveals one depth per press and collapses after the deepest level', async ({ page }) => {
   await page.locator('.wbs-tab[aria-label="ثبت"]').click();
+  const treeToggle = page.locator('.wbs-tree-toggle');
+  const expandShade = treeToggle.locator('.wbs-expand-shade rect');
   await expect(page.locator('.wbs-row.depth-0')).toHaveCount(2);
   await expect(page.locator('.wbs-row.depth-1')).toHaveCount(0);
+  await expect(expandShade).toHaveAttribute('opacity', '0');
 
-  await page.locator('.wbs-tree-toggle').click();
+  await treeToggle.click();
   await expect(page.locator('.wbs-row.depth-1')).toHaveCount(4);
   await expect(page.locator('.wbs-row.depth-2')).toHaveCount(0);
+  await expect(treeToggle).toHaveAttribute('data-expanded-levels', '1');
+  await expect(treeToggle).toHaveAttribute('data-total-levels', '2');
+  await expect(expandShade).toHaveAttribute('opacity', '0.5');
 
-  await page.locator('.wbs-tree-toggle').click();
+  await treeToggle.click();
+  await expect(page.locator('.wbs-row.depth-2')).toHaveCount(1);
+  await expect(expandShade).toHaveAttribute('opacity', '1');
+
+  await treeToggle.click();
   await expect(page.locator('.wbs-row.depth-2')).toHaveCount(0);
   await expect(page.locator('.wbs-row.depth-1')).toHaveCount(0);
+  await expect(expandShade).toHaveAttribute('opacity', '0');
 });
 
 test('confirmed WBS delete is immediate and does not show redundant undo feedback', async ({ page }) => {
