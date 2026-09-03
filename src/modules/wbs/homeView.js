@@ -34,11 +34,17 @@ import {
 } from './wbsExpandState.js';
 
 const VIEWS = [
-  { id:'simple', label:'ساده' },
-  { id:'register', label:'ثبت' },
-  { id:'estimate', label:'برآورد' },
-  { id:'progress', label:'پیشرفت' },
+  { id:'simple', label:'ساده', icon:'M160-360v-80h640v80H160Zm0 160v-80h640v80H160Zm0-320v-80h640v80H160Zm0-160v-80h640v80H160Z' },
+  { id:'register', label:'ثبت', icon:'M560-80v-123l221-220q9-9 20-13t22-4q12 0 23 4.5t20 13.5l37 37q8 9 12.5 20t4.5 22q0 11-4 22.5T903-300L683-80H560Zm300-263-37-37 37 37ZM620-140h38l121-122-18-19-19-18-122 121v38ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v120h-80v-80H520v-200H240v640h240v80H240Zm280-400Zm241 199-19-18 37 37-18-19Z' },
+  { id:'estimate', label:'برآورد', icon:'M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z' },
+  { id:'progress', label:'پیشرفت', icon:'M300-520q-58 0-99-41t-41-99q0-58 41-99t99-41q58 0 99 41t41 99q0 58-41 99t-99 41Zm0-80q25 0 42.5-17.5T360-660q0-25-17.5-42.5T300-720q-25 0-42.5 17.5T240-660q0 25 17.5 42.5T300-600Zm360 440q-58 0-99-41t-41-99q0-58 41-99t99-41q58 0 99 41t41 99q0 58-41 99t-99 41Zm42.5-97.5Q720-275 720-300t-17.5-42.5Q685-360 660-360t-42.5 17.5Q600-325 600-300t17.5 42.5Q635-240 660-240t42.5-17.5ZM216-160l-56-56 584-584 56 56-584 584Z' },
 ];
+
+const EXPAND_ICON = 'M200-200v-240h80v160h160v80H200Zm480-320v-160H520v-80h240v240h-80Z';
+
+function materialIcon(path){
+  return `<svg viewBox="0 -960 960 960" aria-hidden="true" focusable="false"><path d="${path}"/></svg>`;
+}
 
 const SIMPLE_TYPE_CLASSES = new Map([
   ['اجرا', 'type-1'],
@@ -673,7 +679,9 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     btn.className = 'wbs-tab' + (currentView === view.id ? ' active' : '');
     btn.setAttribute('role', 'tab');
     btn.setAttribute('aria-selected', currentView === view.id ? 'true' : 'false');
-    btn.textContent = view.label;
+    btn.setAttribute('aria-label', view.label);
+    btn.title = view.label;
+    btn.innerHTML = materialIcon(view.icon);
     btn.addEventListener('click', () => {
       if(currentView === view.id) return;
       currentView = view.id;
@@ -697,10 +705,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   treeToggle.className = 'wbs-tree-toggle' + (isTreeOpen ? ' is-active' : '');
   treeToggle.setAttribute('aria-label', isTreeOpen ? 'بستن نمودار' : 'باز کردن نمودار');
   treeToggle.setAttribute('aria-pressed', isTreeOpen ? 'true' : 'false');
-  treeToggle.innerHTML = `
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-      <path d="M4 3h6v5H8v3h8V9h-2V4h6v5h-2v3a1 1 0 0 1-1 1h-4v2h2v-1h6v6h-6v-3h-6v3H3v-6h6v1h2v-2H7a1 1 0 0 1-1-1V8H4V3Zm2 2v1h2V5H6Zm10 1h2V5h-2v1ZM5 16v2h2v-2H5Zm12 0v2h2v-2h-2Z"/>
-    </svg>`;
+  treeToggle.innerHTML = materialIcon(EXPAND_ICON);
   treeToggle.addEventListener('click', () => {
     const nextOpen = !treeOpen(project.id);
     setTreeOpen(project.id, nextOpen);
