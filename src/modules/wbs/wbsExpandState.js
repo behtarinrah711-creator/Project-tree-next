@@ -33,6 +33,41 @@ export function seedRootLevel(projectId, items){
   return state.ids;
 }
 
+export function seedCollapsed(projectId){
+  const state = bucket(projectId);
+  if(state.seeded) return state.ids;
+  state.seeded = true;
+  return state.ids;
+}
+
+export function advanceExpansionLevel(projectId, items){
+  const state = bucket(projectId);
+  const levels = [];
+  const walk = (nodes, depth = 0) => {
+    (nodes || []).filter(node => node && !node.trashed).forEach(node => {
+      const children = (node.subtasks || []).filter(child => child && !child.trashed);
+      if(children.length){
+        if(!levels[depth]) levels[depth] = [];
+        levels[depth].push(String(node.id));
+        walk(children, depth + 1);
+      }
+    });
+  };
+  walk(items);
+  const expandableIds = levels.flat();
+  if(!expandableIds.length || expandableIds.every(id => state.ids.has(id))){
+    state.ids.clear();
+    state.seeded = true;
+    return { collapsed:true, visibleDepth:0 };
+  }
+  const nextDepth = levels.findIndex(ids => ids.some(id => !state.ids.has(id)));
+  for(let depth = 0; depth <= nextDepth; depth += 1){
+    (levels[depth] || []).forEach(id => state.ids.add(id));
+  }
+  state.seeded = true;
+  return { collapsed:false, visibleDepth:nextDepth + 1 };
+}
+
 export function expandAll(projectId, items){
   const state = bucket(projectId);
   const walk = nodes => {
