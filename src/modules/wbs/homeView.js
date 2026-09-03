@@ -25,7 +25,7 @@ import {
   selectInput,
   textInput,
 } from './wbsSheet.js';
-import { applyDrop, bindRowDrag } from './wbsDrag.js';
+import { bindRowDrag } from './wbsDrag.js';
 import {
   collapseAll,
   expandAll,
@@ -178,22 +178,6 @@ function requestDelete(item){
   }else if(window.confirm(message)){
     perform();
   }
-}
-
-function handleTreeDrop({ draggedId, targetId, targetKind }){
-  const projectId = projectIdOf();
-  const ok = applyDrop({
-    draggedId,
-    targetId,
-    targetKind,
-    onReparentInto(id, parentId){
-      return wbsApi.reparent(projectId, id, parentId);
-    },
-    onReorderSiblings(id, beforeId){
-      return wbsApi.reparent(projectId, id, parentIdOf(beforeId), beforeId);
-    },
-  });
-  if(ok) render();
 }
 
 function escapeHtml(value){
@@ -641,16 +625,17 @@ function renderRow(item, codes, view, depth){
     ev.stopPropagation();
     openAddMenu(item.id);
   });
-  if(!readOnlyView){
-    bindRowDrag(row, {
-      id: item.id,
-      kind: stage ? 'stage' : 'work',
-      onDrop: handleTreeDrop,
-    });
-  }
   const wrap = document.createElement('div');
   wrap.className = depth === 0 ? 'wbs-card' : 'wbs-branch';
   wrap.appendChild(row);
+  if(!readOnlyView){
+    bindRowDrag(row, {
+      id:item.id,
+      onReorder(orderedIds){
+        if(wbsApi.reorder(projectIdOf(), item.id, orderedIds, parentIdOf(item.id))) render();
+      },
+    });
+  }
   if(open) kids.forEach(child => wrap.appendChild(renderRow(child, codes, view, depth + 1)));
   return wrap;
 }
