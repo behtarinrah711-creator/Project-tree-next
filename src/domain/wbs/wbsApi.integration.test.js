@@ -79,6 +79,27 @@ test('reorder stamps updatedAt on persisted siblings', () => {
   assert.equal(projectRepository.find('p-wbs-4').tasks[0].id, b.id);
 });
 
+test('reorder persists sibling stages below the root', () => {
+  boot({ id:'p-wbs-nested-order', name:'P', tasks:[] });
+  const root = wbsApi.createStage('p-wbs-nested-order', 'Root', null, t1);
+  const first = wbsApi.createStage('p-wbs-nested-order', 'First', root.id, t1);
+  const second = wbsApi.createStage('p-wbs-nested-order', 'Second', root.id, t1);
+
+  const ordered = wbsApi.reorder(
+    'p-wbs-nested-order',
+    root.id,
+    [second.id, first.id],
+    root.id,
+    t3,
+  );
+
+  assert.ok(ordered);
+  assert.deepEqual(
+    projectRepository.find('p-wbs-nested-order').tasks[0].subtasks.map(item => item.id),
+    [second.id, first.id],
+  );
+});
+
 test('attachActivity dedupes and detachActivity removes', () => {
   boot({ id:'p-wbs-5', name:'P', tasks:[] });
   const work = wbsApi.createWorkItem('p-wbs-5', 'کار', null, { activities:['act-1'] }, t1);
