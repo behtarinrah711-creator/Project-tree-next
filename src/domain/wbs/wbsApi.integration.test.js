@@ -100,6 +100,23 @@ test('reorder persists sibling stages below the root', () => {
   );
 });
 
+test('editing an unfinished work weight immediately lowers every ancestor progress', () => {
+  boot({ id:'p-wbs-weight-update', name:'P', tasks:[] });
+  const root = wbsApi.createStage('p-wbs-weight-update', 'Root', null, { progressWeight:1 }, t1);
+  const nested = wbsApi.createStage('p-wbs-weight-update', 'Nested', root.id, { progressWeight:1 }, t1);
+  const done = wbsApi.createWorkItem('p-wbs-weight-update', 'Done', nested.id, { progressWeight:1 }, t1);
+  const unfinished = wbsApi.createWorkItem('p-wbs-weight-update', 'Unfinished', nested.id, { progress:0, progressWeight:3 }, t1);
+  wbsApi.updateItem('p-wbs-weight-update', done.id, { progress:100 }, t1);
+
+  assert.equal(wbsApi.stageProgress('p-wbs-weight-update', nested.id), 25);
+  assert.equal(wbsApi.stageProgress('p-wbs-weight-update', root.id), 25);
+
+  wbsApi.updateItem('p-wbs-weight-update', unfinished.id, { progressWeight:9 }, t2);
+
+  assert.equal(wbsApi.stageProgress('p-wbs-weight-update', nested.id), 10);
+  assert.equal(wbsApi.stageProgress('p-wbs-weight-update', root.id), 10);
+});
+
 test('attachActivity dedupes and detachActivity removes', () => {
   boot({ id:'p-wbs-5', name:'P', tasks:[] });
   const work = wbsApi.createWorkItem('p-wbs-5', 'کار', null, { activities:['act-1'] }, t1);

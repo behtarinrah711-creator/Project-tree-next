@@ -54,6 +54,25 @@ test('progress is weighted, work checkbox resets progress, and stage checkbox is
   await expect(foundation.locator('.wbs-meta')).toHaveText('٪۲۵');
 });
 
+test('editing unfinished work weight immediately recalculates its stage progress', async ({ page }) => {
+  await page.locator('.wbs-tab[aria-label="پیشرفت"]').click();
+  await page.locator('.wbs-tree-toggle').click();
+  const foundation = page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' });
+  const execution = page.locator('.wbs-row.is-work', { hasText:'اجرای فونداسیون' });
+  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۲۵');
+
+  await execution.locator('.wbs-title').click();
+  await page.locator('#wbsSheetOverlay .wbs-primary-action', { hasText:'ویرایش اطلاعات کار' }).click();
+  await page.locator('#wbsSheetOverlay [name="progressWeight"]').fill('9');
+  await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
+
+  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۱۰');
+  await expect.poll(() => page.evaluate(() => {
+    const project = window.KarhaAppData?.getSnapshot?.().projects?.find(item => item.id === 'e2e-wbs-home');
+    return project?.tasks?.find(item => item.id === 's1')?.subtasks?.find(item => item.id === 'w2')?.progressWeight;
+  })).toBe(9);
+});
+
 test('add menu does not create an incompatible option', async ({ page }) => {
   await page.locator('.wbs-tab[aria-label="ثبت"]').click();
   await page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' }).locator('.wbs-add').click();
