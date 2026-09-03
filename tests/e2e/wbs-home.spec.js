@@ -85,6 +85,19 @@ test('add menu does not create an incompatible option', async ({ page }) => {
   await expect(page.locator('#wbsSheetOverlay .wbs-choice', { hasText:'افزودن کار' })).toHaveCount(0);
 });
 
+test('leaf stages reserve the same responsive disclosure column as expandable stages', async ({ page }) => {
+  await page.locator('.wbs-tab[aria-label="ثبت"]').click();
+  await page.locator('.wbs-tree-toggle').click();
+
+  const expandable = page.locator('.wbs-row.is-stage', { hasText:'نازک‌کاری' });
+  const leaf = page.locator('.wbs-row.is-stage', { hasText:'تأسیسات' });
+  const disclosureWidth = await expandable.locator('.wbs-chev').evaluate(element => element.getBoundingClientRect().width);
+  const spacerWidth = await leaf.locator('.wbs-chev-spacer').evaluate(element => element.getBoundingClientRect().width);
+
+  expect(disclosureWidth).toBe(32);
+  expect(spacerWidth).toBe(disclosureWidth);
+});
+
 test('pointer drag reorders sibling stages before or after without nesting', async ({ page }) => {
   await page.locator('.wbs-tab[aria-label="ثبت"]').click();
   await page.locator('.wbs-tree-toggle').click();

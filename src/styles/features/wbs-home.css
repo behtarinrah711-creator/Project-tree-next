@@ -50,6 +50,8 @@ body:has(.wbs-home-root){background:#fff;}
 .wbs-meta.is-estimate,.wbs-general-amount,.wbs-total{font-family:'IRANYekan',IRANYekan,Tahoma,sans-serif;}
 .wbs-meta.is-estimate::after,.wbs-general-amount::after,.wbs-total::after{content:' تومان';font-size:8px;font-weight:400;color:#8a8176;margin-inline-start:2px;}
 .wbs-add,.wbs-chev{border:0;background:transparent;min-width:32px;min-height:32px;}
+.wbs-chev,.wbs-chev-spacer{box-sizing:border-box;width:32px;min-width:32px;flex:0 0 32px;}
+.wbs-chev-spacer{display:block;height:32px;pointer-events:none;}
 .wbs-add{order:98;}
 .wbs-simple-card{overflow:hidden;border-radius:5px;margin-bottom:10px;}
 .wbs-simple-row{display:flex;align-items:center;gap:8px;min-height:46px;padding:4px 10px;background:transparent;}
