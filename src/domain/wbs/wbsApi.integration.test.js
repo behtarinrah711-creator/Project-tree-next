@@ -68,6 +68,18 @@ test('updateItem keeps createdAt and changes updatedAt', () => {
   assert.equal(updated.updatedAt, '2026-01-02T00:00:00.000Z');
 });
 
+test('work schedule dates persist while stages remain unscheduled', () => {
+  boot({ id:'p-wbs-schedule', name:'P', tasks:[] });
+  const stage = wbsApi.createStage('p-wbs-schedule', 'مرحله', null, {}, t1);
+  const work = wbsApi.createWorkItem('p-wbs-schedule', 'کار', stage.id, {}, t1);
+  const updated = wbsApi.updateItem('p-wbs-schedule', work.id, {
+    scheduleStart:'1405/06/01', scheduleEnd:'1405/06/10',
+  }, t2);
+  assert.equal(updated.scheduleStart, '1405/06/01');
+  assert.equal(updated.scheduleEnd, '1405/06/10');
+  assert.equal(wbsApi.get('p-wbs-schedule', stage.id).scheduleStart, '');
+});
+
 test('reorder stamps updatedAt on persisted siblings', () => {
   boot({ id:'p-wbs-4', name:'P', tasks:[] });
   const a = wbsApi.createWorkItem('p-wbs-4', 'A', null, {}, t1);

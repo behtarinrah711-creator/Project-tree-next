@@ -63,6 +63,8 @@ function makeNode(kind, text, extra = {}, clock){
     type: kind === KIND_WORK ? (extra.type || '') : '',
     priority: extra.priority || '',
     description: extra.description || '',
+    scheduleStart: kind === KIND_WORK ? (extra.scheduleStart || '') : '',
+    scheduleEnd: kind === KIND_WORK ? (extra.scheduleEnd || '') : '',
   }, clock);
 }
 

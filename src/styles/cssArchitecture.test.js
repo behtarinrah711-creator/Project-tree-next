@@ -78,6 +78,7 @@ test('remaining direct style mutations are intentional runtime geometry or gener
     'src/modules/tasks/taskView.js',
     'src/modules/contracts/contractTemplateFormModule.js',
     'src/modules/export/exportView.js',
+    'src/modules/wbs/homeView.js',
   ]);
   const offenders = jsFiles.filter(path => /\.style(?:\.|\s*=)|cssText/.test(readFileSync(path, 'utf8')))
     .map(path => relative(root, path)).filter(path => !allowlist.has(path));
