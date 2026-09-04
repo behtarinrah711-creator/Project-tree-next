@@ -27,6 +27,7 @@
 @import url("./workspace/navigation.css");
 @import url("./features/wbs-home.css?v=20260904-0130");
 @import url("./features/wbs-timeline-sticky.css?v=20260904-1407");
+@import url("./features/wbs-timeline-details.css?v=20260904-2230");
 
 body.global-surface #bottomNav,
 body.global-surface #tabbar,
