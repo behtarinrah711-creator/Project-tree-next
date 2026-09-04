@@ -11,11 +11,13 @@ export async function bootstrapApplication({
   try{
     const { startApplication } = await loadStartup();
     const application = await startApplication();
-    try{
-      const { installTimelineEnhancements } = await import('../modules/wbs/timelineEnhancements.js');
-      installTimelineEnhancements({ windowRef, documentRef: windowRef.document });
-    } catch(error){
-      consoleRef.error('Karha Timeline enhancements failed', error);
+    if(windowRef?.document){
+      try{
+        const { installTimelineEnhancements } = await import('../modules/wbs/timelineEnhancements.js');
+        installTimelineEnhancements({ windowRef, documentRef: windowRef.document });
+      } catch(error){
+        consoleRef.error('Karha Timeline enhancements failed', error);
+      }
     }
     return application;
   } catch(error){
