@@ -117,7 +117,7 @@ body:has(.wbs-home-root){background:#fff;}
 .wbs-work-total b{font-size:18px;color:#2f2a24;}
 .topbar{background:#d7cfc3;}
 
-/* Mobile-first Gantt: task names remain fixed while dates pan horizontally. */
+/* Gantt presentation: desktop keeps WBS visible; mobile pans WBS and timeline together. */
 .is-timeline-view .wbs-tree{padding-inline:10px;overflow:hidden;}
 .wbs-gantt{display:grid;grid-template-columns:minmax(132px,42%) minmax(0,58%);direction:rtl;border:1px solid #e4ddd3;border-radius:7px;overflow:hidden;background:#fff;}
 .wbs-gantt-names{position:relative;z-index:2;min-width:0;background:#fff;border-inline-end:1px solid #d8d1c8;box-shadow:-5px 0 10px rgba(47,42,36,.05);}
@@ -130,14 +130,35 @@ body:has(.wbs-home-root){background:#fff;}
 .wbs-gantt-name>span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .wbs-gantt-chev{display:inline-flex;align-items:center;justify-content:center;flex:0 0 24px;width:24px;height:32px;border:0;background:transparent;color:#2f2a24;padding:0;}
 .wbs-gantt-scroll{direction:ltr;overflow-x:auto;overflow-y:hidden;overscroll-behavior-inline:contain;scrollbar-gutter:stable;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;scroll-snap-type:x proximity;}
-.wbs-gantt-timeline{position:relative;min-width:100%;direction:ltr;background:repeating-linear-gradient(to right,transparent 0,transparent 167px,#e7e2db 167px,#e7e2db 168px),repeating-linear-gradient(to right,transparent 0,transparent 23px,#f1eee9 23px,#f1eee9 24px);}
+.wbs-gantt-timeline{position:relative;min-width:100%;direction:ltr;background:repeating-linear-gradient(to right,transparent 0,transparent 167px,#e7e2db 167px,#e7e2db 168px),repeating-linear-gradient(to right,transparent 0,transparent 23px,#f1eee9 23px,#f1eee9 24px);transform:scaleX(-1);transform-origin:center;}
 .wbs-gantt-header{display:flex;position:sticky;top:0;z-index:1;white-space:nowrap;}
-.wbs-gantt-header span{box-sizing:border-box;flex:0 0 auto;display:flex;align-items:center;justify-content:center;border-inline-end:1px solid #ded7cd;font-size:11px;color:#6f675d;scroll-snap-align:start;}
+.wbs-gantt-header span{box-sizing:border-box;flex:0 0 auto;display:flex;align-items:center;justify-content:center;border-inline-end:1px solid #ded7cd;font-size:11px;color:#6f675d;scroll-snap-align:start;transform:scaleX(-1);}
 .wbs-gantt-line{position:relative;}
 .wbs-gantt-line:nth-child(even){background-color:rgba(246,246,246,.45);}
-.wbs-gantt-bar{position:absolute;top:13px;height:20px;min-width:24px;border:0;border-radius:5px;background:#91a4af;box-shadow:0 1px 2px rgba(0,0,0,.15);}
+.wbs-gantt-bar{position:absolute;top:13px;height:20px;min-width:24px;border:0;border-radius:5px;background:#91a4af;box-shadow:0 1px 2px rgba(0,0,0,.15);overflow:hidden;color:#fff;transform:scaleX(-1);}
 .wbs-gantt-bar.is-stage{top:18px;height:10px;border-radius:2px;}
 .wbs-gantt-bar.is-stage::before,.wbs-gantt-bar.is-stage::after{content:'';position:absolute;bottom:-4px;border-style:solid;border-width:4px 4px 0;border-color:currentColor transparent transparent;color:inherit;}
 .wbs-gantt-bar.is-stage::before{left:0}.wbs-gantt-bar.is-stage::after{right:0}
-.wbs-gantt-unscheduled{position:absolute;left:8px;top:10px;height:26px;border:1px dashed #b8aea2;border-radius:5px;background:#fff;color:#77706a;padding:2px 8px;font:inherit;font-size:10px;white-space:nowrap;}
-@media (min-width:720px){.wbs-gantt{grid-template-columns:minmax(220px,32%) minmax(0,68%)}.wbs-gantt-name{font-size:14px}.wbs-gantt-scroll{scrollbar-width:thin;}}
+.wbs-gantt-unscheduled{position:absolute;left:8px;top:10px;height:26px;border:1px dashed #b8aea2;border-radius:5px;background:#fff;color:#77706a;padding:2px 8px;font:inherit;font-size:10px;white-space:nowrap;transform:scaleX(-1);}
+.wbs-gantt-progress-meter{position:absolute;z-index:1;inset:0;width:100%;height:100%;appearance:none;-webkit-appearance:none;border:0;background:transparent;direction:rtl;pointer-events:none;}
+.wbs-gantt-progress-meter::-webkit-progress-bar{background:transparent;}
+.wbs-gantt-progress-meter::-webkit-progress-value{background:rgba(0,0,0,.3);}
+.wbs-gantt-progress-meter::-moz-progress-bar{background:rgba(0,0,0,.3);}
+.wbs-gantt-progress-label{position:absolute;z-index:2;inset-inline-start:5px;top:50%;transform:translateY(-50%);font-size:9px;font-weight:700;line-height:1;color:#fff;white-space:nowrap;text-shadow:0 1px 1px rgba(0,0,0,.35);direction:rtl;pointer-events:none;}
+.wbs-gantt-bar.is-stage .wbs-gantt-progress-label{font-size:8px;}
+
+@media (max-width:719px){
+  .is-timeline-view .wbs-tree{overflow:visible;padding-inline:10px;}
+  .wbs-gantt{display:grid;grid-template-columns:minmax(300px,82vw) max-content;overflow-x:auto;overflow-y:hidden;direction:rtl;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;}
+  .wbs-gantt-names{min-width:300px;box-shadow:none;}
+  .wbs-gantt-scroll{width:max-content;min-width:max-content;overflow:visible;scrollbar-gutter:auto;}
+  .wbs-gantt-name,.wbs-gantt-line{height:58px;}
+  .wbs-gantt-name>span:last-child{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;white-space:normal;overflow:hidden;text-overflow:ellipsis;line-height:1.55;}
+}
+
+@media (min-width:720px){
+  .wbs-gantt{grid-template-columns:minmax(220px,32%) minmax(0,68%);overflow:hidden;}
+  .wbs-gantt-name{font-size:14px;}
+  .wbs-gantt-names{position:relative;z-index:2;}
+  .wbs-gantt-scroll{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;}
+}
