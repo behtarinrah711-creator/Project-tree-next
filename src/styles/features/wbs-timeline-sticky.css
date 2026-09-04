@@ -1,0 +1,144 @@
+/* Timeline header architecture: keep the vertical sticky surface outside every horizontal scroller. */
+.is-timeline-view .wbs-tree{
+  overflow:visible !important;
+}
+
+.wbs-gantt.has-sticky-header-layout{
+  display:block;
+  overflow:visible;
+  border:0;
+  border-radius:7px;
+  background:#fff;
+  direction:rtl;
+}
+
+.wbs-gantt-sticky-header{
+  position:sticky;
+  top:61px;
+  z-index:30;
+  width:100%;
+  overflow-x:hidden;
+  overflow-y:hidden;
+  background:#fff;
+  border:1px solid #e4ddd3;
+  border-radius:7px 7px 0 0;
+  box-sizing:border-box;
+  isolation:isolate;
+}
+
+.wbs-gantt-sticky-track,
+.wbs-gantt-body-track{
+  display:grid;
+  grid-template-columns:minmax(132px,42%) minmax(0,58%);
+  min-width:100%;
+  direction:rtl;
+}
+
+.wbs-gantt-sticky-time-scroll{
+  min-width:0;
+  overflow:hidden;
+  direction:ltr;
+  background:#f7f4ef;
+}
+
+.wbs-gantt-sticky-header .wbs-gantt-corner,
+.wbs-gantt-sticky-header .wbs-gantt-header{
+  position:static;
+  top:auto;
+  z-index:auto;
+  margin:0;
+  box-sizing:border-box;
+}
+
+.wbs-gantt-sticky-header .wbs-gantt-corner{
+  border-inline-end:1px solid #d8d1c8;
+}
+
+.wbs-gantt-sticky-header .wbs-gantt-header{
+  width:max-content;
+  min-width:100%;
+  transform:scaleX(-1);
+  transform-origin:center;
+}
+
+.wbs-gantt-sticky-header .wbs-gantt-scale-header-canvas{
+  min-width:100%;
+}
+
+.wbs-gantt-body-scroll{
+  width:100%;
+  overflow:visible;
+  box-sizing:border-box;
+  border:1px solid #e4ddd3;
+  border-top:0;
+  border-radius:0 0 7px 7px;
+  background:#fff;
+  direction:ltr;
+}
+
+.wbs-gantt-body-track{
+  width:100%;
+}
+
+.wbs-gantt-body-track > .wbs-gantt-names,
+.wbs-gantt-body-track > .wbs-gantt-scroll{
+  min-width:0;
+}
+
+@media (max-width:719px){
+  .wbs-gantt-sticky-track,
+  .wbs-gantt-body-track{
+    grid-template-columns:minmax(180px,49vw) max-content;
+    width:max-content;
+    min-width:100%;
+  }
+
+  .wbs-gantt-sticky-header{
+    max-width:100%;
+  }
+
+  .wbs-gantt-sticky-time-scroll{
+    width:max-content;
+    min-width:max-content;
+    overflow:visible;
+  }
+
+  .wbs-gantt-body-scroll{
+    max-width:100%;
+    overflow-x:auto;
+    overflow-y:hidden;
+    overscroll-behavior-inline:contain;
+    -webkit-overflow-scrolling:touch;
+    touch-action:pan-x pan-y;
+  }
+
+  .wbs-gantt-body-track > .wbs-gantt-names{
+    min-width:180px;
+    box-shadow:none;
+  }
+
+  .wbs-gantt-body-track > .wbs-gantt-scroll{
+    width:max-content;
+    min-width:max-content;
+    overflow:visible;
+    scrollbar-gutter:auto;
+  }
+}
+
+@media (min-width:720px){
+  .wbs-gantt-sticky-track,
+  .wbs-gantt-body-track{
+    grid-template-columns:minmax(220px,32%) minmax(0,68%);
+    width:100%;
+  }
+
+  .wbs-gantt-body-scroll{
+    overflow:visible;
+  }
+
+  .wbs-gantt-body-track > .wbs-gantt-scroll{
+    overflow-x:auto;
+    overflow-y:hidden;
+    scrollbar-width:thin;
+  }
+}
