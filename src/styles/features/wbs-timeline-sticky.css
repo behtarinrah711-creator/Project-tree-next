@@ -1,4 +1,4 @@
-/* Timeline header architecture: keep the vertical sticky surface outside every horizontal scroller. */
+/* Timeline sticky header: vertically independent, horizontally coupled to the Gantt body. */
 .is-timeline-view .wbs-tree{
   overflow:visible !important;
 }
@@ -12,15 +12,19 @@
   direction:rtl;
 }
 
+/* .content is the vertical scroll container. Five pixels here means five pixels
+   below the application header, rather than 61px inside the content viewport. */
 .wbs-gantt-sticky-header{
   position:sticky;
-  top:61px;
+  top:5px;
   z-index:30;
   width:100%;
   overflow-x:hidden;
   overflow-y:hidden;
-  background:#fff;
+  direction:ltr;
+  background:#f7f4ef;
   border:1px solid #e4ddd3;
+  border-bottom:0;
   border-radius:7px 7px 0 0;
   box-sizing:border-box;
   isolation:isolate;
@@ -32,6 +36,11 @@
   grid-template-columns:minmax(132px,42%) minmax(0,58%);
   min-width:100%;
   direction:rtl;
+}
+
+.wbs-gantt-sticky-track > *,
+.wbs-gantt-body-track > *{
+  box-sizing:border-box;
 }
 
 .wbs-gantt-sticky-time-scroll{
@@ -54,6 +63,8 @@
   border-inline-end:1px solid #d8d1c8;
 }
 
+/* The original header was a child of the mirrored Timeline surface. Once it is
+   lifted into the sticky row it needs the same mirror at its new ownership level. */
 .wbs-gantt-sticky-header .wbs-gantt-header{
   width:max-content;
   min-width:100%;
@@ -68,12 +79,12 @@
 .wbs-gantt-body-scroll{
   width:100%;
   overflow:visible;
+  direction:ltr;
   box-sizing:border-box;
   border:1px solid #e4ddd3;
   border-top:0;
   border-radius:0 0 7px 7px;
   background:#fff;
-  direction:ltr;
 }
 
 .wbs-gantt-body-track{
@@ -93,8 +104,12 @@
     min-width:100%;
   }
 
-  .wbs-gantt-sticky-header{
+  /* Header and body are two viewports over tracks with identical geometry.
+     Both viewports use LTR scroll coordinates, so copying scrollLeft is exact. */
+  .wbs-gantt-sticky-header,
+  .wbs-gantt-body-scroll{
     max-width:100%;
+    direction:ltr;
   }
 
   .wbs-gantt-sticky-time-scroll{
@@ -104,7 +119,6 @@
   }
 
   .wbs-gantt-body-scroll{
-    max-width:100%;
     overflow-x:auto;
     overflow-y:hidden;
     overscroll-behavior-inline:contain;
@@ -130,6 +144,12 @@
   .wbs-gantt-body-track{
     grid-template-columns:minmax(220px,32%) minmax(0,68%);
     width:100%;
+  }
+
+  .wbs-gantt-sticky-time-scroll{
+    width:auto;
+    min-width:0;
+    overflow:hidden;
   }
 
   .wbs-gantt-body-scroll{
