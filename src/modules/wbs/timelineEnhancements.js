@@ -179,7 +179,7 @@ function currentTimescale(){
   return TIMESCALES[timescaleIndex] || TIMESCALES[1];
 }
 
-function paintCorner(gantt, project, documentRef){
+function paintCorner(gantt, project, windowRef, documentRef){
   const corner = gantt.querySelector('.wbs-gantt-corner');
   if(!corner) return;
   let title = corner.querySelector('.wbs-gantt-project-title');
@@ -194,7 +194,7 @@ function paintCorner(gantt, project, documentRef){
     toggle.innerHTML = `<svg class="wbs-timescale-shade" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect width="1" height="1" fill="currentColor"/></svg>${materialIcon(TIMESCALE_ICON, 'wbs-timescale-icon')}<span class="wbs-timescale-label"></span>`;
     toggle.addEventListener('click', () => {
       timescaleIndex = (timescaleIndex + 1) % TIMESCALES.length;
-      scheduleEnhance(documentRef);
+      scheduleEnhance(windowRef, documentRef);
     });
     corner.append(title, toggle);
   }
@@ -491,7 +491,7 @@ function enhance(windowRef, documentRef){
   const maxDepth = maxStageDepth(project.tasks || []);
   const entries = flattenVisible(project.tasks || [], project.id, maxDepth);
   ensureTimelineToolbar(documentRef, project);
-  paintCorner(gantt, project, documentRef);
+  paintCorner(gantt, project, windowRef, documentRef);
   paintHierarchy(gantt, entries);
   syncRowHeights(gantt);
   paintScaleGeometry(gantt, entries, documentRef);
