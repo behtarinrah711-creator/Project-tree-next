@@ -18,6 +18,13 @@ export function formatTimelineDate(value){
   return `${faNumber(jm)}/${faNumber(jd)}`;
 }
 
+export function shouldShowProgressLabel(barWidth, progress){
+  const width = Number(barWidth) || 0;
+  const value = Math.max(0, Math.min(100, Number(progress) || 0));
+  if(value <= 0) return false;
+  return width >= (value >= 100 ? 34 : 28);
+}
+
 function dateKey(value){
   const [jy, jm, jd] = String(value || '').split('/').map(Number);
   if(!jy || !jm || !jd) return null;
@@ -83,6 +90,13 @@ function detailForeignObject(documentRef, { className, x, y, width, height, text
   return foreign;
 }
 
+function paintProgressPresentation(bar, barWidth){
+  const progress = Math.max(0, Math.min(100, Number(bar.dataset.progress) || 0));
+  bar.classList.toggle('is-complete', progress >= 100);
+  const label = bar.querySelector('.wbs-gantt-progress-label');
+  if(label) label.classList.toggle('is-space-limited', !shouldShowProgressLabel(barWidth, progress));
+}
+
 function paintRowDetails(documentRef, line, entry){
   const canvas = line.querySelector('.wbs-gantt-scale-canvas');
   const bar = canvas?.querySelector('.wbs-gantt-bar');
@@ -98,6 +112,7 @@ function paintRowDetails(documentRef, line, entry){
   const barY = (rowHeight - BAR_HEIGHT) / 2;
   barForeign.setAttribute('height', String(BAR_HEIGHT));
   barForeign.setAttribute('y', String(barY));
+  paintProgressPresentation(bar, barWidth);
 
   const title = String(entry.item?.text || entry.item?.title || '').trim();
   if(title){
