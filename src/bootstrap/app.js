@@ -15,6 +15,8 @@ export async function bootstrapApplication({
       try{
         const { installTimelineEnhancements } = await import('../modules/wbs/timelineEnhancements.js');
         installTimelineEnhancements({ windowRef, documentRef: windowRef.document });
+        const { installTimelineStickyHeader } = await import('../modules/wbs/timelineStickyHeader.js');
+        installTimelineStickyHeader({ windowRef, documentRef: windowRef.document });
       } catch(error){
         consoleRef.error('Karha Timeline enhancements failed', error);
       }
