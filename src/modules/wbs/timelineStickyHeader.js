@@ -6,6 +6,14 @@ function isMobile(windowRef){
   return Boolean(windowRef?.matchMedia?.('(max-width: 719px)').matches);
 }
 
+function rightmostScroll(element){
+  return Math.max(0, element.scrollWidth - element.clientWidth);
+}
+
+function geometrySignature(gantt){
+  return gantt.dataset.timescaleSignature || 'pending';
+}
+
 function syncLayout(gantt, windowRef, { initialize = false } = {}){
   const sticky = gantt.querySelector(':scope > .wbs-gantt-sticky-header');
   const timeScroll = sticky?.querySelector('.wbs-gantt-sticky-time-scroll');
@@ -16,23 +24,29 @@ function syncLayout(gantt, windowRef, { initialize = false } = {}){
   const mobile = isMobile(windowRef);
   const mode = mobile ? 'mobile' : 'desktop';
   const modeChanged = gantt.dataset.stickyHeaderMode !== mode;
+  const signature = geometrySignature(gantt);
+  const geometryChanged = gantt.dataset.stickyHeaderSignature !== signature;
+
   gantt.dataset.stickyHeaderMode = mode;
+  gantt.dataset.stickyHeaderSignature = signature;
 
   if(mobile){
-    if(initialize || modeChanged){
-      bodyScroll.scrollLeft = Math.max(0, bodyScroll.scrollWidth - bodyScroll.clientWidth);
+    if(initialize || modeChanged || geometryChanged){
+      bodyScroll.scrollLeft = rightmostScroll(bodyScroll);
     }
     sticky.scrollLeft = bodyScroll.scrollLeft;
   }else{
     sticky.scrollLeft = 0;
-    if(initialize || modeChanged){
-      timelineScroll.scrollLeft = Math.max(0, timelineScroll.scrollWidth - timelineScroll.clientWidth);
+    if(initialize || modeChanged || geometryChanged){
+      timelineScroll.scrollLeft = rightmostScroll(timelineScroll);
     }
     timeScroll.scrollLeft = timelineScroll.scrollLeft;
   }
 }
 
 function bindScrollSync(gantt, windowRef){
+  if(gantt.dataset.stickyHeaderBound === 'true') return;
+
   const sticky = gantt.querySelector(':scope > .wbs-gantt-sticky-header');
   const timeScroll = sticky?.querySelector('.wbs-gantt-sticky-time-scroll');
   const bodyScroll = gantt.querySelector(':scope > .wbs-gantt-body-scroll');
@@ -46,10 +60,13 @@ function bindScrollSync(gantt, windowRef){
   timelineScroll.addEventListener('scroll', () => {
     if(!isMobile(windowRef)) timeScroll.scrollLeft = timelineScroll.scrollLeft;
   }, { passive:true });
+
+  gantt.dataset.stickyHeaderBound = 'true';
 }
 
 function mountStickyHeader(gantt, windowRef, documentRef){
   if(gantt.classList.contains('has-sticky-header-layout')){
+    bindScrollSync(gantt, windowRef);
     syncLayout(gantt, windowRef);
     return;
   }
