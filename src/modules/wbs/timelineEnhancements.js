@@ -70,8 +70,8 @@ function paintHeader(gantt, entries){
   gantt.querySelectorAll('.wbs-gantt-header span').forEach((span, index) => {
     const start = min + (index * 7);
     const widthDays = Math.max(1, Math.round((parseFloat(span.style.width) || 168) / 24));
-    const end = start + widthDays;
-    span.textContent = rangeLabel(start, end);
+    const label = rangeLabel(start, start + widthDays);
+    if(span.textContent !== label) span.textContent = label;
   });
 }
 
@@ -81,19 +81,27 @@ function paintProgress(gantt, entries){
     const entry = entries[index];
     const bar = line.querySelector('.wbs-gantt-bar');
     if(!entry || !bar) return;
-    bar.querySelector('.wbs-gantt-progress-fill')?.remove();
     const progress = displayedProgress(entry.item);
+    const progressText = `${faNumber(progress)}٪`;
     bar.dataset.progress = String(progress);
     bar.setAttribute('aria-label', `${entry.item.text || ''}، پیشرفت ${faNumber(progress)} درصد`);
-    if(progress <= 0) return;
-    const fill = document.createElement('span');
-    fill.className = 'wbs-gantt-progress-fill';
-    fill.style.width = `${progress}%`;
-    const label = document.createElement('span');
-    label.className = 'wbs-gantt-progress-label';
-    label.textContent = `${faNumber(progress)}٪`;
-    fill.appendChild(label);
-    bar.appendChild(fill);
+
+    let fill = bar.querySelector('.wbs-gantt-progress-fill');
+    if(progress <= 0){
+      if(fill) fill.remove();
+      return;
+    }
+    if(!fill){
+      fill = bar.ownerDocument.createElement('span');
+      fill.className = 'wbs-gantt-progress-fill';
+      const label = bar.ownerDocument.createElement('span');
+      label.className = 'wbs-gantt-progress-label';
+      fill.appendChild(label);
+      bar.appendChild(fill);
+    }
+    if(fill.style.width !== `${progress}%`) fill.style.width = `${progress}%`;
+    const label = fill.querySelector('.wbs-gantt-progress-label');
+    if(label && label.textContent !== progressText) label.textContent = progressText;
   });
 }
 
@@ -111,8 +119,8 @@ function syncRowHeights(gantt){
   });
 }
 
-function enhance(){
-  const gantt = document.querySelector('.wbs-gantt');
+function enhance(documentRef){
+  const gantt = documentRef.querySelector('.wbs-gantt');
   if(!gantt) return;
   const project = activeProject();
   if(!project) return;
@@ -122,11 +130,11 @@ function enhance(){
   syncRowHeights(gantt);
 }
 
-function scheduleEnhance(){
+function scheduleEnhance(documentRef){
   if(frame) cancelAnimationFrame(frame);
   frame = requestAnimationFrame(() => {
     frame = 0;
-    enhance();
+    enhance(documentRef);
   });
 }
 
@@ -161,9 +169,10 @@ function installStyles(documentRef){
 export function installTimelineEnhancements({ windowRef = window, documentRef = document } = {}){
   installStyles(documentRef);
   if(observer) observer.disconnect();
-  observer = new MutationObserver(scheduleEnhance);
+  const callback = () => scheduleEnhance(documentRef);
+  observer = new MutationObserver(callback);
   observer.observe(documentRef.getElementById('content') || documentRef.body, { childList:true, subtree:true });
-  windowRef.addEventListener('resize', scheduleEnhance, { passive:true });
-  scheduleEnhance();
+  windowRef.addEventListener('resize', callback, { passive:true });
+  scheduleEnhance(documentRef);
   return () => observer?.disconnect();
 }
