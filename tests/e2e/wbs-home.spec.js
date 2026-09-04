@@ -223,7 +223,13 @@ test('Timeline details survive initial render, timescale changes, and tree reren
   };
 
   await assertDetails(1);
+  const initialScale = await page.locator('.wbs-gantt').getAttribute('data-timescale-signature');
+  await expect(page.locator('.wbs-timescale-toggle')).toHaveAttribute('aria-label', 'نمای هفتگی');
   await page.locator('.wbs-timescale-toggle').click();
+  await expect(page.locator('.wbs-timescale-toggle')).toHaveAttribute('aria-label', 'نمای ماهانه');
+  await expect.poll(() => page.locator('.wbs-gantt').getAttribute('data-timescale-signature'))
+    .not.toBe(initialScale);
+  await expect(page.locator('.wbs-gantt')).toHaveClass(/wbs-scale-month/);
   await assertDetails(1);
 
   await page.locator('.wbs-tree-toggle').click();
