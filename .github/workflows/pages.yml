@@ -31,12 +31,10 @@ jobs:
           node-version: 20
 
       - name: Diagnose npm registry
-        timeout-minutes: 2
         run: |
           node --version
           npm --version
           npm config get registry
-          npm ping --loglevel verbose
 
       - name: Install dependencies
         timeout-minutes: 5
