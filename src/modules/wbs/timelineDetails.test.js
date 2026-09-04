@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { formatTimelineDate, shouldShowProgressLabel } from './timelineDetails.js';
+import { formatTimelineDate, shouldShowProgressLabel } from './timelineDetailsFormatting.js';
 
 test('Timeline dates render as Jalali month/day in Persian digits', () => {
   assert.equal(formatTimelineDate('1405/6/12'), '۶/۱۲');
