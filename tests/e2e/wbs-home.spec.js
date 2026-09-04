@@ -44,7 +44,7 @@ test('progress is weighted, work checkbox resets progress, and stage checkbox is
   await page.locator('.wbs-tab[aria-label="پیشرفت"]').click();
   await page.locator('.wbs-tree-toggle').click();
   const foundation = page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' });
-  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۳۲٫۵');
+  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۳۳');
   await expect(foundation.locator('.wbs-check')).toBeDisabled();
 
   const execution = page.locator('.wbs-row.is-work', { hasText:'اجرای فونداسیون' });
@@ -59,7 +59,7 @@ test('editing unfinished work weight immediately recalculates its stage progress
   await page.locator('.wbs-tree-toggle').click();
   const foundation = page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' });
   const execution = page.locator('.wbs-row.is-work', { hasText:'اجرای فونداسیون' });
-  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۳۲٫۵');
+  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۳۳');
 
   await execution.locator('.wbs-title').click();
   await page.locator('#wbsSheetOverlay .wbs-primary-action', { hasText:'ویرایش اطلاعات کار' }).click();
