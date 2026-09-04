@@ -50,11 +50,39 @@
   content:none;
 }
 
+/* The whole scheduled span stays visible as a low-intensity version of its type color.
+   The progress meter restores the full type color only over the completed portion. */
+.wbs-gantt-scale-foreign .wbs-gantt-color-stage{--wbs-gantt-bar-color:#77706a;background-color:color-mix(in srgb,var(--wbs-gantt-bar-color) 35%,white)!important;}
+.wbs-gantt-scale-foreign .wbs-gantt-color-1{--wbs-gantt-bar-color:#03045E;background-color:color-mix(in srgb,var(--wbs-gantt-bar-color) 35%,white)!important;}
+.wbs-gantt-scale-foreign .wbs-gantt-color-2{--wbs-gantt-bar-color:#033E8A;background-color:color-mix(in srgb,var(--wbs-gantt-bar-color) 35%,white)!important;}
+.wbs-gantt-scale-foreign .wbs-gantt-color-3{--wbs-gantt-bar-color:#0078B7;background-color:color-mix(in srgb,var(--wbs-gantt-bar-color) 35%,white)!important;}
+.wbs-gantt-scale-foreign .wbs-gantt-color-4{--wbs-gantt-bar-color:#0096C8;background-color:color-mix(in srgb,var(--wbs-gantt-bar-color) 35%,white)!important;}
+.wbs-gantt-scale-foreign .wbs-gantt-color-5{--wbs-gantt-bar-color:#00B4D7;background-color:color-mix(in srgb,var(--wbs-gantt-bar-color) 35%,white)!important;}
+.wbs-gantt-scale-foreign .wbs-gantt-color-6{--wbs-gantt-bar-color:#48CAE4;background-color:color-mix(in srgb,var(--wbs-gantt-bar-color) 35%,white)!important;}
+.wbs-gantt-scale-foreign .wbs-gantt-color-7{--wbs-gantt-bar-color:#6D8EA0;background-color:color-mix(in srgb,var(--wbs-gantt-bar-color) 35%,white)!important;}
+.wbs-gantt-scale-foreign .wbs-gantt-color-default{--wbs-gantt-bar-color:#91A4AF;background-color:color-mix(in srgb,var(--wbs-gantt-bar-color) 35%,white)!important;}
+
+.wbs-gantt-progress-meter::-webkit-progress-value{background:var(--wbs-gantt-bar-color,#5f5851)!important;}
+.wbs-gantt-progress-meter::-moz-progress-bar{background:var(--wbs-gantt-bar-color,#5f5851)!important;}
+
+/* A dark green bar is the dedicated visual state for a fully closed activity/stage. */
+.wbs-gantt-scale-foreign .wbs-gantt-bar.is-complete{
+  --wbs-gantt-bar-color:#1b5e20;
+  background-color:#1b5e20!important;
+}
+.wbs-gantt-scale-foreign .wbs-gantt-bar.is-complete .wbs-gantt-progress-meter::-webkit-progress-value{background:#1b5e20!important;}
+.wbs-gantt-scale-foreign .wbs-gantt-bar.is-complete .wbs-gantt-progress-meter::-moz-progress-bar{background:#1b5e20!important;}
+
 .wbs-gantt-progress-label,
 .wbs-gantt-bar.is-stage .wbs-gantt-progress-label{
   inset-inline-start:3px;
   font-size:7px;
   line-height:8px;
+}
+
+/* Do not squeeze percentage text into bars that are physically too short to read. */
+.wbs-gantt-progress-label.is-space-limited{
+  display:none;
 }
 
 .wbs-gantt-name.wbs-gantt-package-separator,
