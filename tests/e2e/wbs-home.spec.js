@@ -7,7 +7,7 @@ const project = {
   tasks: [
     { id:'s1', kind:'stage', text:'فونداسیون', progressWeight:2, subtasks:[
       { id:'w1', kind:'work', text:'خرید آهن', progress:100, progressWeight:1, quantity:1, unitCost:10, scheduleStart:'1405/06/01', scheduleEnd:'1405/06/02', subtasks:[] },
-      { id:'w2', kind:'work', text:'اجرای فونداسیون', progress:0, progressWeight:3, scheduleStart:'1405/06/03', scheduleEnd:'1405/06/08', subtasks:[] },
+      { id:'w2', kind:'work', text:'اجرای فونداسیون', progress:10, progressWeight:3, scheduleStart:'1405/06/03', scheduleEnd:'1405/06/08', subtasks:[] },
     ] },
     { id:'s2', kind:'stage', text:'ساختمان', progressWeight:1, subtasks:[
       { id:'s3', kind:'stage', text:'نازک‌کاری', progressWeight:1, subtasks:[
@@ -44,7 +44,7 @@ test('progress is weighted, work checkbox resets progress, and stage checkbox is
   await page.locator('.wbs-tab[aria-label="پیشرفت"]').click();
   await page.locator('.wbs-tree-toggle').click();
   const foundation = page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' });
-  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۲۵');
+  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۳۳');
   await expect(foundation.locator('.wbs-check')).toBeDisabled();
 
   const execution = page.locator('.wbs-row.is-work', { hasText:'اجرای فونداسیون' });
@@ -59,14 +59,14 @@ test('editing unfinished work weight immediately recalculates its stage progress
   await page.locator('.wbs-tree-toggle').click();
   const foundation = page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' });
   const execution = page.locator('.wbs-row.is-work', { hasText:'اجرای فونداسیون' });
-  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۲۵');
+  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۳۳');
 
   await execution.locator('.wbs-title').click();
   await page.locator('#wbsSheetOverlay .wbs-primary-action', { hasText:'ویرایش اطلاعات کار' }).click();
   await page.locator('#wbsSheetOverlay [name="progressWeight"]').fill('9');
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
 
-  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۱۰');
+  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۱۹');
   await expect.poll(() => page.evaluate(() => {
     const project = window.KarhaAppData?.getSnapshot?.().projects?.find(item => item.id === 'e2e-wbs-home');
     return project?.tasks?.find(item => item.id === 's1')?.subtasks?.find(item => item.id === 'w2')?.progressWeight;
@@ -209,10 +209,6 @@ test('WBS home uses the unified project header, keeps tabs, and does not hide pr
 });
 
 test('Timeline details survive initial render, timescale changes, and tree rerenders', async ({ page }) => {
-  await page.evaluate(() => {
-    const data = window.KarhaAppData.getSnapshot();
-    data.projects.find(item => item.id === 'e2e-wbs-home').tasks[0].subtasks[1].progress = 10;
-  });
   await page.locator('.wbs-tab[aria-label="تایم‌لاین"]').click();
 
   const assertDetails = async expectedBars => {
