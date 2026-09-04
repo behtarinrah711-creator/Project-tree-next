@@ -47,6 +47,14 @@ export function progressWeightOf(item){
   return Number.isFinite(n) && n > 0 ? n : 1;
 }
 
+export function scheduleStartOf(item){
+  return /^\d{4}\/\d{2}\/\d{2}$/.test(String(item?.scheduleStart || '')) ? item.scheduleStart : '';
+}
+
+export function scheduleEndOf(item){
+  return /^\d{4}\/\d{2}\/\d{2}$/.test(String(item?.scheduleEnd || '')) ? item.scheduleEnd : '';
+}
+
 export function quantityOf(item){
   const n = Number(item?.quantity);
   return Number.isFinite(n) ? n : 0;
@@ -118,6 +126,8 @@ export function normalizeItem(item){
     type: kind === KIND_WORK ? (item.type || '') : '',
     priority: item.priority || '',
     description: item.description || '',
+    scheduleStart: kind === KIND_WORK ? scheduleStartOf(item) : '',
+    scheduleEnd: kind === KIND_WORK ? scheduleEndOf(item) : '',
     subtasks: Array.isArray(item.subtasks) ? item.subtasks.map(normalizeItem) : [],
   };
 }

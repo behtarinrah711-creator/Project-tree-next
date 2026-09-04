@@ -21,6 +21,8 @@ function strip(item){
     unitCost: node.unitCost,
     activityIds: node.activityIds,
     description: node.description,
+    scheduleStart: node.scheduleStart,
+    scheduleEnd: node.scheduleEnd,
     createdAt: node.createdAt || null,
     updatedAt: node.updatedAt || null,
     children: (node.subtasks || []).filter(x => !x.trashed).map(strip),

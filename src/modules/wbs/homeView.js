@@ -11,8 +11,11 @@ import {
   lineTotal,
   progressOf,
   progressWeightOf,
+  scheduleEndOf,
+  scheduleStartOf,
   wbsCodeMap,
 } from '../../domain/wbs/normalize.js';
+import { formatJalaliDisplay, gregorianToJalali, jalaliToGregorian } from '../../ui/jalali.js';
 import { rollupEstimate, rollupProgress } from '../../domain/wbs/estimate.js';
 import { activityRepository } from '../../data/activityRepository.js';
 import {
@@ -41,6 +44,7 @@ const VIEWS = [
   { id:'register', label:'ثبت', icon:'M560-80v-123l221-220q9-9 20-13t22-4q12 0 23 4.5t20 13.5l37 37q8 9 12.5 20t4.5 22q0 11-4 22.5T903-300L683-80H560Zm300-263-37-37 37 37ZM620-140h38l121-122-18-19-19-18-122 121v38ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v120h-80v-80H520v-200H240v640h240v80H240Zm280-400Zm241 199-19-18 37 37-18-19Z' },
   { id:'estimate', label:'برآورد', icon:'M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z' },
   { id:'progress', label:'پیشرفت', icon:'M300-520q-58 0-99-41t-41-99q0-58 41-99t99-41q58 0 99 41t41 99q0 58-41 99t-99 41Zm0-80q25 0 42.5-17.5T360-660q0-25-17.5-42.5T300-720q-25 0-42.5 17.5T240-660q0 25 17.5 42.5T300-600Zm360 440q-58 0-99-41t-41-99q0-58 41-99t99-41q58 0 99 41t41 99q0 58-41 99t-99 41Zm42.5-97.5Q720-275 720-300t-17.5-42.5Q685-360 660-360t-42.5 17.5Q600-325 600-300t17.5 42.5Q635-240 660-240t42.5-17.5ZM216-160l-56-56 584-584 56 56-584 584Z' },
+  { id:'timeline', label:'تایم‌لاین', icon:'M240-280h240v-80H240v80Zm120-160h240v-80H360v80Zm120-160h240v-80H480v80ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Z' },
 ];
 
 const EXPAND_ICON = 'M200-200v-240h80v160h160v80H200Zm480-320v-160H520v-80h240v240h-80Z';
@@ -121,6 +125,35 @@ function formatProgress(value){
 
 function numberFromInput(input){
   return Number(toEnglishDigits(input?.value ?? ''));
+}
+
+function jalaliDayNumber(value){
+  if(!value) return null;
+  const [jy, jm, jd] = String(value).split('/').map(Number);
+  if(!jy || !jm || !jd) return null;
+  const g = jalaliToGregorian(jy, jm, jd);
+  return Math.floor(Date.UTC(g.gy, g.gm - 1, g.gd) / 86400000);
+}
+
+function scheduleDuration(start, end){
+  const a = jalaliDayNumber(start), b = jalaliDayNumber(end);
+  return a !== null && b !== null && b >= a ? b - a + 1 : 0;
+}
+
+function dateField(name, label, value, onChange){
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.name = name;
+  button.className = 'wbs-input wbs-date-input';
+  button.dataset.value = value || '';
+  const paint = () => { button.textContent = button.dataset.value ? formatJalaliDisplay(button.dataset.value) : 'انتخاب تاریخ'; };
+  button.addEventListener('click', () => window.KarhaUI?.openJalaliPicker?.(button.dataset.value, next => {
+    button.dataset.value = next;
+    paint();
+    onChange?.();
+  }));
+  paint();
+  return fieldRow(label, button);
 }
 
 function breadcrumbFor(itemId){
@@ -358,6 +391,19 @@ function openWorkEditSheet(item){
     saveLabel: 'ذخیره',
     body(root){
       root.appendChild(fieldRow('عنوان', textInput(current.text || '', { name:'title' })));
+      const duration = document.createElement('output');
+      duration.className = 'wbs-input wbs-duration-output';
+      duration.setAttribute('aria-live', 'polite');
+      const paintDuration = () => {
+        const start = root.querySelector('[name="scheduleStart"]')?.dataset.value || '';
+        const end = root.querySelector('[name="scheduleEnd"]')?.dataset.value || '';
+        const days = scheduleDuration(start, end);
+        duration.textContent = days ? `${new Intl.NumberFormat('fa-IR').format(days)} روز` : '—';
+      };
+      root.appendChild(dateField('scheduleStart', 'تاریخ شروع', scheduleStartOf(current), paintDuration));
+      root.appendChild(dateField('scheduleEnd', 'تاریخ پایان', scheduleEndOf(current), paintDuration));
+      root.appendChild(fieldRow('مدت زمان', duration));
+      paintDuration();
       root.appendChild(fieldRow('پیشرفت ٪', textInput(String(progressOf(current)), { name:'progress', type:'number', min:'0', max:'100', step:'1' })));
       root.appendChild(fieldRow('وزن پیشرفت', textInput(String(progressWeightOf(current)), { name:'progressWeight', type:'number', min:'0.01', step:'0.01', required:true })));
       const progressNote = document.createElement('div');
@@ -417,7 +463,15 @@ function openWorkEditSheet(item){
     onSave(root){
       const title = root.querySelector('[name="title"]').value.trim();
       const progressWeight = numberFromInput(root.querySelector('[name="progressWeight"]'));
+      const scheduleStart = root.querySelector('[name="scheduleStart"]').dataset.value;
+      const scheduleEnd = root.querySelector('[name="scheduleEnd"]').dataset.value;
       if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
+      if((scheduleStart || scheduleEnd) && !scheduleDuration(scheduleStart, scheduleEnd)){
+        window.KarhaUI?.showToast?.(!scheduleStart || !scheduleEnd
+          ? 'تاریخ شروع و پایان را کامل کنید'
+          : 'تاریخ پایان باید برابر یا بعد از تاریخ شروع باشد');
+        return false;
+      }
       wbsApi.updateItem(projectIdOf(), current.id, {
         text: title,
         progress: numberFromInput(root.querySelector('[name="progress"]')) || 0,
@@ -428,11 +482,111 @@ function openWorkEditSheet(item){
         unit: root.querySelector('[name="unit"]').value,
         unitCost: numberFromInput(root.querySelector('[name="unitCost"]')) || 0,
         description: root.querySelector('[name="description"]').value,
+        scheduleStart,
+        scheduleEnd,
       });
       render();
       return true;
     },
   });
+}
+
+function scheduleRange(item){
+  if(isWork(item)){
+    const start = jalaliDayNumber(scheduleStartOf(item));
+    const end = jalaliDayNumber(scheduleEndOf(item));
+    return start !== null && end !== null && end >= start ? { start, end } : null;
+  }
+  const ranges = (item.subtasks || []).filter(x => !x.trashed).map(scheduleRange).filter(Boolean);
+  return ranges.length ? { start:Math.min(...ranges.map(x => x.start)), end:Math.max(...ranges.map(x => x.end)) } : null;
+}
+
+function jalaliLabelFromDay(day){
+  const date = new Date(day * 86400000);
+  const j = gregorianToJalali(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
+  return `${new Intl.NumberFormat('fa-IR', { useGrouping:false }).format(j.jm)}/${new Intl.NumberFormat('fa-IR', { useGrouping:false }).format(j.jd)}`;
+}
+
+function flattenTimeline(items, depth = 0, out = []){
+  (items || []).filter(x => !x.trashed).forEach(item => {
+    out.push({ item, depth, range:scheduleRange(item) });
+    if(isStage(item) && isExpanded(projectIdOf(), item.id)) flattenTimeline(item.subtasks, depth + 1, out);
+  });
+  return out;
+}
+
+function renderTimeline(items){
+  const rows = flattenTimeline(items);
+  const scheduled = rows.filter(x => x.range);
+  const min = scheduled.length ? Math.min(...scheduled.map(x => x.range.start)) : 0;
+  const max = scheduled.length ? Math.max(...scheduled.map(x => x.range.end)) : min + 27;
+  const days = Math.max(28, max - min + 1);
+  const dayWidth = 24;
+  const width = days * dayWidth;
+  const shell = document.createElement('section');
+  shell.className = 'wbs-gantt';
+  const names = document.createElement('div');
+  names.className = 'wbs-gantt-names';
+  names.innerHTML = '<div class="wbs-gantt-corner">کارها</div>';
+  const viewport = document.createElement('div');
+  viewport.className = 'wbs-gantt-scroll';
+  const timeline = document.createElement('div');
+  timeline.className = 'wbs-gantt-timeline';
+  timeline.style.width = `${width}px`;
+  const header = document.createElement('div');
+  header.className = 'wbs-gantt-header';
+  for(let day = 0; day < days; day += 7){
+    const week = document.createElement('span');
+    week.style.width = `${Math.min(7, days - day) * dayWidth}px`;
+    week.textContent = `هفته ${new Intl.NumberFormat('fa-IR').format(Math.floor(day / 7) + 1)} · ${jalaliLabelFromDay(min + day)}`;
+    header.appendChild(week);
+  }
+  renderTimelineRows(rows, names, timeline, min, dayWidth);
+  timeline.prepend(header);
+  viewport.appendChild(timeline);
+  shell.append(names, viewport);
+  viewport.scrollLeft = viewport.scrollWidth;
+  return shell;
+}
+
+function timelineColor(item){
+  if(isStage(item)) return '#77706a';
+  return ({ اجرا:'#03045E', خرید:'#033E8A', 'نیروی کار':'#0078B7', پیمانکار:'#0096C8', کرایه:'#00B4D7', خدمات:'#48CAE4', پیگیری:'#6D8EA0' })[item.type] || '#91A4AF';
+}
+
+function tNameRow(entry){
+  const row = document.createElement('div');
+  row.className = 'wbs-gantt-name depth-' + Math.min(entry.depth, 6) + (isStage(entry.item) ? ' is-stage' : ' is-work');
+  const kids = (entry.item.subtasks || []).filter(x => !x.trashed);
+  row.innerHTML = `${kids.length ? '<button type="button" class="wbs-gantt-chev">'+(isExpanded(projectIdOf(), entry.item.id)?'▾':'▸')+'</button>' : '<span class="wbs-gantt-chev"></span>'}<span>${escapeHtml(entry.item.text)}</span>`;
+  row.querySelector('button')?.addEventListener('click', () => { toggleExpanded(projectIdOf(), String(entry.item.id)); render(); });
+  return row;
+}
+
+function tBarRow(entry, min, dayWidth){
+  const row = document.createElement('div');
+  row.className = 'wbs-gantt-line';
+  if(entry.range){
+    const bar = document.createElement('button');
+    bar.type = 'button';
+    bar.className = 'wbs-gantt-bar' + (isStage(entry.item) ? ' is-stage' : '');
+    bar.style.left = `${(entry.range.start - min) * dayWidth}px`;
+    bar.style.width = `${Math.max(dayWidth, (entry.range.end - entry.range.start + 1) * dayWidth)}px`;
+    bar.style.backgroundColor = timelineColor(entry.item);
+    bar.title = `${scheduleStartOf(entry.item) || ''} تا ${scheduleEndOf(entry.item) || ''}`;
+    bar.addEventListener('click', () => isWork(entry.item) ? openWorkDetailSheet(entry.item) : openStageDetailSheet(entry.item));
+    row.appendChild(bar);
+  }else if(isWork(entry.item)){
+    const empty = document.createElement('button');
+    empty.type = 'button'; empty.className = 'wbs-gantt-unscheduled'; empty.textContent = 'بدون تاریخ';
+    empty.addEventListener('click', () => openWorkEditSheet(entry.item));
+    row.appendChild(empty);
+  }
+  return row;
+}
+
+function renderTimelineRows(rows, names, timeline, min, dayWidth){
+  rows.forEach(entry => { names.appendChild(tNameRow(entry)); timeline.appendChild(tBarRow(entry, min, dayWidth)); });
 }
 
 function openWorkDetailSheet(item){
@@ -648,7 +802,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   ensureTreeState(project);
 
   const root = document.createElement('div');
-  root.className = 'wbs-home-root' + (currentView === 'simple' ? ' is-simple-view' : '');
+  root.className = 'wbs-home-root' + (currentView === 'simple' ? ' is-simple-view' : '') + (currentView === 'timeline' ? ' is-timeline-view' : '');
   target.appendChild(root);
 
   const tabs = document.createElement('div');
@@ -696,7 +850,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     renderWbsHome(target, project.id);
   });
   toolbar.append(addRoot, treeToggle);
-  root.appendChild(toolbar);
+  if(currentView !== 'timeline') root.appendChild(toolbar);
 
   const tree = document.createElement('div');
   tree.className = 'wbs-tree';
@@ -704,6 +858,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   const simple = currentView === 'simple';
   const codes = simple ? new Map() : wbsCodeMap(items);
   if(!items.length) tree.innerHTML = '<div class="empty-state">مرحله یا کاری ثبت نشده است.</div>';
+  else if(currentView === 'timeline') tree.appendChild(renderTimeline(items));
   else items.forEach(item => tree.appendChild(simple ? renderSimpleRow(item, 0) : renderRow(item, codes, currentView, 0)));
   root.appendChild(tree);
 
