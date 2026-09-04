@@ -7,7 +7,7 @@ const project = {
   tasks: [
     { id:'s1', kind:'stage', text:'فونداسیون', progressWeight:2, subtasks:[
       { id:'w1', kind:'work', text:'خرید آهن', progress:100, progressWeight:1, quantity:1, unitCost:10, scheduleStart:'1405/06/01', scheduleEnd:'1405/06/02', subtasks:[] },
-      { id:'w2', kind:'work', text:'اجرای فونداسیون', progress:0, progressWeight:3, scheduleStart:'1405/06/03', scheduleEnd:'1405/06/05', subtasks:[] },
+      { id:'w2', kind:'work', text:'اجرای فونداسیون', progress:0, progressWeight:3, scheduleStart:'1405/06/03', scheduleEnd:'1405/06/08', subtasks:[] },
     ] },
     { id:'s2', kind:'stage', text:'ساختمان', progressWeight:1, subtasks:[
       { id:'s3', kind:'stage', text:'نازک‌کاری', progressWeight:1, subtasks:[
@@ -223,7 +223,7 @@ test('Timeline details survive initial render, timescale changes, and tree reren
     await expect(page.locator('.wbs-gantt-scale-foreign .wbs-gantt-bar')).toHaveCount(expectedBars);
     await expect(page.locator('.wbs-gantt-detail-title').filter({ hasText:/^فونداسیون$/ })).toBeVisible();
     await expect(page.locator('.wbs-gantt-detail-date', { hasText:'۶/۱' }).first()).toBeVisible();
-    await expect(page.locator('.wbs-gantt-detail-date', { hasText:'۶/۵' }).first()).toBeVisible();
+    await expect(page.locator('.wbs-gantt-detail-date', { hasText:'۶/۸' }).first()).toBeVisible();
     const heights = await page.locator('.wbs-gantt-scale-foreign .wbs-gantt-bar').evaluateAll(bars =>
       bars.map(bar => bar.getBoundingClientRect().height)
     );
@@ -237,7 +237,7 @@ test('Timeline details survive initial render, timescale changes, and tree reren
   await page.locator('.wbs-tree-toggle').click();
   await assertDetails(3);
   await expect(page.locator('.wbs-gantt-detail-title', { hasText:'اجرای فونداسیون' })).toBeVisible();
-  await expect(page.locator('.wbs-gantt-progress-label', { hasText:'٪۱۰' })).toBeVisible();
+  await expect(page.locator('.wbs-gantt-progress-label').filter({ hasText:/^٪۱۰$/ })).toBeVisible();
 
   await page.locator('.wbs-tree-toggle').click();
   await page.locator('.wbs-tree-toggle').click();
