@@ -1,53 +1,8 @@
-import { projectContext } from '../../core/projectContext.js';
-import { projectRepository } from '../../data/projectRepository.js';
-import { isStage, isWork, scheduleEndOf, scheduleStartOf } from '../../domain/wbs/normalize.js';
-import { isExpanded } from './wbsExpandState.js';
+import { isStage } from '../../domain/wbs/normalize.js';
 import { formatTimelineDate, shouldShowProgressLabel } from './timelineDetailsFormatting.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const BAR_HEIGHT = 8;
-let observer = null;
-let frame = 0;
-
-function dateKey(value){
-  const [jy, jm, jd] = String(value || '').split('/').map(Number);
-  if(!jy || !jm || !jd) return null;
-  return (jy * 372) + (jm * 31) + jd;
-}
-
-function scheduleRange(item){
-  if(isWork(item)){
-    const start = scheduleStartOf(item);
-    const end = scheduleEndOf(item);
-    const startKey = dateKey(start);
-    const endKey = dateKey(end);
-    return startKey !== null && endKey !== null && endKey >= startKey
-      ? { start, end, startKey, endKey }
-      : null;
-  }
-  const ranges = (item.subtasks || []).filter(child => !child.trashed).map(scheduleRange).filter(Boolean);
-  if(!ranges.length) return null;
-  return {
-    start:ranges.reduce((best, range) => range.startKey < best.startKey ? range : best).start,
-    end:ranges.reduce((best, range) => range.endKey > best.endKey ? range : best).end,
-    startKey:Math.min(...ranges.map(range => range.startKey)),
-    endKey:Math.max(...ranges.map(range => range.endKey)),
-  };
-}
-
-function flattenVisible(items, projectId, depth = 0, out = []){
-  (items || []).filter(item => !item.trashed).forEach(item => {
-    out.push({ item, depth, range:scheduleRange(item) });
-    if(isStage(item) && isExpanded(projectId, item.id)) flattenVisible(item.subtasks, projectId, depth + 1, out);
-  });
-  return out;
-}
-
-function activeProject(){
-  const id = projectContext.getProjectId?.() || projectContext.getActiveProjectId?.() || null;
-  return id ? projectRepository.getActiveProject(id) : null;
-}
-
 function svgElement(documentRef, name, attrs = {}){
   const element = documentRef.createElementNS(SVG_NS, name);
   Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, String(value)));
@@ -122,7 +77,7 @@ function paintRowDetails(documentRef, line, entry){
     y:dateY,
     width:dateWidth,
     height:10,
-    text:formatTimelineDate(entry.range.start),
+    text:formatTimelineDate(entry.range.startDate),
     dir:'ltr',
   }));
   canvas.appendChild(detailForeignObject(documentRef, {
@@ -131,7 +86,7 @@ function paintRowDetails(documentRef, line, entry){
     y:dateY,
     width:dateWidth,
     height:10,
-    text:formatTimelineDate(entry.range.end),
+    text:formatTimelineDate(entry.range.endDate),
     dir:'ltr',
   }));
 }
@@ -146,49 +101,15 @@ function separatorRows(gantt, entries){
   });
 }
 
-function detailSignature(gantt, entries){
-  return `${gantt.dataset.timescaleSignature || ''}|${entries.map(entry => `${entry.item.id}:${entry.range?.start || 'x'}-${entry.range?.end || 'x'}:${entry.item.text || entry.item.title || ''}`).join('|')}`;
-}
-
-function enhanceDetails(documentRef){
-  const gantt = documentRef.querySelector('.wbs-gantt');
+export function applyTimelineDetails(gantt, entries, documentRef = document){
   if(!gantt?.classList.contains('is-scale-enhanced') || !gantt.dataset.timescaleSignature) return;
-  const project = activeProject();
-  if(!project) return;
-  const entries = flattenVisible(project.tasks || [], project.id);
   const lines = [...gantt.querySelectorAll('.wbs-gantt-line')];
   if(!lines.length || !lines.every(line => line.querySelector('.wbs-gantt-scale-canvas'))) return;
-
-  const signature = detailSignature(gantt, entries);
-  if(gantt.dataset.timelineDetailsSignature === signature) return;
+  const signature = `${gantt.dataset.timescaleSignature}|${entries.map(entry => `${entry.item.id}:${entry.item.text || entry.item.title || ''}`).join('|')}`;
+  const expectedDetails = entries.filter(entry => entry.range).length * 3;
+  if(gantt.dataset.timelineDetailsSignature === signature && gantt.querySelectorAll('.wbs-gantt-detail').length === expectedDetails) return;
 
   separatorRows(gantt, entries);
   lines.forEach((line, index) => paintRowDetails(documentRef, line, entries[index]));
   gantt.dataset.timelineDetailsSignature = signature;
-}
-
-function scheduleEnhance(documentRef){
-  if(frame) cancelAnimationFrame(frame);
-  frame = requestAnimationFrame(() => {
-    frame = 0;
-    enhanceDetails(documentRef);
-  });
-}
-
-export function installTimelineDetails({ windowRef = window, documentRef = document } = {}){
-  observer?.disconnect();
-  const callback = () => scheduleEnhance(documentRef);
-  observer = new MutationObserver(callback);
-  observer.observe(documentRef.getElementById('content') || documentRef.body, {
-    childList:true,
-    subtree:true,
-    attributes:true,
-    attributeFilter:['data-timescale-signature'],
-  });
-  windowRef.addEventListener('resize', callback, { passive:true });
-  scheduleEnhance(documentRef);
-  return () => {
-    observer?.disconnect();
-    windowRef.removeEventListener('resize', callback);
-  };
 }
