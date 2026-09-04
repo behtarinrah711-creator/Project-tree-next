@@ -6,8 +6,8 @@ const project = {
   location: 'تهران',
   tasks: [
     { id:'s1', kind:'stage', text:'فونداسیون', progressWeight:2, subtasks:[
-      { id:'w1', kind:'work', text:'خرید آهن', progress:100, progressWeight:1, quantity:1, unitCost:10, subtasks:[] },
-      { id:'w2', kind:'work', text:'اجرای فونداسیون', progress:0, progressWeight:3, subtasks:[] },
+      { id:'w1', kind:'work', text:'خرید آهن', progress:100, progressWeight:1, quantity:1, unitCost:10, scheduleStart:'1405/06/01', scheduleEnd:'1405/06/02', subtasks:[] },
+      { id:'w2', kind:'work', text:'اجرای فونداسیون', progress:0, progressWeight:3, scheduleStart:'1405/06/03', scheduleEnd:'1405/06/05', subtasks:[] },
     ] },
     { id:'s2', kind:'stage', text:'ساختمان', progressWeight:1, subtasks:[
       { id:'s3', kind:'stage', text:'نازک‌کاری', progressWeight:1, subtasks:[
@@ -206,4 +206,41 @@ test('WBS home uses the unified project header, keeps tabs, and does not hide pr
   await expect(page.locator('#bottomProjectsBtn')).toBeVisible();
   await page.locator('.wbs-tab[aria-label="برآورد"]').click();
   await expect(page.locator('.wbs-general')).toBeVisible();
+});
+
+test('Timeline details survive initial render, timescale changes, and tree rerenders', async ({ page }) => {
+  await page.evaluate(() => {
+    const key = 'ptnext-v1:app-data';
+    const data = JSON.parse(localStorage.getItem(key));
+    data.projects[0].tasks[0].subtasks[1].progress = 10;
+    localStorage.setItem(key, JSON.stringify(data));
+  });
+  await page.reload();
+  await page.waitForFunction(() => Boolean(window.KarhaLegacy && window.KarhaApp));
+  await page.locator('.wbs-tab[aria-label="تایم‌لاین"]').click();
+
+  const assertDetails = async expectedBars => {
+    await expect(page.locator('.wbs-gantt-scale-foreign .wbs-gantt-bar')).toHaveCount(expectedBars);
+    await expect(page.locator('.wbs-gantt-detail-title', { hasText:'فونداسیون' })).toBeVisible();
+    await expect(page.locator('.wbs-gantt-detail-date', { hasText:'۶/۱' }).first()).toBeVisible();
+    await expect(page.locator('.wbs-gantt-detail-date', { hasText:'۶/۵' }).first()).toBeVisible();
+    const heights = await page.locator('.wbs-gantt-scale-foreign .wbs-gantt-bar').evaluateAll(bars =>
+      bars.map(bar => bar.getBoundingClientRect().height)
+    );
+    expect(heights).toEqual(Array(expectedBars).fill(8));
+  };
+
+  await assertDetails(1);
+  await page.locator('.wbs-timescale-toggle').click();
+  await assertDetails(1);
+
+  await page.locator('.wbs-tree-toggle').click();
+  await assertDetails(3);
+  await expect(page.locator('.wbs-gantt-detail-title', { hasText:'اجرای فونداسیون' })).toBeVisible();
+  await expect(page.locator('.wbs-gantt-progress-label', { hasText:'٪۱۰' })).toBeVisible();
+
+  await page.locator('.wbs-tree-toggle').click();
+  await page.locator('.wbs-tree-toggle').click();
+  await expect(page.locator('.wbs-gantt-detail-title', { hasText:'اجرای فونداسیون' })).toHaveCount(0);
+  await assertDetails(1);
 });

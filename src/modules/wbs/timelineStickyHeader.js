@@ -1,6 +1,3 @@
-let observer = null;
-let resizeHandler = null;
-
 function isMobile(windowRef){
   return Boolean(windowRef?.matchMedia?.('(max-width: 719px)').matches);
 }
@@ -71,7 +68,7 @@ function bindScrollSync(gantt, windowRef){
   gantt.dataset.stickyHeaderBound = 'true';
 }
 
-function mountStickyHeader(gantt, windowRef, documentRef){
+export function applyTimelineStickyHeader(gantt, windowRef = window, documentRef = document){
   // data-timescale-signature is committed by the Timeline enhancer only after
   // the current render has its final header canvas and row geometry. Treat that
   // signature as the lifecycle boundary for initial render, timescale changes,
@@ -124,47 +121,4 @@ function mountStickyHeader(gantt, windowRef, documentRef){
   syncLayout(gantt, windowRef, { initialize:true });
 }
 
-function enhanceAll(windowRef, documentRef){
-  documentRef.querySelectorAll('.wbs-home-root.is-timeline-view .wbs-gantt').forEach(gantt => {
-    mountStickyHeader(gantt, windowRef, documentRef);
-  });
-}
-
-export function installTimelineStickyHeader({ windowRef = window, documentRef = document } = {}){
-  observer?.disconnect();
-  if(resizeHandler) windowRef.removeEventListener('resize', resizeHandler);
-
-  const root = documentRef.getElementById('content') || documentRef.body;
-
-  // Do not react to provisional child-list mutations. The Timeline enhancer
-  // commits data-timescale-signature at the end of every completed geometry
-  // pass, including the first render and every expand/collapse render.
-  observer = new MutationObserver(mutations => {
-    const gantts = new Set();
-    mutations.forEach(mutation => {
-      if(mutation.type !== 'attributes') return;
-      const gantt = mutation.target;
-      if(gantt?.matches?.('.wbs-home-root.is-timeline-view .wbs-gantt')) gantts.add(gantt);
-    });
-    gantts.forEach(gantt => mountStickyHeader(gantt, windowRef, documentRef));
-  });
-  observer.observe(root, {
-    attributes:true,
-    subtree:true,
-    attributeFilter:['data-timescale-signature'],
-  });
-
-  resizeHandler = () => enhanceAll(windowRef, documentRef);
-  windowRef.addEventListener('resize', resizeHandler, { passive:true });
-
-  // Covers the case where the enhancer completed before this module installed.
-  enhanceAll(windowRef, documentRef);
-
-  return () => {
-    observer?.disconnect();
-    windowRef.removeEventListener('resize', resizeHandler);
-    resizeHandler = null;
-  };
-}
-
-export default { installTimelineStickyHeader };
+export default { applyTimelineStickyHeader };

@@ -12,6 +12,8 @@ import {
 } from './wbsExpandState.js';
 import { fieldRow, openWbsSheet, textInput } from './wbsSheet.js';
 import { render } from './homeView.js';
+import { applyTimelineDetails } from './timelineDetails.js';
+import { applyTimelineStickyHeader } from './timelineStickyHeader.js';
 
 const MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 const SEASONS = ['بهار','تابستان','پاییز','زمستان'];
@@ -65,12 +67,17 @@ function rangeLabel(startDay, endDay){
 
 function scheduleRange(item){
   if(isWork(item)){
-    const start = dayNumber(scheduleStartOf(item));
-    const end = dayNumber(scheduleEndOf(item));
-    return start !== null && end !== null && end >= start ? { start, end } : null;
+    const startDate = scheduleStartOf(item);
+    const endDate = scheduleEndOf(item);
+    const start = dayNumber(startDate);
+    const end = dayNumber(endDate);
+    return start !== null && end !== null && end >= start ? { start, end, startDate, endDate } : null;
   }
   const ranges = (item.subtasks || []).filter(x => !x.trashed).map(scheduleRange).filter(Boolean);
-  return ranges.length ? { start:Math.min(...ranges.map(x => x.start)), end:Math.max(...ranges.map(x => x.end)) } : null;
+  if(!ranges.length) return null;
+  const first = ranges.reduce((best, range) => range.start < best.start ? range : best);
+  const last = ranges.reduce((best, range) => range.end > best.end ? range : best);
+  return { start:first.start, end:last.end, startDate:first.startDate, endDate:last.endDate };
 }
 
 function maxStageDepth(items, depth = 0){
@@ -466,21 +473,17 @@ function paintProgress(gantt, entries){
     }
     meter.value = progress;
 
-    if(progress >= 20){
-      if(!label){
-        label = bar.ownerDocument.createElement('span');
-        label.className = 'wbs-gantt-progress-label';
-        label.dir = 'rtl';
-        bar.appendChild(label);
-      }
-      if(label.textContent !== progressText) label.textContent = progressText;
-    }else{
-      label?.remove();
+    if(!label){
+      label = bar.ownerDocument.createElement('span');
+      label.className = 'wbs-gantt-progress-label';
+      label.dir = 'rtl';
+      bar.appendChild(label);
     }
+    if(label.textContent !== progressText) label.textContent = progressText;
   });
 }
 
-function enhance(documentRef){
+function enhance(windowRef, documentRef){
   const gantt = documentRef.querySelector('.wbs-gantt');
   if(!gantt) return;
   const project = activeProject();
@@ -493,23 +496,25 @@ function enhance(documentRef){
   syncRowHeights(gantt);
   paintScaleGeometry(gantt, entries, documentRef);
   paintProgress(gantt, entries);
+  applyTimelineDetails(gantt, entries, documentRef);
+  applyTimelineStickyHeader(gantt, windowRef, documentRef);
 }
 
-function scheduleEnhance(documentRef){
+function scheduleEnhance(windowRef, documentRef){
   if(frame) cancelAnimationFrame(frame);
   frame = requestAnimationFrame(() => {
     frame = 0;
-    enhance(documentRef);
+    enhance(windowRef, documentRef);
   });
 }
 
 export function installTimelineEnhancements({ windowRef = window, documentRef = document } = {}){
   if(observer) observer.disconnect();
-  const callback = () => scheduleEnhance(documentRef);
+  const callback = () => scheduleEnhance(windowRef, documentRef);
   observer = new MutationObserver(callback);
   observer.observe(documentRef.getElementById('content') || documentRef.body, { childList:true, subtree:true });
   windowRef.addEventListener('resize', callback, { passive:true });
-  scheduleEnhance(documentRef);
+  scheduleEnhance(windowRef, documentRef);
   return () => {
     observer?.disconnect();
     windowRef.removeEventListener('resize', callback);
