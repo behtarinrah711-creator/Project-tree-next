@@ -5,7 +5,6 @@ import { rollupProgress } from '../../domain/wbs/estimate.js';
 import { gregorianToJalali, jalaliToGregorian } from '../../ui/jalali.js';
 import { isExpanded } from './wbsExpandState.js';
 
-const STYLE_ID = 'wbs-timeline-enhancements';
 const MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 let observer = null;
 let frame = 0;
@@ -67,9 +66,11 @@ function paintHeader(gantt, entries){
   const scheduled = entries.filter(entry => entry.range);
   if(!scheduled.length) return;
   const min = Math.min(...scheduled.map(entry => entry.range.start));
+  const max = Math.max(...scheduled.map(entry => entry.range.end));
+  const days = Math.max(28, max - min + 1);
   gantt.querySelectorAll('.wbs-gantt-header span').forEach((span, index) => {
     const start = min + (index * 7);
-    const widthDays = Math.max(1, Math.round((parseFloat(span.style.width) || 168) / 24));
+    const widthDays = Math.min(7, Math.max(1, days - (index * 7)));
     const label = rangeLabel(start, start + widthDays);
     if(span.textContent !== label) span.textContent = label;
   });
@@ -81,41 +82,40 @@ function paintProgress(gantt, entries){
     const entry = entries[index];
     const bar = line.querySelector('.wbs-gantt-bar');
     if(!entry || !bar) return;
+
     const progress = displayedProgress(entry.item);
     const progressText = `${faNumber(progress)}٪`;
     bar.dataset.progress = String(progress);
     bar.setAttribute('aria-label', `${entry.item.text || ''}، پیشرفت ${faNumber(progress)} درصد`);
 
-    let fill = bar.querySelector('.wbs-gantt-progress-fill');
+    let meter = bar.querySelector('.wbs-gantt-progress-meter');
+    let label = bar.querySelector('.wbs-gantt-progress-label');
+
     if(progress <= 0){
-      if(fill) fill.remove();
+      meter?.remove();
+      label?.remove();
       return;
     }
-    if(!fill){
-      fill = bar.ownerDocument.createElement('span');
-      fill.className = 'wbs-gantt-progress-fill';
-      const label = bar.ownerDocument.createElement('span');
-      label.className = 'wbs-gantt-progress-label';
-      fill.appendChild(label);
-      bar.appendChild(fill);
-    }
-    if(fill.style.width !== `${progress}%`) fill.style.width = `${progress}%`;
-    const label = fill.querySelector('.wbs-gantt-progress-label');
-    if(label && label.textContent !== progressText) label.textContent = progressText;
-  });
-}
 
-function syncRowHeights(gantt){
-  const names = [...gantt.querySelectorAll('.wbs-gantt-name')];
-  const lines = [...gantt.querySelectorAll('.wbs-gantt-line')];
-  names.forEach((name, index) => {
-    const line = lines[index];
-    if(!line) return;
-    name.style.height = '';
-    line.style.height = '';
-    const height = Math.max(46, name.scrollHeight);
-    name.style.height = `${height}px`;
-    line.style.height = `${height}px`;
+    if(!meter){
+      meter = bar.ownerDocument.createElement('progress');
+      meter.className = 'wbs-gantt-progress-meter';
+      meter.max = 100;
+      meter.setAttribute('aria-hidden', 'true');
+      bar.appendChild(meter);
+    }
+    meter.value = progress;
+
+    if(progress >= 20){
+      if(!label){
+        label = bar.ownerDocument.createElement('span');
+        label.className = 'wbs-gantt-progress-label';
+        bar.appendChild(label);
+      }
+      if(label.textContent !== progressText) label.textContent = progressText;
+    }else{
+      label?.remove();
+    }
   });
 }
 
@@ -127,7 +127,6 @@ function enhance(documentRef){
   const entries = flattenVisible(project.tasks || [], project.id);
   paintHeader(gantt, entries);
   paintProgress(gantt, entries);
-  syncRowHeights(gantt);
 }
 
 function scheduleEnhance(documentRef){
@@ -138,41 +137,15 @@ function scheduleEnhance(documentRef){
   });
 }
 
-function installStyles(documentRef){
-  if(documentRef.getElementById(STYLE_ID)) return;
-  const style = documentRef.createElement('style');
-  style.id = STYLE_ID;
-  style.textContent = `
-    .wbs-gantt-timeline{transform:scaleX(-1);transform-origin:center;}
-    .wbs-gantt-header span,.wbs-gantt-bar,.wbs-gantt-unscheduled{transform:scaleX(-1);}
-    .wbs-gantt-bar{overflow:hidden;color:#fff;}
-    .wbs-gantt-progress-fill{position:absolute;z-index:1;inset-block:0;right:0;background:rgba(0,0,0,.28);display:flex;align-items:center;justify-content:center;overflow:hidden;border-radius:inherit;pointer-events:none;}
-    .wbs-gantt-progress-label{position:relative;z-index:2;color:#fff;font-size:9px;font-weight:700;line-height:1;white-space:nowrap;text-shadow:0 1px 1px rgba(0,0,0,.35);direction:rtl;}
-    .wbs-gantt-bar.is-stage .wbs-gantt-progress-label{font-size:8px;}
-    @media (max-width:719px){
-      .is-timeline-view .wbs-tree{overflow:visible;padding-inline:10px;}
-      .wbs-gantt{display:grid;grid-template-columns:minmax(300px,82vw) max-content;overflow-x:auto;overflow-y:hidden;direction:rtl;overscroll-behavior-inline:contain;-webkit-overflow-scrolling:touch;touch-action:pan-x pan-y;}
-      .wbs-gantt-names{min-width:300px;box-shadow:none;}
-      .wbs-gantt-scroll{width:max-content;min-width:max-content;overflow:visible;scrollbar-gutter:auto;}
-      .wbs-gantt-name{height:auto;min-height:46px;align-items:center;}
-      .wbs-gantt-name>span:last-child{white-space:normal;overflow:visible;text-overflow:clip;line-height:1.55;}
-    }
-    @media (min-width:720px){
-      .wbs-gantt{overflow:hidden;}
-      .wbs-gantt-names{position:relative;z-index:2;}
-      .wbs-gantt-scroll{overflow-x:auto;overflow-y:hidden;}
-    }
-  `;
-  documentRef.head.appendChild(style);
-}
-
 export function installTimelineEnhancements({ windowRef = window, documentRef = document } = {}){
-  installStyles(documentRef);
   if(observer) observer.disconnect();
   const callback = () => scheduleEnhance(documentRef);
   observer = new MutationObserver(callback);
   observer.observe(documentRef.getElementById('content') || documentRef.body, { childList:true, subtree:true });
   windowRef.addEventListener('resize', callback, { passive:true });
   scheduleEnhance(documentRef);
-  return () => observer?.disconnect();
+  return () => {
+    observer?.disconnect();
+    windowRef.removeEventListener('resize', callback);
+  };
 }
