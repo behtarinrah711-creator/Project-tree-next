@@ -1,6 +1,7 @@
 let observer = null;
 let frame = 0;
 let resizeHandler = null;
+let fontsReadyHandler = null;
 
 function isMobile(windowRef){
   return Boolean(windowRef?.matchMedia?.('(max-width: 719px)').matches);
@@ -11,7 +12,15 @@ function rightmostScroll(element){
 }
 
 function geometrySignature(gantt){
-  return gantt.dataset.timescaleSignature || 'pending';
+  return gantt.dataset.timescaleSignature || '';
+}
+
+function geometryReady(gantt){
+  return Boolean(
+    gantt.classList.contains('is-scale-enhanced') &&
+    geometrySignature(gantt) &&
+    gantt.querySelector('.wbs-gantt-scale-header-canvas')
+  );
 }
 
 function syncLayout(gantt, windowRef, { initialize = false } = {}){
@@ -44,6 +53,15 @@ function syncLayout(gantt, windowRef, { initialize = false } = {}){
   }
 }
 
+function settleLayout(gantt, windowRef, { initialize = false } = {}){
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if(!gantt.isConnected || !geometryReady(gantt)) return;
+      syncLayout(gantt, windowRef, { initialize });
+    });
+  });
+}
+
 function bindScrollSync(gantt, windowRef){
   if(gantt.dataset.stickyHeaderBound === 'true') return;
 
@@ -65,9 +83,15 @@ function bindScrollSync(gantt, windowRef){
 }
 
 function mountStickyHeader(gantt, windowRef, documentRef){
+  // The timescale enhancer owns the final canvas width and row geometry. Moving
+  // the header before that pass completes can freeze the first render in the
+  // provisional layout until a later timescale/expand action forces reflow.
+  if(!geometryReady(gantt)) return;
+
   if(gantt.classList.contains('has-sticky-header-layout')){
     bindScrollSync(gantt, windowRef);
-    syncLayout(gantt, windowRef);
+    const geometryChanged = gantt.dataset.stickyHeaderSignature !== geometrySignature(gantt);
+    settleLayout(gantt, windowRef, { initialize:geometryChanged });
     return;
   }
 
@@ -105,7 +129,10 @@ function mountStickyHeader(gantt, windowRef, documentRef){
   gantt.classList.add('has-sticky-header-layout');
 
   bindScrollSync(gantt, windowRef);
-  requestAnimationFrame(() => syncLayout(gantt, windowRef, { initialize:true }));
+  // DOM ownership changed in this frame. Wait for two paint opportunities so
+  // grid tracks, SVG intrinsic widths and the horizontal scroll range all use
+  // the final geometry before choosing the initial viewport.
+  settleLayout(gantt, windowRef, { initialize:true });
 }
 
 function enhanceAll(windowRef, documentRef){
@@ -132,6 +159,13 @@ export function installTimelineStickyHeader({ windowRef = window, documentRef = 
 
   resizeHandler = () => schedule(windowRef, documentRef);
   windowRef.addEventListener('resize', resizeHandler, { passive:true });
+
+  const fontsReady = documentRef.fonts?.ready;
+  if(fontsReady?.then){
+    fontsReadyHandler = () => schedule(windowRef, documentRef);
+    fontsReady.then(fontsReadyHandler).catch(() => {});
+  }
+
   schedule(windowRef, documentRef);
 
   return () => {
@@ -140,6 +174,7 @@ export function installTimelineStickyHeader({ windowRef = window, documentRef = 
     frame = 0;
     windowRef.removeEventListener('resize', resizeHandler);
     resizeHandler = null;
+    fontsReadyHandler = null;
   };
 }
 
