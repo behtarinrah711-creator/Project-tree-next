@@ -210,13 +210,9 @@ test('WBS home uses the unified project header, keeps tabs, and does not hide pr
 
 test('Timeline details survive initial render, timescale changes, and tree rerenders', async ({ page }) => {
   await page.evaluate(() => {
-    const key = 'ptnext-v1:app-data';
-    const data = JSON.parse(localStorage.getItem(key));
-    data.projects[0].tasks[0].subtasks[1].progress = 10;
-    localStorage.setItem(key, JSON.stringify(data));
+    const data = window.KarhaAppData.getSnapshot();
+    data.projects.find(item => item.id === 'e2e-wbs-home').tasks[0].subtasks[1].progress = 10;
   });
-  await page.reload();
-  await page.waitForFunction(() => Boolean(window.KarhaLegacy && window.KarhaApp));
   await page.locator('.wbs-tab[aria-label="تایم‌لاین"]').click();
 
   const assertDetails = async expectedBars => {
