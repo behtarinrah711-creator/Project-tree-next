@@ -2,28 +2,12 @@ import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { isStage, isWork, scheduleEndOf, scheduleStartOf } from '../../domain/wbs/normalize.js';
 import { isExpanded } from './wbsExpandState.js';
+import { formatTimelineDate, shouldShowProgressLabel } from './timelineDetailsFormatting.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const BAR_HEIGHT = 8;
 let observer = null;
 let frame = 0;
-
-function faNumber(value){
-  return new Intl.NumberFormat('fa-IR', { useGrouping:false, maximumFractionDigits:0 }).format(value);
-}
-
-export function formatTimelineDate(value){
-  const [, jm, jd] = String(value || '').split('/').map(Number);
-  if(!jm || !jd) return '';
-  return `${faNumber(jm)}/${faNumber(jd)}`;
-}
-
-export function shouldShowProgressLabel(barWidth, progress){
-  const width = Number(barWidth) || 0;
-  const value = Math.max(0, Math.min(100, Number(progress) || 0));
-  if(value <= 0) return false;
-  return width >= (value >= 100 ? 34 : 28);
-}
 
 function dateKey(value){
   const [jy, jm, jd] = String(value || '').split('/').map(Number);
