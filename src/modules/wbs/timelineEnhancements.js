@@ -58,17 +58,21 @@ function scheduleRange(item){
   return ranges.length ? { start:Math.min(...ranges.map(x => x.start)), end:Math.max(...ranges.map(x => x.end)) } : null;
 }
 
-function stageLevel(item){
-  if(!isStage(item)) return 0;
-  const children = (item.subtasks || []).filter(x => !x.trashed);
-  if(!children.length) return 1;
-  return 1 + Math.max(0, ...children.map(stageLevel));
+function maxStageDepth(items, depth = 0){
+  let max = -1;
+  (items || []).filter(x => !x.trashed).forEach(item => {
+    if(!isStage(item)) return;
+    max = Math.max(max, depth);
+    max = Math.max(max, maxStageDepth(item.subtasks || [], depth + 1));
+  });
+  return max;
 }
 
-function flattenVisible(items, projectId, depth = 0, out = []){
+function flattenVisible(items, projectId, maxDepth, depth = 0, out = []){
   (items || []).filter(x => !x.trashed).forEach(item => {
-    out.push({ item, depth, range:scheduleRange(item), stageLevel:stageLevel(item) });
-    if(isStage(item) && isExpanded(projectId, item.id)) flattenVisible(item.subtasks, projectId, depth + 1, out);
+    const shadeLevel = isStage(item) ? Math.max(1, maxDepth - depth + 1) : 0;
+    out.push({ item, depth, range:scheduleRange(item), shadeLevel });
+    if(isStage(item) && isExpanded(projectId, item.id)) flattenVisible(item.subtasks, projectId, maxDepth, depth + 1, out);
   });
   return out;
 }
@@ -174,8 +178,8 @@ function paintHierarchy(gantt, entries){
   names.forEach((row, index) => {
     const entry = entries[index];
     for(let level = 1; level <= 6; level += 1) row.classList.remove(`wbs-gantt-stage-level-${level}`);
-    if(entry?.stageLevel){
-      row.classList.add(`wbs-gantt-stage-level-${Math.min(6, entry.stageLevel)}`);
+    if(entry?.shadeLevel){
+      row.classList.add(`wbs-gantt-stage-level-${Math.min(6, entry.shadeLevel)}`);
     }
   });
 }
@@ -242,7 +246,8 @@ function enhance(documentRef){
   if(!gantt) return;
   const project = activeProject();
   if(!project) return;
-  const entries = flattenVisible(project.tasks || [], project.id);
+  const maxDepth = maxStageDepth(project.tasks || []);
+  const entries = flattenVisible(project.tasks || [], project.id, maxDepth);
   ensureTimelineToolbar(documentRef, project);
   paintProjectTitle(gantt, project);
   paintHeader(gantt, entries);
