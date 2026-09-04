@@ -221,7 +221,7 @@ test('Timeline details survive initial render, timescale changes, and tree reren
 
   const assertDetails = async expectedBars => {
     await expect(page.locator('.wbs-gantt-scale-foreign .wbs-gantt-bar')).toHaveCount(expectedBars);
-    await expect(page.locator('.wbs-gantt-detail-title', { hasText:'فونداسیون' })).toBeVisible();
+    await expect(page.locator('.wbs-gantt-detail-title').filter({ hasText:/^فونداسیون$/ })).toBeVisible();
     await expect(page.locator('.wbs-gantt-detail-date', { hasText:'۶/۱' }).first()).toBeVisible();
     await expect(page.locator('.wbs-gantt-detail-date', { hasText:'۶/۵' }).first()).toBeVisible();
     const heights = await page.locator('.wbs-gantt-scale-foreign .wbs-gantt-bar').evaluateAll(bars =>
