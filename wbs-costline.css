@@ -1,0 +1,16 @@
+.wbs-costline{padding:0 12px 24px;}
+.wbs-costline-toolbar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;padding:10px 12px;background:#ebe6de;border-radius:12px;margin-bottom:12px;}
+.wbs-costline-project{font-weight:700;}
+.wbs-costline-ranges{display:flex;flex-wrap:wrap;gap:6px;}
+.wbs-costline-range{border:1px solid #cfc7bb;background:#fff;border-radius:999px;padding:6px 10px;min-height:36px;}
+.wbs-costline-range.active{background:#2f2a24;color:#fff;}
+.wbs-costline-origin{display:flex;align-items:center;gap:6px;}
+.wbs-costline-origin select{min-height:36px;border-radius:8px;border:1px solid #cfc7bb;background:#fff;}
+.wbs-costline-scroll{overflow-x:auto;direction:rtl;}
+.wbs-costline-axis{display:flex;align-items:flex-end;gap:10px;min-height:220px;padding:12px 4px 8px;}
+.wbs-costline-col{flex:0 0 72px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;border:0;background:transparent;min-height:200px;}
+.wbs-costline-bar{display:block;width:28px;border-radius:8px 8px 2px 2px;background:#033E8A;}
+.wbs-costline-value,.wbs-costline-label{font-size:12px;white-space:nowrap;}
+.wbs-costline-work{border:1px solid #e5ded3;border-radius:12px;padding:10px;margin-bottom:8px;}
+.wbs-costline-work h4{margin:0 0 6px;}
+.wbs-costline-work p{margin:0 0 4px;}
