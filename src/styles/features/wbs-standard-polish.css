@@ -1,0 +1,84 @@
+.wbs-tabs{
+  grid-template-columns:repeat(7,minmax(0,1fr));
+}
+
+.wbs-view-frame.is-standard-view{
+  border:0;
+}
+
+.wbs-view-frame.is-standard-view .wbs-tree{
+  padding:0 0 14px;
+}
+
+.wbs-view-frame.is-standard-view .wbs-tree > .wbs-card:first-child,
+.wbs-view-frame.is-standard-view .wbs-tree > .wbs-simple-card:first-child{
+  border-top:0;
+  border-radius:0 0 var(--wbs-frame-radius) var(--wbs-frame-radius);
+}
+
+.wbs-view-frame.is-standard-view .wbs-tree > .wbs-card:first-child > .wbs-row.depth-0,
+.wbs-view-frame.is-standard-view .wbs-tree > .wbs-simple-card:first-child > .wbs-simple-row.depth-0{
+  border-radius:0;
+}
+
+.wbs-view-frame.is-standard-view .wbs-row.is-stage.depth-0,
+.wbs-view-frame.is-standard-view .wbs-simple-row.is-stage.depth-0{
+  background:rgba(47,42,36,.11);
+}
+.wbs-view-frame.is-standard-view .wbs-row.is-stage.depth-1,
+.wbs-view-frame.is-standard-view .wbs-simple-row.is-stage.depth-1{
+  background:rgba(47,42,36,.075);
+}
+.wbs-view-frame.is-standard-view .wbs-row.is-stage.depth-2,
+.wbs-view-frame.is-standard-view .wbs-simple-row.is-stage.depth-2{
+  background:rgba(47,42,36,.045);
+}
+.wbs-view-frame.is-standard-view .wbs-row.is-stage.depth-3,
+.wbs-view-frame.is-standard-view .wbs-simple-row.is-stage.depth-3{
+  background:rgba(47,42,36,.025);
+}
+.wbs-view-frame.is-standard-view .wbs-row.is-stage.depth-4,
+.wbs-view-frame.is-standard-view .wbs-simple-row.is-stage.depth-4{
+  background:rgba(47,42,36,.012);
+}
+.wbs-view-frame.is-standard-view .wbs-row.is-stage.depth-5,
+.wbs-view-frame.is-standard-view .wbs-row.is-stage.depth-6,
+.wbs-view-frame.is-standard-view .wbs-simple-row.is-stage.depth-5,
+.wbs-view-frame.is-standard-view .wbs-simple-row.is-stage.depth-6{
+  background:rgba(47,42,36,.006);
+}
+
+.wbs-view-frame.is-standard-view .wbs-meta,
+.wbs-view-frame.is-standard-view .wbs-meta.is-estimate::after,
+.wbs-view-frame.is-standard-view .wbs-general-amount,
+.wbs-view-frame.is-standard-view .wbs-general-amount::after,
+.wbs-view-frame.is-standard-view .wbs-total,
+.wbs-view-frame.is-standard-view .wbs-total::after,
+.wbs-view-frame.is-standard-view .wbs-grip,
+.wbs-view-frame.is-standard-view .wbs-add{
+  color:#26221e;
+}
+
+.wbs-view-frame.is-standard-view .wbs-meta.is-estimate,
+.wbs-view-frame.is-standard-view .wbs-meta.is-progress,
+.wbs-view-frame.is-standard-view .wbs-general-amount{
+  font-size:12px;
+}
+
+.wbs-view-frame.is-standard-view .wbs-grip,
+.wbs-view-frame.is-standard-view .wbs-add{
+  font-size:13px;
+}
+
+.wbs-view-frame.is-standard-view .wbs-chev{
+  font-size:15px;
+}
+
+.wbs-shopping-frame{
+  margin:0 10px 24px;
+  border:0;
+}
+
+.wbs-shopping-body{
+  min-height:1px;
+}
