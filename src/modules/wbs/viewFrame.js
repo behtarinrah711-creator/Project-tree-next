@@ -1,3 +1,8 @@
+import { projectContext } from '../../core/projectContext.js';
+import { projectRepository } from '../../data/projectRepository.js';
+import { wbsApi } from '../../domain/wbs/wbsApi.js';
+import { fieldRow, openWbsSheet, textInput } from './wbsSheet.js';
+
 export const WBS_VIEW_TITLES = Object.freeze({
   simple: 'نمای کلی',
   register: 'ثبت و ویرایش',
@@ -9,6 +14,7 @@ export const WBS_VIEW_TITLES = Object.freeze({
 
 const VIEW_ORDER = ['simple', 'register', 'estimate', 'progress', 'timeline', 'costline'];
 const STANDARD_VIEWS = new Set(['simple', 'register', 'estimate', 'progress']);
+const ADD_WORK_PACKAGE_ICON = 'M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h640q33 0 56.5 23.5T880-720v480q0 33-23.5 56.5T800-160H160Zm0-80h640v-480H160v480Zm0 0v-480 480Zm280-80h80v-120h120v-80H520v-120h-80v120H320v80h120v120Z';
 
 export function viewTitle(viewId){
   return WBS_VIEW_TITLES[viewId] || '';
@@ -65,9 +71,78 @@ function ensureStandardFrame(root, viewId){
   if(body && general) body.appendChild(general);
 }
 
+function materialIcon(path){
+  return `<svg viewBox="0 -960 960 960" aria-hidden="true" focusable="false"><path d="${path}"/></svg>`;
+}
+
+function activeProject(){
+  const id = projectContext.getProjectId?.() || projectContext.getActiveProjectId?.() || null;
+  return id ? projectRepository.getActiveProject(id) : null;
+}
+
+function openCreateRootSheet(project){
+  if(!project) return;
+  openWbsSheet({
+    title:'افزودن بسته کار',
+    saveLabel:'ذخیره',
+    body(sheetRoot){
+      sheetRoot.appendChild(fieldRow('نام مرحله', textInput('', { name:'title', placeholder:'نام مرحله' })));
+      sheetRoot.appendChild(fieldRow('وزن پیشرفت', textInput('1', { name:'progressWeight', type:'number', min:'0.01', step:'0.01', required:true })));
+      const note = sheetRoot.ownerDocument.createElement('div');
+      note.className = 'wbs-note';
+      note.textContent = 'وزن نسبی است؛ لازم نیست مجموع وزن‌ها ۱۰۰ شود.';
+      sheetRoot.appendChild(note);
+    },
+    onSave(sheetRoot){
+      const title = sheetRoot.querySelector('[name="title"]')?.value.trim();
+      const progressWeight = Number(sheetRoot.querySelector('[name="progressWeight"]')?.value);
+      if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
+      wbsApi.createStage(project.id, title, null, { progressWeight });
+      return true;
+    },
+  });
+}
+
+function ensureCostlineToolbar(root){
+  if(root.querySelector(':scope > .wbs-toolbar')) return;
+  const tabs = root.querySelector(':scope > .wbs-tabs');
+  if(!tabs) return;
+  const project = activeProject();
+  if(!project) return;
+
+  const toolbar = root.ownerDocument.createElement('div');
+  toolbar.className = 'wbs-toolbar is-single-action';
+  const addRoot = root.ownerDocument.createElement('button');
+  addRoot.type = 'button';
+  addRoot.className = 'wbs-root-add';
+  addRoot.setAttribute('aria-label', 'افزودن بسته کار');
+  addRoot.innerHTML = `${materialIcon(ADD_WORK_PACKAGE_ICON)}<span>بسته کار</span>`;
+  addRoot.addEventListener('click', () => openCreateRootSheet(project));
+  toolbar.appendChild(addRoot);
+  tabs.insertAdjacentElement('afterend', toolbar);
+}
+
+function syncTimelineToolbarSlot(root){
+  const toolbar = root.querySelector(':scope > .wbs-toolbar');
+  const slot = root.querySelector(':scope > .wbs-toolbar-slot');
+  if(toolbar){
+    slot?.remove();
+    return;
+  }
+  if(slot) return;
+  const tabs = root.querySelector(':scope > .wbs-tabs');
+  if(!tabs) return;
+  const nextSlot = root.ownerDocument.createElement('div');
+  nextSlot.className = 'wbs-toolbar-slot';
+  nextSlot.setAttribute('aria-hidden', 'true');
+  tabs.insertAdjacentElement('afterend', nextSlot);
+}
+
 function syncRoot(root){
   const viewId = activeViewId(root);
   if(STANDARD_VIEWS.has(viewId)) ensureStandardFrame(root, viewId);
+  if(viewId === 'costline') ensureCostlineToolbar(root);
+  if(viewId === 'timeline') syncTimelineToolbarSlot(root);
 }
 
 let observer = null;
