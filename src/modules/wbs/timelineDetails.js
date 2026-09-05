@@ -103,6 +103,8 @@ function separatorRows(gantt, entries){
 
 export function applyTimelineDetails(gantt, entries, documentRef = document){
   if(!gantt?.classList.contains('is-scale-enhanced') || !gantt.dataset.timescaleSignature) return;
+  const headerTitle = gantt.querySelector('.wbs-gantt-project-title');
+  if(headerTitle) headerTitle.textContent = 'نمودار گانت';
   const lines = [...gantt.querySelectorAll('.wbs-gantt-line')];
   if(!lines.length || !lines.every(line => line.querySelector('.wbs-gantt-scale-canvas'))) return;
   const signature = `${gantt.dataset.timescaleSignature}|${entries.map(entry => `${entry.item.id}:${entry.item.text || entry.item.title || ''}`).join('|')}`;
