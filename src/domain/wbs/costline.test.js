@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assignWorksToBuckets, buildBuckets, collectPlannedWorks, plannedCostline } from './costline.js';
+import { COSTLINE_RANGES, assignWorksToBuckets, buildBuckets, collectPlannedWorks, plannedCostline } from './costline.js';
 
 const tasks = [
   {
@@ -15,6 +15,11 @@ const tasks = [
     ],
   },
 ];
+
+test('Costline exposes the requested Timeline-style scale cycle', () => {
+  assert.deepEqual(COSTLINE_RANGES.map(item => item.id), ['day', 'week', 'week2', 'month', 'quarter']);
+  assert.deepEqual(COSTLINE_RANGES.map(item => item.label), ['روزانه', 'هفتگی', '۲ هفته', 'ماهانه', '۳ ماهه']);
+});
 
 test('only works with start date and estimate enter planned costline', () => {
   const works = collectPlannedWorks([
@@ -36,17 +41,35 @@ test('daily buckets place the full work amount on start date', () => {
   assert.deepEqual(first.works.map(work => work.id).sort(), ['w1', 'w2']);
 });
 
-test('weekly buckets honor weekday origin without mixing later month work', () => {
+test('weekly buckets honor weekday origin and use Timeline range wording', () => {
   const model = plannedCostline(tasks, { rangeId: 'week', originWeekday: 4 });
+  const first = model.buckets.find(bucket => bucket.works.some(work => work.id === 'w1'));
   const later = model.buckets.find(bucket => bucket.works.some(work => work.id === 'w3'));
+  assert.ok(first);
+  assert.match(first.label, /تا/);
+  assert.match(first.label, /شهریور/);
   assert.ok(later);
   assert.equal(later.works.some(work => work.id === 'w1'), false);
   assert.equal(later.total, 50);
 });
 
-test('month buckets keep planned series only', () => {
+test('two-week buckets retain the selected weekday origin', () => {
+  const model = plannedCostline(tasks, { rangeId: 'week2', originWeekday: 4 });
+  assert.ok(model.buckets.length >= 2);
+  assert.equal(model.buckets.every(bucket => /تا/.test(bucket.label)), true);
+});
+
+test('month buckets use Persian Timeline month labels', () => {
   const works = collectPlannedWorks(tasks);
   const buckets = assignWorksToBuckets(buildBuckets({ rangeId: 'month', works }), works);
   assert.ok(buckets.length >= 2);
+  assert.match(buckets[0].label, /شهریور|مهر/);
   assert.equal(buckets.every(bucket => Array.isArray(bucket.works)), true);
+});
+
+test('quarter buckets group Jalali months into three-month periods', () => {
+  const model = plannedCostline(tasks, { rangeId: 'quarter' });
+  assert.ok(model.buckets.length >= 1);
+  assert.match(model.buckets[0].label, /تابستان|پاییز/);
+  assert.equal(model.buckets.reduce((sum, bucket) => sum + bucket.total, 0), 100);
 });

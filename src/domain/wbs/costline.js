@@ -1,16 +1,20 @@
 import { gregorianToJalali, jalaliMonthLength, jalaliToGregorian } from '../../ui/jalali.js';
 import { isWork, lineTotal, scheduleEndOf, scheduleStartOf, walkTree } from './normalize.js';
 
+const MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+const SEASONS = ['بهار','تابستان','پاییز','زمستان'];
+
 export const COSTLINE_RANGES = [
-  { id: 'day', label: 'روزانه', days: 1 },
-  { id: 'week', label: 'هفتگی', days: 7 },
-  { id: 'week2', label: '۲ هفته', days: 14 },
-  { id: 'week3', label: '۳ هفته', days: 21 },
-  { id: 'week4', label: '۴ هفته', days: 28 },
-  { id: 'month', label: 'ماهانه', days: null },
+  { id: 'day', label: 'روزانه', days: 1, shade: .2 },
+  { id: 'week', label: 'هفتگی', days: 7, shade: .4 },
+  { id: 'week2', label: '۲ هفته', days: 14, shade: .6 },
+  { id: 'month', label: 'ماهانه', days: null, shade: .8 },
+  { id: 'quarter', label: '۳ ماهه', days: null, shade: 1 },
 ];
 
 export const WEEKDAYS = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
+
+const faNumber = value => new Intl.NumberFormat('fa-IR', { useGrouping:false, maximumFractionDigits:2 }).format(value);
 
 export function jalaliDayNumber(value){
   if(!value) return null;
@@ -24,6 +28,11 @@ export function jalaliFromDay(day){
   const date = new Date(day * 86400000);
   const j = gregorianToJalali(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
   return `${j.jy}/${String(j.jm).padStart(2, '0')}/${String(j.jd).padStart(2, '0')}`;
+}
+
+function jalaliPartsFromDay(day){
+  const date = new Date(day * 86400000);
+  return gregorianToJalali(date.getUTCFullYear(), date.getUTCMonth() + 1, date.getUTCDate());
 }
 
 export function weekdayIndex(jalaliDate){
@@ -79,6 +88,49 @@ function alignToWeekday(dayNumber, weekday){
   return dayNumber - ((current - weekday + 7) % 7);
 }
 
+function rangeLabel(startDay, endDay){
+  const a = jalaliPartsFromDay(startDay);
+  const b = jalaliPartsFromDay(endDay);
+  if(a.jy === b.jy && a.jm === b.jm){
+    return `${faNumber(a.jd)} تا ${faNumber(b.jd)} ${MONTHS[a.jm - 1]}`;
+  }
+  return `${faNumber(a.jd)} ${MONTHS[a.jm - 1]} تا ${faNumber(b.jd)} ${MONTHS[b.jm - 1]}`;
+}
+
+function monthBucket(jy, jm){
+  const start = `${jy}/${String(jm).padStart(2, '0')}/01`;
+  const startDay = jalaliDayNumber(start);
+  const length = jalaliMonthLength(jy, jm);
+  return {
+    id: `m-${jy}-${jm}`,
+    label: `${MONTHS[jm - 1]} ${faNumber(jy)}`,
+    start,
+    startDay,
+    endDay: startDay + length - 1,
+    total: 0,
+    works: [],
+  };
+}
+
+function quarterBucket(jy, quarterIndex){
+  const jm = (quarterIndex * 3) + 1;
+  const start = `${jy}/${String(jm).padStart(2, '0')}/01`;
+  const startDay = jalaliDayNumber(start);
+  const nextAbsolute = (jy * 12) + (jm - 1) + 3;
+  const nextJy = Math.floor(nextAbsolute / 12);
+  const nextJm = (nextAbsolute % 12) + 1;
+  const endDay = jalaliDayNumber(`${nextJy}/${String(nextJm).padStart(2, '0')}/01`) - 1;
+  return {
+    id: `q-${jy}-${quarterIndex + 1}`,
+    label: `${SEASONS[quarterIndex]} ${faNumber(jy)}`,
+    start,
+    startDay,
+    endDay,
+    total: 0,
+    works: [],
+  };
+}
+
 export function buildBuckets({ rangeId = 'week', originWeekday = 4, works = [] } = {}){
   const range = COSTLINE_RANGES.find(item => item.id === rangeId) || COSTLINE_RANGES[1];
   const dated = works.filter(work => jalaliDayNumber(work.start) != null);
@@ -87,35 +139,47 @@ export function buildBuckets({ rangeId = 'week', originWeekday = 4, works = [] }
   const minDay = Math.min(...days);
   const maxDay = Math.max(...days);
   const buckets = [];
+
   if(range.id === 'month'){
     let cursor = minDay;
-    while(cursor <= maxDay && buckets.length < 36){
-      const start = jalaliFromDay(cursor);
-      const [jy, jm] = start.split('/').map(Number);
-      const monthStart = `${jy}/${String(jm).padStart(2, '0')}/01`;
-      const startDay = jalaliDayNumber(monthStart);
-      const length = jalaliMonthLength(jy, jm);
-      buckets.push({
-        id: `m-${jy}-${jm}`,
-        label: `${jy}/${String(jm).padStart(2, '0')}`,
-        start: monthStart,
-        startDay,
-        endDay: startDay + length - 1,
-        total: 0,
-        works: [],
-      });
-      cursor = startDay + length;
+    while(cursor <= maxDay && buckets.length < 120){
+      const j = jalaliPartsFromDay(cursor);
+      const bucket = monthBucket(j.jy, j.jm);
+      buckets.push(bucket);
+      cursor = bucket.endDay + 1;
     }
     return buckets;
   }
+
+  if(range.id === 'quarter'){
+    let j = jalaliPartsFromDay(minDay);
+    let jy = j.jy;
+    let quarter = Math.floor((j.jm - 1) / 3);
+    while(buckets.length < 80){
+      const bucket = quarterBucket(jy, quarter);
+      buckets.push(bucket);
+      if(bucket.endDay >= maxDay) break;
+      quarter += 1;
+      if(quarter > 3){ quarter = 0; jy += 1; }
+    }
+    return buckets;
+  }
+
   const size = range.days || 7;
-  for(let startDay = alignToWeekday(minDay, originWeekday); startDay <= maxDay; startDay += size){
+  const first = range.id === 'day' ? minDay : alignToWeekday(minDay, originWeekday);
+  for(let startDay = first; startDay <= maxDay; startDay += size){
+    const endDay = startDay + size - 1;
+    const start = jalaliFromDay(startDay);
+    const dayParts = jalaliPartsFromDay(startDay);
+    const label = range.id === 'day'
+      ? (dayParts.jd === 1 ? `${faNumber(dayParts.jd)} ${MONTHS[dayParts.jm - 1]}` : faNumber(dayParts.jd))
+      : rangeLabel(startDay, endDay);
     buckets.push({
       id: `${range.id}-${startDay}`,
-      label: jalaliFromDay(startDay),
-      start: jalaliFromDay(startDay),
+      label,
+      start,
       startDay,
-      endDay: startDay + size - 1,
+      endDay,
       total: 0,
       works: [],
     });
