@@ -44,7 +44,7 @@ function renderToolbar(refresh){
 
   const title = document.createElement('div');
   title.className = 'wbs-costline-project';
-  title.textContent = 'برآورد';
+  title.textContent = 'برآورد هزینه';
 
   const controls = document.createElement('div');
   controls.className = 'wbs-costline-controls';
