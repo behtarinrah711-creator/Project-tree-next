@@ -1,3 +1,5 @@
+import { ensureViewToolbar } from './viewToolbar.js';
+
 export const WBS_VIEW_TITLES = Object.freeze({
   simple: 'نمای کلی',
   register: 'ثبت و ویرایش',
@@ -67,6 +69,7 @@ function ensureStandardFrame(root, viewId){
 
 function syncRoot(root){
   const viewId = activeViewId(root);
+  ensureViewToolbar(root, viewId);
   if(STANDARD_VIEWS.has(viewId)) ensureStandardFrame(root, viewId);
 }
 
