@@ -1,5 +1,4 @@
 import { ensureViewToolbar } from './viewToolbar.js';
-import { ensureShoppingView } from './shoppingView.js';
 
 export const WBS_VIEW_TITLES = Object.freeze({
   simple: 'نمای کلی',
@@ -11,7 +10,7 @@ export const WBS_VIEW_TITLES = Object.freeze({
   shopping: 'لیست خرید',
 });
 
-const VIEW_ORDER = ['simple', 'register', 'estimate', 'progress', 'timeline', 'costline'];
+const VIEW_ORDER = ['simple', 'register', 'estimate', 'progress', 'timeline', 'costline', 'shopping'];
 const STANDARD_VIEWS = new Set(['simple', 'register', 'estimate', 'progress']);
 
 export function viewTitle(viewId){
@@ -19,7 +18,7 @@ export function viewTitle(viewId){
 }
 
 function activeViewId(root){
-  const tabs = [...root.querySelectorAll(':scope > .wbs-tabs > .wbs-tab:not(.wbs-shopping-tab)')];
+  const tabs = [...root.querySelectorAll(':scope > .wbs-tabs > .wbs-tab')];
   const index = tabs.findIndex(tab => tab.classList.contains('active') || tab.getAttribute('aria-selected') === 'true');
   return VIEW_ORDER[index] || 'simple';
 }
@@ -70,7 +69,6 @@ function ensureStandardFrame(root, viewId){
 }
 
 function syncRoot(root){
-  if(ensureShoppingView(root)) return;
   const viewId = activeViewId(root);
   ensureViewToolbar(root, viewId);
   if(STANDARD_VIEWS.has(viewId)) ensureStandardFrame(root, viewId);
