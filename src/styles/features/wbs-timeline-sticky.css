@@ -3,6 +3,12 @@
   overflow:visible !important;
 }
 
+/* Reserve the final toolbar footprint immediately so switching into Timeline cannot shift the chart. */
+.is-timeline-view > .wbs-toolbar-slot{
+  box-sizing:border-box;
+  height:50px;
+}
+
 .wbs-gantt.has-sticky-header-layout{
   display:block;
   overflow:visible;
