@@ -65,46 +65,9 @@ function ensureStandardFrame(root, viewId){
   if(body && general) body.appendChild(general);
 }
 
-function normalizeTimelineFrame(root){
-  const gantt = root.querySelector('.wbs-gantt');
-  if(!gantt) return;
-  gantt.classList.add('wbs-view-frame', 'is-timeline-frame');
-
-  const corner = gantt.querySelector('.wbs-gantt-corner');
-  if(corner) corner.classList.add('wbs-view-header-surface');
-  const scaleHeader = gantt.querySelector('.wbs-gantt-header');
-  if(scaleHeader) scaleHeader.classList.add('wbs-view-header-surface');
-
-  const title = corner?.querySelector('.wbs-gantt-project-title');
-  if(title){
-    title.classList.add('wbs-view-title');
-    title.textContent = viewTitle('timeline');
-  }
-
-  const toggle = corner?.querySelector('.wbs-timescale-toggle');
-  if(toggle && !toggle.closest('.wbs-view-actions')){
-    const actions = root.ownerDocument.createElement('div');
-    actions.className = 'wbs-view-actions';
-    toggle.replaceWith(actions);
-    actions.appendChild(toggle);
-  }
-}
-
-function normalizeCostlineFrame(root){
-  const frame = root.querySelector('.wbs-costline');
-  if(!frame) return;
-  frame.classList.add('wbs-view-frame', 'is-costline-frame');
-  frame.querySelector('.wbs-costline-toolbar')?.classList.add('wbs-view-header');
-  frame.querySelector('.wbs-costline-project')?.classList.add('wbs-view-title');
-  frame.querySelector('.wbs-costline-controls')?.classList.add('wbs-view-actions');
-  frame.querySelector('.wbs-costline-chart')?.classList.add('wbs-view-body');
-}
-
 function syncRoot(root){
   const viewId = activeViewId(root);
-  ensureStandardFrame(root, viewId);
-  if(viewId === 'timeline') normalizeTimelineFrame(root);
-  if(viewId === 'costline') normalizeCostlineFrame(root);
+  if(STANDARD_VIEWS.has(viewId)) ensureStandardFrame(root, viewId);
 }
 
 let observer = null;
