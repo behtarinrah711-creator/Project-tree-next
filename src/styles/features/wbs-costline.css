@@ -1,3 +1,4 @@
+.is-costline-view > .wbs-toolbar.is-single-action{grid-template-columns:1fr;}
 .wbs-costline{margin:0 2px 24px;border:1px solid var(--wbs-frame-border,#ded7cd);border-radius:var(--wbs-frame-radius,5px);background:var(--wbs-frame-header-bg,#f7f4ef);overflow:hidden;}
 .wbs-costline-toolbar{box-sizing:border-box;height:var(--wbs-frame-header-height,42px);display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 6px 0 10px;background:var(--wbs-frame-header-bg,#f7f4ef);border-bottom:1px solid var(--wbs-frame-border,#ded7cd);color:var(--wbs-frame-title,#4d4741);}
 .wbs-costline-project{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:700;}
