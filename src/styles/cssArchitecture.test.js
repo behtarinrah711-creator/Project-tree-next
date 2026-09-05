@@ -37,6 +37,7 @@ test('the application has one deterministic CSS manifest and no embedded applica
     'features/contract-search-trigger.css', 'workspace/back-navigation.css',
     'components/form-template.css', 'features/contact-form-template.css', 'workspace/navigation.css',
     'features/wbs-home.css', 'features/wbs-timeline-sticky.css', 'features/wbs-timeline-details.css',
+    'features/wbs-costline.css',
   ]);
   assert.deepEqual(new Set(imports.map(path => join(stylesRoot, path))), new Set(cssFiles.filter(path => !path.endsWith('/index.css'))));
 });
@@ -79,6 +80,7 @@ test('remaining direct style mutations are intentional runtime geometry or gener
     'src/modules/contracts/contractTemplateFormModule.js',
     'src/modules/export/exportView.js',
     'src/modules/wbs/homeView.js',
+    'src/modules/wbs/costlineView.js',
   ]);
   const offenders = jsFiles.filter(path => /\.style(?:\.|\s*=)|cssText/.test(readFileSync(path, 'utf8')))
     .map(path => relative(root, path)).filter(path => !allowlist.has(path));
