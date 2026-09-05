@@ -30,6 +30,7 @@ import {
 } from './wbsSheet.js';
 import { bindRowDrag } from './wbsDrag.js';
 import { renderCostline } from './costlineView.js';
+import { SHOPPING_ICON, renderShoppingView } from './shoppingView.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import {
   advanceExpansionLevel,
@@ -49,6 +50,7 @@ const VIEWS = [
   { id:'progress', label:'پیشرفت', icon:'M300-520q-58 0-99-41t-41-99q0-58 41-99t99-41q58 0 99 41t41 99q0 58-41 99t-99 41Zm0-80q25 0 42.5-17.5T360-660q0-25-17.5-42.5T300-720q-25 0-42.5 17.5T240-660q0 25 17.5 42.5T300-600Zm360 440q-58 0-99-41t-41-99q0-58 41-99t99-41q58 0 99 41t41 99q0 58-41 99t-99 41Zm42.5-97.5Q720-275 720-300t-17.5-42.5Q685-360 660-360t-42.5 17.5Q600-325 600-300t17.5 42.5Q635-240 660-240t42.5-17.5ZM216-160l-56-56 584-584 56 56-584 584Z' },
   { id:'timeline', label:'تایم‌لاین', icon:'M240-280h240v-80H240v80Zm120-160h240v-80H360v80Zm120-160h240v-80H480v80ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Z' },
   { id:'costline', label:'Costline', icon: COSTLINE_ICON },
+  { id:'shopping', label:'لیست خرید', icon: SHOPPING_ICON },
 ];
 
 const EXPAND_ICON = 'M200-200v-240h80v160h160v80H200Zm480-320v-160H520v-80h240v240h-80Z';
@@ -809,7 +811,8 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   root.className = 'wbs-home-root'
     + (currentView === 'simple' ? ' is-simple-view' : '')
     + (currentView === 'timeline' ? ' is-timeline-view' : '')
-    + (currentView === 'costline' ? ' is-costline-view' : '');
+    + (currentView === 'costline' ? ' is-costline-view' : '')
+    + (currentView === 'shopping' ? ' is-shopping-view' : '');
   target.appendChild(root);
 
   const tabs = document.createElement('div');
@@ -832,6 +835,11 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     tabs.appendChild(btn);
   });
   root.appendChild(tabs);
+
+  if(currentView === 'shopping'){
+    root.appendChild(renderShoppingView(project));
+    return;
+  }
 
   const toolbar = document.createElement('div');
   toolbar.className = 'wbs-toolbar';
