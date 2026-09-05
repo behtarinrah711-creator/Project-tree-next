@@ -2,7 +2,7 @@ body:has(.wbs-home-root) #workspaceProjectContext,
 body:has(.wbs-home-root) #tabbar{display:none;}
 body:has(.wbs-home-root) .content{padding-top:0;background:#fff;}
 body:has(.wbs-home-root){background:#fff;}
-.wbs-home-root{padding-top:10px;background:#fff;}
+.wbs-home-root{padding-top:10px;background:#fff;--wbs-frame-border:#ded7cd;--wbs-frame-header-bg:#f7f4ef;--wbs-frame-title:#4d4741;--wbs-frame-radius:5px;--wbs-frame-header-height:42px;}
 .wbs-card.wbs-row-dragging,.wbs-branch.wbs-row-dragging{opacity:.4;}
 .wbs-card,.wbs-branch{position:relative;}
 .wbs-card.wbs-drop-before,.wbs-card.wbs-drop-after{overflow:visible;}
@@ -119,12 +119,34 @@ body:has(.wbs-home-root){background:#fff;}
 .wbs-work-total b{font-size:18px;color:#2f2a24;}
 .topbar{background:#d7cfc3;}
 
+/* Shared WBS view frame. All six views use the same header/body surface tokens. */
+.wbs-view-frame{box-sizing:border-box;border:1px solid var(--wbs-frame-border);border-radius:var(--wbs-frame-radius);overflow:hidden;background:#fff;}
+.wbs-view-frame.is-standard-view{margin:0 10px 24px;}
+.wbs-view-header,.wbs-view-header-surface{box-sizing:border-box;height:var(--wbs-frame-header-height);background:var(--wbs-frame-header-bg);border-bottom:1px solid var(--wbs-frame-border);color:var(--wbs-frame-title);}
+.wbs-view-header{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 6px 0 10px;}
+.wbs-view-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:700;color:var(--wbs-frame-title);}
+.wbs-view-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto;}
+.wbs-view-body{background:#fff;}
+.wbs-view-frame.is-standard-view .wbs-tree{padding:10px 8px 14px;}
+.wbs-view-frame.is-standard-view .wbs-general{margin:0 8px 14px;border-radius:var(--wbs-frame-radius);border-color:#d3d3d3;}
+
+/* Neutral grayscale hierarchy: root packages are darkest, nested stages fade toward pure-white Work rows. */
+.wbs-view-frame.is-standard-view .wbs-card,.wbs-view-frame.is-standard-view .wbs-simple-card{border-color:#d0d0d0;}
+.wbs-view-frame.is-standard-view .wbs-row.is-stage,.wbs-view-frame.is-standard-view .wbs-simple-row.is-stage{border-color:rgba(47,42,36,.16);}
+.wbs-view-frame.is-standard-view .wbs-row.is-stage.depth-0,.wbs-view-frame.is-standard-view .wbs-simple-row.is-stage.depth-0{background:rgba(47,42,36,.16);}
+.wbs-view-frame.is-standard-view .wbs-row.is-stage.depth-1,.wbs-view-frame.is-standard-view .wbs-simple-row.is-stage.depth-1{background:rgba(47,42,36,.12);}
+.wbs-view-frame.is-standard-view .wbs-row.is-stage.depth-2,.wbs-view-frame.is-standard-view .wbs-simple-row.is-stage.depth-2{background:rgba(47,42,36,.08);}
+.wbs-view-frame.is-standard-view .wbs-row.is-stage.depth-3,.wbs-view-frame.is-standard-view .wbs-simple-row.is-stage.depth-3{background:rgba(47,42,36,.05);}
+.wbs-view-frame.is-standard-view .wbs-row.is-stage.depth-4,.wbs-view-frame.is-standard-view .wbs-simple-row.is-stage.depth-4{background:rgba(47,42,36,.03);}
+.wbs-view-frame.is-standard-view .wbs-row.is-stage.depth-5,.wbs-view-frame.is-standard-view .wbs-row.is-stage.depth-6,.wbs-view-frame.is-standard-view .wbs-simple-row.is-stage.depth-5,.wbs-view-frame.is-standard-view .wbs-simple-row.is-stage.depth-6{background:rgba(47,42,36,.015);}
+.wbs-view-frame.is-standard-view .wbs-row.is-work,.wbs-view-frame.is-standard-view .wbs-simple-row.is-work{background:#fff;}
+
 /* Gantt presentation: desktop keeps WBS visible; mobile pans WBS and timeline together. */
 .is-timeline-view .wbs-tree{padding-inline:10px;overflow:hidden;}
-.wbs-gantt{display:grid;grid-template-columns:minmax(132px,42%) minmax(0,58%);direction:rtl;border:1px solid #e4ddd3;border-radius:7px;overflow:hidden;background:#fff;}
+.wbs-gantt{display:grid;grid-template-columns:minmax(132px,42%) minmax(0,58%);direction:rtl;border:1px solid var(--wbs-frame-border);border-radius:var(--wbs-frame-radius);overflow:hidden;background:#fff;}
 .wbs-gantt-names{position:relative;z-index:2;min-width:0;background:#fff;border-inline-end:1px solid #d8d1c8;box-shadow:-5px 0 10px rgba(47,42,36,.05);}
-.wbs-gantt-corner,.wbs-gantt-header{height:42px;background:#f7f4ef;border-bottom:1px solid #ded7cd;position:sticky;top:61px;z-index:6;}
-.wbs-gantt-corner{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 6px 0 10px;font-size:13px;font-weight:700;color:#4d4741;}
+.wbs-gantt-corner,.wbs-gantt-header{height:var(--wbs-frame-header-height);background:var(--wbs-frame-header-bg);border-bottom:1px solid var(--wbs-frame-border);position:sticky;top:61px;z-index:6;}
+.wbs-gantt-corner{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 6px 0 10px;font-size:13px;font-weight:700;color:var(--wbs-frame-title);}
 .wbs-gantt-project-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .wbs-timescale-toggle{position:relative;overflow:hidden;box-sizing:border-box;flex:0 0 44px;width:44px;height:38px;border:1px solid #cfc7bb;border-radius:5px;background:#fff;color:#77706a;padding:1px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;font-family:inherit;}
 .wbs-timescale-toggle.is-past-midpoint{color:#fff;}

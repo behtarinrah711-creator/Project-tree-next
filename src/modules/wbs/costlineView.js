@@ -1,6 +1,7 @@
 import { COSTLINE_RANGES, WEEKDAYS, plannedCostline } from '../../domain/wbs/costline.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
 import { closeWbsSheet, openWbsSheet } from './wbsSheet.js';
+import { viewTitle } from './viewFrame.js';
 
 const money = value => new Intl.NumberFormat('fa-IR').format(Number(value) || 0);
 const BAR_WIDTH = 28;
@@ -14,7 +15,7 @@ let originWeekday = 4;
 
 export function renderCostline(project){
   const root = document.createElement('section');
-  root.className = 'wbs-costline';
+  root.className = 'wbs-costline wbs-view-frame is-costline-frame';
   const range = COSTLINE_RANGES[rangeIndex] || COSTLINE_RANGES[1];
   const model = plannedCostline(project.tasks || [], { rangeId: range.id, originWeekday });
   root.append(renderToolbar(() => {
@@ -40,14 +41,14 @@ function cycleButton({ label, ariaLabel, shade, icon, onClick }){
 
 function renderToolbar(refresh){
   const bar = document.createElement('div');
-  bar.className = 'wbs-costline-toolbar';
+  bar.className = 'wbs-costline-toolbar wbs-view-header';
 
   const title = document.createElement('div');
-  title.className = 'wbs-costline-project';
-  title.textContent = 'برآورد هزینه';
+  title.className = 'wbs-costline-project wbs-view-title';
+  title.textContent = viewTitle('costline');
 
   const controls = document.createElement('div');
-  controls.className = 'wbs-costline-controls';
+  controls.className = 'wbs-costline-controls wbs-view-actions';
   const range = COSTLINE_RANGES[rangeIndex] || COSTLINE_RANGES[1];
   controls.append(
     cycleButton({
@@ -105,7 +106,7 @@ function renderMoney(value){
 
 function renderChart(model){
   const wrap = document.createElement('div');
-  wrap.className = 'wbs-costline-chart';
+  wrap.className = 'wbs-costline-chart wbs-view-body';
   const scroll = document.createElement('div');
   scroll.className = 'wbs-costline-scroll';
   const axis = document.createElement('div');
