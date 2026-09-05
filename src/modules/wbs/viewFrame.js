@@ -7,9 +7,10 @@ export const WBS_VIEW_TITLES = Object.freeze({
   progress: 'درصد پیشرفت',
   timeline: 'نمودار گانت',
   costline: 'برآورد هزینه',
+  shopping: 'لیست خرید',
 });
 
-const VIEW_ORDER = ['simple', 'register', 'estimate', 'progress', 'timeline', 'costline'];
+const VIEW_ORDER = ['simple', 'register', 'estimate', 'progress', 'timeline', 'costline', 'shopping'];
 const STANDARD_VIEWS = new Set(['simple', 'register', 'estimate', 'progress']);
 
 export function viewTitle(viewId){

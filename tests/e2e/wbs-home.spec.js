@@ -197,8 +197,9 @@ test('WBS home uses the unified project header, keeps tabs, and does not hide pr
   await expect(page.locator('.wbs-tab[aria-label="پیشرفت"]')).toBeVisible();
   await expect(page.locator('.wbs-tab[aria-label="تایم‌لاین"]')).toBeVisible();
   await expect(page.locator('.wbs-tab[aria-label="Costline"]')).toBeVisible();
-  await expect(page.locator('.wbs-tab')).toHaveCount(6);
-  await expect(page.locator('.wbs-tab svg')).toHaveCount(6);
+  await expect(page.locator('.wbs-tab[aria-label="لیست خرید"]')).toBeVisible();
+  await expect(page.locator('.wbs-tab')).toHaveCount(7);
+  await expect(page.locator('.wbs-tab svg')).toHaveCount(7);
   await expect(page.locator('.wbs-tab').first()).toHaveText('');
   await expect(page.locator('.wbs-tree-toggle>svg:not(.wbs-expand-shade)')).toHaveCount(1);
   await expect(page.locator('.wbs-root-add')).toHaveText('بسته کار');
