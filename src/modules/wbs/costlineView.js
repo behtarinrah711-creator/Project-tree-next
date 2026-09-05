@@ -3,6 +3,8 @@ import { formatJalaliDisplay } from '../../ui/jalali.js';
 import { closeWbsSheet, openWbsSheet } from './wbsSheet.js';
 
 const money = value => new Intl.NumberFormat('fa-IR').format(Number(value) || 0);
+const BAR_WIDTH = 28;
+const BAR_HEIGHT = 140;
 
 let rangeId = 'week';
 let originWeekday = 4;
@@ -50,6 +52,24 @@ function renderToolbar(project, refresh){
   return bar;
 }
 
+function renderBar(bucket, max){
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.classList.add('wbs-costline-bar');
+  svg.setAttribute('viewBox', `0 0 ${BAR_WIDTH} ${BAR_HEIGHT}`);
+  svg.setAttribute('aria-hidden', 'true');
+  svg.setAttribute('focusable', 'false');
+
+  const height = Math.max(4, (bucket.total / max) * BAR_HEIGHT);
+  const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  rect.setAttribute('x', '0');
+  rect.setAttribute('y', String(BAR_HEIGHT - height));
+  rect.setAttribute('width', String(BAR_WIDTH));
+  rect.setAttribute('height', String(height));
+  rect.setAttribute('rx', '7');
+  svg.appendChild(rect);
+  return svg;
+}
+
 function renderChart(model){
   const wrap = document.createElement('div');
   wrap.className = 'wbs-costline-scroll';
@@ -67,16 +87,13 @@ function renderChart(model){
     col.type = 'button';
     col.className = 'wbs-costline-col';
     col.setAttribute('aria-label', `${bucket.label} ${money(bucket.total)}`);
-    const bar = document.createElement('span');
-    bar.className = 'wbs-costline-bar';
-    bar.style.height = `${Math.max(4, (bucket.total / max) * 140)}px`;
     const value = document.createElement('span');
     value.className = 'wbs-costline-value';
     value.textContent = money(bucket.total);
     const label = document.createElement('span');
     label.className = 'wbs-costline-label';
     label.textContent = formatJalaliDisplay(bucket.start) || bucket.label;
-    col.append(value, bar, label);
+    col.append(value, renderBar(bucket, max), label);
     col.addEventListener('click', () => openBucketSheet(bucket));
     axis.appendChild(col);
   });

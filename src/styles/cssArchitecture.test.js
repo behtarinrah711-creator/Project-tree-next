@@ -37,6 +37,7 @@ test('the application has one deterministic CSS manifest and no embedded applica
     'features/contract-search-trigger.css', 'workspace/back-navigation.css',
     'components/form-template.css', 'features/contact-form-template.css', 'workspace/navigation.css',
     'features/wbs-home.css', 'features/wbs-timeline-sticky.css', 'features/wbs-timeline-details.css',
+    'features/wbs-costline.css',
   ]);
   assert.deepEqual(new Set(imports.map(path => join(stylesRoot, path))), new Set(cssFiles.filter(path => !path.endsWith('/index.css'))));
 });
