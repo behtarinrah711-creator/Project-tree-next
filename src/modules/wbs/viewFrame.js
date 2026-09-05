@@ -114,18 +114,21 @@ function syncAll(documentRef){
   documentRef.querySelectorAll('.wbs-home-root').forEach(syncRoot);
 }
 
-export function installViewFrameEnhancement(documentRef = document){
-  if(observer || !documentRef?.documentElement) return;
+export function installViewFrameEnhancement(documentRef){
+  const doc = documentRef || (typeof document !== 'undefined' ? document : null);
+  const MutationObserverRef = doc?.defaultView?.MutationObserver || (typeof MutationObserver !== 'undefined' ? MutationObserver : null);
+  if(observer || !doc?.documentElement || !MutationObserverRef) return;
+  const enqueue = typeof queueMicrotask === 'function' ? queueMicrotask : callback => Promise.resolve().then(callback);
   const schedule = () => {
     if(queued) return;
     queued = true;
-    queueMicrotask(() => {
+    enqueue(() => {
       queued = false;
-      syncAll(documentRef);
+      syncAll(doc);
     });
   };
-  observer = new MutationObserver(schedule);
-  observer.observe(documentRef.documentElement, { childList:true, subtree:true });
+  observer = new MutationObserverRef(schedule);
+  observer.observe(doc.documentElement, { childList:true, subtree:true });
   schedule();
 }
 
