@@ -20,7 +20,10 @@ const TIMESCALES = [
   { id:'year', label:'سالانه', dayWidth:.6, minYears:3, shade:1 },
 ];
 let observer = null;
-let frame = 0;
+let enhanceQueued = false;
+let resizeFrame = 0;
+let observedRoot = null;
+let resizeCallback = null;
 let timescaleIndex = 1;
 
 function dayNumber(value){
@@ -304,7 +307,7 @@ function rowCanvas(documentRef, line, entry, domain, scale, buckets, canvasWidth
     const width = Math.max(8, Math.min(canvasWidth - x, naturalWidth));
     const stage = isStage(entry.item);
     const height = stage ? 10 : 20;
-    const y = stage ? (rowHeight - height) / 2 : (rowHeight - height) / 2;
+    const y = (rowHeight - height) / 2;
     const foreign = svgElement(documentRef, 'foreignObject', { x, y, width, height });
     foreign.setAttribute('class', 'wbs-gantt-scale-foreign');
     foreign.appendChild(action);
@@ -424,10 +427,6 @@ function enhance(windowRef, documentRef){
   const maxDepth = maxStageDepth(project.tasks || []);
   const entries = flattenVisible(project.tasks || [], project.id, maxDepth);
 
-  // TimelineEnhancements owns the Gantt corner markup. Build the timescale first,
-  // then create Expand directly in that final corner during the same animation frame.
-  // No temporary toolbar is constructed or moved, so there is a single action owner
-  // and no intermediate layout state for the browser to paint.
   paintCorner(gantt, project, windowRef, documentRef);
   const root = gantt.closest('.wbs-home-root');
   if(root) ensureViewToolbar(root, 'timeline');
@@ -440,23 +439,59 @@ function enhance(windowRef, documentRef){
   applyTimelineStickyHeader(gantt, windowRef, documentRef);
 }
 
-function scheduleEnhance(windowRef, documentRef){
-  if(frame) cancelAnimationFrame(frame);
-  frame = requestAnimationFrame(() => {
-    frame = 0;
+function resumeObservation(){
+  if(observer && observedRoot){
+    observer.observe(observedRoot, { childList:true, subtree:true });
+  }
+}
+
+function runEnhance(windowRef, documentRef){
+  observer?.disconnect();
+  try{
     enhance(windowRef, documentRef);
+  }finally{
+    resumeObservation();
+  }
+}
+
+function scheduleEnhance(windowRef, documentRef){
+  if(enhanceQueued) return;
+  enhanceQueued = true;
+  queueMicrotask(() => {
+    enhanceQueued = false;
+    runEnhance(windowRef, documentRef);
   });
 }
 
 export function installTimelineEnhancements({ windowRef = window, documentRef = document } = {}){
-  if(observer) observer.disconnect();
+  observer?.disconnect();
+  if(resizeCallback) windowRef.removeEventListener('resize', resizeCallback);
+  if(resizeFrame) cancelAnimationFrame(resizeFrame);
+
+  observedRoot = documentRef.getElementById('content') || documentRef.body;
   const callback = () => scheduleEnhance(windowRef, documentRef);
   observer = new MutationObserver(callback);
-  observer.observe(documentRef.getElementById('content') || documentRef.body, { childList:true, subtree:true });
-  windowRef.addEventListener('resize', callback, { passive:true });
+  resumeObservation();
+
+  resizeCallback = () => {
+    if(resizeFrame) cancelAnimationFrame(resizeFrame);
+    resizeFrame = requestAnimationFrame(() => {
+      resizeFrame = 0;
+      scheduleEnhance(windowRef, documentRef);
+    });
+  };
+  windowRef.addEventListener('resize', resizeCallback, { passive:true });
+
+  // DOM-driven Timeline renders are enhanced in a microtask, before the browser's
+  // next paint. This avoids displaying the base Gantt and then repainting a second
+  // layout one frame later when entering Timeline or expanding the deepest level.
   scheduleEnhance(windowRef, documentRef);
   return () => {
     observer?.disconnect();
-    windowRef.removeEventListener('resize', callback);
+    if(resizeCallback) windowRef.removeEventListener('resize', resizeCallback);
+    if(resizeFrame) cancelAnimationFrame(resizeFrame);
+    observedRoot = null;
+    resizeCallback = null;
+    resizeFrame = 0;
   };
 }
