@@ -140,6 +140,19 @@
   height:20px;
 }
 
+/* In the compact tree header the expand control is an action button, not a
+   progress surface. Keep its background stable while preserving its logic. */
+.wbs-view-actions .wbs-tree-toggle,
+.wbs-view-actions .wbs-tree-toggle.is-active,
+.wbs-view-actions .wbs-tree-toggle.is-past-midpoint{
+  background:transparent;
+  color:#77706a;
+}
+
+.wbs-view-actions .wbs-tree-toggle .wbs-expand-shade{
+  display:none;
+}
+
 .wbs-gantt-corner .wbs-tree-toggle{
   width:38px;
   min-width:38px;
@@ -152,6 +165,11 @@
 .wbs-gantt-corner .wbs-tree-toggle>svg:not(.wbs-expand-shade){
   width:20px;
   height:20px;
+}
+
+/* Keep the Timeline expand action close to the timescale selector. */
+.wbs-gantt-corner .wbs-tree-toggle + .wbs-timescale-toggle{
+  margin-left:15px;
 }
 
 .wbs-shopping-frame{
