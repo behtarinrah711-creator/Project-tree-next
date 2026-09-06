@@ -153,6 +153,15 @@
   display:none;
 }
 
+.wbs-gantt-corner{
+  justify-content:flex-start;
+  gap:15px;
+}
+
+.wbs-gantt-corner .wbs-gantt-project-title{
+  margin-inline-end:auto;
+}
+
 .wbs-gantt-corner .wbs-tree-toggle{
   width:38px;
   min-width:38px;
@@ -165,11 +174,6 @@
 .wbs-gantt-corner .wbs-tree-toggle>svg:not(.wbs-expand-shade){
   width:20px;
   height:20px;
-}
-
-/* Keep the Timeline expand action close to the timescale selector. */
-.wbs-gantt-corner .wbs-tree-toggle + .wbs-timescale-toggle{
-  margin-left:15px;
 }
 
 .wbs-shopping-frame{
