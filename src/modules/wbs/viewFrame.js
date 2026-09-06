@@ -34,10 +34,31 @@ function createHeader(documentRef, viewId){
   return header;
 }
 
-function syncTreeModeActions(root, frame){
+function ensureActionSeparator(actions){
+  let separator = actions.querySelector(':scope > .wbs-view-action-separator');
+  if(separator) return separator;
+  separator = actions.ownerDocument.createElement('span');
+  separator.className = 'wbs-view-action-separator';
+  separator.setAttribute('aria-hidden', 'true');
+  actions.appendChild(separator);
+  return separator;
+}
+
+function syncTreeHeaderActions(root, frame){
   const actions = frame.querySelector(':scope > .wbs-view-header > .wbs-view-actions');
+  if(!actions) return;
+
   const modeTabs = root.querySelector(':scope > .wbs-tree-mode-tabs');
-  if(actions && modeTabs) actions.appendChild(modeTabs);
+  if(modeTabs) actions.appendChild(modeTabs);
+
+  const toolbar = root.querySelector(':scope > .wbs-toolbar');
+  const expand = toolbar?.querySelector('.wbs-tree-toggle');
+  const addRoot = toolbar?.querySelector('.wbs-root-add');
+  if(!expand && !addRoot) return;
+
+  ensureActionSeparator(actions);
+  if(expand) actions.appendChild(expand);
+  if(addRoot) actions.appendChild(addRoot);
 }
 
 function ensureStandardFrame(root, viewId){
@@ -64,17 +85,41 @@ function ensureStandardFrame(root, viewId){
   const title = frame.querySelector(':scope > .wbs-view-header > .wbs-view-title');
   if(title) title.textContent = viewTitle(viewId);
 
-  syncTreeModeActions(root, frame);
+  syncTreeHeaderActions(root, frame);
 
   const body = frame.querySelector(':scope > .wbs-view-body');
   const general = root.querySelector(':scope > .wbs-general');
   if(body && general) body.appendChild(general);
 }
 
+function syncTimelineHeaderActions(root){
+  const toolbar = root.querySelector(':scope > .wbs-toolbar');
+  if(!toolbar) return;
+
+  // Timeline never owns the root-work-package action. Remove it from the DOM,
+  // including any legacy instance created before this enhancement runs.
+  toolbar.querySelectorAll('.wbs-root-add').forEach(button => button.remove());
+
+  const expand = toolbar.querySelector('.wbs-tree-toggle');
+  const corner = root.querySelector('.wbs-gantt-corner');
+  const timescale = corner?.querySelector('.wbs-timescale-toggle');
+  if(expand && corner && timescale){
+    timescale.insertAdjacentElement('beforebegin', expand);
+  }
+}
+
+function removeCostlineRootActions(root){
+  root.querySelectorAll(':scope > .wbs-toolbar .wbs-root-add').forEach(button => button.remove());
+  const toolbar = root.querySelector(':scope > .wbs-toolbar');
+  if(toolbar && !toolbar.children.length) toolbar.remove();
+}
+
 function syncRoot(root){
   const viewId = activeViewId(root);
   ensureViewToolbar(root, viewId);
   if(STANDARD_VIEWS.has(viewId)) ensureStandardFrame(root, viewId);
+  if(viewId === 'timeline') syncTimelineHeaderActions(root);
+  if(viewId === 'costline') removeCostlineRootActions(root);
 }
 
 let observer = null;
