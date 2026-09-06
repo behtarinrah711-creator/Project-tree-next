@@ -40,8 +40,12 @@ test.beforeEach(async ({ page }) => {
   await page.waitForFunction(() => Boolean(window.KarhaLegacy && window.KarhaApp));
 });
 
+async function selectTreeMode(page, label){
+  await page.locator(`.wbs-tree-mode-tab[aria-label="${label}"]`).click();
+}
+
 test('progress is weighted, work checkbox resets progress, and stage checkbox is derived', async ({ page }) => {
-  await page.locator('.wbs-tab[aria-label="پیشرفت"]').click();
+  await selectTreeMode(page, 'درصد پیشرفت');
   await page.locator('.wbs-tree-toggle').click();
   const foundation = page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' });
   await expect(foundation.locator('.wbs-meta')).toHaveText('٪۳۳');
@@ -55,7 +59,7 @@ test('progress is weighted, work checkbox resets progress, and stage checkbox is
 });
 
 test('editing unfinished work weight immediately recalculates its stage progress', async ({ page }) => {
-  await page.locator('.wbs-tab[aria-label="پیشرفت"]').click();
+  await selectTreeMode(page, 'درصد پیشرفت');
   await page.locator('.wbs-tree-toggle').click();
   const foundation = page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' });
   const execution = page.locator('.wbs-row.is-work', { hasText:'اجرای فونداسیون' });
@@ -74,7 +78,7 @@ test('editing unfinished work weight immediately recalculates its stage progress
 });
 
 test('add menu does not create an incompatible option', async ({ page }) => {
-  await page.locator('.wbs-tab[aria-label="ثبت"]').click();
+  await expect(page.locator('.wbs-tree-mode-tab[aria-label="ثبت و ویرایش"]')).toHaveAttribute('aria-selected', 'true');
   await page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' }).locator('.wbs-add').click();
   await expect(page.locator('#wbsSheetOverlay .wbs-choice', { hasText:'افزودن کار' })).toBeVisible();
   await expect(page.locator('#wbsSheetOverlay .wbs-choice', { hasText:'افزودن زیرمرحله' })).toHaveCount(0);
@@ -86,7 +90,6 @@ test('add menu does not create an incompatible option', async ({ page }) => {
 });
 
 test('leaf stages reserve the same responsive disclosure column as expandable stages', async ({ page }) => {
-  await page.locator('.wbs-tab[aria-label="ثبت"]').click();
   await page.locator('.wbs-tree-toggle').click();
 
   const expandable = page.locator('.wbs-row.is-stage', { hasText:'نازک‌کاری' });
@@ -99,7 +102,6 @@ test('leaf stages reserve the same responsive disclosure column as expandable st
 });
 
 test('pointer drag reorders sibling stages before or after without nesting', async ({ page }) => {
-  await page.locator('.wbs-tab[aria-label="ثبت"]').click();
   await page.locator('.wbs-tree-toggle').click();
   const source = page.locator('.wbs-row.is-stage', { hasText:'ساختمان' });
   const target = page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' });
@@ -124,7 +126,6 @@ test('pointer drag reorders sibling stages before or after without nesting', asy
 });
 
 test('pointer drag persists the order of sibling substages', async ({ page }) => {
-  await page.locator('.wbs-tab[aria-label="ثبت"]').click();
   await page.locator('.wbs-tree-toggle').click();
   const source = page.locator('.wbs-row.is-stage', { hasText:'تأسیسات' });
   const target = page.locator('.wbs-row.is-stage', { hasText:'نازک‌کاری' });
@@ -148,7 +149,6 @@ test('pointer drag persists the order of sibling substages', async ({ page }) =>
 });
 
 test('tree toggle reveals one depth per press and collapses after the deepest level', async ({ page }) => {
-  await page.locator('.wbs-tab[aria-label="ثبت"]').click();
   const treeToggle = page.locator('.wbs-tree-toggle');
   const expandShade = treeToggle.locator('.wbs-expand-shade rect');
   await expect(page.locator('.wbs-row.depth-0')).toHaveCount(2);
@@ -173,8 +173,8 @@ test('tree toggle reveals one depth per press and collapses after the deepest le
 });
 
 test('confirmed WBS delete is immediate and does not show redundant undo feedback', async ({ page }) => {
-  const foundation = page.locator('.wbs-simple-row.is-stage', { hasText:'فونداسیون' });
-  await foundation.locator('.wbs-simple-title').click();
+  const foundation = page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' });
+  await foundation.locator('.wbs-title').click();
   await page.locator('#wbsSheetOverlay .wbs-info-row', { hasText:'حذف مرحله' }).click();
   await expect(page.locator('#confirmOverlay')).toBeVisible();
   await page.locator('#confirmOkBtn').click();
@@ -187,27 +187,42 @@ test('confirmed WBS delete is immediate and does not show redundant undo feedbac
   })).toBe(true);
 });
 
-test('WBS home uses the unified project header, keeps tabs, and does not hide project footer', async ({ page }) => {
+test('WBS uses four primary views and three modular tree modes', async ({ page }) => {
   await expect(page.locator('.wbs-home-root')).toBeVisible();
   await expect(page.locator('#topbar')).toBeVisible();
   await expect(page.locator('#topbarTitle .app-title-main')).toHaveText('پروژه WBS');
   await expect(page.locator('.wbs-home-header')).toHaveCount(0);
-  await expect(page.locator('.wbs-tab[aria-label="ثبت"]')).toBeVisible();
-  await expect(page.locator('.wbs-tab[aria-label="برآورد"]')).toBeVisible();
-  await expect(page.locator('.wbs-tab[aria-label="پیشرفت"]')).toBeVisible();
+
+  await expect(page.locator('.wbs-tab[aria-label="درخت پروژه"]')).toBeVisible();
   await expect(page.locator('.wbs-tab[aria-label="تایم‌لاین"]')).toBeVisible();
   await expect(page.locator('.wbs-tab[aria-label="Costline"]')).toBeVisible();
   await expect(page.locator('.wbs-tab[aria-label="لیست خرید"]')).toBeVisible();
-  await expect(page.locator('.wbs-tab')).toHaveCount(7);
-  await expect(page.locator('.wbs-tab svg')).toHaveCount(7);
-  await expect(page.locator('.wbs-tab').first()).toHaveText('');
+  await expect(page.locator('.wbs-tab')).toHaveCount(4);
+  await expect(page.locator('.wbs-tab svg')).toHaveCount(4);
+  await expect(page.locator('.wbs-tab[aria-label="ساده"]')).toHaveCount(0);
+  await expect(page.locator('.wbs-tab[aria-label="ثبت"]')).toHaveCount(0);
+  await expect(page.locator('.wbs-tab[aria-label="برآورد"]')).toHaveCount(0);
+  await expect(page.locator('.wbs-tab[aria-label="پیشرفت"]')).toHaveCount(0);
+
+  const frame = page.locator('.wbs-view-frame.is-standard-view');
+  await expect(frame.locator('.wbs-view-title')).toHaveText('درخت پروژه');
+  await expect(frame.locator('.wbs-tree-mode-tab')).toHaveCount(3);
+  await expect(frame.locator('.wbs-tree-mode-tab[aria-label="ثبت و ویرایش"]')).toHaveAttribute('aria-selected', 'true');
+  await expect(frame.locator('.wbs-tree-mode-tab[aria-label="هزینه‌ها"]')).toBeVisible();
+  await expect(frame.locator('.wbs-tree-mode-tab[aria-label="درصد پیشرفت"]')).toBeVisible();
+
+  await selectTreeMode(page, 'هزینه‌ها');
+  await expect(page.locator('.wbs-general')).toBeVisible();
+
+  await page.locator('.wbs-tab[aria-label="تایم‌لاین"]').click();
+  await page.locator('.wbs-tab[aria-label="درخت پروژه"]').click();
+  await expect(page.locator('.wbs-tree-mode-tab[aria-label="ثبت و ویرایش"]')).toHaveAttribute('aria-selected', 'true');
+
   await expect(page.locator('.wbs-tree-toggle>svg:not(.wbs-expand-shade)')).toHaveCount(1);
   await expect(page.locator('.wbs-root-add')).toHaveText('بسته کار');
   await expect(page.locator('.wbs-root-add svg')).toHaveCount(1);
   await expect(page.locator('#bottomNav')).toBeVisible();
   await expect(page.locator('#bottomProjectsBtn')).toBeVisible();
-  await page.locator('.wbs-tab[aria-label="برآورد"]').click();
-  await expect(page.locator('.wbs-general')).toBeVisible();
 });
 
 test('Timeline details survive initial render, timescale changes, and tree rerenders', async ({ page }) => {

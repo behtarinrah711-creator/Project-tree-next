@@ -1,26 +1,21 @@
 import { ensureViewToolbar } from './viewToolbar.js';
 
 export const WBS_VIEW_TITLES = Object.freeze({
-  simple: 'نمای کلی',
-  register: 'ثبت و ویرایش',
-  estimate: 'هزینه‌ها',
-  progress: 'درصد پیشرفت',
+  tree: 'درخت پروژه',
   timeline: 'نمودار گانت',
   costline: 'برآورد هزینه',
   shopping: 'لیست خرید',
 });
 
-const VIEW_ORDER = ['simple', 'register', 'estimate', 'progress', 'timeline', 'costline', 'shopping'];
-const STANDARD_VIEWS = new Set(['simple', 'register', 'estimate', 'progress']);
+const STANDARD_VIEWS = new Set(['tree']);
 
 export function viewTitle(viewId){
   return WBS_VIEW_TITLES[viewId] || '';
 }
 
 function activeViewId(root){
-  const tabs = [...root.querySelectorAll(':scope > .wbs-tabs > .wbs-tab')];
-  const index = tabs.findIndex(tab => tab.classList.contains('active') || tab.getAttribute('aria-selected') === 'true');
-  return VIEW_ORDER[index] || 'simple';
+  const active = root.querySelector(':scope > .wbs-tabs > .wbs-tab.active, :scope > .wbs-tabs > .wbs-tab[aria-selected="true"]');
+  return active?.dataset.view || 'tree';
 }
 
 function createHeader(documentRef, viewId){
@@ -37,6 +32,12 @@ function createHeader(documentRef, viewId){
 
   header.append(title, actions);
   return header;
+}
+
+function syncTreeModeActions(root, frame){
+  const actions = frame.querySelector(':scope > .wbs-view-header > .wbs-view-actions');
+  const modeTabs = root.querySelector(':scope > .wbs-tree-mode-tabs');
+  if(actions && modeTabs) actions.appendChild(modeTabs);
 }
 
 function ensureStandardFrame(root, viewId){
@@ -62,6 +63,8 @@ function ensureStandardFrame(root, viewId){
   frame.dataset.view = viewId;
   const title = frame.querySelector(':scope > .wbs-view-header > .wbs-view-title');
   if(title) title.textContent = viewTitle(viewId);
+
+  syncTreeModeActions(root, frame);
 
   const body = frame.querySelector(':scope > .wbs-view-body');
   const general = root.querySelector(':scope > .wbs-general');

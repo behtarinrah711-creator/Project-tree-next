@@ -31,6 +31,7 @@ import {
 import { bindRowDrag } from './wbsDrag.js';
 import { renderCostline } from './costlineView.js';
 import { SHOPPING_ICON, renderShoppingView } from './shoppingView.js';
+import { DEFAULT_TREE_MODE, createTreeModeTabs } from './treeModes.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import {
   advanceExpansionLevel,
@@ -42,12 +43,10 @@ import {
 } from './wbsExpandState.js';
 
 const COSTLINE_ICON = 'M640-160v-280h160v280H640Zm-240 0v-640h160v640H400Zm-240 0v-440h160v440H160Z';
+const TREE_ICON = 'M160-360v-80h640v80H160Zm0 160v-80h640v80H160Zm0-320v-80h640v80H160Zm0-160v-80h640v80H160Z';
 
 const VIEWS = [
-  { id:'simple', label:'ساده', icon:'M160-360v-80h640v80H160Zm0 160v-80h640v80H160Zm0-320v-80h640v80H160Zm0-160v-80h640v80H160Z' },
-  { id:'register', label:'ثبت', icon:'M560-80v-123l221-220q9-9 20-13t22-4q12 0 23 4.5t20 13.5l37 37q8 9 12.5 20t4.5 22q0 11-4 22.5T903-300L683-80H560Zm300-263-37-37 37 37ZM620-140h38l121-122-18-19-19-18-122 121v38ZM240-80q-33 0-56.5-23.5T160-160v-640q0-33 23.5-56.5T240-880h320l240 240v120h-80v-80H520v-200H240v640h240v80H240Zm280-400Zm241 199-19-18 37 37-18-19Z' },
-  { id:'estimate', label:'برآورد', icon:'M441-120v-86q-53-12-91.5-46T293-348l74-30q15 48 44.5 73t77.5 25q41 0 69.5-18.5T587-356q0-35-22-55.5T463-458q-86-27-118-64.5T313-614q0-65 42-101t86-41v-84h80v84q50 8 82.5 36.5T651-650l-74 32q-12-32-34-48t-60-16q-44 0-67 19.5T393-614q0 33 30 52t104 40q69 20 104.5 63.5T667-358q0 71-42 108t-104 46v84h-80Z' },
-  { id:'progress', label:'پیشرفت', icon:'M300-520q-58 0-99-41t-41-99q0-58 41-99t99-41q58 0 99 41t41 99q0 58-41 99t-99 41Zm0-80q25 0 42.5-17.5T360-660q0-25-17.5-42.5T300-720q-25 0-42.5 17.5T240-660q0 25 17.5 42.5T300-600Zm360 440q-58 0-99-41t-41-99q0-58 41-99t99-41q58 0 99 41t41 99q0 58-41 99t-99 41Zm42.5-97.5Q720-275 720-300t-17.5-42.5Q685-360 660-360t-42.5 17.5Q600-325 600-300t17.5 42.5Q635-240 660-240t42.5-17.5ZM216-160l-56-56 584-584 56 56-584 584Z' },
+  { id:'tree', label:'درخت پروژه', icon:TREE_ICON },
   { id:'timeline', label:'تایم‌لاین', icon:'M240-280h240v-80H240v80Zm120-160h240v-80H360v80Zm120-160h240v-80H480v80ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Z' },
   { id:'costline', label:'Costline', icon: COSTLINE_ICON },
   { id:'shopping', label:'لیست خرید', icon: SHOPPING_ICON },
@@ -69,7 +68,8 @@ const SIMPLE_TYPE_CLASSES = new Map([
   ['خدمات', 'type-6'],
 ]);
 
-let currentView = 'simple';
+let currentView = 'tree';
+let currentTreeMode = DEFAULT_TREE_MODE;
 let explicitProjectId = null;
 let tabRenderFrame = 0;
 
@@ -683,47 +683,6 @@ function openGeneralDetailSheet(item){
   });
 }
 
-function renderSimpleRow(item, depth){
-  const stage = isStage(item);
-  const displayedProgress = stage ? rollupProgress([item]) : progressOf(item);
-  const checked = displayedProgress === 100;
-  const kids = (item.subtasks || []).filter(x => !x.trashed && !isPendingUiDelete(x.id));
-  const open = !stage || isExpanded(projectIdOf(), item.id);
-  const rawType = isWork(item) && WORK_TYPES.includes(item.type) ? item.type : '';
-  const chipLabel = rawType || '؟';
-  const chipClass = rawType ? (SIMPLE_TYPE_CLASSES.get(rawType) || 'type-7') : 'type-7';
-  const row = document.createElement('div');
-  row.className = 'wbs-simple-row depth-' + Math.min(6, depth) + (checked ? ' is-done' : '') + (stage ? ' is-stage' : ' is-work');
-  row.innerHTML = `
-    <button type="button" class="wbs-check" aria-label="${stage ? 'پیشرفت محاسبه‌شده مرحله' : 'وضعیت'}" ${stage ? 'disabled' : ''}>${checked ? '✓' : ''}</button>
-    ${kids.length ? `<button type="button" class="wbs-chev" aria-label="${open?'بستن':'باز کردن'}">${open?'▾':'▸'}</button>` : '<span class="wbs-chev-spacer"></span>'}
-    <button type="button" class="wbs-simple-title">
-      ${stage ? '' : `<span class="wbs-type-chip ${chipClass}">${escapeHtml(chipLabel)}</span>`}
-      <span class="wbs-simple-title-text">${escapeHtml(item.text || '')}</span>
-    </button>
-  `;
-  row.querySelector('.wbs-check')?.addEventListener('click', ev => {
-    ev.stopPropagation();
-    if(isWork(item)) wbsApi.updateItem(projectIdOf(), item.id, { progress: checked ? 0 : 100 });
-    render();
-  });
-  row.querySelector('.wbs-chev')?.addEventListener('click', ev => {
-    ev.stopPropagation();
-    toggleExpanded(projectIdOf(), String(item.id));
-    render();
-  });
-  row.querySelector('.wbs-simple-title')?.addEventListener('click', ev => {
-    ev.stopPropagation();
-    if(isWork(item)) openWorkDetailSheet(item);
-    else openStageDetailSheet(item);
-  });
-  const wrap = document.createElement('div');
-  wrap.className = depth === 0 ? 'wbs-card wbs-simple-card' : 'wbs-branch wbs-simple-branch';
-  wrap.appendChild(row);
-  if(open) kids.forEach(child => wrap.appendChild(renderSimpleRow(child, depth + 1)));
-  return wrap;
-}
-
 function renderRow(item, codes, view, depth){
   const stage = isStage(item);
   const displayedProgress = stage ? rollupProgress([item]) : progressOf(item);
@@ -809,10 +768,12 @@ export function renderWbsHome(target = document.getElementById('content'), proje
 
   const root = document.createElement('div');
   root.className = 'wbs-home-root'
-    + (currentView === 'simple' ? ' is-simple-view' : '')
+    + (currentView === 'tree' ? ' is-tree-view' : '')
     + (currentView === 'timeline' ? ' is-timeline-view' : '')
     + (currentView === 'costline' ? ' is-costline-view' : '')
     + (currentView === 'shopping' ? ' is-shopping-view' : '');
+  root.dataset.view = currentView;
+  root.dataset.treeMode = currentTreeMode;
   target.appendChild(root);
 
   const tabs = document.createElement('div');
@@ -822,6 +783,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'wbs-tab' + (currentView === view.id ? ' active' : '');
+    btn.dataset.view = view.id;
     btn.setAttribute('role', 'tab');
     btn.setAttribute('aria-selected', currentView === view.id ? 'true' : 'false');
     btn.setAttribute('aria-label', view.label);
@@ -830,6 +792,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     btn.addEventListener('click', () => {
       if(currentView === view.id) return;
       currentView = view.id;
+      if(view.id === 'tree') currentTreeMode = DEFAULT_TREE_MODE;
       scheduleTabRender(target, project.id);
     });
     tabs.appendChild(btn);
@@ -867,18 +830,25 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   toolbar.append(addRoot, treeToggle);
   if(currentView !== 'timeline' && currentView !== 'costline') root.appendChild(toolbar);
 
+  if(currentView === 'tree'){
+    root.appendChild(createTreeModeTabs(document, currentTreeMode, mode => {
+      currentTreeMode = mode;
+      scheduleTabRender(target, project.id);
+    }));
+  }
+
   const tree = document.createElement('div');
   tree.className = 'wbs-tree';
   const items = (project.tasks || []).filter(x => !x.trashed && !isPendingUiDelete(x.id));
-  const simple = currentView === 'simple';
-  const codes = simple ? new Map() : wbsCodeMap(items);
+  const effectiveView = currentView === 'tree' ? currentTreeMode : currentView;
+  const codes = wbsCodeMap(items);
   if(currentView === 'costline') tree.appendChild(renderCostline(project));
   else if(!items.length) tree.innerHTML = '<div class="empty-state">مرحله یا کاری ثبت نشده است.</div>';
   else if(currentView === 'timeline') tree.appendChild(renderTimeline(items));
-  else items.forEach(item => tree.appendChild(simple ? renderSimpleRow(item, 0) : renderRow(item, codes, currentView, 0)));
+  else items.forEach(item => tree.appendChild(renderRow(item, codes, effectiveView, 0)));
   root.appendChild(tree);
 
-  if(currentView === 'estimate'){
+  if(currentView === 'tree' && currentTreeMode === 'estimate'){
     const box = document.createElement('section');
     box.className = 'wbs-general';
     const heading = document.createElement('h3');
