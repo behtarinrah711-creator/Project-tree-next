@@ -12,6 +12,8 @@ export async function bootstrapApplication({
     const { startApplication } = await loadStartup();
     const application = await startApplication();
     if(windowRef?.document){
+      const structureLabel = windowRef.document.querySelector('#bottomProjectsBtn > span');
+      if(structureLabel) structureLabel.textContent = 'ساختار';
       try{
         const { installTimelineEnhancements } = await import('../modules/wbs/timelineEnhancements.js');
         installTimelineEnhancements({ windowRef, documentRef: windowRef.document });
