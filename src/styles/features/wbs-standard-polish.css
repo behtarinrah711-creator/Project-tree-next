@@ -134,7 +134,7 @@
   display:none;
 }
 
-.wbs-view-actions .wbs-tree-toggle svg,
+.wbs-view-actions .wbs-tree-toggle>svg:not(.wbs-expand-shade),
 .wbs-view-actions .wbs-root-add svg{
   width:20px;
   height:20px;
