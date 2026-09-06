@@ -1,24 +1,15 @@
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
-import { wbsApi } from '../../domain/wbs/wbsApi.js';
 import { isStage, isWork, progressOf, scheduleEndOf, scheduleStartOf } from '../../domain/wbs/normalize.js';
 import { rollupProgress } from '../../domain/wbs/estimate.js';
 import { gregorianToJalali, jalaliToGregorian } from '../../ui/jalali.js';
-import {
-  advanceExpansionLevel,
-  getExpansionProgress,
-  getExpandedIds,
-  isExpanded,
-} from './wbsExpandState.js';
-import { fieldRow, openWbsSheet, textInput } from './wbsSheet.js';
-import { render } from './homeView.js';
+import { isExpanded } from './wbsExpandState.js';
 import { applyTimelineDetails } from './timelineDetails.js';
 import { applyTimelineStickyHeader } from './timelineStickyHeader.js';
+import { ensureViewToolbar } from './viewToolbar.js';
 
 const MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 const SEASONS = ['بهار','تابستان','پاییز','زمستان'];
-const EXPAND_ICON = 'M200-200v-240h80v160h160v80H200Zm480-320v-160H520v-80h240v240h-80Z';
-const ADD_WORK_PACKAGE_ICON = 'M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56.5T160-800h640q33 0 56.5 23.5T880-720v480q0 33-23.5 56.5T800-160H160Zm0-80h640v-480H160v480Zm0 0v-480 480Zm280-80h80v-120h120v-80H520v-120h-80v120H320v80h120v120Z';
 const TIMESCALE_ICON = 'M120-240q-33 0-56.5-23.5T40-320q0-33 23.5-56.5T120-400h10.5q4.5 0 9.5 2l182-182q-2-5-2-9.5V-600q0-33 23.5-56.5T400-680q33 0 56.5 23.5T480-600q0 2-2 20l102 102q5-2 9.5-2h21q4.5 0 9.5 2l142-142q-2-5-2-9.5V-640q0-33 23.5-56.5T840-720q33 0 56.5 23.5T920-640q0 33-23.5 56.5T840-560h-10.5q-4.5 0-9.5-2L678-420q2 5 2 9.5v10.5q0 33-23.5 56.5T600-320q-33 0-56.5-23.5T520-400v-10.5q0-4.5 2-9.5L420-522q-5 2-9.5 2H400q-2 0-20-2L198-340q2 5 2 9.5v10.5q0 33-23.5 56.5T120-240Z';
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const TIMESCALES = [
@@ -115,64 +106,6 @@ function displayedProgress(item){
 
 function materialIcon(path, className = ''){
   return `<svg${className ? ` class="${className}"` : ''} viewBox="0 -960 960 960" aria-hidden="true" focusable="false"><path d="${path}"/></svg>`;
-}
-
-function openCreateRootSheet(project){
-  openWbsSheet({
-    title:'افزودن بسته کار',
-    saveLabel:'ذخیره',
-    body(root){
-      root.appendChild(fieldRow('نام مرحله', textInput('', { name:'title', placeholder:'نام مرحله' })));
-      root.appendChild(fieldRow('وزن پیشرفت', textInput('1', { name:'progressWeight', type:'number', min:'0.01', step:'0.01', required:true })));
-      const note = root.ownerDocument.createElement('div');
-      note.className = 'wbs-note';
-      note.textContent = 'وزن نسبی است؛ لازم نیست مجموع وزن‌ها ۱۰۰ شود.';
-      root.appendChild(note);
-    },
-    onSave(root){
-      const title = root.querySelector('[name="title"]')?.value.trim();
-      const progressWeight = Number(root.querySelector('[name="progressWeight"]')?.value);
-      if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
-      wbsApi.createStage(project.id, title, null, { progressWeight });
-      render();
-      return true;
-    },
-  });
-}
-
-function ensureTimelineToolbar(documentRef, project){
-  const root = documentRef.querySelector('.wbs-home-root.is-timeline-view');
-  if(!root || root.querySelector(':scope > .wbs-toolbar')) return;
-  const tabs = root.querySelector(':scope > .wbs-tabs');
-  if(!tabs) return;
-
-  const toolbar = documentRef.createElement('div');
-  toolbar.className = 'wbs-toolbar';
-
-  const addRoot = documentRef.createElement('button');
-  addRoot.type = 'button';
-  addRoot.className = 'wbs-root-add';
-  addRoot.setAttribute('aria-label', 'افزودن بسته کار');
-  addRoot.innerHTML = `${materialIcon(ADD_WORK_PACKAGE_ICON)}<span>بسته کار</span>`;
-  addRoot.addEventListener('click', () => openCreateRootSheet(project));
-
-  const treeToggle = documentRef.createElement('button');
-  const isTreeOpen = getExpandedIds(project.id).size > 0;
-  const expansionProgress = getExpansionProgress(project.id, project.tasks || []);
-  treeToggle.type = 'button';
-  treeToggle.className = 'wbs-tree-toggle' + (isTreeOpen ? ' is-active' : '') + (expansionProgress.ratio >= .5 ? ' is-past-midpoint' : '');
-  treeToggle.setAttribute('aria-label', 'تغییر سطح نمایش نمودار');
-  treeToggle.setAttribute('aria-pressed', isTreeOpen ? 'true' : 'false');
-  treeToggle.dataset.expandedLevels = String(expansionProgress.expandedLevels);
-  treeToggle.dataset.totalLevels = String(expansionProgress.totalLevels);
-  treeToggle.innerHTML = `<svg class="wbs-expand-shade" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect width="1" height="1" fill="currentColor" opacity="${expansionProgress.ratio}"/></svg>${materialIcon(EXPAND_ICON)}`;
-  treeToggle.addEventListener('click', () => {
-    advanceExpansionLevel(project.id, project.tasks || []);
-    render();
-  });
-
-  toolbar.append(addRoot, treeToggle);
-  tabs.insertAdjacentElement('afterend', toolbar);
 }
 
 function currentTimescale(){
@@ -490,8 +423,15 @@ function enhance(windowRef, documentRef){
   if(!project) return;
   const maxDepth = maxStageDepth(project.tasks || []);
   const entries = flattenVisible(project.tasks || [], project.id, maxDepth);
-  ensureTimelineToolbar(documentRef, project);
+
+  // TimelineEnhancements owns the Gantt corner markup. Build the timescale first,
+  // then create Expand directly in that final corner during the same animation frame.
+  // No temporary toolbar is constructed or moved, so there is a single action owner
+  // and no intermediate layout state for the browser to paint.
   paintCorner(gantt, project, windowRef, documentRef);
+  const root = gantt.closest('.wbs-home-root');
+  if(root) ensureViewToolbar(root, 'timeline');
+
   paintHierarchy(gantt, entries);
   syncRowHeights(gantt);
   paintScaleGeometry(gantt, entries, documentRef);

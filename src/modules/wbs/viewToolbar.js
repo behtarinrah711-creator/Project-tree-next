@@ -41,13 +41,13 @@ function createExpandButton(documentRef, project){
 
 export function ensureViewToolbar(root, viewId){
   if(viewId !== 'timeline') return;
-  if(root.querySelector(':scope > .wbs-toolbar')) return;
-  const tabs = root.querySelector(':scope > .wbs-tabs');
   const project = activeProject();
-  if(!tabs || !project) return;
+  const corner = root.querySelector('.wbs-gantt-corner');
+  const timescale = corner?.querySelector('.wbs-timescale-toggle');
+  if(!project || !corner || !timescale) return;
 
-  const toolbar = root.ownerDocument.createElement('div');
-  toolbar.className = 'wbs-toolbar is-timeline-actions';
-  toolbar.appendChild(createExpandButton(root.ownerDocument, project));
-  tabs.insertAdjacentElement('afterend', toolbar);
+  // Render the Timeline action in its final location immediately. Creating a
+  // temporary toolbar and moving it afterwards caused a visible layout jump.
+  if(corner.querySelector(':scope > .wbs-tree-toggle')) return;
+  timescale.insertAdjacentElement('beforebegin', createExpandButton(root.ownerDocument, project));
 }
