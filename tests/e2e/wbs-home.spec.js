@@ -187,7 +187,7 @@ test('confirmed WBS delete is immediate and does not show redundant undo feedbac
   })).toBe(true);
 });
 
-test('WBS uses five primary views and three modular tree modes', async ({ page }) => {
+test('WBS uses six primary views and three modular tree modes', async ({ page }) => {
   await expect(page.locator('.wbs-home-root')).toBeVisible();
   await expect(page.locator('#topbar')).toBeVisible();
   await expect(page.locator('#topbarTitle .app-title-main')).toHaveText('پروژه WBS');
@@ -198,13 +198,32 @@ test('WBS uses five primary views and three modular tree modes', async ({ page }
   await expect(page.locator('.wbs-tab[aria-label="تایم‌لاین"]')).toBeVisible();
   await expect(page.locator('.wbs-tab[aria-label="Costline"]')).toBeVisible();
   await expect(page.locator('.wbs-tab[aria-label="لیست خرید"]')).toBeVisible();
-  await expect(page.locator('.wbs-tab')).toHaveCount(5);
-  await expect(page.locator('.wbs-tab svg')).toHaveCount(5);
+  await expect(page.locator('.wbs-tab[aria-label="دیرکردها"]')).toBeVisible();
+  await expect(page.locator('.wbs-tab')).toHaveCount(6);
+  await expect(page.locator('.wbs-tab svg')).toHaveCount(6);
   await expect(page.locator('.wbs-tab[aria-label="ساده"]')).toHaveCount(0);
   await expect(page.locator('.wbs-tab[aria-label="ثبت"]')).toHaveCount(0);
   await expect(page.locator('.wbs-tab[aria-label="برآورد"]')).toHaveCount(0);
   await expect(page.locator('.wbs-tab[aria-label="پیشرفت"]')).toHaveCount(0);
 
+  const tabRects = await page.locator('.wbs-tab').evaluateAll(tabs => tabs.map(tab => {
+    const rect = tab.getBoundingClientRect();
+    return { left:rect.left, top:rect.top, width:rect.width };
+  }));
+  expect(Math.max(...tabRects.map(rect => rect.top)) - Math.min(...tabRects.map(rect => rect.top))).toBeLessThan(2);
+  expect(Math.max(...tabRects.map(rect => rect.width)) - Math.min(...tabRects.map(rect => rect.width))).toBeLessThan(2);
+  const delayLeft = await page.locator('.wbs-tab[aria-label="دیرکردها"]').evaluate(tab => tab.getBoundingClientRect().left);
+  expect(delayLeft).toBe(Math.min(...tabRects.map(rect => rect.left)));
+
+  await page.locator('.wbs-tab[aria-label="دیرکردها"]').click();
+  const delayFrame = page.locator('.wbs-delay-frame');
+  await expect(delayFrame).toBeVisible();
+  await expect(delayFrame).toHaveAttribute('data-view', 'delay');
+  await expect(delayFrame.locator('.wbs-view-title')).toHaveText('دیرکرد');
+  await expect(delayFrame.locator('.wbs-delay-body')).toBeVisible();
+  await expect(page.locator('.wbs-tree')).toHaveCount(0);
+
+  await page.locator('.wbs-tab[aria-label="درخت پروژه"]').click();
   const frame = page.locator('.wbs-view-frame.is-standard-view');
   await expect(frame.locator('.wbs-view-title')).toHaveText('درخت پروژه');
   await expect(frame.locator('.wbs-tree-mode-tab')).toHaveCount(3);
