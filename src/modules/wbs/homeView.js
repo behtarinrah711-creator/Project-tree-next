@@ -32,6 +32,7 @@ import { bindRowDrag } from './wbsDrag.js';
 import { renderCostline } from './costlineView.js';
 import { SHOPPING_ICON, renderShoppingView } from './shoppingView.js';
 import { TODAY_ICON, renderTodayView } from './todayView.js';
+import { DELAY_ICON, renderDelayView } from './delayView.js';
 import { DEFAULT_TREE_MODE, createTreeModeTabs } from './treeModes.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import {
@@ -52,6 +53,7 @@ const VIEWS = [
   { id:'timeline', label:'تایم‌لاین', icon:'M240-280h240v-80H240v80Zm120-160h240v-80H360v80Zm120-160h240v-80H480v80ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Z' },
   { id:'costline', label:'Costline', icon: COSTLINE_ICON },
   { id:'shopping', label:'لیست خرید', icon: SHOPPING_ICON },
+  { id:'delay', label:'دیرکردها', icon: DELAY_ICON },
 ];
 
 const EXPAND_ICON = 'M200-200v-240h80v160h160v80H200Zm480-320v-160H520v-80h240v240h-80Z';
@@ -774,7 +776,8 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     + (currentView === 'tree' ? ' is-tree-view' : '')
     + (currentView === 'timeline' ? ' is-timeline-view' : '')
     + (currentView === 'costline' ? ' is-costline-view' : '')
-    + (currentView === 'shopping' ? ' is-shopping-view' : '');
+    + (currentView === 'shopping' ? ' is-shopping-view' : '')
+    + (currentView === 'delay' ? ' is-delay-view' : '');
   root.dataset.view = currentView;
   root.dataset.treeMode = currentTreeMode;
   target.appendChild(root);
@@ -809,6 +812,11 @@ export function renderWbsHome(target = document.getElementById('content'), proje
 
   if(currentView === 'shopping'){
     root.appendChild(renderShoppingView(project));
+    return;
+  }
+
+  if(currentView === 'delay'){
+    root.appendChild(renderDelayView(project));
     return;
   }
 
