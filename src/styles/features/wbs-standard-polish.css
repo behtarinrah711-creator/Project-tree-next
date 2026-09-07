@@ -1,5 +1,5 @@
 .wbs-tabs{
-  grid-template-columns:repeat(5,minmax(0,1fr));
+  grid-template-columns:repeat(6,minmax(0,1fr));
 }
 
 .wbs-tab[aria-label="کارهای امروز"]{order:1;}
@@ -7,6 +7,7 @@
 .wbs-tab[aria-label="درخت پروژه"]{order:3;}
 .wbs-tab[aria-label="تایم‌لاین"]{order:4;}
 .wbs-tab[aria-label="Costline"]{order:5;}
+.wbs-tab[aria-label="دیرکردها"]{order:6;}
 
 .wbs-view-frame.is-standard-view{
   border:0;
@@ -170,12 +171,14 @@
 }
 
 .wbs-shopping-frame,
-.wbs-today-frame{
+.wbs-today-frame,
+.wbs-delay-frame{
   margin:0 10px 24px;
   border:0;
 }
 
 .wbs-shopping-body,
-.wbs-today-body{
+.wbs-today-body,
+.wbs-delay-body{
   min-height:1px;
 }
