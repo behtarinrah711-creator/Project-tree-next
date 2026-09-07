@@ -31,6 +31,7 @@ import {
 import { bindRowDrag } from './wbsDrag.js';
 import { renderCostline } from './costlineView.js';
 import { SHOPPING_ICON, renderShoppingView } from './shoppingView.js';
+import { TODAY_ICON, renderTodayView } from './todayView.js';
 import { DEFAULT_TREE_MODE, createTreeModeTabs } from './treeModes.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import {
@@ -46,6 +47,7 @@ const COSTLINE_ICON = 'M640-160v-280h160v280H640Zm-240 0v-640h160v640H400Zm-240 
 const TREE_ICON = 'M160-360v-80h640v80H160Zm0 160v-80h640v80H160Zm0-320v-80h640v80H160Zm0-160v-80h640v80H160Z';
 
 const VIEWS = [
+  { id:'today', label:'کارهای امروز', icon:TODAY_ICON },
   { id:'tree', label:'درخت پروژه', icon:TREE_ICON },
   { id:'timeline', label:'تایم‌لاین', icon:'M240-280h240v-80H240v80Zm120-160h240v-80H360v80Zm120-160h240v-80H480v80ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Z' },
   { id:'costline', label:'Costline', icon: COSTLINE_ICON },
@@ -768,6 +770,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
 
   const root = document.createElement('div');
   root.className = 'wbs-home-root'
+    + (currentView === 'today' ? ' is-today-view' : '')
     + (currentView === 'tree' ? ' is-tree-view' : '')
     + (currentView === 'timeline' ? ' is-timeline-view' : '')
     + (currentView === 'costline' ? ' is-costline-view' : '')
@@ -798,6 +801,11 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     tabs.appendChild(btn);
   });
   root.appendChild(tabs);
+
+  if(currentView === 'today'){
+    root.appendChild(renderTodayView(project));
+    return;
+  }
 
   if(currentView === 'shopping'){
     root.appendChild(renderShoppingView(project));
