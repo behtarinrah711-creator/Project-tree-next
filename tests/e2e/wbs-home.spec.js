@@ -187,18 +187,19 @@ test('confirmed WBS delete is immediate and does not show redundant undo feedbac
   })).toBe(true);
 });
 
-test('WBS uses four primary views and three modular tree modes', async ({ page }) => {
+test('WBS uses five primary views and three modular tree modes', async ({ page }) => {
   await expect(page.locator('.wbs-home-root')).toBeVisible();
   await expect(page.locator('#topbar')).toBeVisible();
   await expect(page.locator('#topbarTitle .app-title-main')).toHaveText('پروژه WBS');
   await expect(page.locator('.wbs-home-header')).toHaveCount(0);
 
+  await expect(page.locator('.wbs-tab[aria-label="کارهای امروز"]')).toBeVisible();
   await expect(page.locator('.wbs-tab[aria-label="درخت پروژه"]')).toBeVisible();
   await expect(page.locator('.wbs-tab[aria-label="تایم‌لاین"]')).toBeVisible();
   await expect(page.locator('.wbs-tab[aria-label="Costline"]')).toBeVisible();
   await expect(page.locator('.wbs-tab[aria-label="لیست خرید"]')).toBeVisible();
-  await expect(page.locator('.wbs-tab')).toHaveCount(4);
-  await expect(page.locator('.wbs-tab svg')).toHaveCount(4);
+  await expect(page.locator('.wbs-tab')).toHaveCount(5);
+  await expect(page.locator('.wbs-tab svg')).toHaveCount(5);
   await expect(page.locator('.wbs-tab[aria-label="ساده"]')).toHaveCount(0);
   await expect(page.locator('.wbs-tab[aria-label="ثبت"]')).toHaveCount(0);
   await expect(page.locator('.wbs-tab[aria-label="برآورد"]')).toHaveCount(0);
