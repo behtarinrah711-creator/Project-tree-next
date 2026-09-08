@@ -16,7 +16,7 @@ const project = {
       { id:'s4', kind:'stage', text:'تأسیسات', progressWeight:1, subtasks:[] },
     ] },
   ],
-  contacts: [],
+  contacts: [{ id:'c1', name:'مهندس احمدی' }],
   activityTemplates: [],
   contractTemplates: [],
   contracts: [],
@@ -170,6 +170,67 @@ test('tree toggle reveals one depth per press and collapses after the deepest le
   await expect(page.locator('.wbs-row.depth-2')).toHaveCount(0);
   await expect(page.locator('.wbs-row.depth-1')).toHaveCount(0);
   await expect(expandShade).toHaveAttribute('opacity', '0');
+});
+
+test('Work Task create, edit, connector, modes and weighted completion share one persisted model', async ({ page }) => {
+  await page.locator('.wbs-tree-toggle').click();
+  const work = page.locator('.wbs-row.is-work', { hasText:'خرید آهن' });
+  await expect(work.locator('.wbs-add')).toHaveAttribute('aria-label', 'ساخت کار');
+  await work.locator('.wbs-add').click();
+  await page.locator('#wbsSheetOverlay .wbs-primary-action', { hasText:'ساخت کار' }).click();
+
+  const sheet = page.locator('#wbsSheetOverlay');
+  await sheet.locator('[name="taskTitle"]').fill('تحویل آهن');
+  await sheet.locator('[name="taskType"]').selectOption('خرید');
+  await sheet.locator('[name="taskPriority"]').selectOption('high');
+  await sheet.locator('[name="taskAssignee"]').selectOption('c1');
+  await expect(sheet.locator('[name="taskWeight"]')).toHaveValue('1');
+  await sheet.locator('[name="taskWeight"]').fill('2');
+  await sheet.locator('.wbs-sheet-save').click();
+
+  await work.locator('.wbs-chev').click();
+  let task = page.locator('.wbs-work-task', { hasText:'تحویل آهن' });
+  await expect(task).toBeVisible();
+  await expect(task.locator('.wbs-task-connector')).toBeVisible();
+  await expect(task.locator('.wbs-check')).toHaveCount(0);
+  await expect(task.locator('.wbs-task-main')).toContainText('خرید');
+  await expect(task.locator('.wbs-task-secondary')).toContainText('مهندس احمدی');
+  await expect(task.locator('.wbs-task-secondary')).toContainText('زیاد');
+  await expect(task.locator('.wbs-row')).toHaveCount(0);
+  expect(await task.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
+  await expect.poll(() => page.evaluate(() => {
+    const work = window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0];
+    return { workId:work.workTasks[0].workId, weight:work.workTasks[0].weight };
+  })).toEqual({ workId:'w1', weight:2 });
+
+  await selectTreeMode(page, 'هزینه‌ها');
+  task = page.locator('.wbs-work-task', { hasText:'تحویل آهن' });
+  await expect(task).toBeVisible();
+  await expect(task.locator('.wbs-meta')).toHaveCount(0);
+  await expect(work.locator('.wbs-meta')).toContainText('۱۰');
+
+  await selectTreeMode(page, 'درصد پیشرفت');
+  task = page.locator('.wbs-work-task', { hasText:'تحویل آهن' });
+  await expect(task.locator('.wbs-task-progress')).toHaveText('٪۰');
+  await expect(work.locator('.wbs-check')).toBeDisabled();
+  await task.click();
+  await sheet.locator('[name="taskWeight"]').fill('3');
+  await sheet.locator('.wbs-sheet-save').click();
+  await task.click();
+  await sheet.locator('.wbs-task-completion-action').click();
+
+  task = page.locator('.wbs-work-task', { hasText:'تحویل آهن' });
+  await expect(task).toHaveClass(/is-complete/);
+  await expect(task.locator('.wbs-task-title')).toHaveCSS('text-decoration-line', 'line-through');
+  await expect(task.locator('.wbs-task-progress')).toHaveText('٪۱۰۰');
+  await expect(work.locator('.wbs-meta')).toHaveText('٪۱۰۰');
+  await expect.poll(() => task.locator('.wbs-task-connector').evaluate(element => ({
+    color:getComputedStyle(element).borderInlineStartColor,
+    width:getComputedStyle(element).borderInlineStartWidth,
+  }))).toEqual({ color:'rgb(22, 163, 74)', width:'3px' });
+  await expect.poll(() => page.evaluate(() => (
+    window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0].workTasks[0].weight
+  ))).toBe(3);
 });
 
 test('confirmed WBS delete is immediate and does not show redundant undo feedback', async ({ page }) => {

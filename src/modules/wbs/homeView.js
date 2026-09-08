@@ -35,6 +35,8 @@ import { TODAY_ICON, renderTodayView } from './todayView.js';
 import { DELAY_ICON, renderDelayView } from './delayView.js';
 import { DEFAULT_TREE_MODE, createTreeModeTabs } from './treeModes.js';
 import { toEnglishDigits } from '../../ui/digits.js';
+import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
+import { openCreateWorkTaskSheet, renderWorkTasks } from './workTaskView.js';
 import {
   advanceExpansionLevel,
   getExpansionProgress,
@@ -629,6 +631,16 @@ function openWorkDetailSheet(item){
       edit.addEventListener('click', () => { closeWbsSheet(); openWorkEditSheet(current); });
       root.appendChild(edit);
 
+      const createTask = document.createElement('button');
+      createTask.type = 'button';
+      createTask.className = 'wbs-primary-action';
+      createTask.textContent = 'ساخت کار';
+      createTask.addEventListener('click', () => {
+        closeWbsSheet();
+        openCreateWorkTaskSheet({ projectId:projectIdOf(), work:current, onChanged:render });
+      });
+      root.appendChild(createTask);
+
       const actions = document.createElement('div');
       actions.className = 'wbs-info-section';
       actions.appendChild(infoRow('جابجایی کار', 'از دستگیره فهرست', { action:true, onClick:()=>closeWbsSheet() }));
@@ -692,12 +704,15 @@ function renderRow(item, codes, view, depth){
   const displayedProgress = stage ? rollupProgress([item]) : progressOf(item);
   const checked = displayedProgress === 100;
   const kids = (item.subtasks || []).filter(x => !x.trashed && !isPendingUiDelete(x.id));
+  const workTasks = isWork(item) ? activeWorkTasks(item) : [];
+  const hasExpandableContent = kids.length > 0 || workTasks.length > 0;
   const open = isExpanded(projectIdOf(), item.id);
   const code = stage ? (codes.get(String(item.id)) || '') : '';
   const rawType = isWork(item) && WORK_TYPES.includes(item.type) ? item.type : '';
   const chipLabel = rawType || '؟';
   const chipClass = rawType ? (SIMPLE_TYPE_CLASSES.get(rawType) || 'type-7') : 'type-7';
   const readOnlyView = view === 'estimate' || view === 'progress';
+  const taskDerived = isWork(item) && workTasks.length > 0;
   const meta = [];
   if(view === 'estimate' && isWork(item)){
     meta.push(new Intl.NumberFormat('fa-IR').format(lineTotal(item)));
@@ -713,15 +728,15 @@ function renderRow(item, codes, view, depth){
   row.className = 'wbs-row depth-' + Math.min(6, depth) + (checked ? ' is-done' : '') + (stage ? ' is-stage' : ' is-work');
   row.innerHTML = `
     ${readOnlyView ? '' : '<span class="wbs-grip" aria-hidden="true">⋮⋮</span>'}
-    <button type="button" class="wbs-check" aria-label="${stage ? 'پیشرفت محاسبه‌شده مرحله' : 'وضعیت'}" ${stage ? 'disabled' : ''}>${checked ? '✓' : ''}</button>
-    ${kids.length ? `<button type="button" class="wbs-chev" aria-label="${open?'بستن':'باز کردن'}">${open?'▾':'▸'}</button>` : '<span class="wbs-chev-spacer"></span>'}
+    <button type="button" class="wbs-check" aria-label="${stage || taskDerived ? 'پیشرفت محاسبه‌شده' : 'وضعیت'}" ${stage || taskDerived ? 'disabled' : ''}>${checked ? '✓' : ''}</button>
+    ${hasExpandableContent ? `<button type="button" class="wbs-chev" aria-label="${open?'بستن':'باز کردن'}">${open?'▾':'▸'}</button>` : '<span class="wbs-chev-spacer"></span>'}
     <button type="button" class="wbs-title">
       ${stage ? '' : `<span class="wbs-type-chip ${chipClass}">${escapeHtml(chipLabel)}</span>`}
       ${code ? `<b>${escapeHtml(code)}</b>` : ''}
       <span class="wbs-title-text">${escapeHtml(item.text || '')}</span>
     </button>
     <span class="wbs-meta${view === 'estimate' ? ' is-estimate' : ''}${view === 'progress' ? ' is-progress' : ''}">${escapeHtml(meta.join(' · '))}</span>
-    ${stage && !readOnlyView ? `<button type="button" class="wbs-add" aria-label="افزودن">+</button>` : ''}
+    ${!readOnlyView ? `<button type="button" class="wbs-add" aria-label="${stage ? 'افزودن' : 'ساخت کار'}">+</button>` : ''}
   `;
   row.querySelector('.wbs-check')?.addEventListener('click', ev => {
     ev.stopPropagation();
@@ -740,7 +755,8 @@ function renderRow(item, codes, view, depth){
   });
   row.querySelector('.wbs-add')?.addEventListener('click', ev => {
     ev.stopPropagation();
-    openAddMenu(item.id);
+    if(stage) openAddMenu(item.id);
+    else openWorkDetailSheet(item);
   });
   const wrap = document.createElement('div');
   wrap.className = depth === 0 ? 'wbs-card' : 'wbs-branch';
@@ -756,6 +772,10 @@ function renderRow(item, codes, view, depth){
     });
   }
   if(open) kids.forEach(child => wrap.appendChild(renderRow(child, codes, view, depth + 1)));
+  if(open && isWork(item) && workTasks.length){
+    const taskGroup = renderWorkTasks({ documentRef:document, projectId:projectIdOf(), work:item, view, onChanged:render });
+    if(taskGroup) wrap.appendChild(taskGroup);
+  }
   return wrap;
 }
 

@@ -65,6 +65,7 @@ function makeNode(kind, text, extra = {}, clock){
     description: extra.description || '',
     scheduleStart: kind === KIND_WORK ? (extra.scheduleStart || '') : '',
     scheduleEnd: kind === KIND_WORK ? (extra.scheduleEnd || '') : '',
+    workTasks:[],
   }, clock);
 }
 

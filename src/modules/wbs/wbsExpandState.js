@@ -45,7 +45,8 @@ function expandableLevels(items){
   const walk = (nodes, depth = 0) => {
     (nodes || []).filter(node => node && !node.trashed).forEach(node => {
       const children = (node.subtasks || []).filter(child => child && !child.trashed);
-      if(children.length){
+      const tasks = (node.workTasks || []).filter(task => task && !task.trashed);
+      if(children.length || tasks.length){
         if(!levels[depth]) levels[depth] = [];
         levels[depth].push(String(node.id));
         walk(children, depth + 1);

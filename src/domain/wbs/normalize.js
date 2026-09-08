@@ -36,6 +36,19 @@ export function statusOf(item){
 }
 
 export function progressOf(item){
+  const tasks = (Array.isArray(item?.workTasks) ? item.workTasks : []).filter(task => task && !task.trashed);
+  if(itemKind(item) === KIND_WORK && tasks.length){
+    const total = tasks.reduce((sum, task) => {
+      const weight = Number(task.weight);
+      return sum + (Number.isFinite(weight) && weight > 0 ? weight : 1);
+    }, 0);
+    const completed = tasks.reduce((sum, task) => {
+      if(!(task.completed || task.done)) return sum;
+      const weight = Number(task.weight);
+      return sum + (Number.isFinite(weight) && weight > 0 ? weight : 1);
+    }, 0);
+    return total ? Math.round((completed / total) * 100) : 0;
+  }
   if(statusOf(item) === 'completed') return 100;
   const n = Number(item?.progress);
   if(!Number.isFinite(n)) return 0;
@@ -108,8 +121,10 @@ export function normalizeItem(item){
   if(!item || typeof item !== 'object') return item;
   const kind = itemKind(item);
   const ids = activityIdsOf(item);
-  const status = statusOf(item);
-  const done = status === 'completed';
+  const progress = progressOf(item);
+  const hasTasks = kind === KIND_WORK && (item.workTasks || []).some(task => task && !task.trashed);
+  const status = hasTasks ? (progress === 100 ? 'completed' : (progress > 0 ? 'in_progress' : 'not_started')) : statusOf(item);
+  const done = hasTasks ? progress === 100 : status === 'completed';
   return {
     ...item,
     kind,
@@ -118,7 +133,7 @@ export function normalizeItem(item){
     activityIds: ids,
     status,
     done,
-    progress: progressOf(item),
+    progress,
     progressWeight: progressWeightOf(item),
     quantity: quantityOf(item),
     unit: item.unit || '',
@@ -128,6 +143,7 @@ export function normalizeItem(item){
     description: item.description || '',
     scheduleStart: kind === KIND_WORK ? scheduleStartOf(item) : '',
     scheduleEnd: kind === KIND_WORK ? scheduleEndOf(item) : '',
+    workTasks:kind === KIND_WORK && Array.isArray(item.workTasks) ? item.workTasks.map(task => ({ ...task })) : [],
     subtasks: Array.isArray(item.subtasks) ? item.subtasks.map(normalizeItem) : [],
   };
 }

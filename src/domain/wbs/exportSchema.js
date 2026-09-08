@@ -25,6 +25,21 @@ function strip(item){
     scheduleEnd: node.scheduleEnd,
     createdAt: node.createdAt || null,
     updatedAt: node.updatedAt || null,
+    workTasks:(node.workTasks || []).filter(task => !task.trashed).map(task => ({
+      id:task.id,
+      workId:node.id,
+      title:task.title,
+      type:task.type,
+      scheduleStart:task.scheduleStart,
+      scheduleEnd:task.scheduleEnd,
+      priority:task.priority,
+      assigneeContactId:task.assigneeContactId,
+      weight:Number(task.weight) || 1,
+      completed:Boolean(task.completed || task.done),
+      completedAt:task.completedAt || null,
+      createdAt:task.createdAt || null,
+      updatedAt:task.updatedAt || null,
+    })),
     children: (node.subtasks || []).filter(x => !x.trashed).map(strip),
   };
 }
