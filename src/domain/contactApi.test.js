@@ -27,6 +27,17 @@ test('trashed contract or status report does not block contact delete', () => {
   assert.equal(canDeleteContact(projects, 'c1').ok, true);
 });
 
+test('an active Work Task assignee reference blocks contact deletion', () => {
+  const projects = seed();
+  projects[0].contracts[0].trashed = true;
+  projects[0].tasks = [{ id:'w1', kind:'work', workTasks:[{
+    id:'task-1', workId:'w1', title:'نصب', assigneeContactId:'c1',
+  }] }];
+  const references = findContactReferences(projects, 'c1');
+  assert.equal(references.some(reference => reference.kind === 'work_task'), true);
+  assert.equal(canDeleteContact(projects, 'c1').ok, false);
+});
+
 test('contactApi persist after write is cloud-only', async () => {
   const source = await readFile(new URL('./contactApi.js', import.meta.url), 'utf8');
   assert.match(source, /adapterPersist\(\{\s*local\s*:\s*false\s*\}\)/);

@@ -97,6 +97,16 @@ export function findContactReferences(projects, contactId){
       }
     });
 
+    const visit = nodes => (nodes || []).forEach(node => {
+      (node?.workTasks || []).filter(task => task && !task.trashed).forEach(task => {
+        if(String(task.assigneeContactId || '') === target){
+          add(project, 'work_task', task.id, 'مسئول کار');
+        }
+      });
+      visit(node?.subtasks);
+    });
+    visit(project.tasks);
+
     // Phase 5: status reports inactive — do not block delete.
   });
 

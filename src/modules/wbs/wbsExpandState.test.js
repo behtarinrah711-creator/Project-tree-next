@@ -62,3 +62,16 @@ test('progressive expansion ignores trashed branches', () => {
   assert.equal(isExpanded('trash', 'root'), true);
   assert.deepEqual(advanceExpansionLevel('trash', tree), { collapsed:true, visibleDepth:0 });
 });
+
+test('work tasks are the final progressive expansion level without becoming WBS children', () => {
+  resetExpandState();
+  const tree = [{ id:'root', subtasks:[{ id:'work', kind:'work', subtasks:[], workTasks:[{ id:'task' }] }] }];
+  assert.deepEqual(getExpansionProgress('tasks', tree), { expandedLevels:0, totalLevels:2, ratio:0 });
+  advanceExpansionLevel('tasks', tree);
+  assert.equal(isExpanded('tasks', 'root'), true);
+  assert.equal(isExpanded('tasks', 'work'), false);
+  advanceExpansionLevel('tasks', tree);
+  assert.equal(isExpanded('tasks', 'work'), true);
+  assert.equal(isExpanded('tasks', 'task'), false);
+  assert.deepEqual(advanceExpansionLevel('tasks', tree), { collapsed:true, visibleDepth:0 });
+});
