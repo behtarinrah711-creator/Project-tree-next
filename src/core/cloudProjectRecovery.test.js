@@ -30,6 +30,22 @@ test('pre-migration ownerEmail project is recovered for the authenticated owner 
   assert.deepEqual(project.tasks.map(task=>task.id),['task-new','task-old']);
 });
 
+test('recovery keeps a local Work Task when the legacy cloud tree has the same root without it',()=>{
+  const existing={id:'project-A',tasks:[{
+    id:'root',updatedAt:100,subtasks:[{
+      id:'work',kind:'work',updatedAt:100,
+      workTasks:[{id:'work-task',title:'تست کابینت',createdAt:200,updatedAt:200}],
+    }],
+  }]};
+  const project=projectFromCloudDoc(doc('project-A',{
+    ownerUid:'uid-1',tasks:[{
+      id:'root',updatedAt:100,subtasks:[{id:'work',kind:'work',updatedAt:100,workTasks:[]}],
+    }],
+  }),{uid:'uid-1'},existing);
+
+  assert.equal(project.tasks[0].subtasks[0].workTasks[0].id,'work-task');
+});
+
 test('recovered cloud projects mutate the live canonical array in place and preserve unrelated projects',()=>{
   const live=[
     {id:'project-A',name:'A'},

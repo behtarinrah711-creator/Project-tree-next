@@ -1,3 +1,5 @@
+import { mergeTaskRecords } from '../sync/taskRecordMerge.js';
+
 function normalizeEmail(value){
   return String(value || '').trim().toLowerCase();
 }
@@ -31,7 +33,7 @@ export function projectFromCloudDoc(doc,user,existing=null){
     id: doc.id,
     name: data.name ?? existing?.name ?? 'پروژه بدون نام',
     type: 'project',
-    tasks: mergeById(asArray(data.tasks),asArray(existing?.tasks)),
+    tasks: mergeTaskRecords([asArray(data.tasks),asArray(existing?.tasks)]),
     contacts: pickArray('contacts'),
     activityTemplates: pickArray('activityTemplates'),
     contractTemplates: pickArray('contractTemplates'),
@@ -187,7 +189,7 @@ export function startCloudProjectRecovery({windowRef=window,projectContext,route
                   || legacy?.getProject?.(project.id)
                   || live.find(item=>String(item.id)===projectId);
                 if(current){
-                  current.tasks=mergeById(taskDocs,current.tasks);
+                  current.tasks=mergeTaskRecords([taskDocs,current.tasks]);
                   if(windowRef.KarhaAppData?.persistLocal) windowRef.KarhaAppData.persistLocal();
                   else legacy?.persist?.();
                   const active=windowRef.KarhaAppData?.getActiveTab?.() || legacy?.getActiveProjectId?.();
