@@ -143,6 +143,13 @@ export function normalizeItem(item){
     description: item.description || '',
     scheduleStart: kind === KIND_WORK ? scheduleStartOf(item) : '',
     scheduleEnd: kind === KIND_WORK ? scheduleEndOf(item) : '',
+    assigneeContactId:kind === KIND_WORK ? String(item.assigneeContactId || '') : '',
+    contractorContactId:kind === KIND_WORK ? String(item.contractorContactId || '') : '',
+    completionState:kind === KIND_WORK ? (item.completionState || (done ? 'approved' : 'incomplete')) : '',
+    workflowStatus:kind === KIND_WORK ? (item.workflowStatus || status) : '',
+    executionReports:kind === KIND_WORK && Array.isArray(item.executionReports) ? item.executionReports.map(report => ({ ...report })) : [],
+    executionComments:kind === KIND_WORK && Array.isArray(item.executionComments) ? item.executionComments.map(comment => ({ ...comment })) : [],
+    executionHistory:kind === KIND_WORK && Array.isArray(item.executionHistory) ? item.executionHistory.map(entry => ({ ...entry })) : [],
     workTasks:kind === KIND_WORK && Array.isArray(item.workTasks) ? item.workTasks.map(task => ({ ...task })) : [],
     subtasks: Array.isArray(item.subtasks) ? item.subtasks.map(normalizeItem) : [],
   };

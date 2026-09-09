@@ -219,6 +219,10 @@ function escapeHtml(value){
   }[ch]));
 }
 
+function contactDisplayName(contact){
+  return [contact?.type, contact?.firstName, contact?.lastName].filter(Boolean).join(' ').trim() || contact?.name || 'مخاطب';
+}
+
 function summaryHeader(root, kind, current, subtitle = ''){
   const wrap = document.createElement('div');
   wrap.className = 'wbs-detail-summary';
@@ -434,6 +438,17 @@ function openWorkEditSheet(item){
         current.type || ''
       )));
       root.lastChild.querySelector('select').name = 'type';
+      const contacts = (projectOf()?.contacts || []).filter(contact => contact && !contact.trashed);
+      root.appendChild(fieldRow('مسئول', selectInput([{ value:'', label:'—' }, ...contacts.map(contact => ({ value:String(contact.id), label:contactDisplayName(contact) }))], current.assigneeContactId || '')));
+      root.lastChild.querySelector('select').name = 'assigneeContactId';
+      const linkedContract = (projectOf()?.contracts || []).find(contract => !contract.trashed && String(contract.projectItemId || '') === String(current.id));
+      if(linkedContract){
+        const contractor = contacts.find(contact => String(contact.id) === String(linkedContract.contractorId || linkedContract.contactId));
+        const note = document.createElement('div'); note.className = 'wbs-note'; note.textContent = `پیمانکار از قرارداد خوانده می‌شود: ${contactDisplayName(contractor)}`; root.appendChild(note);
+      }else{
+        root.appendChild(fieldRow('پیمانکار', selectInput([{ value:'', label:'—' }, ...contacts.map(contact => ({ value:String(contact.id), label:contactDisplayName(contact) }))], current.contractorContactId || '')));
+        root.lastChild.querySelector('select').name = 'contractorContactId';
+      }
       const acts = document.createElement('div');
       const paintActivities = () => {
         const latest = wbsApi.get(projectIdOf(), current.id) || current;
@@ -490,6 +505,8 @@ function openWorkEditSheet(item){
         progressWeight,
         priority: root.querySelector('[name="priority"]').value,
         type: root.querySelector('[name="type"]').value,
+        assigneeContactId:root.querySelector('[name="assigneeContactId"]').value,
+        contractorContactId:root.querySelector('[name="contractorContactId"]')?.value || current.contractorContactId || '',
         quantity: numberFromInput(root.querySelector('[name="quantity"]')) || 0,
         unit: root.querySelector('[name="unit"]').value,
         unitCost: numberFromInput(root.querySelector('[name="unitCost"]')) || 0,
@@ -826,7 +843,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   root.appendChild(tabs);
 
   if(currentView === 'today'){
-    root.appendChild(renderTodayView(project));
+    root.appendChild(renderTodayView(project, document, render));
     return;
   }
 

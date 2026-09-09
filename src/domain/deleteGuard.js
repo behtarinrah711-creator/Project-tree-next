@@ -98,10 +98,13 @@ export function findContactReferences(projects, contactId){
     });
 
     const visit = nodes => (nodes || []).forEach(node => {
+      if(String(node.assigneeContactId || '') === target) add(project, 'work_assignee', node.id, 'مسئول کار اجرایی');
+      if(String(node.contractorContactId || '') === target) add(project, 'work_contractor', node.id, 'پیمانکار کار اجرایی');
       (node?.workTasks || []).filter(task => task && !task.trashed).forEach(task => {
         if(String(task.assigneeContactId || '') === target){
           add(project, 'work_task', task.id, 'مسئول کار');
         }
+        if(String(task.contractorContactId || '') === target) add(project, 'work_task_contractor', task.id, 'پیمانکار کار');
       });
       visit(node?.subtasks);
     });

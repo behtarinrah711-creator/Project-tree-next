@@ -38,8 +38,14 @@ export function normalizeWorkTask(task, workId = ''){
     scheduleEnd:/^\d{4}\/\d{2}\/\d{2}$/.test(String(task.scheduleEnd || '')) ? task.scheduleEnd : '',
     priority:TASK_PRIORITIES.includes(task.priority) ? task.priority : 'normal',
     assigneeContactId:String(task.assigneeContactId || ''),
+    contractorContactId:String(task.contractorContactId || ''),
     weight:taskWeightOf(task),
     completed:isTaskComplete(task),
     completedAt:isTaskComplete(task) ? (task.completedAt || null) : null,
+    completionState:task.completionState || (isTaskComplete(task) ? 'approved' : 'incomplete'),
+    workflowStatus:task.workflowStatus || 'not_started',
+    executionReports:Array.isArray(task.executionReports) ? task.executionReports.map(report => ({ ...report })) : [],
+    executionComments:Array.isArray(task.executionComments) ? task.executionComments.map(comment => ({ ...comment })) : [],
+    executionHistory:Array.isArray(task.executionHistory) ? task.executionHistory.map(entry => ({ ...entry })) : [],
   };
 }

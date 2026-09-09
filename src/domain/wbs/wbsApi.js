@@ -65,6 +65,13 @@ function makeNode(kind, text, extra = {}, clock){
     description: extra.description || '',
     scheduleStart: kind === KIND_WORK ? (extra.scheduleStart || '') : '',
     scheduleEnd: kind === KIND_WORK ? (extra.scheduleEnd || '') : '',
+    assigneeContactId:kind === KIND_WORK ? (extra.assigneeContactId || '') : '',
+    contractorContactId:kind === KIND_WORK ? (extra.contractorContactId || '') : '',
+    completionState:kind === KIND_WORK ? 'incomplete' : '',
+    workflowStatus:kind === KIND_WORK ? 'not_started' : '',
+    executionReports:[],
+    executionComments:[],
+    executionHistory:[],
     workTasks:[],
   }, clock);
 }
