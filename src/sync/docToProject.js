@@ -1,4 +1,5 @@
 import { isDirty, isPending } from './storeSyncState.js';
+import { mergeTaskRecords } from './taskRecordMerge.js';
 
 /**
  * Phase 7.2 — project metadata doc → local project shape.
@@ -16,11 +17,10 @@ export function docToProjectFromCloud(doc, localExisting, ctx = {}){
     ? localExisting.tasks.map(normalizeTaskRecord) : [];
   const legacyTasks = Array.isArray(d.tasks) ? d.tasks.map(normalizeTaskRecord) : [];
   const recoveryTasks = getRecoveredLocalTasks({ id: doc.id });
-  const cachedMap = new Map();
-  [...localTasks, ...legacyTasks, ...recoveryTasks].forEach(t => {
-    if(t && t.id && !cachedMap.has(String(t.id))) cachedMap.set(String(t.id), t);
-  });
-  const cachedTasks = Array.from(cachedMap.values());
+  const cachedTasks = mergeTaskRecords(
+    [localTasks, legacyTasks, recoveryTasks],
+    normalizeTaskRecord,
+  );
 
   const localContacts = localExisting && Array.isArray(localExisting.contacts) ? localExisting.contacts : [];
   const localActivities = localExisting && Array.isArray(localExisting.activityTemplates) ? localExisting.activityTemplates : [];
