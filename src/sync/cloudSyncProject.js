@@ -1,4 +1,5 @@
 import { markPending, acknowledgePending } from './storeSyncState.js';
+import { mergeTaskRecords } from './taskRecordMerge.js';
 
 /**
  * Phase 7.4 — full project cloud sync (metadata + tasks).
@@ -36,9 +37,10 @@ export function buildProjectCloudPayload(p, store, policy, normalizeEmail, DATA_
 /**
  * @param {object} ctx
  * @param {object} p project
+ * @returns {Promise<boolean>} resolves true only after metadata and all task records commit.
  */
 export function cloudSyncProjectFull(ctx, p){
-  if(!ctx.cloudMode || !ctx.currentUser || !p || !p.ownerUid) return;
+  if(!ctx.cloudMode || !ctx.currentUser || !p || !p.ownerUid) return Promise.resolve(false);
   markPending(ctx.appDataStore, p.id);
   const sharedNorm = (p.sharedWith || []).map(e => ctx.normalizeEmail(e)).filter(Boolean);
   p.sharedWith = sharedNorm;
@@ -46,18 +48,23 @@ export function cloudSyncProjectFull(ctx, p){
   const store = ctx.projectRepositoryFind?.(p.id) || p;
   const policy = ctx.mergePolicy;
   const payload = buildProjectCloudPayload(p, store, policy, ctx.normalizeEmail, ctx.DATA_SCHEMA_VERSION);
-  ctx.db.collection('projects').doc(p.id).set(payload, { merge: true })
+
+  return ctx.db.collection('projects').doc(p.id).set(payload, { merge: true })
     .then(async () => {
-      const byId = new Map();
-      [...(p.tasks || []), ...ctx.getRecoveredLocalTasks(p)].forEach(t => {
-        if(t && t.id && !byId.has(String(t.id))) byId.set(String(t.id), ctx.normalizeTaskRecord(t));
-      });
-      const mergedTasks = Array.from(byId.values());
+      const recovered = ctx.getRecoveredLocalTasks(p);
+      const mergedTasks = mergeTaskRecords(
+        [Array.isArray(p.tasks) ? p.tasks : [], recovered],
+        ctx.normalizeTaskRecord,
+      );
       p.tasks = mergedTasks;
       ctx.rememberProjectTasks(p);
       await ctx.writeTaskRecordsNormalized(p.id, mergedTasks);
+      return true;
     })
-    .then(() => { acknowledgePending(ctx.appDataStore, p.id); })
+    .then(result => {
+      acknowledgePending(ctx.appDataStore, p.id);
+      return result;
+    })
     .catch(err => {
       acknowledgePending(ctx.appDataStore, p.id);
       console.warn('cloud project sync failed; UI remains available:', p.id, err);
@@ -65,5 +72,6 @@ export function cloudSyncProjectFull(ctx, p){
         ctx.markDirty(p.id);
         ctx.persist?.();
       }
+      throw err;
     });
 }

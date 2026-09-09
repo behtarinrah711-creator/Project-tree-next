@@ -41,10 +41,56 @@ export function createAppDataStore({
   schemaVersion = 8,
 } = {}){
   let snapshot = createEmptySnapshot(schemaVersion);
-  // Runtime-only synchronization guards. They deliberately remain outside the
-  // persisted snapshot so load/hydrate keeps the existing storage contract.
-  const dirtyProjectIds = new Set();
+  const syncStateKey = `${storageKey}:sync-state`;
+
+  function readSyncState(){
+    if(!storage) return {};
+    try{
+      const raw = storage.getItem(syncStateKey);
+      return raw ? (JSON.parse(raw) || {}) : {};
+    }catch(e){
+      return {};
+    }
+  }
+
+  const restoredSyncState = readSyncState();
+  // A browser refresh destroys every in-flight Promise. Persisted pending writes
+  // therefore come back as dirty retry intent, never as a fake active write.
+  const dirtyProjectIds = new Set([
+    ...(Array.isArray(restoredSyncState.dirty) ? restoredSyncState.dirty : []),
+    ...(Array.isArray(restoredSyncState.pending) ? restoredSyncState.pending : []),
+  ].map(String).filter(Boolean));
   const pendingCloudWrites = new Set();
+  const dirtyVersions = new Map();
+  Object.entries(restoredSyncState.versions || {}).forEach(([id, version]) => {
+    const n = Number(version);
+    if(id && Number.isFinite(n) && n > 0) dirtyVersions.set(String(id), n);
+  });
+  dirtyProjectIds.forEach(id => {
+    if(!dirtyVersions.has(id)) dirtyVersions.set(id, 1);
+  });
+
+  function persistSyncState(){
+    if(!storage) return false;
+    try{
+      const versions = {};
+      dirtyVersions.forEach((version, id) => {
+        if(dirtyProjectIds.has(id)) versions[id] = version;
+      });
+      storage.setItem(syncStateKey, JSON.stringify({
+        dirty:[...dirtyProjectIds],
+        pending:[...pendingCloudWrites],
+        versions,
+      }));
+      return true;
+    }catch(e){
+      return false;
+    }
+  }
+  // Normalize a stale persisted pending state immediately after construction.
+  if(storage && Array.isArray(restoredSyncState.pending) && restoredSyncState.pending.length){
+    persistSyncState();
+  }
 
   function getSnapshot(){
     return snapshot;
@@ -105,23 +151,46 @@ export function createAppDataStore({
   function getStarredOrder(){ return snapshot.starredOrder; }
 
   function getDirtyProjectIds(){ return dirtyProjectIds; }
-  function markProjectDirty(projectId){
-    if(projectId) dirtyProjectIds.add(projectId);
+  function getProjectDirtyVersion(projectId){
+    return dirtyVersions.get(String(projectId || '')) || 0;
   }
-  function isProjectDirty(projectId){ return dirtyProjectIds.has(projectId); }
-  function clearProjectDirty(projectId){
-    if(projectId === undefined) dirtyProjectIds.clear();
-    else dirtyProjectIds.delete(projectId);
+  function markProjectDirty(projectId){
+    const id = String(projectId || '');
+    if(!id) return 0;
+    const version = (dirtyVersions.get(id) || 0) + 1;
+    dirtyVersions.set(id, version);
+    dirtyProjectIds.add(id);
+    persistSyncState();
+    return version;
+  }
+  function isProjectDirty(projectId){ return dirtyProjectIds.has(String(projectId || '')); }
+  function clearProjectDirty(projectId, expectedVersion){
+    if(projectId === undefined){
+      dirtyProjectIds.clear();
+      dirtyVersions.clear();
+      persistSyncState();
+      return true;
+    }
+    const id = String(projectId || '');
+    if(expectedVersion !== undefined && getProjectDirtyVersion(id) !== Number(expectedVersion)) return false;
+    dirtyProjectIds.delete(id);
+    dirtyVersions.delete(id);
+    persistSyncState();
+    return true;
   }
 
   function getPendingCloudWrites(){ return pendingCloudWrites; }
   function markCloudWritePending(projectId){
-    if(projectId) pendingCloudWrites.add(projectId);
+    const id = String(projectId || '');
+    if(!id) return;
+    pendingCloudWrites.add(id);
+    persistSyncState();
   }
-  function isCloudWritePending(projectId){ return pendingCloudWrites.has(projectId); }
+  function isCloudWritePending(projectId){ return pendingCloudWrites.has(String(projectId || '')); }
   function clearCloudWritePending(projectId){
     if(projectId === undefined) pendingCloudWrites.clear();
-    else pendingCloudWrites.delete(projectId);
+    else pendingCloudWrites.delete(String(projectId || ''));
+    persistSyncState();
   }
 
   /** D2: sole write path for activeTab */
@@ -153,6 +222,7 @@ export function createAppDataStore({
     setViewMode,
     getStarredOrder,
     getDirtyProjectIds,
+    getProjectDirtyVersion,
     markProjectDirty,
     isProjectDirty,
     clearProjectDirty,

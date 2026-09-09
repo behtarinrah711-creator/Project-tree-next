@@ -48,15 +48,22 @@ export function createPersistOrchestrator({
         appDataStore.getProjects().forEach(rememberProjectTasks);
         if(!appDataStore.persistLocal()) onLocalError();
       }
-      if(isCloudEnabled()){
-        // Snapshot ids before starting promises; acknowledgements never mutate
-        // this canonical dirty owner.
-        [...appDataStore.getDirtyProjectIds()].forEach(projectId => {
-          const project = findProject(projectId);
-          if(project) syncProject(project);
-        });
-      }
-      appDataStore.clearProjectDirty();
+      if(!isCloudEnabled()) return;
+
+      [...appDataStore.getDirtyProjectIds()].forEach(projectId => {
+        const project = findProject(projectId);
+        if(!project) return;
+        const dirtyVersion = appDataStore.getProjectDirtyVersion?.(projectId);
+        Promise.resolve(syncProject(project))
+          .then(succeeded => {
+            if(succeeded === false) return;
+            appDataStore.clearProjectDirty(projectId, dirtyVersion);
+          })
+          .catch(() => {
+            // cloudSyncProjectFull owns retry classification and re-marking;
+            // leaving the durable dirty intent intact is the safe fallback.
+          });
+      });
     };
     // A zero delay is used by deterministic callers/tests to request the next
     // turn without a wall-clock timer. setTimeout(0) can run after setImmediate
