@@ -1,4 +1,4 @@
-import { mergeRecoveredTasks } from '../cloud/taskRecovery.js';
+import { mergeTaskRecords } from './taskRecordMerge.js';
 import { isDirty, isPending, markPending, acknowledgePending } from './storeSyncState.js';
 
 /**
@@ -24,11 +24,11 @@ export async function writeTaskRecordsNormalized(ctx, pid, tasks){
 }
 
 /**
- * Merge incoming cloud tasks with local + recovery; never wipe a fresher local
- * WBS/Today record with an older cloud copy of the same top-level task id.
+ * Merge incoming cloud tasks with local + recovery through the single
+ * canonical task-record conflict resolver.
  */
 export function mergeTaskSnapshot(incoming, localTasks, recoveryTasks, normalizeTaskRecord){
-  return mergeRecoveredTasks(incoming, recoveryTasks, localTasks, normalizeTaskRecord);
+  return mergeTaskRecords([incoming, recoveryTasks, localTasks], normalizeTaskRecord);
 }
 
 /**
