@@ -7,6 +7,7 @@ import { TASK_PRIORITIES, isTaskComplete } from '../../domain/wbs/workTaskModel.
 import { formatJalaliDisplay } from '../../ui/jalali.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
+import { isExpanded, toggleExpanded } from './wbsExpandState.js';
 import { closeWbsSheet, fieldRow, openWbsSheet, selectInput, textInput } from './wbsSheet.js';
 
 const PRIORITY_LABELS = Object.freeze({ low:'کم', normal:'عادی', high:'زیاد' });
@@ -120,6 +121,7 @@ function taskForm({ projectId, work, task = null, onChanged }){
           : 'اطلاعات کار را کامل و معتبر وارد کنید');
         return false;
       }
+      if(!editing && !isExpanded(projectId, work.id)) toggleExpanded(projectId, work.id);
       onChanged?.();
       return true;
     },
