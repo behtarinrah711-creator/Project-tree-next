@@ -16,6 +16,7 @@ import {
   wbsCodeMap,
 } from '../../domain/wbs/normalize.js';
 import { formatJalaliDisplay, gregorianToJalali, jalaliToGregorian } from '../../ui/jalali.js';
+import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 import { rollupEstimate, rollupProgress } from '../../domain/wbs/estimate.js';
 import { activityRepository } from '../../data/activityRepository.js';
 import {
@@ -402,6 +403,7 @@ function openStageDetailSheet(item){
 
 function openWorkEditSheet(item){
   const current = wbsApi.get(projectIdOf(), item.id) || item;
+  const linkedContract = (projectOf()?.contracts || []).find(contract => !contract.trashed && String(contract.projectItemId || '') === String(current.id));
   openWbsSheet({
     title: 'ویرایش کار',
     saveLabel: 'ذخیره',
@@ -441,13 +443,26 @@ function openWorkEditSheet(item){
       const contacts = (projectOf()?.contacts || []).filter(contact => contact && !contact.trashed);
       root.appendChild(fieldRow('مسئول', selectInput([{ value:'', label:'—' }, ...contacts.map(contact => ({ value:String(contact.id), label:contactDisplayName(contact) }))], current.assigneeContactId || '')));
       root.lastChild.querySelector('select').name = 'assigneeContactId';
-      const linkedContract = (projectOf()?.contracts || []).find(contract => !contract.trashed && String(contract.projectItemId || '') === String(current.id));
       if(linkedContract){
         const contractor = contacts.find(contact => String(contact.id) === String(linkedContract.contractorId || linkedContract.contactId));
         const note = document.createElement('div'); note.className = 'wbs-note'; note.textContent = `پیمانکار از قرارداد خوانده می‌شود: ${contactDisplayName(contractor)}`; root.appendChild(note);
       }else{
-        root.appendChild(fieldRow('پیمانکار', selectInput([{ value:'', label:'—' }, ...contacts.map(contact => ({ value:String(contact.id), label:contactDisplayName(contact) }))], current.contractorContactId || '')));
-        root.lastChild.querySelector('select').name = 'contractorContactId';
+        const contractor = document.createElement('button');
+        contractor.type = 'button'; contractor.name = 'contractorContactId'; contractor.className = 'wbs-input';
+        contractor.dataset.value = current.contractorContactId || '';
+        const paintContractor = () => {
+          const selected = contacts.find(contact => String(contact.id) === String(contractor.dataset.value));
+          contractor.textContent = selected ? contactDisplayName(selected) : 'انتخاب پیمانکار';
+        };
+        contractor.addEventListener('click', () => openSearchPicker({
+          title:'انتخاب پیمانکار', listTitle:'مخاطبین', selectedTitle:'پیمانکار منتخب',
+          contextKey:`wbs-work-contractor:${current.id}`,
+          items:contacts.map(contact => ({ id:contact.id, name:contactDisplayName(contact) })),
+          showStar:false, showAdd:false,
+          onSelect:selected => { contractor.dataset.value = String(selected.id); paintContractor(); },
+        }));
+        paintContractor();
+        root.appendChild(fieldRow('پیمانکار', contractor));
       }
       const acts = document.createElement('div');
       const paintActivities = () => {
@@ -506,7 +521,7 @@ function openWorkEditSheet(item){
         priority: root.querySelector('[name="priority"]').value,
         type: root.querySelector('[name="type"]').value,
         assigneeContactId:root.querySelector('[name="assigneeContactId"]').value,
-        contractorContactId:root.querySelector('[name="contractorContactId"]')?.value || current.contractorContactId || '',
+        contractorContactId:linkedContract ? '' : (root.querySelector('[name="contractorContactId"]')?.dataset.value || ''),
         quantity: numberFromInput(root.querySelector('[name="quantity"]')) || 0,
         unit: root.querySelector('[name="unit"]').value,
         unitCost: numberFromInput(root.querySelector('[name="unitCost"]')) || 0,

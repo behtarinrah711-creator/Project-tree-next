@@ -87,7 +87,9 @@ export function contractorForItem(project, item){
   const contract = (project?.contracts || []).find(candidate => (
     candidate && !candidate.trashed && String(candidate.projectItemId || '') === String(item.workId)
   ));
-  const contactId = contract?.contractorId || contract?.contactId || item.entity?.contractorContactId || '';
+  const contactId = contract
+    ? (contract.contractorId || contract.contactId || '')
+    : (item.entity?.contractorContactId || '');
   const contact = (project?.contacts || []).find(candidate => candidate && !candidate.trashed && String(candidate.id) === String(contactId));
   return { contract:contract || null, contact:contact || null };
 }

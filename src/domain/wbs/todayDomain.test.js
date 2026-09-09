@@ -27,6 +27,10 @@ test('same-day work is rendered once and contract contractor overrides manual fa
   const item = collectTodayItems(project(), '1405/06/18')[0];
   assert.equal(remainingLabel(item.entity, '1405/06/18'), 'امروز');
   assert.equal(contractorForItem(project(), item).contact.id, 'contractor');
+  const withoutContract = project();
+  withoutContract.contracts = [];
+  item.entity.contractorContactId = 'manual';
+  assert.equal(contractorForItem(withoutContract, item).contact.id, 'manual');
 });
 
 test('Tehran calendar crosses into Nowruz independently from UTC date', () => {

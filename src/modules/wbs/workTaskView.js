@@ -6,6 +6,7 @@ import { todayApi } from '../../domain/wbs/todayApi.js';
 import { TASK_PRIORITIES, isTaskComplete } from '../../domain/wbs/workTaskModel.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
 import { toEnglishDigits } from '../../ui/digits.js';
+import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 import { closeWbsSheet, fieldRow, openWbsSheet, selectInput, textInput } from './wbsSheet.js';
 
 const PRIORITY_LABELS = Object.freeze({ low:'کم', normal:'عادی', high:'زیاد' });
@@ -45,6 +46,7 @@ function dateField(documentRef, name, label, value){
 function taskForm({ projectId, work, task = null, onChanged }){
   const editing = Boolean(task);
   const documentRef = document;
+  const linkedContract = (projectRepository.find(projectId)?.contracts || []).find(contract => !contract.trashed && String(contract.projectItemId || '') === String(work.id));
   openWbsSheet({
     title:editing ? 'ویرایش کار' : 'ساخت کار',
     saveLabel:'ذخیره',
@@ -61,13 +63,26 @@ function taskForm({ projectId, work, task = null, onChanged }){
         { value:'', label:'—' }, ...contacts.map(contact => ({ value:String(contact.id), label:contactName(contact) })),
       ], task?.assigneeContactId || '')));
       root.lastChild.querySelector('select').name = 'taskAssignee';
-      const linkedContract = (projectRepository.find(projectId)?.contracts || []).find(contract => !contract.trashed && String(contract.projectItemId || '') === String(work.id));
       if(linkedContract){
         const contractor = contactRepository.get(projectId, linkedContract.contractorId || linkedContract.contactId);
         const note = documentRef.createElement('div'); note.className = 'wbs-note'; note.textContent = `پیمانکار از قرارداد خوانده می‌شود: ${contactName(contractor) || 'ثبت‌شده در قرارداد'}`; root.appendChild(note);
       }else{
-        root.appendChild(fieldRow('پیمانکار', selectInput([{ value:'', label:'—' }, ...contacts.map(contact => ({ value:String(contact.id), label:contactName(contact) }))], task?.contractorContactId || '')));
-        root.lastChild.querySelector('select').name = 'taskContractor';
+        const contractor = documentRef.createElement('button');
+        contractor.type = 'button'; contractor.name = 'taskContractor'; contractor.className = 'wbs-input';
+        contractor.dataset.value = task?.contractorContactId || '';
+        const paintContractor = () => {
+          const selected = contacts.find(contact => String(contact.id) === String(contractor.dataset.value));
+          contractor.textContent = selected ? contactName(selected) : 'انتخاب پیمانکار';
+        };
+        contractor.addEventListener('click', () => openSearchPicker({
+          title:'انتخاب پیمانکار', listTitle:'مخاطبین', selectedTitle:'پیمانکار منتخب',
+          contextKey:`wbs-task-contractor:${work.id}`,
+          items:contacts.map(contact => ({ id:contact.id, name:contactName(contact) })),
+          showStar:false, showAdd:false,
+          onSelect:selected => { contractor.dataset.value = String(selected.id); paintContractor(); },
+        }));
+        paintContractor();
+        root.appendChild(fieldRow('پیمانکار', contractor));
       }
       root.appendChild(fieldRow('وزن', textInput(String(task?.weight || 1), { name:'taskWeight', type:'number', min:'0.01', step:'0.01', required:true })));
 
@@ -93,7 +108,7 @@ function taskForm({ projectId, work, task = null, onChanged }){
         scheduleEnd:root.querySelector('[name="taskEnd"]').dataset.value,
         priority:root.querySelector('[name="taskPriority"]').value,
         assigneeContactId:root.querySelector('[name="taskAssignee"]').value,
-        contractorContactId:root.querySelector('[name="taskContractor"]')?.value || task?.contractorContactId || '',
+        contractorContactId:linkedContract ? '' : (root.querySelector('[name="taskContractor"]')?.dataset.value || ''),
         weight:Number(toEnglishDigits(root.querySelector('[name="taskWeight"]').value)),
       };
       const result = editing
