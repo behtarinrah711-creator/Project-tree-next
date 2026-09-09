@@ -11,6 +11,16 @@ test('empty incoming does not wipe non-empty local tasks', () => {
   assert.equal(merged[0].id, 't1');
 });
 
+test('fresher local WBS workTasks survive a stale cloud copy of the same work', () => {
+  const norm = t => ({ ...t, id: String(t.id) });
+  const incoming = [{ id:'w1', updatedAt:100, workTasks:[] }];
+  const local = [{ id:'w1', updatedAt:100, workTasks:[{ id:'wt1', title:'کار جدید', createdAt:200, updatedAt:200 }] }];
+  const merged = mergeTaskSnapshot(incoming, local, [], norm);
+  assert.equal(merged.length, 1);
+  assert.equal(merged[0].workTasks.length, 1);
+  assert.equal(merged[0].workTasks[0].id, 'wt1');
+});
+
 test('buildProjectCloudPayload prefers store over empty live collection', () => {
   const policy = {
     shouldUploadCollection(store, live){
