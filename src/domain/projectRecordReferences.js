@@ -19,7 +19,12 @@ export function findProjectRecordReferences(projects,type,id){
       reports.forEach(item=>{ if(String(item.contactId||'')===targetId) add(project,'صورت وضعیت / گزارش قرارداد'); });
       tasks.forEach(task=>{
         const visit=node=>{
-          (node.workTasks||[]).forEach(workTask=>{ if(!workTask.trashed&&String(workTask.assigneeContactId||'')===targetId) add(project,'مسئول کار'); });
+          if(String(node.assigneeContactId||'')===targetId) add(project,'مسئول کار اجرایی');
+          if(String(node.contractorContactId||'')===targetId) add(project,'پیمانکار کار اجرایی');
+          (node.workTasks||[]).forEach(workTask=>{
+            if(!workTask.trashed&&String(workTask.assigneeContactId||'')===targetId) add(project,'مسئول کار');
+            if(!workTask.trashed&&String(workTask.contractorContactId||'')===targetId) add(project,'پیمانکار کار');
+          });
           (node.subtasks||[]).forEach(visit);
         };
         visit(task);

@@ -21,14 +21,16 @@ function validate(projectId, workId, input){
   const title = String(input?.title || '').trim();
   const weight = Number(input?.weight);
   const assigneeContactId = String(input?.assigneeContactId || '');
+  const contractorContactId = String(input?.contractorContactId || '');
   if(!title) return { ok:false, code:'title' };
   if(!WORK_TYPES.includes(input?.type)) return { ok:false, code:'type' };
   if(!TASK_PRIORITIES.includes(input?.priority)) return { ok:false, code:'priority' };
   if(!Number.isFinite(weight) || weight <= 0) return { ok:false, code:'weight' };
   if(assigneeContactId && !contactRepository.get(projectId, assigneeContactId)) return { ok:false, code:'assignee' };
+  if(contractorContactId && !contactRepository.get(projectId, contractorContactId)) return { ok:false, code:'contractor' };
   if(!validDateRange(input.scheduleStart || '', input.scheduleEnd || '')) return { ok:false, code:'dates' };
   if(!workTaskRepository.work(projectId, workId)) return { ok:false, code:'work' };
-  return { ok:true, value:{ ...input, title, weight, assigneeContactId } };
+  return { ok:true, value:{ ...input, title, weight, assigneeContactId, contractorContactId } };
 }
 
 function syncWorkCompletion(projectId, workId){
