@@ -31,6 +31,18 @@ export function createCloudRuntime(ctx){
   const lifecycle=createProjectCloudLifecycle({collections,db,getSession,taskListeners,appDataStore:store});
   const writeTasks=(id,tasks)=>app.writeTaskRecordsNormalized({cloudMode:getSession().cloudMode,currentUser:getSession().currentUser,
     db,taskCollection:collections.tasks,normalizeTaskRecord,DATA_SCHEMA_VERSION:ctx.schemaVersion},id,tasks);
+  const syncProject=project=>app.cloudSyncProjectFull(ctx.syncContext(getSession(),{db,cache,writeTasks}),project);
+
+  const retryDurableDirtyProjects=()=>{
+    [...store.getDirtyProjectIds()].forEach(id=>{
+      const project=ctx.findProject(id);
+      if(!project||!project.ownerUid)return;
+      const dirtyVersion=store.getProjectDirtyVersion?.(id);
+      Promise.resolve(syncProject(project)).then(succeeded=>{
+        if(succeeded!==false)store.clearProjectDirty(id,dirtyVersion);
+      }).catch(()=>{});
+    });
+  };
 
   const hydrateProject=async(project,projectData)=>{
     if(!getSession().cloudMode||!project?.ownerUid)return false;
@@ -70,6 +82,9 @@ export function createCloudRuntime(ctx){
     const handler=app.createOwnedSnapshotHandler({appDataStore:store,getCurrentUser:()=>getSession().currentUser,
       docToProject:ctx.docToProject,hydrateProjects:hydrateAll,persistLocal:()=>store.persistLocal()});
     app.startOwnedCloudListeners({db,uid:user.uid,onOwnedSnapshot:handler,onError:error=>ctx.onCloudError?.(error)});
+    // A refresh can interrupt a previously pending write. Its durable dirty
+    // intent is restored by AppDataStore and retried once auth/cloud are ready.
+    queueMicrotask(retryDurableDirtyProjects);
   };
   const stopListeners=()=>{app.stopOwnedCloudListeners();taskListeners.stopAll();};
   const migrateGuest=async()=>{
@@ -97,6 +112,6 @@ export function createCloudRuntime(ctx){
     }catch(error){store.clearCloudWritePending(project.id);console.warn('project creation sync failed',project.id,error);ctx.onWriteFailure(project);}
   };
   return Object.freeze({getSession,cache,collections,taskListeners,lifecycle,createProject,normalizeTaskRecord,writeTasks,hydrateProject,
-    cloudSyncProject:project=>app.cloudSyncProjectFull(ctx.syncContext(getSession(),{db,cache,writeTasks}),project),
+    cloudSyncProject:syncProject,
     cloudSyncTask:project=>writeTasks(project.id,project.tasks),startListeners,stopListeners,migrateGuest,destroy:session.destroy});
 }
