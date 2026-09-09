@@ -8,6 +8,15 @@ test('valid local tasks survive an empty cloud snapshot without duplication',()=
   assert.deepEqual(merged.map(task=>task.id),['t1','t2']);
 });
 
+test('refresh merge keeps a newer nested WBS task over an older cloud work record',()=>{
+  const normalize=value=>({...value,id:String(value.id)});
+  const cloud=[{id:'w1',updatedAt:100,workTasks:[]}];
+  const local=[{id:'w1',updatedAt:100,workTasks:[{id:'wt1',createdAt:300,updatedAt:300}]}];
+  const merged=mergeRecoveredTasks(cloud,local,normalize);
+  assert.equal(merged[0].workTasks.length,1);
+  assert.equal(merged[0].workTasks[0].id,'wt1');
+});
+
 test('recovery cache retains a last-known-good non-empty task set',()=>{
   const values=new Map(),storage={getItem:key=>values.get(key)||null,setItem:(key,value)=>values.set(key,value)};
   const cache=createTaskRecoveryCache({storage,normalizeTask:value=>({...value})});

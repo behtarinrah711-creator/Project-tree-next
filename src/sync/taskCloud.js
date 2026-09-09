@@ -1,3 +1,4 @@
+import { mergeRecoveredTasks } from '../cloud/taskRecovery.js';
 import { isDirty, isPending, markPending, acknowledgePending } from './storeSyncState.js';
 
 /**
@@ -23,14 +24,11 @@ export async function writeTaskRecordsNormalized(ctx, pid, tasks){
 }
 
 /**
- * Merge incoming cloud tasks with local + recovery; never wipe non-empty local with empty cloud.
+ * Merge incoming cloud tasks with local + recovery; never wipe a fresher local
+ * WBS/Today record with an older cloud copy of the same top-level task id.
  */
 export function mergeTaskSnapshot(incoming, localTasks, recoveryTasks, normalizeTaskRecord){
-  const byId = new Map();
-  [...incoming, ...recoveryTasks, ...localTasks].forEach(t => {
-    if(t && t.id && !byId.has(String(t.id))) byId.set(String(t.id), normalizeTaskRecord(t));
-  });
-  return Array.from(byId.values());
+  return mergeRecoveredTasks(incoming, recoveryTasks, localTasks, normalizeTaskRecord);
 }
 
 /**
