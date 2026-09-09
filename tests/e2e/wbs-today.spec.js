@@ -1,8 +1,13 @@
 import { test, expect } from '@playwright/test';
+import { tehranTodayJalali } from '../../src/domain/wbs/todayDomain.js';
+
+const today = tehranTodayJalali();
+const todayShort = new Intl.NumberFormat('fa-IR').format(Number(today.split('/')[1]))
+  + '/' + new Intl.NumberFormat('fa-IR').format(Number(today.split('/')[2]));
 
 const project={id:'e2e-today',name:'پروژه امروز',location:'تهران',contacts:[{id:'a',name:'مهندس احمدی'},{id:'c',name:'پیمانکار قرارداد'}],contracts:[{id:'contract',projectItemId:'w1',contractorId:'c'}],tasks:[{id:'s1',kind:'stage',text:'سازه',subtasks:[
   {id:'w1',kind:'work',text:'فونداسیون',type:'اجرا',scheduleStart:'1405/06/01',scheduleEnd:'1405/06/30',workTasks:[
-    {id:'today-task',workId:'w1',title:'قالب‌بندی',type:'اجرا',scheduleStart:'1405/06/18',scheduleEnd:'1405/06/18',priority:'high',assigneeContactId:'a',weight:1,executionComments:[
+    {id:'today-task',workId:'w1',title:'قالب‌بندی',type:'اجرا',scheduleStart:today,scheduleEnd:today,priority:'high',assigneeContactId:'a',weight:1,executionComments:[
       {id:'c1',text:'نظر اول',createdBy:{id:'a',name:'الف'},createdAt:1},{id:'c2',text:'نظر دوم',createdBy:{id:'a',name:'الف'},createdAt:2},{id:'c3',text:'نظر سوم',createdBy:{id:'a',name:'الف'},createdAt:3},
     ]},
     {id:'unscheduled-task',workId:'w1',title:'بدون تاریخ',type:'خرید',scheduleStart:'',scheduleEnd:'',priority:'normal',weight:1},
@@ -33,8 +38,8 @@ test('Today shows Tasks instead of their Work, formats one-day dates once, and e
   const card=page.locator('.today-task-card[data-entity-id="today-task"]');
   await expect(card).toContainText('قالب‌بندی');
   await expect(page.locator('.today-task-card',{hasText:'فونداسیون'})).toHaveCount(1);
-  await expect(card).toContainText('۶/۱۸');
-  await expect(card).not.toContainText('۶/۱۸ ← ۶/۱۸');
+  await expect(card).toContainText(todayShort);
+  await expect(card).not.toContainText(`${todayShort} ← ${todayShort}`);
   await expect(card).toContainText('امروز');
   await expect(card).toContainText('پیمانکار: پیمانکار قرارداد');
   const visible=card.locator('.today-comment');

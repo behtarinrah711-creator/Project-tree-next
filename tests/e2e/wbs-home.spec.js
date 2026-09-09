@@ -183,7 +183,8 @@ test('Work Task create, edit, connector, modes and weighted completion share one
   await sheet.locator('[name="taskTitle"]').fill('تحویل آهن');
   await sheet.locator('[name="taskType"]').selectOption('خرید');
   await sheet.locator('[name="taskPriority"]').selectOption('high');
-  await sheet.locator('[name="taskAssignee"]').selectOption('c1');
+  await sheet.locator('[name="taskAssignee"]').click();
+  await page.locator('#searchTemplatePage .stpl-row[data-id="c1"]').click();
   await expect(sheet.locator('[name="taskWeight"]')).toHaveValue('1');
   await sheet.locator('[name="taskWeight"]').fill('2');
   await sheet.locator('.wbs-sheet-save').click();
