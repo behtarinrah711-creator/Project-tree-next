@@ -127,6 +127,13 @@ function paintCorner(gantt, project, windowRef, documentRef){
     corner.append(toggle);
   }
   corner.querySelector('.wbs-gantt-project-title')?.remove();
+  let workPackagesTitle = corner.querySelector('.wbs-gantt-work-packages-title');
+  if(!workPackagesTitle){
+    workPackagesTitle = documentRef.createElement('span');
+    workPackagesTitle.className = 'wbs-gantt-work-packages-title';
+    corner.appendChild(workPackagesTitle);
+  }
+  workPackagesTitle.textContent = 'بسته های کاری';
   const scale = currentTimescale();
   toggle.classList.toggle('is-past-midpoint', scale.shade >= .4);
   toggle.setAttribute('aria-label', `نمای ${scale.label}`);
@@ -276,7 +283,7 @@ function restoreRowAction(line){
 function rowCanvas(documentRef, line, entry, domain, scale, buckets, canvasWidth){
   const days = domain.endExclusive - domain.start;
   const dayWidth = canvasWidth / days;
-  const rowHeight = line.classList.contains('is-two-line') ? 46 : 36;
+  const rowHeight = 50;
   const svg = svgElement(documentRef, 'svg', {
     class:'wbs-gantt-scale-canvas',
     width:canvasWidth,

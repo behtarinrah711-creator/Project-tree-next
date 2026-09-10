@@ -328,7 +328,7 @@ test('Timeline details survive initial render, timescale changes, and tree reren
     const heights = await page.locator('.wbs-gantt-scale-foreign .wbs-gantt-bar').evaluateAll(bars =>
       bars.map(bar => bar.getBoundingClientRect().height)
     );
-    expect(heights).toEqual(Array(expectedBars).fill(8));
+    expect(heights).toEqual(Array(expectedBars).fill(13));
   };
 
   await assertDetails(1);

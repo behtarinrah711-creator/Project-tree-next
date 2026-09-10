@@ -3,7 +3,7 @@ import { formatTimelineDate, shouldShowProgressLabel } from './timelineDetailsFo
 import { viewTitle } from './viewFrame.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const BAR_HEIGHT = 8;
+const BAR_HEIGHT = 13;
 function svgElement(documentRef, name, attrs = {}){
   const element = documentRef.createElementNS(SVG_NS, name);
   Object.entries(attrs).forEach(([key, value]) => element.setAttribute(key, String(value)));
@@ -47,10 +47,11 @@ function paintRowDetails(documentRef, line, entry){
   const planned = Number(bar.dataset.planned);
   if(bar.dataset.planned !== '' && Number.isFinite(planned)){
     const plannedX = clamp(barX + (barWidth * planned / 100), 4, Math.max(4, canvasWidth - 4));
-    const markerY = Math.min(rowHeight - 9, barY + BAR_HEIGHT + 4);
+    const markerRadius = 4;
+    const markerY = Math.min(rowHeight - 9, barY + BAR_HEIGHT + markerRadius);
     canvas.appendChild(svgElement(documentRef, 'polygon', {
       class:'wbs-gantt-planned-marker',
-      points:`${plannedX},${markerY - 4} ${plannedX + 4},${markerY} ${plannedX},${markerY + 4} ${plannedX - 4},${markerY}`,
+      points:`${plannedX},${markerY - markerRadius} ${plannedX + markerRadius},${markerY} ${plannedX},${markerY + markerRadius} ${plannedX - markerRadius},${markerY}`,
     }));
     const labelWidth = 42; const labelHeight = 8;
     const labelX = clamp(plannedX - labelWidth / 2, 0, Math.max(0, canvasWidth - labelWidth));
