@@ -344,8 +344,30 @@ test('Timeline details survive initial render, timescale changes, and tree reren
   await page.locator('.wbs-tree-toggle').click();
   await assertDetails(3);
   const dependency = page.locator('.wbs-gantt-dependency-link[data-source-id="w1"][data-target-id="w2"]');
+  if((page.viewportSize()?.width || 0) <= 719){
+    await expect(dependency).toBeHidden();
+    await page.locator('.wbs-gantt-name[data-dependency-entry-id="w2"]').click();
+  }
   await expect(dependency).toBeVisible();
   await expect(dependency).toHaveAttribute('marker-end', 'url(#wbs-gantt-fs-arrow)');
+  const endpoints = await page.evaluate(() => {
+    const path = document.querySelector('.wbs-gantt-dependency-link[data-source-id="w1"][data-target-id="w2"]');
+    const source = document.querySelector('.wbs-gantt-line[data-dependency-entry-id="w1"] .wbs-gantt-bar');
+    const target = document.querySelector('.wbs-gantt-line[data-dependency-entry-id="w2"] .wbs-gantt-bar');
+    const matrix = path.getScreenCTM();
+    const point = distance => { const value = path.getPointAtLength(distance); return new DOMPoint(value.x, value.y).matrixTransform(matrix); };
+    const start = point(0); const finish = point(path.getTotalLength());
+    const sourceRect = source.getBoundingClientRect(); const targetRect = target.getBoundingClientRect();
+    return {
+      start:{ x:start.x, y:start.y }, finish:{ x:finish.x, y:finish.y },
+      sourceRect:{ left:sourceRect.left, top:sourceRect.top, height:sourceRect.height },
+      targetRect:{ right:targetRect.right, top:targetRect.top, height:targetRect.height },
+    };
+  });
+  expect(Math.abs(endpoints.start.x - endpoints.sourceRect.left)).toBeLessThanOrEqual(1);
+  expect(Math.abs(endpoints.start.y - (endpoints.sourceRect.top + endpoints.sourceRect.height / 2))).toBeLessThanOrEqual(1);
+  expect(Math.abs(endpoints.finish.x - endpoints.targetRect.right)).toBeLessThanOrEqual(1);
+  expect(Math.abs(endpoints.finish.y - (endpoints.targetRect.top + endpoints.targetRect.height / 2))).toBeLessThanOrEqual(1);
   await expect(page.locator('.wbs-gantt-detail-title', { hasText:'اجرای فونداسیون' })).toBeVisible();
   await expect(page.locator('.wbs-gantt-progress-label').filter({ hasText:/^٪۱۰$/ })).toBeVisible();
 

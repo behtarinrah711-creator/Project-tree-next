@@ -433,8 +433,8 @@ function enhance(windowRef, documentRef){
   paintScaleGeometry(gantt, entries, documentRef);
   paintProgress(gantt, entries);
   applyTimelineDetails(gantt, entries, documentRef);
-  applyTimelineDependencies(gantt, entries, project.tasks || [], documentRef);
   applyTimelineStickyHeader(gantt, windowRef, documentRef);
+  applyTimelineDependencies(gantt, entries, project.tasks || [], documentRef);
 }
 
 function resumeObservation(){
