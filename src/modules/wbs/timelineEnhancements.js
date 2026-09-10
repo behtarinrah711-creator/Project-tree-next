@@ -409,7 +409,6 @@ function paintProgress(gantt, entries){
       label.dir = 'rtl';
       bar.appendChild(label);
     }
-    label.style.setProperty('--wbs-progress-edge', `${100 - progress}%`);
     if(label.textContent !== progressText) label.textContent = progressText;
   });
 }
