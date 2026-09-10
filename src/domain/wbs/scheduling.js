@@ -160,6 +160,51 @@ export function buildEffectiveNetwork(items){
   return { activities, unresolved };
 }
 
+/** Resolve each persisted dependency to the visible scheduling units that own it.
+ * Aggregate Work/package predecessors are represented by their latest finishing
+ * scheduled leaf; aggregate bars never become dependency endpoints.
+ */
+export function effectiveDependencyLinks(items){
+  const candidates = flattenDependencyCandidates(items);
+  const byId = new Map(candidates.map(row => [row.id, row]));
+  const leafIds = row => {
+    if(!row) return [];
+    if(row.kind === 'workTask') return [row.id];
+    if(row.kind === 'work'){
+      const tasks = activeWorkTasks(row.item);
+      return tasks.length ? tasks.map(task => String(task.id)) : [row.id];
+    }
+    const ids = [];
+    const walk = nodes => (nodes || []).filter(node => node && !node.trashed).forEach(node => {
+      if(isStage(node)) walk(node.subtasks);
+      else ids.push(...leafIds(byId.get(String(node.id))));
+    });
+    walk(row.item.subtasks);
+    return [...new Set(ids)];
+  };
+  const rangeFor = row => row && scheduleRangeOf(row.kind === 'workTask' ? { ...row.item, kind:'workTask' } : row.item);
+  const latestScheduledLeaf = predecessorId => leafIds(byId.get(String(predecessorId)))
+    .map(id => ({ id, range:rangeFor(byId.get(id)) }))
+    .filter(row => row.range)
+    .sort((a, b) => b.range.end - a.range.end || a.id.localeCompare(b.id))[0] || null;
+
+  const links = [];
+  candidates.forEach(consumer => {
+    if(consumer.kind === 'stage') return;
+    if(consumer.kind === 'work' && activeWorkTasks(consumer.item).length) return;
+    if(!rangeFor(consumer)) return;
+    (consumer.item.predecessorIds || []).map(String).forEach(predecessorId => {
+      const source = latestScheduledLeaf(predecessorId);
+      if(source && source.id !== consumer.id) links.push({
+        sourceId:source.id,
+        targetId:consumer.id,
+        predecessorId,
+      });
+    });
+  });
+  return links;
+}
+
 export function validatePredecessors(items, consumerId, selectedIds){
   const candidates = flattenDependencyCandidates(items); const byId = new Map(candidates.map(row => [row.id, row]));
   const selected = [...new Set((selectedIds || []).map(String).filter(Boolean))];
