@@ -67,7 +67,7 @@ export function ensureViewToolbar(root, viewId){
   const project = activeProject();
   const gantt = root.querySelector('.wbs-gantt');
   const corner = gantt?.querySelector('.wbs-gantt-corner');
-  const timescale = gantt?.querySelector('.wbs-timescale-toggle');
+  const timescale = root.querySelector('.wbs-timescale-toggle');
   if(!project || !gantt || !corner || !timescale) return;
 
   let header = root.querySelector('.wbs-timeline-view-header');
