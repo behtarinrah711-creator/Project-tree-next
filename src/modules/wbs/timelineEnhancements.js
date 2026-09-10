@@ -128,7 +128,7 @@ function paintCorner(gantt, project, windowRef, documentRef){
   }
   corner.querySelector('.wbs-gantt-project-title')?.remove();
   const scale = currentTimescale();
-  toggle.classList.toggle('is-past-midpoint', scale.shade >= .6);
+  toggle.classList.toggle('is-past-midpoint', scale.shade >= .4);
   toggle.setAttribute('aria-label', `نمای ${scale.label}`);
   toggle.setAttribute('title', scale.label);
   toggle.querySelector('.wbs-timescale-shade rect')?.setAttribute('opacity', String(scale.shade));
