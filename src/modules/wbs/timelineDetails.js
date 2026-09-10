@@ -47,8 +47,8 @@ function paintRowDetails(documentRef, line, entry){
   const planned = Number(bar.dataset.planned);
   if(bar.dataset.planned !== '' && Number.isFinite(planned)){
     const plannedX = clamp(barX + (barWidth * planned / 100), 4, Math.max(4, canvasWidth - 4));
-    const markerRadius = 5.5;
-    const markerY = Math.min(rowHeight - 11, barY + BAR_HEIGHT + markerRadius);
+    const markerRadius = 4;
+    const markerY = Math.min(rowHeight - 9, barY + BAR_HEIGHT + markerRadius);
     canvas.appendChild(svgElement(documentRef, 'polygon', {
       class:'wbs-gantt-planned-marker',
       points:`${plannedX},${markerY - markerRadius} ${plannedX + markerRadius},${markerY} ${plannedX},${markerY + markerRadius} ${plannedX - markerRadius},${markerY}`,
