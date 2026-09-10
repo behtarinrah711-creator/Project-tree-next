@@ -35,11 +35,8 @@
 .wbs-gantt-detail-planned .wbs-gantt-detail-label{color:#b42318;font-size:8px;font-weight:700;text-align:center;white-space:nowrap;}
 .wbs-gantt-scale-canvas{position:relative;z-index:2;}
 .wbs-gantt-dependency-layer{position:absolute;z-index:1;top:0;left:0;display:block;overflow:visible;pointer-events:none;}
-.wbs-gantt-dependency-halo,.wbs-gantt-dependency-link{fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;}
+.wbs-gantt-dependency-halo,.wbs-gantt-dependency-link{fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;visibility:hidden;}
 .wbs-gantt-dependency-halo{stroke:rgba(255,255,255,.9);stroke-width:4;}
 .wbs-gantt-dependency-link{stroke:#625b52;stroke-width:1.35;}
 .wbs-gantt-dependency-arrow{fill:#625b52;stroke:none;}
-@media(max-width:719px){
-  .wbs-gantt-dependency-halo,.wbs-gantt-dependency-link{visibility:hidden;}
-  .wbs-gantt-dependency-halo.is-active,.wbs-gantt-dependency-link.is-active{visibility:visible;}
-}
+.wbs-gantt.show-dependencies .wbs-gantt-dependency-halo,.wbs-gantt.show-dependencies .wbs-gantt-dependency-link{visibility:visible;}
