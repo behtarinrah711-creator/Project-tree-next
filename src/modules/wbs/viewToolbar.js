@@ -96,5 +96,7 @@ export function ensureViewToolbar(root, viewId){
   let dependency = root.querySelector('.wbs-dependency-toggle');
   if(!dependency) dependency = createDependencyButton(root.ownerDocument, gantt);
 
-  actions.append(timescale, expand, dependency);
+  [timescale, expand, dependency].forEach(control => {
+    if(control.parentElement !== actions) actions.appendChild(control);
+  });
 }
