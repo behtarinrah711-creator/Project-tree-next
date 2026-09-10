@@ -5,6 +5,7 @@ import { rollupProgress } from '../../domain/wbs/estimate.js';
 import { gregorianToJalali, jalaliToGregorian } from '../../ui/jalali.js';
 import { isExpanded } from './wbsExpandState.js';
 import { applyTimelineDetails } from './timelineDetails.js';
+import { applyTimelineDependencies } from './timelineDependencies.js';
 import { applyTimelineStickyHeader } from './timelineStickyHeader.js';
 import { ensureViewToolbar } from './viewToolbar.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
@@ -432,6 +433,7 @@ function enhance(windowRef, documentRef){
   paintScaleGeometry(gantt, entries, documentRef);
   paintProgress(gantt, entries);
   applyTimelineDetails(gantt, entries, documentRef);
+  applyTimelineDependencies(gantt, entries, project.tasks || [], documentRef);
   applyTimelineStickyHeader(gantt, windowRef, documentRef);
 }
 

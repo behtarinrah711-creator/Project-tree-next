@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildEffectiveNetwork, calculateCpm, plannedProgress, validatePredecessors } from './scheduling.js';
+import { buildEffectiveNetwork, calculateCpm, effectiveDependencyLinks, plannedProgress, validatePredecessors } from './scheduling.js';
 
 test('planned progress is calendar-day based and bounded', () => {
   assert.equal(plannedProgress('1405/01/01', '1405/01/10', 20532), 0);
@@ -34,4 +34,26 @@ test('package predecessors expand to all effective Task leaves', () => {
   const network = buildEffectiveNetwork(tree);
   assert.deepEqual(network.activities.find(row => row.id === 'target').predecessorIds, ['t1','t2']);
   assert.deepEqual(network.unresolved, []);
+});
+
+test('dependency drawing resolves aggregate predecessors to their latest scheduled leaf', () => {
+  const tree = [
+    { id:'package', kind:'stage', subtasks:[{ id:'source', kind:'work', predecessorIds:[], workTasks:[
+      { id:'early', title:'Early', scheduleStart:'1405/01/01', scheduleEnd:'1405/01/03' },
+      { id:'late', title:'Late', scheduleStart:'1405/01/01', scheduleEnd:'1405/01/08' },
+    ] }] },
+    { id:'target', kind:'work', scheduleStart:'1405/01/09', scheduleEnd:'1405/01/10', predecessorIds:['package'], workTasks:[] },
+  ];
+  assert.deepEqual(effectiveDependencyLinks(tree), [{ sourceId:'late', targetId:'target', predecessorId:'package' }]);
+});
+
+test('dependency drawing omits unscheduled endpoints and aggregate Work consumers', () => {
+  const tree = [
+    { id:'source', kind:'work', scheduleStart:'1405/01/01', scheduleEnd:'1405/01/02', predecessorIds:[], workTasks:[] },
+    { id:'aggregate', kind:'work', predecessorIds:['source'], workTasks:[
+      { id:'dated', title:'Dated', scheduleStart:'1405/01/03', scheduleEnd:'1405/01/04', predecessorIds:['source'] },
+      { id:'undated', title:'Undated', predecessorIds:['source'] },
+    ] },
+  ];
+  assert.deepEqual(effectiveDependencyLinks(tree), [{ sourceId:'source', targetId:'dated', predecessorId:'source' }]);
 });
