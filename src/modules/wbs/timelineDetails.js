@@ -51,8 +51,12 @@ function paintRowDetails(documentRef, line, entry){
       class:'wbs-gantt-planned-marker',
       points:`${plannedX},${barY - 4} ${plannedX + 4},${barY} ${plannedX},${barY + 4} ${plannedX - 4},${barY}`,
     }));
-    const labelWidth = 42; const labelX = clamp(plannedX - labelWidth / 2, 0, Math.max(0, canvasWidth - labelWidth));
-    canvas.appendChild(detailForeignObject(documentRef, { className:'wbs-gantt-detail-planned', x:labelX, y:Math.max(0, barY - 15), width:labelWidth, height:11, text:`٪${new Intl.NumberFormat('fa-IR', { useGrouping:false, maximumFractionDigits:1 }).format(planned)}` }));
+    const labelWidth = 34;
+    const rightX = plannedX + 6;
+    const leftX = plannedX - labelWidth - 6;
+    const labelX = rightX + labelWidth <= canvasWidth ? rightX : Math.max(0, leftX);
+    const labelY = clamp(barY - 1, 0, Math.max(0, rowHeight - 11));
+    canvas.appendChild(detailForeignObject(documentRef, { className:'wbs-gantt-detail-planned is-side', x:labelX, y:labelY, width:labelWidth, height:11, text:`٪${new Intl.NumberFormat('fa-IR', { useGrouping:false, maximumFractionDigits:1 }).format(planned)}` }));
   }
 }
 function separatorRows(gantt, entries){

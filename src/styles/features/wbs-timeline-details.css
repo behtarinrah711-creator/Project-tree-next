@@ -33,6 +33,7 @@
 .wbs-gantt-today-label>div{box-sizing:border-box;width:100%;height:15px;display:flex;align-items:center;justify-content:center;border-radius:5px;background:#d24a3a;color:#fff;font-family:inherit;font-size:8px;font-weight:700;line-height:1;transform:scaleX(-1);white-space:nowrap;}
 .wbs-gantt-planned-marker{fill:#fff;stroke:#b42318;stroke-width:1.5;vector-effect:non-scaling-stroke;}
 .wbs-gantt-detail-planned .wbs-gantt-detail-label{color:#b42318;font-size:8px;font-weight:700;text-align:center;white-space:nowrap;}
+.wbs-gantt-detail-planned.is-side .wbs-gantt-detail-label{background:rgba(255,255,255,.94);border-radius:3px;}
 .wbs-gantt-scale-canvas{position:relative;z-index:2;}
 .wbs-gantt-dependency-layer{position:absolute;z-index:1;top:0;left:0;display:block;overflow:visible;pointer-events:none;}
 .wbs-gantt-dependency-halo,.wbs-gantt-dependency-link{fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;}
