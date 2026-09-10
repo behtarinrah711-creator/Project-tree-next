@@ -113,7 +113,7 @@ function currentTimescale(){
 function paintCorner(gantt, project, windowRef, documentRef){
   const corner = gantt.querySelector('.wbs-gantt-corner');
   if(!corner) return;
-  let toggle = gantt.querySelector('.wbs-timescale-toggle');
+  let toggle = gantt.parentElement?.querySelector(':scope > .wbs-timeline-view-header .wbs-timescale-toggle') || gantt.querySelector('.wbs-timescale-toggle');
   if(!toggle){
     corner.textContent = '';
     toggle = documentRef.createElement('button');
