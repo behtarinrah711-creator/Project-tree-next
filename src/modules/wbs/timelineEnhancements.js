@@ -283,7 +283,7 @@ function restoreRowAction(line){
 function rowCanvas(documentRef, line, entry, domain, scale, buckets, canvasWidth){
   const days = domain.endExclusive - domain.start;
   const dayWidth = canvasWidth / days;
-  const rowHeight = line.classList.contains('is-two-line') ? 46 : 36;
+  const rowHeight = 50;
   const svg = svgElement(documentRef, 'svg', {
     class:'wbs-gantt-scale-canvas',
     width:canvasWidth,
