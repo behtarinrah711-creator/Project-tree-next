@@ -95,17 +95,8 @@ function ensureStandardFrame(root, viewId){
 function syncTimelineHeaderActions(root){
   const toolbar = root.querySelector(':scope > .wbs-toolbar');
   if(!toolbar) return;
-
-  // Timeline never owns the root-work-package action. Remove it from the DOM,
-  // including any legacy instance created before this enhancement runs.
   toolbar.querySelectorAll('.wbs-root-add').forEach(button => button.remove());
-
-  const expand = toolbar.querySelector('.wbs-tree-toggle');
-  const corner = root.querySelector('.wbs-gantt-corner');
-  const timescale = corner?.querySelector('.wbs-timescale-toggle');
-  if(expand && corner && timescale){
-    timescale.insertAdjacentElement('beforebegin', expand);
-  }
+  if(!toolbar.children.length) toolbar.remove();
 }
 
 function removeCostlineRootActions(root){
