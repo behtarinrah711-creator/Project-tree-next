@@ -344,10 +344,11 @@ test('Timeline details survive initial render, timescale changes, and tree reren
   await page.locator('.wbs-tree-toggle').click();
   await assertDetails(3);
   const dependency = page.locator('.wbs-gantt-dependency-link[data-source-id="w1"][data-target-id="w2"]');
-  if((page.viewportSize()?.width || 0) <= 719){
-    await expect(dependency).toBeHidden();
-    await page.locator('.wbs-gantt-name[data-dependency-entry-id="w2"]').click();
-  }
+  await expect(page.locator('.wbs-timeline-view-header .wbs-view-title')).toHaveText('نمودار گانت');
+  await expect(page.locator('.wbs-dependency-toggle')).toHaveAttribute('aria-pressed', 'false');
+  await expect(dependency).toBeHidden();
+  await page.locator('.wbs-dependency-toggle').click();
+  await expect(page.locator('.wbs-dependency-toggle')).toHaveAttribute('aria-pressed', 'true');
   await expect(dependency).toBeVisible();
   await expect(dependency).toHaveAttribute('marker-end', 'url(#wbs-gantt-fs-arrow)');
   const endpoints = await page.evaluate(() => {
