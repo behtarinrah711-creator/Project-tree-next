@@ -47,12 +47,15 @@ function paintRowDetails(documentRef, line, entry){
   const planned = Number(bar.dataset.planned);
   if(bar.dataset.planned !== '' && Number.isFinite(planned)){
     const plannedX = clamp(barX + (barWidth * planned / 100), 4, Math.max(4, canvasWidth - 4));
+    const markerY = Math.min(rowHeight - 9, barY + BAR_HEIGHT + 4);
     canvas.appendChild(svgElement(documentRef, 'polygon', {
       class:'wbs-gantt-planned-marker',
-      points:`${plannedX},${barY - 4} ${plannedX + 4},${barY} ${plannedX},${barY + 4} ${plannedX - 4},${barY}`,
+      points:`${plannedX},${markerY - 4} ${plannedX + 4},${markerY} ${plannedX},${markerY + 4} ${plannedX - 4},${markerY}`,
     }));
-    const labelWidth = 42; const labelX = clamp(plannedX - labelWidth / 2, 0, Math.max(0, canvasWidth - labelWidth));
-    canvas.appendChild(detailForeignObject(documentRef, { className:'wbs-gantt-detail-planned', x:labelX, y:Math.max(0, barY - 15), width:labelWidth, height:11, text:`٪${new Intl.NumberFormat('fa-IR', { useGrouping:false, maximumFractionDigits:1 }).format(planned)}` }));
+    const labelWidth = 42; const labelHeight = 8;
+    const labelX = clamp(plannedX - labelWidth / 2, 0, Math.max(0, canvasWidth - labelWidth));
+    const labelY = Math.min(rowHeight - labelHeight, markerY + 4);
+    canvas.appendChild(detailForeignObject(documentRef, { className:'wbs-gantt-detail-planned is-below-marker', x:labelX, y:labelY, width:labelWidth, height:labelHeight, text:`٪${new Intl.NumberFormat('fa-IR', { useGrouping:false, maximumFractionDigits:1 }).format(planned)}` }));
   }
 }
 function separatorRows(gantt, entries){
