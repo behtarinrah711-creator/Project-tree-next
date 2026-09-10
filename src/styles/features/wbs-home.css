@@ -209,7 +209,7 @@ body:has(.wbs-home-root){background:#fff;}
 .wbs-gantt-progress-meter::-webkit-progress-bar{background:transparent;}
 .wbs-gantt-progress-meter::-webkit-progress-value{background:rgba(0,0,0,.3);}
 .wbs-gantt-progress-meter::-moz-progress-bar{background:rgba(0,0,0,.3);}
-.wbs-gantt-progress-label{position:absolute;z-index:2;inset-inline-start:5px;top:50%;transform:translateY(-50%);font-size:9px;font-weight:700;line-height:1;color:#fff;white-space:nowrap;text-shadow:0 1px 1px rgba(0,0,0,.35);direction:rtl;unicode-bidi:isolate;pointer-events:none;}
+.wbs-gantt-progress-label{position:absolute;z-index:2;left:calc(var(--wbs-progress-edge,0%) + 3px);right:auto;top:50%;transform:translateY(-50%);font-size:9px;font-weight:700;line-height:1;color:#fff;white-space:nowrap;text-shadow:0 1px 1px rgba(0,0,0,.35);direction:rtl;unicode-bidi:isolate;pointer-events:none;}
 .wbs-gantt-bar.is-stage .wbs-gantt-progress-label{font-size:8px;}
 
 @media (max-width:719px){
