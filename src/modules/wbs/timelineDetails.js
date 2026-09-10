@@ -39,6 +39,14 @@ function paintRowDetails(documentRef, line, entry){
     const titleX = clamp(barX + (barWidth - titleWidth) / 2, 0, Math.max(0, canvasWidth - titleWidth));
     canvas.appendChild(detailForeignObject(documentRef, { className:`wbs-gantt-detail-title${isStage(entry.item) ? ' is-stage' : ''}`, x:titleX, y:Math.max(0, barY - 13), width:titleWidth, height:12, text:title }));
   }
+  const actual = Math.max(0, Math.min(100, Number(bar.dataset.progress) || 0));
+  const actualLabel = bar.querySelector('.wbs-gantt-progress-label');
+  if(actualLabel && actual > 0){
+    actualLabel.remove();
+    const actualX = clamp(barX + (barWidth * (1 - actual / 100)), 0, Math.max(0, canvasWidth - 34));
+    canvas.appendChild(detailForeignObject(documentRef, { className:'wbs-gantt-actual-progress', x:actualX, y:Math.max(0, barY - 1), width:34, height:10, text:`٪${new Intl.NumberFormat('fa-IR', { useGrouping:false, maximumFractionDigits:1 }).format(actual)}` }));
+  }
+
   const dateWidth = 46; const dateY = Math.min(rowHeight - 11, barY + BAR_HEIGHT + 1);
   const startX = clamp(barX - dateWidth + 4, 0, Math.max(0, canvasWidth - dateWidth));
   const finishX = clamp(barX + barWidth - 4, 0, Math.max(0, canvasWidth - dateWidth));
