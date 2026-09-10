@@ -219,3 +219,7 @@ body:has(.wbs-home-root){background:#fff;}
   .wbs-gantt-names{position:relative;z-index:2;}
   .wbs-gantt-scroll{overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;}
 }
+.wbs-delay-row{display:grid;grid-template-columns:minmax(120px,1.5fr) repeat(5,minmax(90px,1fr));gap:8px;align-items:center;padding:10px 12px;border-bottom:1px solid var(--divider);font-size:11px;color:var(--text-dim);}
+.wbs-delay-row strong{font-size:13px;color:var(--text);}
+.wbs-predecessor-field.is-disabled{opacity:.65;}
+@media(max-width:720px){.wbs-delay-row{grid-template-columns:1fr 1fr}.wbs-delay-row strong{grid-column:1/-1}}

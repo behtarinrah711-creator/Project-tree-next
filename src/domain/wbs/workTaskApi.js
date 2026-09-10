@@ -4,6 +4,8 @@ import { workTaskRepository } from '../../data/workTaskRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
 import { WORK_TYPES } from './normalize.js';
 import { TASK_PRIORITIES, activeWorkTasks, normalizeWorkTask, workTaskProgress } from './workTaskModel.js';
+import { validatePredecessors } from './scheduling.js';
+import { projectRepository } from '../../data/projectRepository.js';
 
 function publish(projectId){
   if(typeof window !== 'undefined'){
@@ -46,18 +48,28 @@ function syncWorkCompletion(projectId, workId){
   }));
 }
 
+function predecessorIds(value){
+  return [...new Set((Array.isArray(value) ? value : []).map(String).filter(Boolean))];
+}
+
 export const workTaskApi = {
   list:(projectId, workId) => workTaskRepository.list(projectId, workId),
   get:(projectId, workId, taskId) => workTaskRepository.get(projectId, workId, taskId),
   create(projectId, workId, draft, clock = Date.now){
     const checked = validate(projectId, workId, draft);
     if(!checked.ok) return checked;
-    const now = clock();
+    const now = clock(); const id = uid();
+    const dependencyCheck = validatePredecessors(projectRepository.find(projectId)?.tasks || [], id, draft.predecessorIds || []);
+    if(!dependencyCheck.ok) return dependencyCheck;
+    const work = workTaskRepository.work(projectId, workId);
+    const firstTask = activeWorkTasks(work).length === 0;
+    const inherited = firstTask ? predecessorIds(work?.predecessorIds) : [];
     const task = normalizeWorkTask({
       ...checked.value,
-      id:uid(), workId, completed:false, completedAt:null, createdAt:now, updatedAt:now,
+      predecessorIds:predecessorIds(checked.value.predecessorIds).length ? predecessorIds(checked.value.predecessorIds) : inherited,
+      id, workId, completed:false, completedAt:null, createdAt:now, updatedAt:now,
     }, workId);
-    const saved = workTaskRepository.save(projectId, workId, task);
+    const saved = workTaskRepository.save(projectId, workId, task, { clearWorkPredecessors:firstTask && inherited.length > 0 });
     if(!saved) return { ok:false, code:'persist' };
     syncWorkCompletion(projectId, workId); publish(projectId);
     return { ok:true, task:saved };
@@ -66,6 +78,8 @@ export const workTaskApi = {
     const current = workTaskRepository.get(projectId, workId, taskId);
     if(!current) return { ok:false, code:'not_found' };
     const next = { ...current, ...patch };
+    const dependencyCheck = validatePredecessors(projectRepository.find(projectId)?.tasks || [], taskId, next.predecessorIds || []);
+    if(!dependencyCheck.ok) return dependencyCheck;
     const checked = validate(projectId, workId, next);
     if(!checked.ok) return checked;
     const saved = workTaskRepository.update(projectId, workId, taskId, {
@@ -79,7 +93,22 @@ export const workTaskApi = {
     return { ok:true, task:saved };
   },
   setCompleted(projectId, workId, taskId, completed, clock = Date.now){
-    return this.update(projectId, workId, taskId, { completed:Boolean(completed) }, clock);
+    return this.update(projectId, workId, taskId, { completed:Boolean(completed), progress:completed ? 100 : 0 }, clock);
+  },
+  remove(projectId, workId, taskId, clock = Date.now){
+    const current = workTaskRepository.get(projectId, workId, taskId);
+    if(!current) return { ok:false, code:'not_found' };
+    const remaining = workTaskRepository.list(projectId, workId).filter(task => String(task.id) !== String(taskId));
+    const saved = workTaskRepository.mutate(projectId, workId, work => ({
+      ...work,
+      predecessorIds:remaining.length ? work.predecessorIds : predecessorIds(current.predecessorIds),
+      workTasks:(work.workTasks || []).filter(task => String(task?.id) !== String(taskId)),
+      updatedAt:clock(),
+    }));
+    if(!saved) return { ok:false, code:'persist' };
+    if(remaining.length) syncWorkCompletion(projectId, workId);
+    publish(projectId);
+    return { ok:true };
   },
 };
 

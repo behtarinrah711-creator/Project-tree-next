@@ -71,3 +71,21 @@ test('task weight edits and weighted completion drive Work completion', () => {
   assert.equal(work.status, 'completed');
   assert.equal(rollupProgress(store.getSnapshot().projects[0].tasks), 100);
 });
+
+test('first and last Task transfer Work predecessors without orphaning the network', () => {
+  const store = installFixture();
+  const project = store.getSnapshot().projects[0];
+  const work = project.tasks[0].subtasks[0];
+  project.tasks[0].subtasks.unshift({ id:'w0', kind:'work', text:'پیش‌نیاز', subtasks:[] });
+  work.predecessorIds = ['w0'];
+  const created = workTaskApi.create('p1', 'w1', draft(), () => 100);
+  assert.equal(created.ok, true);
+  assert.deepEqual(created.task.predecessorIds, ['w0']);
+  assert.deepEqual(workTaskApi.list('p1', 'w1').length, 1);
+  let savedWork = store.getSnapshot().projects[0].tasks[0].subtasks.find(item => item.id === 'w1');
+  assert.deepEqual(savedWork.predecessorIds, []);
+  assert.equal(workTaskApi.remove('p1', 'w1', created.task.id, () => 200).ok, true);
+  savedWork = store.getSnapshot().projects[0].tasks[0].subtasks.find(item => item.id === 'w1');
+  assert.deepEqual(savedWork.predecessorIds, ['w0']);
+  assert.deepEqual(savedWork.workTasks, []);
+});

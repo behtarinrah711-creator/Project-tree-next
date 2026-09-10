@@ -44,14 +44,25 @@ function paintRowDetails(documentRef, line, entry){
   const finishX = clamp(barX + barWidth - 4, 0, Math.max(0, canvasWidth - dateWidth));
   canvas.appendChild(detailForeignObject(documentRef, { className:'wbs-gantt-detail-date is-start', x:startX, y:dateY, width:dateWidth, height:10, text:formatTimelineDate(entry.range.startDate), dir:'ltr' }));
   canvas.appendChild(detailForeignObject(documentRef, { className:'wbs-gantt-detail-date is-finish', x:finishX, y:dateY, width:dateWidth, height:10, text:formatTimelineDate(entry.range.endDate), dir:'ltr' }));
+  const planned = Number(bar.dataset.planned);
+  if(bar.dataset.planned !== '' && Number.isFinite(planned)){
+    const plannedX = clamp(barX + (barWidth * planned / 100), 4, Math.max(4, canvasWidth - 4));
+    canvas.appendChild(svgElement(documentRef, 'polygon', {
+      class:'wbs-gantt-planned-marker',
+      points:`${plannedX},${barY - 4} ${plannedX + 4},${barY} ${plannedX},${barY + 4} ${plannedX - 4},${barY}`,
+    }));
+    const labelWidth = 42; const labelX = clamp(plannedX - labelWidth / 2, 0, Math.max(0, canvasWidth - labelWidth));
+    canvas.appendChild(detailForeignObject(documentRef, { className:'wbs-gantt-detail-planned', x:labelX, y:Math.max(0, barY - 15), width:labelWidth, height:11, text:`٪${new Intl.NumberFormat('fa-IR', { useGrouping:false, maximumFractionDigits:1 }).format(planned)}` }));
+  }
 }
 function separatorRows(gantt, entries){
   const names = [...gantt.querySelectorAll('.wbs-gantt-name')]; const lines = [...gantt.querySelectorAll('.wbs-gantt-line')];
   entries.forEach((entry, index) => { const separatedRoot = entry.depth === 0 && index > 0; names[index]?.classList.toggle('wbs-gantt-package-separator', separatedRoot); lines[index]?.classList.toggle('wbs-gantt-package-separator', separatedRoot); });
 }
 function localTodayDayNumber(){
-  const now = new Date();
-  return Math.floor(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()) / 86400000);
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone:'Asia/Tehran', year:'numeric', month:'2-digit', day:'2-digit' })
+    .formatToParts(new Date()).reduce((out, part) => ({ ...out, [part.type]:part.value }), {});
+  return Math.floor(Date.UTC(Number(parts.year), Number(parts.month) - 1, Number(parts.day)) / 86400000);
 }
 function timelineDomainFromSignature(signature){
   const parts = String(signature || '').split(':'); const start = Number(parts[1]); const endExclusive = Number(parts[2]);
@@ -85,7 +96,7 @@ export function applyTimelineDetails(gantt, entries, documentRef = document){
   const lines = [...gantt.querySelectorAll('.wbs-gantt-line')];
   if(!lines.length || !lines.every(line => line.querySelector('.wbs-gantt-scale-canvas'))) return;
   const signature = `${gantt.dataset.timescaleSignature}|${entries.map(entry => `${entry.item.id}:${entry.item.text || entry.item.title || ''}`).join('|')}`;
-  const expectedDetails = entries.filter(entry => entry.range).length * 3;
+  const expectedDetails = entries.filter(entry => entry.range).reduce((sum, entry) => sum + (entry.item ? 4 : 3), 0);
   const domain = timelineDomainFromSignature(gantt.dataset.timescaleSignature); const today = localTodayDayNumber(); const shouldShowToday = domain && today >= domain.start && today < domain.endExclusive;
   const todayReady = shouldShowToday ? Boolean(gantt.querySelector('.wbs-gantt-today-line')) : !gantt.querySelector('.wbs-gantt-today-line');
   if(gantt.dataset.timelineDetailsSignature === signature && gantt.querySelectorAll('.wbs-gantt-detail').length === expectedDetails && todayReady) return;
