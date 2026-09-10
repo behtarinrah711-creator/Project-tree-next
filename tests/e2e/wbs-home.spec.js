@@ -370,7 +370,7 @@ test('Timeline details survive initial render, timescale changes, and tree reren
   expect(Math.abs(endpoints.finish.x - endpoints.targetRect.right)).toBeLessThanOrEqual(1);
   expect(Math.abs(endpoints.finish.y - (endpoints.targetRect.top + endpoints.targetRect.height / 2))).toBeLessThanOrEqual(1);
   await expect(page.locator('.wbs-gantt-detail-title', { hasText:'اجرای فونداسیون' })).toBeVisible();
-  await expect(page.locator('.wbs-gantt-progress-label').filter({ hasText:/^٪۱۰$/ })).toBeVisible();
+  await expect(page.locator('.wbs-gantt-detail-actual').filter({ hasText:/^٪۱۰$/ })).toBeVisible();
 
   await page.locator('.wbs-tree-toggle').click();
   await page.locator('.wbs-tree-toggle').click();
