@@ -1,5 +1,5 @@
 import { isStage } from '../../domain/wbs/normalize.js';
-import { formatTimelineDate, shouldShowProgressLabel } from './timelineDetailsFormatting.js';
+import { formatTimelineDate } from './timelineDetailsFormatting.js';
 import { viewTitle } from './viewFrame.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -15,13 +15,11 @@ function detailForeignObject(documentRef, { className, x, y, width, height, text
   const label = documentRef.createElement('div');
   label.className = 'wbs-gantt-detail-label'; label.dir = dir; label.textContent = text; foreign.appendChild(label); return foreign;
 }
-function paintProgressPresentation(bar, barWidth){
+function paintProgressPresentation(bar){
   const progress = Math.max(0, Math.min(100, Number(bar.dataset.progress) || 0));
   bar.classList.toggle('is-complete', progress >= 100);
-  const label = bar.querySelector('.wbs-gantt-progress-label');
-  if(label) label.classList.toggle('is-space-limited', !shouldShowProgressLabel(barWidth, progress));
 }
-function paintRowDetails(documentRef, line, entry){
+function paintRowDetails(documentRef, line, entry, domain, today){
   const canvas = line.querySelector('.wbs-gantt-scale-canvas');
   const bar = canvas?.querySelector('.wbs-gantt-bar');
   const barForeign = bar?.closest('.wbs-gantt-scale-foreign');
@@ -32,13 +30,29 @@ function paintRowDetails(documentRef, line, entry){
   const barX = Number(barForeign.getAttribute('x')) || 0;
   const barWidth = Math.max(1, Number(barForeign.getAttribute('width')) || 1);
   const barY = (rowHeight - BAR_HEIGHT) / 2;
-  barForeign.setAttribute('height', String(BAR_HEIGHT)); barForeign.setAttribute('y', String(barY)); paintProgressPresentation(bar, barWidth);
+  barForeign.setAttribute('height', String(BAR_HEIGHT)); barForeign.setAttribute('y', String(barY)); paintProgressPresentation(bar);
   const title = String(entry.item?.text || entry.item?.title || '').trim();
   if(title){
     const titleWidth = Math.min(canvasWidth, Math.max(84, Math.min(180, Math.max(barWidth, title.length * 7))));
     const titleX = clamp(barX + (barWidth - titleWidth) / 2, 0, Math.max(0, canvasWidth - titleWidth));
     canvas.appendChild(detailForeignObject(documentRef, { className:`wbs-gantt-detail-title${isStage(entry.item) ? ' is-stage' : ''}`, x:titleX, y:Math.max(0, barY - 13), width:titleWidth, height:12, text:title }));
   }
+  const actual = Math.max(0, Math.min(100, Number(bar.dataset.progress) || 0));
+  if(actual > 0){
+    const actualEdgeX = clamp(barX + (barWidth * actual / 100), 0, canvasWidth);
+    const actualLabelWidth = 42;
+    const actualLabelX = clamp(actualEdgeX - actualLabelWidth, 0, Math.max(0, canvasWidth - actualLabelWidth));
+    canvas.appendChild(detailForeignObject(documentRef, {
+      className:'wbs-gantt-detail-actual',
+      x:actualLabelX,
+      y:barY,
+      width:actualLabelWidth,
+      height:BAR_HEIGHT,
+      text:`٪${new Intl.NumberFormat('fa-IR', { useGrouping:false, maximumFractionDigits:1 }).format(actual)}`,
+      dir:'rtl',
+    }));
+  }
+
   const dateWidth = 46; const dateY = Math.min(rowHeight - 11, barY + BAR_HEIGHT + 1);
   const startX = clamp(barX - dateWidth + 4, 0, Math.max(0, canvasWidth - dateWidth));
   const finishX = clamp(barX + barWidth - 4, 0, Math.max(0, canvasWidth - dateWidth));
@@ -53,10 +67,24 @@ function paintRowDetails(documentRef, line, entry){
       class:'wbs-gantt-planned-marker',
       points:`${plannedX},${markerY - markerRadius} ${plannedX + markerRadius},${markerY} ${plannedX},${markerY + markerRadius} ${plannedX - markerRadius},${markerY}`,
     }));
-    const labelWidth = 42; const labelHeight = 8;
-    const labelX = clamp(plannedX - labelWidth / 2, 0, Math.max(0, canvasWidth - labelWidth));
-    const labelY = Math.min(rowHeight - labelHeight, markerY + 4);
-    canvas.appendChild(detailForeignObject(documentRef, { className:'wbs-gantt-detail-planned is-below-marker', x:labelX, y:labelY, width:labelWidth, height:labelHeight, text:`٪${new Intl.NumberFormat('fa-IR', { useGrouping:false, maximumFractionDigits:1 }).format(planned)}` }));
+    const labelWidth = 42; const labelHeight = 11;
+    const todayPosition = todayX(canvas, domain, today);
+    const overlapsToday = todayPosition !== null && Math.abs(plannedX - todayPosition) <= markerRadius + 1;
+    const labelX = overlapsToday
+      ? clamp(plannedX + markerRadius + 2, 0, Math.max(0, canvasWidth - labelWidth))
+      : clamp(plannedX - labelWidth / 2, 0, Math.max(0, canvasWidth - labelWidth));
+    const labelY = overlapsToday
+      ? clamp(markerY - (labelHeight / 2), 0, Math.max(0, rowHeight - labelHeight))
+      : Math.min(rowHeight - labelHeight, markerY + 4);
+    canvas.appendChild(detailForeignObject(documentRef, {
+      className:`wbs-gantt-detail-planned ${overlapsToday ? 'is-left-of-marker' : 'is-below-marker'}`,
+      x:labelX,
+      y:labelY,
+      width:labelWidth,
+      height:labelHeight,
+      text:`٪${new Intl.NumberFormat('fa-IR', { useGrouping:false, maximumFractionDigits:1 }).format(planned)}`,
+      dir:'rtl',
+    }));
   }
 }
 function separatorRows(gantt, entries){
@@ -100,12 +128,21 @@ export function applyTimelineDetails(gantt, entries, documentRef = document){
   const lines = [...gantt.querySelectorAll('.wbs-gantt-line')];
   if(!lines.length || !lines.every(line => line.querySelector('.wbs-gantt-scale-canvas'))) return;
   const signature = `${gantt.dataset.timescaleSignature}|${entries.map(entry => `${entry.item.id}:${entry.item.text || entry.item.title || ''}`).join('|')}`;
-  const expectedDetails = entries.filter(entry => entry.range).reduce((sum, entry) => sum + (entry.item ? 4 : 3), 0);
+  const expectedDetails = lines.reduce((sum, line, index) => {
+    const entry = entries[index];
+    if(!entry?.range) return sum;
+    const bar = line.querySelector('.wbs-gantt-bar');
+    if(!bar) return sum;
+    const titleCount = String(entry.item?.text || entry.item?.title || '').trim() ? 1 : 0;
+    const plannedCount = bar.dataset.planned !== '' && Number.isFinite(Number(bar.dataset.planned)) ? 1 : 0;
+    const actualCount = Number(bar.dataset.progress) > 0 ? 1 : 0;
+    return sum + titleCount + 2 + plannedCount + actualCount;
+  }, 0);
   const domain = timelineDomainFromSignature(gantt.dataset.timescaleSignature); const today = localTodayDayNumber(); const shouldShowToday = domain && today >= domain.start && today < domain.endExclusive;
   const todayReady = shouldShowToday ? Boolean(gantt.querySelector('.wbs-gantt-today-line')) : !gantt.querySelector('.wbs-gantt-today-line');
   if(gantt.dataset.timelineDetailsSignature === signature && gantt.querySelectorAll('.wbs-gantt-detail').length === expectedDetails && todayReady) return;
   separatorRows(gantt, entries);
-  lines.forEach((line, index) => paintRowDetails(documentRef, line, entries[index]));
+  lines.forEach((line, index) => paintRowDetails(documentRef, line, entries[index], domain, today));
   paintTodayIndicator(gantt, documentRef);
   gantt.dataset.timelineDetailsSignature = signature;
 }
