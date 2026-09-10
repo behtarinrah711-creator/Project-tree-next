@@ -38,5 +38,7 @@
 .wbs-gantt-dependency-halo,.wbs-gantt-dependency-link{fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;visibility:hidden;}
 .wbs-gantt-dependency-halo{stroke:rgba(255,255,255,.9);stroke-width:4;}
 .wbs-gantt-dependency-link{stroke:#625b52;stroke-width:1.35;}
+.wbs-gantt-dependency-link.is-warning{stroke:#c62828;}
 .wbs-gantt-dependency-arrow{fill:#625b52;stroke:none;}
+.wbs-gantt-dependency-arrow.is-warning{fill:#c62828;}
 .wbs-gantt.show-dependencies .wbs-gantt-dependency-halo,.wbs-gantt.show-dependencies .wbs-gantt-dependency-link{visibility:visible;}
