@@ -127,7 +127,12 @@ export function applyTimelineDetails(gantt, entries, documentRef = document){
   const headerTitle = gantt.querySelector('.wbs-gantt-project-title'); if(headerTitle) headerTitle.textContent = viewTitle('timeline');
   const lines = [...gantt.querySelectorAll('.wbs-gantt-line')];
   if(!lines.length || !lines.every(line => line.querySelector('.wbs-gantt-scale-canvas'))) return;
-  const signature = `${gantt.dataset.timescaleSignature}|${entries.map(entry => `${entry.item.id}:${entry.item.text || entry.item.title || ''}`).join('|')}`;
+  const detailState = lines.map((line, index) => {
+    const entry = entries[index];
+    const bar = line.querySelector('.wbs-gantt-bar');
+    return `${entry?.item?.id || ''}:${entry?.item?.text || entry?.item?.title || ''}:${bar?.dataset.progress || ''}:${bar?.dataset.planned || ''}`;
+  }).join('|');
+  const signature = `${gantt.dataset.timescaleSignature}|${detailState}`;
   const expectedDetails = lines.reduce((sum, line, index) => {
     const entry = entries[index];
     if(!entry?.range) return sum;
