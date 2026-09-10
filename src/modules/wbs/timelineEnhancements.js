@@ -113,12 +113,9 @@ function currentTimescale(){
 function paintCorner(gantt, project, windowRef, documentRef){
   const corner = gantt.querySelector('.wbs-gantt-corner');
   if(!corner) return;
-  let title = corner.querySelector('.wbs-gantt-project-title');
-  let toggle = corner.querySelector('.wbs-timescale-toggle');
-  if(!title || !toggle){
+  let toggle = gantt.parentElement?.querySelector(':scope > .wbs-timeline-view-header .wbs-timescale-toggle') || gantt.querySelector('.wbs-timescale-toggle');
+  if(!toggle){
     corner.textContent = '';
-    title = documentRef.createElement('span');
-    title.className = 'wbs-gantt-project-title';
     toggle = documentRef.createElement('button');
     toggle.type = 'button';
     toggle.className = 'wbs-timescale-toggle';
@@ -127,9 +124,9 @@ function paintCorner(gantt, project, windowRef, documentRef){
       timescaleIndex = (timescaleIndex + 1) % TIMESCALES.length;
       scheduleEnhance(windowRef, documentRef);
     });
-    corner.append(title, toggle);
+    corner.append(toggle);
   }
-  title.textContent = projectLabel(project);
+  corner.querySelector('.wbs-gantt-project-title')?.remove();
   const scale = currentTimescale();
   toggle.classList.toggle('is-past-midpoint', scale.shade >= .6);
   toggle.setAttribute('aria-label', `نمای ${scale.label}`);

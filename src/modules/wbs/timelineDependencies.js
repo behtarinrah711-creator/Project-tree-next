@@ -53,34 +53,20 @@ function rowGeometry(line, top){
   return { start:x, finish:x + width, centerY:top + ((height - BAR_HEIGHT) / 2) + (BAR_HEIGHT / 2), height };
 }
 
-function focusLinks(layer, id){
-  layer.dataset.focusId = id || '';
-  layer.querySelectorAll('.wbs-gantt-dependency-link,.wbs-gantt-dependency-halo').forEach(path => {
-    path.classList.toggle('is-active', Boolean(id) && (path.dataset.sourceId === id || path.dataset.targetId === id));
-  });
+let dependenciesVisible = false;
+
+export function areTimelineDependenciesVisible(){
+  return dependenciesVisible;
 }
 
-function bindMobileFocus(gantt){
-  if(gantt.dataset.dependencyFocusBound === 'true') return;
-  gantt.addEventListener('click', event => {
-    if(!gantt.ownerDocument.defaultView?.matchMedia?.('(max-width:719px)').matches) return;
-    const row = event.target.closest?.('.wbs-gantt-name,.wbs-gantt-line');
-    if(!row || !gantt.contains(row) || event.target.closest?.('.wbs-gantt-chev')) return;
-    const layer = gantt.querySelector('.wbs-gantt-dependency-layer');
-    const id = String(row.dataset.dependencyEntryId || '');
-    if(!layer || !id) return;
-    const isSecondBarTap = layer.dataset.focusId === id && event.target.closest?.('.wbs-gantt-bar,.wbs-gantt-unscheduled');
-    if(isSecondBarTap) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    focusLinks(layer, id);
-  }, true);
-  gantt.dataset.dependencyFocusBound = 'true';
+export function setTimelineDependenciesVisible(value){
+  dependenciesVisible = Boolean(value);
 }
 
 export function applyTimelineDependencies(gantt, entries, projectItems, documentRef = document){
   const timeline = gantt?.querySelector('.wbs-gantt-timeline');
   if(!timeline || !gantt.classList.contains('is-scale-enhanced')) return;
+  gantt.classList.toggle('show-dependencies', dependenciesVisible);
   timeline.querySelector('.wbs-gantt-dependency-layer')?.remove();
 
   const lines = [...gantt.querySelectorAll('.wbs-gantt-line')];
@@ -129,7 +115,6 @@ export function applyTimelineDependencies(gantt, entries, projectItems, document
     }));
   });
   timeline.appendChild(layer);
-  bindMobileFocus(gantt);
 }
 
 export { roundedOrthogonalPath };
