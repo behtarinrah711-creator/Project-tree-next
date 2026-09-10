@@ -189,7 +189,6 @@ test('Work Task create, edit, connector, modes and weighted completion share one
   await sheet.locator('[name="taskWeight"]').fill('2');
   await sheet.locator('.wbs-sheet-save').click();
 
-  await work.locator('.wbs-chev').click();
   let task = page.locator('.wbs-work-task', { hasText:'تحویل آهن' });
   await expect(task).toBeVisible();
   await expect(task.locator('.wbs-task-connector')).toBeVisible();
