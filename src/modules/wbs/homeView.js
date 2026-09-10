@@ -38,6 +38,8 @@ import { DEFAULT_TREE_MODE, createTreeModeTabs } from './treeModes.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { openCreateWorkTaskSheet, renderWorkTasks } from './workTaskView.js';
+import { predecessorField } from './predecessorField.js';
+import { scheduleRangeOf } from '../../domain/wbs/scheduling.js';
 import {
   advanceExpansionLevel,
   getExpansionProgress,
@@ -403,6 +405,7 @@ function openStageDetailSheet(item){
 
 function openWorkEditSheet(item){
   const current = wbsApi.get(projectIdOf(), item.id) || item;
+  const taskDerived = activeWorkTasks(current).length > 0;
   const linkedContract = (projectOf()?.contracts || []).find(contract => !contract.trashed && String(contract.projectItemId || '') === String(current.id));
   openWbsSheet({
     title: 'ویرایش کار',
@@ -422,7 +425,9 @@ function openWorkEditSheet(item){
       root.appendChild(dateField('scheduleEnd', 'تاریخ پایان', scheduleEndOf(current), paintDuration));
       root.appendChild(fieldRow('مدت زمان', duration));
       paintDuration();
-      root.appendChild(fieldRow('پیشرفت ٪', textInput(String(progressOf(current)), { name:'progress', type:'number', min:'0', max:'100', step:'1' })));
+      const progressInput = textInput(String(progressOf(current)), { name:'progress', type:'number', min:'0', max:'100', step:'1' });
+      progressInput.disabled = taskDerived;
+      root.appendChild(fieldRow('پیشرفت ٪', progressInput));
       root.appendChild(fieldRow('وزن پیشرفت', textInput(String(progressWeightOf(current)), { name:'progressWeight', type:'number', min:'0.01', step:'0.01', required:true })));
       const progressNote = document.createElement('div');
       progressNote.className = 'wbs-note';
@@ -487,8 +492,21 @@ function openWorkEditSheet(item){
       };
       paintActivities();
       root.appendChild(acts);
+      const dependency = predecessorField({ documentRef:document, project:projectOf(), consumerId:current.id, initial:current.predecessorIds || [] });
+      if(taskDerived){
+        dependency.element.classList.add('is-disabled');
+        dependency.element.querySelectorAll('button').forEach(button => { button.disabled = true; });
+        const note = document.createElement('div'); note.className = 'wbs-note'; note.textContent = 'پیش‌نیاز Work از Taskهای آن محاسبه می‌شود.'; dependency.element.appendChild(note);
+      }
+      root.appendChild(dependency.element); root._workDependency = dependency;
       const qty = textInput(String(current.quantity || 0), { name:'quantity', type:'number' });
       const cost = textInput(String(current.unitCost || 0), { name:'unitCost', type:'number' });
+      qty.disabled = taskDerived; cost.disabled = taskDerived;
+      if(taskDerived){
+        const note = document.createElement('div'); note.className = 'wbs-note';
+        note.textContent = 'هزینه Work از مجموع مبلغ Taskها محاسبه می‌شود.';
+        root.appendChild(note);
+      }
       root.appendChild(fieldRow('مقدار', qty));
       root.appendChild(fieldRow('واحد', selectInput(
         [{ value:'', label:'—' }, ...UNITS.map(u => ({ value:u, label:u }))],
@@ -514,6 +532,11 @@ function openWorkEditSheet(item){
           : 'تاریخ پایان باید برابر یا بعد از تاریخ شروع باشد');
         return false;
       }
+      const dependencyCheck = taskDerived ? { ok:true } : root._workDependency?.validate();
+      if(dependencyCheck && !dependencyCheck.ok){
+        window.KarhaUI?.showToast?.(dependencyCheck.code === 'cycle' ? 'وابستگی دوری مجاز نیست' : 'انتخاب پیش‌نیاز تکراری یا نامعتبر است');
+        return false;
+      }
       wbsApi.updateItem(projectIdOf(), current.id, {
         text: title,
         progress: numberFromInput(root.querySelector('[name="progress"]')) || 0,
@@ -528,6 +551,7 @@ function openWorkEditSheet(item){
         description: root.querySelector('[name="description"]').value,
         scheduleStart,
         scheduleEnd,
+        predecessorIds:taskDerived ? current.predecessorIds || [] : (root._workDependency?.value() || []),
       });
       render();
       return true;
@@ -536,13 +560,7 @@ function openWorkEditSheet(item){
 }
 
 function scheduleRange(item){
-  if(isWork(item)){
-    const start = jalaliDayNumber(scheduleStartOf(item));
-    const end = jalaliDayNumber(scheduleEndOf(item));
-    return start !== null && end !== null && end >= start ? { start, end } : null;
-  }
-  const ranges = (item.subtasks || []).filter(x => !x.trashed).map(scheduleRange).filter(Boolean);
-  return ranges.length ? { start:Math.min(...ranges.map(x => x.start)), end:Math.max(...ranges.map(x => x.end)) } : null;
+  return scheduleRangeOf(item);
 }
 
 function jalaliLabelFromDay(day){
@@ -554,7 +572,10 @@ function jalaliLabelFromDay(day){
 function flattenTimeline(items, depth = 0, out = []){
   (items || []).filter(x => !x.trashed).forEach(item => {
     out.push({ item, depth, range:scheduleRange(item) });
-    if(isStage(item) && isExpanded(projectIdOf(), item.id)) flattenTimeline(item.subtasks, depth + 1, out);
+    if(isExpanded(projectIdOf(), item.id)){
+      if(isStage(item)) flattenTimeline(item.subtasks, depth + 1, out);
+      else activeWorkTasks(item).forEach(task => out.push({ item:{ ...task, kind:'workTask', text:task.title, parentWork:item }, depth:depth + 1, range:scheduleRange(task) }));
+    }
   });
   return out;
 }
@@ -600,8 +621,9 @@ function timelineColor(item){
 
 function tNameRow(entry){
   const row = document.createElement('div');
-  row.className = 'wbs-gantt-name depth-' + Math.min(entry.depth, 6) + (isStage(entry.item) ? ' is-stage' : ' is-work');
-  const kids = (entry.item.subtasks || []).filter(x => !x.trashed);
+  const task = entry.item.kind === 'workTask';
+  row.className = 'wbs-gantt-name depth-' + Math.min(entry.depth, 6) + (isStage(entry.item) ? ' is-stage' : (task ? ' is-task' : ' is-work'));
+  const kids = task ? [] : (isWork(entry.item) ? activeWorkTasks(entry.item) : (entry.item.subtasks || []).filter(x => !x.trashed));
   row.innerHTML = `${kids.length ? '<button type="button" class="wbs-gantt-chev">'+(isExpanded(projectIdOf(), entry.item.id)?'▾':'▸')+'</button>' : '<span class="wbs-gantt-chev"></span>'}<span>${escapeHtml(entry.item.text)}</span>`;
   row.querySelector('button')?.addEventListener('click', () => { toggleExpanded(projectIdOf(), String(entry.item.id)); render(); });
   return row;
@@ -613,17 +635,22 @@ function tBarRow(entry, min, dayWidth){
   if(entry.range){
     const bar = document.createElement('button');
     bar.type = 'button';
-    bar.className = 'wbs-gantt-bar' + (isStage(entry.item) ? ' is-stage' : '');
+    const task = entry.item.kind === 'workTask';
+    bar.className = 'wbs-gantt-bar' + (isStage(entry.item) ? ' is-stage' : '') + (task ? ' is-task' : '');
     bar.style.left = `${(entry.range.start - min) * dayWidth}px`;
     bar.style.width = `${Math.max(dayWidth, (entry.range.end - entry.range.start + 1) * dayWidth)}px`;
     bar.style.backgroundColor = timelineColor(entry.item);
     bar.title = `${scheduleStartOf(entry.item) || ''} تا ${scheduleEndOf(entry.item) || ''}`;
-    bar.addEventListener('click', () => isWork(entry.item) ? openWorkDetailSheet(entry.item) : openStageDetailSheet(entry.item));
+    bar.addEventListener('click', () => task
+      ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render })
+      : (isWork(entry.item) ? openWorkDetailSheet(entry.item) : openStageDetailSheet(entry.item)));
     row.appendChild(bar);
-  }else if(isWork(entry.item)){
+  }else if(isWork(entry.item) || entry.item.kind === 'workTask'){
     const empty = document.createElement('button');
     empty.type = 'button'; empty.className = 'wbs-gantt-unscheduled'; empty.textContent = 'بدون تاریخ';
-    empty.addEventListener('click', () => openWorkEditSheet(entry.item));
+    empty.addEventListener('click', () => entry.item.kind === 'workTask'
+      ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render })
+      : openWorkEditSheet(entry.item));
     row.appendChild(empty);
   }
   return row;
@@ -649,9 +676,13 @@ function openWorkDetailSheet(item){
 
       const section = document.createElement('div');
       section.className = 'wbs-info-section';
-      section.appendChild(infoRow('مقدار', new Intl.NumberFormat('fa-IR').format(Number(current.quantity) || 0)));
-      section.appendChild(infoRow('واحد', current.unit || '—'));
-      section.appendChild(infoRow('فی', formatMoney(current.unitCost || 0)));
+      const tasks = activeWorkTasks(current);
+      if(tasks.length) section.appendChild(infoRow('Taskها', `${new Intl.NumberFormat('fa-IR').format(tasks.length)} مورد`));
+      else{
+        section.appendChild(infoRow('مقدار', new Intl.NumberFormat('fa-IR').format(Number(current.quantity) || 0)));
+        section.appendChild(infoRow('واحد', current.unit || '—'));
+        section.appendChild(infoRow('فی', formatMoney(current.unitCost || 0)));
+      }
       section.appendChild(infoRow('فعالیت‌ها', `${activities.length}  ›`, { action:true, onClick:()=>{ closeWbsSheet(); openWorkEditSheet(current); } }));
       section.appendChild(infoRow('توضیحات', current.description || 'بدون توضیح'));
       root.appendChild(section);

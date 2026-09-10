@@ -42,12 +42,14 @@ export function progressOf(item){
       const weight = Number(task.weight);
       return sum + (Number.isFinite(weight) && weight > 0 ? weight : 1);
     }, 0);
-    const completed = tasks.reduce((sum, task) => {
-      if(!(task.completed || task.done)) return sum;
+    const weighted = tasks.reduce((sum, task) => {
       const weight = Number(task.weight);
-      return sum + (Number.isFinite(weight) && weight > 0 ? weight : 1);
+      const safeWeight = Number.isFinite(weight) && weight > 0 ? weight : 1;
+      const rawProgress = task.completed || task.done ? 100 : Number(task.progress);
+      const progress = Number.isFinite(rawProgress) ? Math.max(0, Math.min(100, rawProgress)) : 0;
+      return sum + progress * safeWeight;
     }, 0);
-    return total ? Math.round((completed / total) * 100) : 0;
+    return total ? Math.round(weighted / total) : 0;
   }
   if(statusOf(item) === 'completed') return 100;
   const n = Number(item?.progress);
@@ -82,6 +84,11 @@ export function unitCostOf(item){
 
 export function lineTotal(item){
   if(!isWork(item) || item?.trashed) return 0;
+  const tasks = (Array.isArray(item?.workTasks) ? item.workTasks : []).filter(task => task && !task.trashed);
+  if(tasks.length) return tasks.reduce((sum, task) => {
+    const amount = Number(task.amount ?? task.cost);
+    return sum + (Number.isFinite(amount) ? Math.max(0, amount) : 0);
+  }, 0);
   return quantityOf(item) * unitCostOf(item);
 }
 
@@ -151,6 +158,7 @@ export function normalizeItem(item){
     executionComments:kind === KIND_WORK && Array.isArray(item.executionComments) ? item.executionComments.map(comment => ({ ...comment })) : [],
     executionHistory:kind === KIND_WORK && Array.isArray(item.executionHistory) ? item.executionHistory.map(entry => ({ ...entry })) : [],
     workTasks:kind === KIND_WORK && Array.isArray(item.workTasks) ? item.workTasks.map(task => ({ ...task })) : [],
+    predecessorIds:kind === KIND_WORK && Array.isArray(item.predecessorIds) ? [...new Set(item.predecessorIds.map(String).filter(Boolean))] : [],
     subtasks: Array.isArray(item.subtasks) ? item.subtasks.map(normalizeItem) : [],
   };
 }

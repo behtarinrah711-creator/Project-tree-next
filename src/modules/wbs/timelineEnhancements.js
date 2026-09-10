@@ -7,6 +7,8 @@ import { isExpanded } from './wbsExpandState.js';
 import { applyTimelineDetails } from './timelineDetails.js';
 import { applyTimelineStickyHeader } from './timelineStickyHeader.js';
 import { ensureViewToolbar } from './viewToolbar.js';
+import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
+import { actualProgress, plannedProgressOf, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
 
 const MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 const SEASONS = ['بهار','تابستان','پاییز','زمستان'];
@@ -60,18 +62,7 @@ function rangeLabel(startDay, endDay){
 }
 
 function scheduleRange(item){
-  if(isWork(item)){
-    const startDate = scheduleStartOf(item);
-    const endDate = scheduleEndOf(item);
-    const start = dayNumber(startDate);
-    const end = dayNumber(endDate);
-    return start !== null && end !== null && end >= start ? { start, end, startDate, endDate } : null;
-  }
-  const ranges = (item.subtasks || []).filter(x => !x.trashed).map(scheduleRange).filter(Boolean);
-  if(!ranges.length) return null;
-  const first = ranges.reduce((best, range) => range.start < best.start ? range : best);
-  const last = ranges.reduce((best, range) => range.end > best.end ? range : best);
-  return { start:first.start, end:last.end, startDate:first.startDate, endDate:last.endDate };
+  return scheduleRangeOf(item);
 }
 
 function maxStageDepth(items, depth = 0){
@@ -88,7 +79,10 @@ function flattenVisible(items, projectId, maxDepth, depth = 0, out = []){
   (items || []).filter(x => !x.trashed).forEach(item => {
     const shadeLevel = isStage(item) ? Math.max(1, maxDepth - depth + 1) : 0;
     out.push({ item, depth, range:scheduleRange(item), shadeLevel });
-    if(isStage(item) && isExpanded(projectId, item.id)) flattenVisible(item.subtasks, projectId, maxDepth, depth + 1, out);
+    if(isExpanded(projectId, item.id)){
+      if(isStage(item)) flattenVisible(item.subtasks, projectId, maxDepth, depth + 1, out);
+      else activeWorkTasks(item).forEach(task => out.push({ item:{ ...task, kind:'workTask', text:task.title, parentWork:item }, depth:depth + 1, range:scheduleRange(task), shadeLevel:0 }));
+    }
   });
   return out;
 }
@@ -103,7 +97,7 @@ function projectLabel(project){
 }
 
 function displayedProgress(item){
-  const value = isStage(item) ? rollupProgress([item]) : progressOf(item);
+  const value = actualProgress(item);
   return Math.max(0, Math.min(100, Number(value) || 0));
 }
 
@@ -389,6 +383,8 @@ function paintProgress(gantt, entries){
     const progress = displayedProgress(entry.item);
     const progressText = formatProgress(progress);
     bar.dataset.progress = String(progress);
+    const planned = plannedProgressOf(entry.item);
+    bar.dataset.planned = planned === null ? '' : String(planned);
     bar.setAttribute('aria-label', `${entry.item.text || ''}، پیشرفت ${faNumber(progress)} درصد`);
 
     let meter = bar.querySelector('.wbs-gantt-progress-meter');

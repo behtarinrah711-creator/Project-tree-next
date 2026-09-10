@@ -15,6 +15,7 @@ import {
   normalizeItem,
 } from './normalize.js';
 import { projectEstimateTotal, rollupEstimate, rollupProgress } from './estimate.js';
+import { validatePredecessors } from './scheduling.js';
 
 function publish(projectId){
   if(typeof window !== 'undefined'){
@@ -128,6 +129,11 @@ export const wbsApi = {
     const current = found.item;
     const patchValue = typeof patch === 'function' ? patch(current) : patch;
     const applied = typeof patch === 'function' ? patchValue : { ...current, ...patchValue };
+    if(Object.prototype.hasOwnProperty.call(applied, 'predecessorIds')){
+      const check = validatePredecessors(roots(projectId), itemId, applied.predecessorIds || []);
+      if(!check.ok) return null;
+      applied.predecessorIds = check.value;
+    }
     if(isWork(current) && isStage({ ...applied, kind: applied.kind })) return null;
     if(isWork(applied)){
       const explicit = patchValue && typeof patchValue === 'object' ? patchValue : {};

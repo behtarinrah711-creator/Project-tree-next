@@ -46,10 +46,11 @@ export class WorkTaskRepository{
     return saved ? this.work(projectId, workId) : null;
   }
 
-  save(projectId, workId, task){
+  save(projectId, workId, task, { clearWorkPredecessors = false } = {}){
     const normalized = normalizeWorkTask(task, workId);
     const work = this.mutate(projectId, workId, current => ({
       ...current,
+      predecessorIds:clearWorkPredecessors ? [] : current.predecessorIds,
       workTasks:[...(current.workTasks || []), normalized],
     }));
     return work ? normalized : null;

@@ -30,6 +30,7 @@ function strip(item){
     executionReports:node.executionReports,
     executionComments:node.executionComments,
     executionHistory:node.executionHistory,
+    predecessorIds:node.predecessorIds || [],
     createdAt: node.createdAt || null,
     updatedAt: node.updatedAt || null,
     workTasks:(node.workTasks || []).filter(task => !task.trashed).map(task => ({
@@ -43,6 +44,9 @@ function strip(item){
       assigneeContactId:task.assigneeContactId,
       contractorContactId:task.contractorContactId,
       weight:Number(task.weight) || 1,
+      progress:Number(task.progress) || 0,
+      amount:Number(task.amount) || 0,
+      predecessorIds:Array.isArray(task.predecessorIds) ? task.predecessorIds : [],
       completed:Boolean(task.completed || task.done),
       completedAt:task.completedAt || null,
       completionState:task.completionState || (task.completed ? 'approved' : 'incomplete'),

@@ -9,6 +9,7 @@ import { toEnglishDigits } from '../../ui/digits.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 import { isExpanded, toggleExpanded } from './wbsExpandState.js';
 import { closeWbsSheet, fieldRow, openWbsSheet, selectInput, textInput } from './wbsSheet.js';
+import { predecessorField } from './predecessorField.js';
 
 const PRIORITY_LABELS = Object.freeze({ low:'کم', normal:'عادی', high:'زیاد' });
 const TYPE_CLASSES = new Map([
@@ -96,6 +97,10 @@ function taskForm({ projectId, work, task = null, onChanged }){
         root.appendChild(note);
       }
       root.appendChild(fieldRow('وزن', textInput(String(task?.weight || 1), { name:'taskWeight', type:'number', min:'0.01', step:'0.01', required:true })));
+      root.appendChild(fieldRow('پیشرفت ٪', textInput(String(task?.progress || 0), { name:'taskProgress', type:'number', min:'0', max:'100', step:'1' })));
+      root.appendChild(fieldRow('مبلغ', textInput(String(task?.amount || 0), { name:'taskAmount', type:'number', min:'0', step:'1' })));
+      const dependency = predecessorField({ documentRef, project:projectRepository.find(projectId), consumerId:task?.id || `new:${work.id}`, initial:task?.predecessorIds || [] });
+      root.appendChild(dependency.element); root._taskDependency = dependency;
 
       if(editing){
         const completion = documentRef.createElement('button');
@@ -109,9 +114,22 @@ function taskForm({ projectId, work, task = null, onChanged }){
           closeWbsSheet(); onChanged?.();
         });
         root.appendChild(completion);
+        const remove = documentRef.createElement('button');
+        remove.type = 'button'; remove.className = 'wbs-primary-action is-secondary wbs-task-delete'; remove.textContent = 'حذف Task';
+        remove.addEventListener('click', () => {
+          const perform = () => { workTaskApi.remove(projectId, work.id, task.id); closeWbsSheet(); onChanged?.(); };
+          if(typeof documentRef.defaultView?.KarhaUI?.openConfirm === 'function') documentRef.defaultView.KarhaUI.openConfirm('این Task حذف شود؟', perform, 'حذف');
+          else if(documentRef.defaultView?.confirm?.('این Task حذف شود؟')) perform();
+        });
+        root.appendChild(remove);
       }
     },
     onSave(root){
+      const dependencyCheck = root._taskDependency?.validate();
+      if(dependencyCheck && !dependencyCheck.ok){
+        documentRef.defaultView?.KarhaUI?.showToast?.(dependencyCheck.code === 'cycle' ? 'وابستگی دوری مجاز نیست' : 'انتخاب پیش‌نیاز تکراری یا نامعتبر است');
+        return false;
+      }
       const draft = {
         title:root.querySelector('[name="taskTitle"]').value.trim(),
         type:root.querySelector('[name="taskType"]').value,
@@ -121,6 +139,9 @@ function taskForm({ projectId, work, task = null, onChanged }){
         assigneeContactId:root.querySelector('[name="taskAssignee"]').dataset.value,
         contractorContactId:'',
         weight:Number(toEnglishDigits(root.querySelector('[name="taskWeight"]').value)),
+        progress:Number(toEnglishDigits(root.querySelector('[name="taskProgress"]').value)) || 0,
+        amount:Number(toEnglishDigits(root.querySelector('[name="taskAmount"]').value)) || 0,
+        predecessorIds:root._taskDependency?.value() || [],
       };
       const result = editing
         ? workTaskApi.update(projectId, work.id, task.id, draft)
@@ -159,7 +180,7 @@ export function renderWorkTasks({ documentRef = document, projectId, work, view,
       <span class="wbs-task-connector" aria-hidden="true"></span>
       <span class="wbs-task-content">
         <span class="wbs-task-main"><span class="wbs-type-chip ${TYPE_CLASSES.get(task.type) || 'type-7'}">${escapeHtml(task.type || '؟')}</span><span class="wbs-task-title">${escapeHtml(task.title)}</span></span>
-        <span class="wbs-task-secondary">${contact ? `<span class="wbs-task-assignee">${escapeHtml(contactName(contact))}</span>` : ''}${contractor ? `<span class="wbs-task-contractor">${escapeHtml(contactName(contractor))}</span>` : ''}<span class="wbs-task-priority priority-${task.priority}">${escapeHtml(PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal)}</span>${view === 'progress' ? `<span class="wbs-task-progress">${complete ? '٪۱۰۰' : '٪۰'}</span>` : ''}</span>
+        <span class="wbs-task-secondary">${contact ? `<span class="wbs-task-assignee">${escapeHtml(contactName(contact))}</span>` : ''}${contractor ? `<span class="wbs-task-contractor">${escapeHtml(contactName(contractor))}</span>` : ''}<span class="wbs-task-priority priority-${task.priority}">${escapeHtml(PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal)}</span>${view === 'progress' ? `<span class="wbs-task-progress">٪${new Intl.NumberFormat('fa-IR').format(task.progress || 0)}</span>` : ''}${view === 'estimate' ? `<span class="wbs-task-cost">${new Intl.NumberFormat('fa-IR').format(task.amount || 0)} تومان</span>` : ''}</span>
       </span>`;
     row.addEventListener('click', () => taskForm({ projectId, work, task, onChanged }));
     group.appendChild(row);

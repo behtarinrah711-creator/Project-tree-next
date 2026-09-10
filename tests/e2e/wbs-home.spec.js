@@ -187,6 +187,7 @@ test('Work Task create, edit, connector, modes and weighted completion share one
   await page.locator('#searchTemplatePage .stpl-row[data-id="c1"]').click();
   await expect(sheet.locator('[name="taskWeight"]')).toHaveValue('1');
   await sheet.locator('[name="taskWeight"]').fill('2');
+  await sheet.locator('[name="taskAmount"]').fill('25');
   await sheet.locator('.wbs-sheet-save').click();
 
   let task = page.locator('.wbs-work-task', { hasText:'تحویل آهن' });
@@ -207,7 +208,7 @@ test('Work Task create, edit, connector, modes and weighted completion share one
   task = page.locator('.wbs-work-task', { hasText:'تحویل آهن' });
   await expect(task).toBeVisible();
   await expect(task.locator('.wbs-meta')).toHaveCount(0);
-  await expect(work.locator('.wbs-meta')).toContainText('۱۰');
+  await expect(work.locator('.wbs-meta')).toContainText('۲۵');
 
   await selectTreeMode(page, 'درصد پیشرفت');
   task = page.locator('.wbs-work-task', { hasText:'تحویل آهن' });

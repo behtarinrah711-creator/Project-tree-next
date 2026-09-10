@@ -19,8 +19,28 @@ export function renderDelayView(project, documentRef = document){
 
   const body = documentRef.createElement('div');
   body.className = 'wbs-view-body wbs-delay-body';
+  const rows = flattenDependencyCandidates(project?.tasks || []).filter(row => row.kind !== 'stage');
+  if(!rows.length){
+    body.innerHTML = '<div class="empty-state">فعالیتی برای تحلیل وجود ندارد.</div>';
+  }else{
+    rows.forEach(row => {
+      const entity = row.kind === 'workTask' ? { ...row.item, kind:'workTask' } : row.item;
+      const actual = actualProgress(entity); const planned = plannedProgressOf(entity);
+      const variance = progressVariance(entity); const delay = temporalDelay(entity);
+      const item = documentRef.createElement('article'); item.className = 'wbs-delay-row';
+      const percent = value => value === null ? '—' : `٪${new Intl.NumberFormat('fa-IR', { maximumFractionDigits:1 }).format(value)}`;
+      const days = value => value === null ? 'قابل‌محاسبه نیست' : `${new Intl.NumberFormat('fa-IR').format(value)} روز`;
+      item.innerHTML = `<strong>${escapeHtml(row.title)}</strong><span>Actual: ${percent(actual)}</span><span>Planned: ${percent(planned)}</span><span>شکاف: ${percent(variance)}</span><span>تأخیر قطعی: ${days(delay)}</span><span>شناوری: قابل‌محاسبه نیست</span>`;
+      body.appendChild(item);
+    });
+  }
 
   header.append(title, actions);
   frame.append(header, body);
   return frame;
+}
+import { actualProgress, flattenDependencyCandidates, plannedProgressOf, progressVariance, temporalDelay } from '../../domain/wbs/scheduling.js';
+
+function escapeHtml(value){
+  return String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
 }

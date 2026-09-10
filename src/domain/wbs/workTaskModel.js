@@ -11,6 +11,17 @@ export function isTaskComplete(task){
   return Boolean(task?.completed || task?.done);
 }
 
+export function taskProgressOf(task){
+  if(isTaskComplete(task)) return 100;
+  const value = Number(task?.progress);
+  return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
+}
+
+export function taskCostOf(task){
+  const value = Number(task?.amount ?? task?.cost);
+  return Number.isFinite(value) ? Math.max(0, value) : 0;
+}
+
 export function activeWorkTasks(work){
   return (Array.isArray(work?.workTasks) ? work.workTasks : [])
     .filter(task => task && !task.trashed);
@@ -20,10 +31,8 @@ export function workTaskProgress(work){
   const tasks = activeWorkTasks(work);
   if(!tasks.length) return null;
   const total = tasks.reduce((sum, task) => sum + taskWeightOf(task), 0);
-  const completed = tasks.reduce((sum, task) => (
-    sum + (isTaskComplete(task) ? taskWeightOf(task) : 0)
-  ), 0);
-  return total ? Math.round((completed / total) * 100) : 0;
+  const weighted = tasks.reduce((sum, task) => sum + taskProgressOf(task) * taskWeightOf(task), 0);
+  return total ? Math.round(weighted / total) : 0;
 }
 
 export function normalizeWorkTask(task, workId = ''){
@@ -40,6 +49,9 @@ export function normalizeWorkTask(task, workId = ''){
     assigneeContactId:String(task.assigneeContactId || ''),
     contractorContactId:String(task.contractorContactId || ''),
     weight:taskWeightOf(task),
+    progress:taskProgressOf(task),
+    amount:taskCostOf(task),
+    predecessorIds:Array.isArray(task.predecessorIds) ? [...new Set(task.predecessorIds.map(String).filter(Boolean))] : [],
     completed:isTaskComplete(task),
     completedAt:isTaskComplete(task) ? (task.completedAt || null) : null,
     completionState:task.completionState || (isTaskComplete(task) ? 'approved' : 'incomplete'),

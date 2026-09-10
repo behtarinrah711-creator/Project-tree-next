@@ -28,7 +28,7 @@ test('legacy work without tasks keeps progress and costs unchanged', () => {
   assert.deepEqual(legacy.workTasks, []);
 });
 
-test('work tasks never contribute a separate cost', () => {
-  const work = { kind:'work', quantity:2, unitCost:50, workTasks:[{ id:'t1', quantity:999, unitCost:999 }] };
-  assert.equal(lineTotal(work), 100);
+test('task amounts become the sole cost source when a work has tasks', () => {
+  const work = { kind:'work', quantity:2, unitCost:50, workTasks:[{ id:'t1', amount:35 }, { id:'t2' }] };
+  assert.equal(lineTotal(work), 35);
 });
