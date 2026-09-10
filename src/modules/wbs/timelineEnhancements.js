@@ -127,6 +127,13 @@ function paintCorner(gantt, project, windowRef, documentRef){
     corner.append(toggle);
   }
   corner.querySelector('.wbs-gantt-project-title')?.remove();
+  let workPackagesTitle = corner.querySelector('.wbs-gantt-work-packages-title');
+  if(!workPackagesTitle){
+    workPackagesTitle = documentRef.createElement('span');
+    workPackagesTitle.className = 'wbs-gantt-work-packages-title';
+    corner.appendChild(workPackagesTitle);
+  }
+  workPackagesTitle.textContent = 'بسته های کاری';
   const scale = currentTimescale();
   toggle.classList.toggle('is-past-midpoint', scale.shade >= .4);
   toggle.setAttribute('aria-label', `نمای ${scale.label}`);
