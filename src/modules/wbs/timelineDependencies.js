@@ -31,6 +31,29 @@ function roundedOrthogonalPath(sourceX, sourceY, targetX, targetY, radius = RADI
   ].join(' ');
 }
 
+function backwardFsPath(source, target, width, radius = RADIUS){
+  const rightLane = Math.min(width - 4, Math.max(source.finish + 12, target.finish + 12));
+  const leftLane = Math.max(4, Math.min(target.start - 12, source.start - 12));
+  const directionY = Math.sign(target.centerY - source.centerY) || 1;
+  const midY = source.centerY + ((target.centerY - source.centerY) / 2);
+  const r1 = Math.min(radius, Math.abs(rightLane - source.finish), Math.abs(midY - source.centerY));
+  const r2 = Math.min(radius, Math.abs(rightLane - leftLane) / 2, Math.abs(midY - source.centerY));
+  const r3 = Math.min(radius, Math.abs(rightLane - leftLane) / 2, Math.abs(target.centerY - midY));
+  const r4 = Math.min(radius, Math.abs(target.start - leftLane), Math.abs(target.centerY - midY));
+  return [
+    `M ${source.finish} ${source.centerY}`,
+    `H ${rightLane - r1}`,
+    `Q ${rightLane} ${source.centerY} ${rightLane} ${source.centerY + (directionY * r1)}`,
+    `V ${midY - (directionY * r2)}`,
+    `Q ${rightLane} ${midY} ${rightLane - r2} ${midY}`,
+    `H ${leftLane + r3}`,
+    `Q ${leftLane} ${midY} ${leftLane} ${midY + (directionY * r3)}`,
+    `V ${target.centerY - (directionY * r4)}`,
+    `Q ${leftLane} ${target.centerY} ${leftLane + r4} ${target.centerY}`,
+    `H ${target.start}`,
+  ].join(' ');
+}
+
 function connectorLane(source, target, geometries, width){
   const between = geometries.filter(row => row !== source && row !== target &&
     row.centerY > Math.min(source.centerY, target.centerY) && row.centerY < Math.max(source.centerY, target.centerY));
@@ -99,19 +122,31 @@ export function applyTimelineDependencies(gantt, entries, projectItems, document
     markerWidth:6, markerHeight:6, orient:'auto', markerUnits:'strokeWidth',
   });
   marker.appendChild(svgElement(documentRef, 'path', { d:'M 0 0 L 6 3 L 0 6 z', class:'wbs-gantt-dependency-arrow' }));
-  defs.appendChild(marker); layer.appendChild(defs);
+  const warningMarker = svgElement(documentRef, 'marker', {
+    id:'wbs-gantt-fs-arrow-warning', viewBox:'0 0 6 6', refX:5.5, refY:3,
+    markerWidth:6, markerHeight:6, orient:'auto', markerUnits:'strokeWidth',
+  });
+  warningMarker.appendChild(svgElement(documentRef, 'path', { d:'M 0 0 L 6 3 L 0 6 z', class:'wbs-gantt-dependency-arrow is-warning' }));
+  defs.append(marker, warningMarker); layer.appendChild(defs);
   const geometries = [...byId.values()];
   links.forEach(link => {
     const source = byId.get(link.sourceId); const target = byId.get(link.targetId);
-    const laneX = connectorLane(source, target, geometries, width);
-    const d = roundedOrthogonalPath(source.finish, source.centerY, target.start, target.centerY, RADIUS, laneX);
+    const invalidOrder = source.finish > target.start;
+    const laneX = invalidOrder ? null : connectorLane(source, target, geometries, width);
+    const d = invalidOrder
+      ? backwardFsPath(source, target, width, RADIUS)
+      : roundedOrthogonalPath(source.finish, source.centerY, target.start, target.centerY, RADIUS, laneX);
+    const stateClass = invalidOrder ? ' is-warning' : '';
     layer.appendChild(svgElement(documentRef, 'path', {
-      class:'wbs-gantt-dependency-halo', d,
+      class:`wbs-gantt-dependency-halo${stateClass}`, d,
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
+      'data-order-state':invalidOrder ? 'invalid' : 'valid',
     }));
     layer.appendChild(svgElement(documentRef, 'path', {
-      class:'wbs-gantt-dependency-link', d, 'marker-end':'url(#wbs-gantt-fs-arrow)',
+      class:`wbs-gantt-dependency-link${stateClass}`, d,
+      'marker-end':invalidOrder ? 'url(#wbs-gantt-fs-arrow-warning)' : 'url(#wbs-gantt-fs-arrow)',
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
+      'data-order-state':invalidOrder ? 'invalid' : 'valid',
     }));
   });
   timeline.appendChild(layer);
