@@ -74,6 +74,8 @@ function makeNode(kind, text, extra = {}, clock){
     executionComments:[],
     executionHistory:[],
     workTasks:[],
+    predecessorIds:kind === KIND_WORK && Array.isArray(extra.predecessorIds) ? [...new Set(extra.predecessorIds.map(String).filter(Boolean))] : [],
+    dependencies:kind === KIND_WORK && Array.isArray(extra.dependencies) ? extra.dependencies.map(row => ({ ...row })) : [],
   }, clock);
 }
 
