@@ -351,7 +351,9 @@ test('Timeline details survive initial render, timescale changes, and tree reren
   await expect(page.locator('.wbs-dependency-toggle')).toHaveAttribute('aria-pressed', 'true');
   await expect(dependency).toBeVisible();
   const dependencyArrow = page.locator('.wbs-gantt-dependency-arrow-segment[data-source-id="w1"][data-target-id="w2"]');
-  await expect(dependencyArrow).toBeVisible();
+  const dependencyArrowLayer = page.locator('.wbs-gantt-dependency-arrow-layer');
+  await expect(dependencyArrowLayer).toHaveCSS('display', 'block');
+  await expect(dependencyArrow).toHaveCSS('visibility', 'visible');
   await expect(dependencyArrow).toHaveAttribute('marker-end', 'url(#wbs-gantt-fs-arrow)');
   const endpoints = await page.evaluate(() => {
     const path = document.querySelector('.wbs-gantt-dependency-link[data-source-id="w1"][data-target-id="w2"]');
