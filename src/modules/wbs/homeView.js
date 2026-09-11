@@ -913,7 +913,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   }
 
   if(currentView === 'shopping'){
-    root.appendChild(renderShoppingView(project));
+    root.appendChild(renderShoppingView(project, document, render));
     return;
   }
 
