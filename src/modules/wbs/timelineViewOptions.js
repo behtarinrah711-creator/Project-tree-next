@@ -1,3 +1,5 @@
+import { isStage } from '../../domain/wbs/normalize.js';
+
 const config = {
   title:true,
   dates:true,
@@ -28,8 +30,7 @@ export function setGanttConfig(key, value){
 export function ganttLevelOptions(items){
   let maxStageDepth = 0;
   const visit = (nodes, depth = 0) => (nodes || []).filter(node => node && !node.trashed).forEach(node => {
-    const isStage = node.kind === 'stage' || node.type === 'stage' || node.nodeType === 'stage' || Array.isArray(node.subtasks);
-    if(isStage){
+    if(isStage(node)){
       maxStageDepth = Math.max(maxStageDepth, depth);
       visit(node.subtasks || [], depth + 1);
     }
