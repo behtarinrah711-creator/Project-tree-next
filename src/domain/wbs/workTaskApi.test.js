@@ -87,5 +87,20 @@ test('first and last Task transfer Work predecessors without orphaning the netwo
   assert.equal(workTaskApi.remove('p1', 'w1', created.task.id, () => 200).ok, true);
   savedWork = store.getSnapshot().projects[0].tasks[0].subtasks.find(item => item.id === 'w1');
   assert.deepEqual(savedWork.predecessorIds, ['w0']);
-  assert.deepEqual(savedWork.workTasks, []);
+  assert.equal(savedWork.workTasks.length, 1);
+  assert.equal(savedWork.workTasks[0].trashed, true);
+  assert.deepEqual(workTaskApi.list('p1', 'w1'), []);
+});
+
+
+test('Task reorder persists active order without reviving deleted Tasks', () => {
+  const store = installFixture();
+  const first = workTaskApi.create('p1', 'w1', draft({ title:'اول' }), () => 100).task;
+  const second = workTaskApi.create('p1', 'w1', draft({ title:'دوم' }), () => 200).task;
+  const third = workTaskApi.create('p1', 'w1', draft({ title:'سوم' }), () => 300).task;
+  assert.equal(workTaskApi.remove('p1', 'w1', second.id, () => 400).ok, true);
+  assert.equal(workTaskApi.reorder('p1', 'w1', [third.id, first.id], () => 500).ok, true);
+  assert.deepEqual(workTaskApi.list('p1', 'w1').map(task => task.id), [third.id, first.id]);
+  const raw = store.getSnapshot().projects[0].tasks[0].subtasks[0].workTasks;
+  assert.equal(raw.find(task => task.id === second.id).trashed, true);
 });

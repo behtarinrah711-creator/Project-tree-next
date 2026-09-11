@@ -162,6 +162,42 @@ function taskForm({ projectId, work, task = null, onChanged }){
 
 export function openCreateWorkTaskSheet(options){ taskForm(options); }
 
+function bindTaskReorder(group, row, { projectId, workId, taskId, onChanged }){
+  const grip = row.querySelector('.wbs-task-grip');
+  if(!grip) return;
+  grip.addEventListener('pointerdown', event => {
+    if(event.button === 2) return;
+    event.preventDefault(); event.stopPropagation();
+    const rows = () => Array.from(group.querySelectorAll(':scope > .wbs-work-task'));
+    const startRows = rows();
+    if(startRows.length < 2) return;
+    row.classList.add('is-dragging');
+    const move = ev => {
+      const others = rows().filter(item => item !== row);
+      let before = null;
+      for(const candidate of others){
+        const rect = candidate.getBoundingClientRect();
+        if(ev.clientY < rect.top + rect.height / 2){ before = candidate; break; }
+      }
+      if(before) group.insertBefore(row, before); else group.appendChild(row);
+    };
+    const end = () => {
+      documentRef.removeEventListener('pointermove', move);
+      documentRef.removeEventListener('pointerup', end);
+      documentRef.removeEventListener('pointercancel', end);
+      row.classList.remove('is-dragging');
+      const orderedIds = rows().map(item => item.dataset.taskId);
+      const result = workTaskApi.reorder(projectId, workId, orderedIds);
+      if(!result.ok) onChanged?.();
+      else onChanged?.();
+    };
+    documentRef.addEventListener('pointermove', move);
+    documentRef.addEventListener('pointerup', end, { once:true });
+    documentRef.addEventListener('pointercancel', end, { once:true });
+    try{ grip.setPointerCapture(event.pointerId); }catch(_error){}
+  });
+}
+
 export function renderWorkTasks({ documentRef = document, projectId, work, view, onChanged }){
   const tasks = workTaskApi.list(projectId, work.id);
   if(!tasks.length) return null;
@@ -179,12 +215,17 @@ export function renderWorkTasks({ documentRef = document, projectId, work, view,
     row.setAttribute('role', 'listitem');
     row.innerHTML = `
       <span class="wbs-task-connector" aria-hidden="true"></span>
+      <span class="wbs-task-grip" aria-label="جابجایی کار" role="button">⋮⋮</span>
       <span class="wbs-task-content">
         <span class="wbs-task-main"><span class="wbs-type-chip ${TYPE_CLASSES.get(task.type) || 'type-7'}">${escapeHtml(task.type || '؟')}</span><span class="wbs-task-title">${escapeHtml(task.title)}</span></span>
         <span class="wbs-task-secondary">${contact ? `<span class="wbs-task-assignee">${escapeHtml(contactName(contact))}</span>` : ''}${contractor ? `<span class="wbs-task-contractor">${escapeHtml(contactName(contractor))}</span>` : ''}<span class="wbs-task-priority priority-${task.priority}">${escapeHtml(PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal)}</span>${view === 'progress' ? `<span class="wbs-task-progress">٪${new Intl.NumberFormat('fa-IR').format(task.progress || 0)}</span>` : ''}${view === 'estimate' ? `<span class="wbs-task-cost">${new Intl.NumberFormat('fa-IR').format(task.amount || 0)} تومان</span>` : ''}</span>
       </span>`;
-    row.addEventListener('click', () => taskForm({ projectId, work, task, onChanged }));
+    row.addEventListener('click', event => {
+      if(event.target.closest('.wbs-task-grip')) return;
+      taskForm({ projectId, work, task, onChanged });
+    });
     group.appendChild(row);
+    bindTaskReorder(group, row, { projectId, workId:work.id, taskId:task.id, onChanged });
   });
   return group;
 }
