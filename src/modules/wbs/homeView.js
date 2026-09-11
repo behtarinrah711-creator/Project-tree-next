@@ -492,7 +492,7 @@ function openWorkEditSheet(item){
       };
       paintActivities();
       root.appendChild(acts);
-      const dependency = predecessorField({ documentRef:document, project:projectOf(), consumerId:current.id, initial:current.predecessorIds || [] });
+      const dependency = predecessorField({ documentRef:document, project:projectOf(), consumerId:current.id, initial:current.dependencies || current.predecessorIds || [] });
       if(taskDerived){
         dependency.element.classList.add('is-disabled');
         dependency.element.querySelectorAll('button').forEach(button => { button.disabled = true; });
