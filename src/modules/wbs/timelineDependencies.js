@@ -67,7 +67,7 @@ export function applyTimelineDependencies(gantt, entries, projectItems, document
   const timeline = gantt?.querySelector('.wbs-gantt-timeline');
   if(!timeline || !gantt.classList.contains('is-scale-enhanced')) return;
   gantt.classList.toggle('show-dependencies', dependenciesVisible);
-  timeline.querySelector('.wbs-gantt-dependency-layer')?.remove();
+  timeline.querySelectorAll('.wbs-gantt-dependency-layer,.wbs-gantt-dependency-arrow-layer').forEach(node => node.remove());
 
   const lines = [...gantt.querySelectorAll('.wbs-gantt-line')];
   const names = [...gantt.querySelectorAll('.wbs-gantt-name')];
@@ -93,13 +93,17 @@ export function applyTimelineDependencies(gantt, entries, projectItems, document
     class:'wbs-gantt-dependency-layer', width, height:top, viewBox:`0 0 ${width} ${top}`,
     preserveAspectRatio:'none', 'aria-hidden':'true',
   });
+  const arrowLayer = svgElement(documentRef, 'svg', {
+    class:'wbs-gantt-dependency-arrow-layer', width, height:top, viewBox:`0 0 ${width} ${top}`,
+    preserveAspectRatio:'none', 'aria-hidden':'true',
+  });
   const defs = svgElement(documentRef, 'defs');
   const marker = svgElement(documentRef, 'marker', {
     id:'wbs-gantt-fs-arrow', viewBox:'0 0 6 6', refX:5.5, refY:3,
     markerWidth:6, markerHeight:6, orient:'auto', markerUnits:'strokeWidth',
   });
   marker.appendChild(svgElement(documentRef, 'path', { d:'M 0 0 L 6 3 L 0 6 z', class:'wbs-gantt-dependency-arrow' }));
-  defs.appendChild(marker); layer.appendChild(defs);
+  defs.appendChild(marker); arrowLayer.appendChild(defs);
   const geometries = [...byId.values()];
   links.forEach(link => {
     const source = byId.get(link.sourceId); const target = byId.get(link.targetId);
@@ -110,11 +114,19 @@ export function applyTimelineDependencies(gantt, entries, projectItems, document
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
     }));
     layer.appendChild(svgElement(documentRef, 'path', {
-      class:'wbs-gantt-dependency-link', d, 'marker-end':'url(#wbs-gantt-fs-arrow)',
+      class:'wbs-gantt-dependency-link', d,
+      'data-source-id':link.sourceId, 'data-target-id':link.targetId,
+    }));
+    const approachDirection = Math.sign(target.start - laneX) || 1;
+    const arrowStartX = target.start - (approachDirection * 8);
+    arrowLayer.appendChild(svgElement(documentRef, 'path', {
+      class:'wbs-gantt-dependency-arrow-segment',
+      d:`M ${arrowStartX} ${target.centerY} H ${target.start}`,
+      'marker-end':'url(#wbs-gantt-fs-arrow)',
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
     }));
   });
-  timeline.appendChild(layer);
+  timeline.append(layer, arrowLayer);
 }
 
 export { roundedOrthogonalPath };
