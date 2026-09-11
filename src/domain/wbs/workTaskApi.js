@@ -110,11 +110,30 @@ export const workTaskApi = {
       ...work,
       predecessorIds:remaining.length ? work.predecessorIds : predecessorIds(current.predecessorIds),
       dependencies:remaining.length ? (work.dependencies || []) : (current.dependencies || []),
-      workTasks:(work.workTasks || []).filter(task => String(task?.id) !== String(taskId)),
+      workTasks:(work.workTasks || []).map(task => String(task?.id) === String(taskId)
+        ? { ...task, trashed:true, deletedAt:clock(), updatedAt:clock() }
+        : task),
       updatedAt:clock(),
     }));
     if(!saved) return { ok:false, code:'persist' };
     if(remaining.length) syncWorkCompletion(projectId, workId);
+    publish(projectId);
+    return { ok:true };
+  },
+  reorder(projectId, workId, orderedIds, clock = Date.now){
+    const ids = (orderedIds || []).map(String);
+    const active = workTaskRepository.list(projectId, workId);
+    if(ids.length !== active.length || new Set(ids).size !== active.length || active.some(task => !ids.includes(String(task.id)))){
+      return { ok:false, code:'order' };
+    }
+    const order = new Map(ids.map((id, index) => [id, index]));
+    const saved = workTaskRepository.mutate(projectId, workId, work => {
+      const visible = (work.workTasks || []).filter(task => task && !task.trashed)
+        .sort((a, b) => order.get(String(a.id)) - order.get(String(b.id)));
+      const trashed = (work.workTasks || []).filter(task => task?.trashed);
+      return { ...work, workTasks:[...visible, ...trashed], updatedAt:clock() };
+    });
+    if(!saved) return { ok:false, code:'persist' };
     publish(projectId);
     return { ok:true };
   },
