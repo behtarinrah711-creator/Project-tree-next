@@ -123,7 +123,7 @@
   flex:0 0 1px;
 }
 
-.wbs-view-actions .wbs-tree-toggle,
+.wbs-view-header:not(.wbs-timeline-view-header) .wbs-view-actions .wbs-tree-toggle,
 .wbs-view-actions .wbs-root-add{
   width:32px;
   min-width:32px;
@@ -141,7 +141,7 @@
   display:none;
 }
 
-.wbs-view-actions .wbs-tree-toggle>svg:not(.wbs-expand-shade),
+.wbs-view-header:not(.wbs-timeline-view-header) .wbs-view-actions .wbs-tree-toggle>svg:not(.wbs-expand-shade),
 .wbs-view-actions .wbs-root-add svg{
   width:20px;
   height:20px;
