@@ -159,6 +159,10 @@ export function applyTimelineDependencies(gantt, entries, projectItems, document
       'data-relation-type':relationType, 'data-lag-days':link.lagDays || 0,
     }));
     const approachDirection = Math.sign(targetX - sourceX) || 1;
+    // Persist the resolved endpoint pair in the DOM so FS/SS/FF are inspectable
+    // and testable independently of RTL layout.
+    layer.lastElementChild?.setAttribute('data-source-anchor', relationType === 'SS' ? 'start' : 'finish');
+    layer.lastElementChild?.setAttribute('data-target-anchor', relationType === 'FF' ? 'finish' : 'start');
     // Keep the connector itself behind the task bar. Only a tiny terminal
     // segment is promoted above the bars so the marker remains readable.
     // Starting the foreground segment at the target edge (instead of 8px
