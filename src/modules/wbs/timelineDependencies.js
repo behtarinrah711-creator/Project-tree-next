@@ -118,10 +118,14 @@ export function applyTimelineDependencies(gantt, entries, projectItems, document
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
     }));
     const approachDirection = Math.sign(target.start - laneX) || 1;
-    const arrowStartX = target.start - (approachDirection * 8);
+    // Keep the connector itself behind the task bar. Only a tiny terminal
+    // segment is promoted above the bars so the marker remains readable.
+    // Starting the foreground segment at the target edge (instead of 8px
+    // inside the bar) prevents the visible connector from crossing the bar.
+    const arrowTailX = target.start - (approachDirection * 0.75);
     arrowLayer.appendChild(svgElement(documentRef, 'path', {
       class:'wbs-gantt-dependency-arrow-segment',
-      d:`M ${arrowStartX} ${target.centerY} H ${target.start}`,
+      d:`M ${arrowTailX} ${target.centerY} H ${target.start}`,
       'marker-end':'url(#wbs-gantt-fs-arrow)',
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
     }));
