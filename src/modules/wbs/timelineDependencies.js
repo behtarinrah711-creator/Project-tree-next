@@ -42,15 +42,30 @@ function connectorLane(source, target, geometries, width, sourceX = source.finis
   return candidates.find(clear) ?? candidates.find(x => x >= 4 && x <= width - 4) ?? Math.max(4, Math.min(width - 4, sourceX + 12));
 }
 
-function rowGeometry(line, top){
+function timelineDomainFromSignature(signature){
+  const parts = String(signature || '').split(':');
+  const start = Number(parts[1]);
+  const endExclusive = Number(parts[2]);
+  return Number.isFinite(start) && Number.isFinite(endExclusive) && endExclusive > start
+    ? { start, endExclusive }
+    : null;
+}
+
+function rowGeometry(line, top, entry, domain, canvasWidth){
   const canvas = line.querySelector('.wbs-gantt-scale-canvas');
   const foreign = canvas?.querySelector('.wbs-gantt-scale-foreign');
   const bar = foreign?.querySelector('.wbs-gantt-bar');
-  if(!canvas || !foreign || !bar) return null;
-  const x = Number(foreign.getAttribute('x')) || 0;
-  const width = Number(foreign.getAttribute('width')) || 0;
+  if(!canvas || !foreign || !bar || !entry?.range || !domain || !canvasWidth) return null;
+  const dayWidth = canvasWidth / (domain.endExclusive - domain.start);
+  const start = (entry.range.start - domain.start) * dayWidth;
+  const finish = (entry.range.end + 1 - domain.start) * dayWidth;
   const height = Number(canvas.getAttribute('height')) || 36;
-  return { start:x, finish:x + width, centerY:top + ((height - BAR_HEIGHT) / 2) + (BAR_HEIGHT / 2), height };
+  return {
+    start,
+    finish,
+    centerY:top + ((height - BAR_HEIGHT) / 2) + (BAR_HEIGHT / 2),
+    height,
+  };
 }
 
 let dependenciesVisible = false;
@@ -71,6 +86,9 @@ export function applyTimelineDependencies(gantt, entries, projectItems, document
 
   const lines = [...gantt.querySelectorAll('.wbs-gantt-line')];
   const names = [...gantt.querySelectorAll('.wbs-gantt-name')];
+  const width = Number(gantt.querySelector('.wbs-gantt-scale-header-canvas')?.getAttribute('width')) || 0;
+  const domain = timelineDomainFromSignature(gantt.dataset.timescaleSignature);
+  if(!width || !domain) return;
   const byId = new Map();
   // The sticky-header layout moves the 42px header out of .wbs-gantt-timeline.
   // Dependency coordinates therefore start at the first body row, not below a
@@ -80,12 +98,11 @@ export function applyTimelineDependencies(gantt, entries, projectItems, document
     const id = entries[index] ? String(entries[index].item.id) : '';
     line.dataset.dependencyEntryId = id;
     if(names[index]) names[index].dataset.dependencyEntryId = id;
-    const geometry = rowGeometry(line, top);
+    const geometry = rowGeometry(line, top, entries[index], domain, width);
     if(geometry && id) byId.set(id, geometry);
     top += Number(line.querySelector('.wbs-gantt-scale-canvas')?.getAttribute('height')) || 36;
   });
-  const width = Number(gantt.querySelector('.wbs-gantt-scale-header-canvas')?.getAttribute('width')) || 0;
-  if(!width || top <= 0) return;
+  if(top <= 0) return;
 
   const links = effectiveDependencyLinks(projectItems).filter(link => byId.has(link.sourceId) && byId.has(link.targetId));
   if(!links.length) return;
@@ -107,12 +124,10 @@ export function applyTimelineDependencies(gantt, entries, projectItems, document
   const geometries = [...byId.values()];
   links.forEach(link => {
     const source = byId.get(link.sourceId); const target = byId.get(link.targetId);
-    // RTL rule used by the Gantt UI:
-    // predecessor FINISH -> successor START.
-    // In screen space, the requested successor START is the opposite edge from
-    // the one previously used, so anchor the target to its other bar edge.
+    // Date-driven FS anchors. Geometry is calculated from schedule dates,
+    // not from physical left/right edges, so RTL mirroring cannot swap Start/Finish.
     const sourceFinishX = source.finish;
-    const targetStartX = target.finish;
+    const targetStartX = target.start;
     const laneX = connectorLane(source, target, geometries, width, sourceFinishX, targetStartX);
     const d = roundedOrthogonalPath(sourceFinishX, source.centerY, targetStartX, target.centerY, RADIUS, laneX);
     layer.appendChild(svgElement(documentRef, 'path', {
