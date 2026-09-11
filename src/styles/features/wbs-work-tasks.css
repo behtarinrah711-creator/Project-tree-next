@@ -3,7 +3,9 @@
 .wbs-work-task:last-child{border-bottom:0;}
 .wbs-task-connector{position:relative;display:block;align-self:stretch;flex:0 0 28px;width:28px;border-inline-start:1px solid var(--text-dim,#8a8176);}
 .wbs-task-connector::after{content:'';position:absolute;inset-inline-start:-1px;top:50%;width:20px;border-bottom:1px solid var(--text-dim,#8a8176);}
-.wbs-work-task:last-child .wbs-task-connector{height:50%;}
+.wbs-work-task:last-child .wbs-task-connector{height:auto;align-self:stretch;}
+.wbs-work-task:last-child .wbs-task-connector::before{content:'';position:absolute;inset-inline-start:-1px;top:0;height:50%;border-inline-start:1px solid var(--text-dim,#8a8176);}
+.wbs-work-task:last-child .wbs-task-connector{border-inline-start:0;}
 .wbs-work-task.is-complete .wbs-task-connector{border-inline-start:3px solid var(--success);}
 .wbs-work-task.is-complete .wbs-task-connector::after{inset-inline-start:-3px;border-bottom:3px solid var(--success);}
 .wbs-task-content{min-width:0;flex:1 1 auto;display:flex;flex-direction:column;justify-content:center;gap:3px;padding:6px 4px 6px 0;}
