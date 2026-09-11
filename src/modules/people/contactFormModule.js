@@ -262,7 +262,7 @@ export function openContactForm(contact=null,{activityId=null}={}){
     const get=k=>wrap.querySelector(`[data-key="${k}"]`)?.value.trim()||'';
     const nat=natRow.querySelector('input:checked')?.value||'ایرانی';
     const phones=Array.from(phoneRows.querySelectorAll('input')).map(i=>toEnglishDigits(i.value.trim())).filter(Boolean);
-    return !!(get('lastName')&&phones.length&&get('type')&&get('type')!=='انتخاب کنید'&&selected.size);
+    return !!(get('lastName')&&get('type')&&get('type')!=='انتخاب کنید'&&selected.size);
   };
   // پیش‌نویس مخاطب فقط وقتی معتبر است که حداقل نام یا نام خانوادگی وارد شده باشد.
   const contactHasDraftIdentity=()=>{
@@ -309,11 +309,9 @@ export function openContactForm(contact=null,{activityId=null}={}){
     const lastField=wrap.querySelector('[data-key="lastName"]')?.closest('.contact-field');
     const typeField=wrap.querySelector('[data-key="type"]')?.closest('.contact-field');
     const activityField=actSec;
-    const phoneField=phoneSec;
-    [lastField,typeField,activityField,phoneField].forEach(clearInvalid);
+    [lastField,typeField,activityField].forEach(clearInvalid);
 
     if(!lastName){markInvalid(lastField);invalid.push(lastField);}
-    if(!phoneVals.length){markInvalid(phoneField);invalid.push(phoneField);}
     if(!typeVal||typeVal==='انتخاب کنید'){markInvalid(typeField);invalid.push(typeField);}
     if(!selected.size){markInvalid(activityField);invalid.push(activityField);}
     if(invalid.length){
