@@ -261,9 +261,7 @@ export function openContactForm(contact=null,{activityId=null}={}){
     const get=k=>wrap.querySelector(`[data-key="${k}"]`)?.value.trim()||'';
     const nat=natRow.querySelector('input:checked')?.value||'ایرانی';
     const phones=Array.from(phoneRows.querySelectorAll('input')).map(i=>toEnglishDigits(i.value.trim())).filter(Boolean);
-    const banks=Array.from(bankList.querySelectorAll('.bank-entry'));
-    const bankOk=banks.some(entry=>{const g=k=>entry.querySelector(`[data-key="${k}"]`)?.value.trim()||'';return !!(g('ownerName')&&g('bankName')&&g('card'));});
-    return !!(get('firstName')&&get('lastName')&&(nat!=='ایرانی'||get('nationalId'))&&phones.length&&get('type')&&get('type')!=='انتخاب کنید'&&selected.size&&bankOk);
+    return !!(get('lastName')&&phones.length&&get('type')&&get('type')!=='انتخاب کنید'&&selected.size);
   };
   // پیش‌نویس مخاطب فقط وقتی معتبر است که حداقل نام یا نام خانوادگی وارد شده باشد.
   const contactHasDraftIdentity=()=>{
@@ -298,7 +296,7 @@ export function openContactForm(contact=null,{activityId=null}={}){
 
   const clearInvalid=el=>{if(el) el.classList.remove('contact-invalid');};
   const markInvalid=el=>{if(el) el.classList.add('contact-invalid');};
-  [ 'firstName','lastName','nationalId','type' ].forEach(k=>{const el=wrap.querySelector(`[data-key="${k}"]`)?.closest('.contact-field'); if(el){const input=wrap.querySelector(`[data-key="${k}"]`); input?.addEventListener('input',()=>clearInvalid(el)); input?.addEventListener('change',()=>clearInvalid(el));}});
+  [ 'lastName','type' ].forEach(k=>{const el=wrap.querySelector(`[data-key="${k}"]`)?.closest('.contact-field'); if(el){const input=wrap.querySelector(`[data-key="${k}"]`); input?.addEventListener('input',()=>clearInvalid(el)); input?.addEventListener('change',()=>clearInvalid(el));}});
   save.onclick=()=>{
     const get=k=>wrap.querySelector(`[data-key="${k}"]`)?.value.trim()||'';
     const nat=natRow.querySelector('input:checked')?.value||'ایرانی';
@@ -306,41 +304,17 @@ export function openContactForm(contact=null,{activityId=null}={}){
     const phoneVals=Array.from(phoneRows.querySelectorAll('input')).map(i=>toEnglishDigits(i.value.trim())).filter(Boolean);
     const typeVal=get('type');
     const bankEntries=Array.from(bankList.querySelectorAll('.bank-entry'));
-    const requiredBank=bankEntries.find(entry=>{
-      const getE=k=>entry.querySelector(`[data-key="${k}"]`)?.value.trim()||'';
-      return getE('ownerName')&&getE('bankName')&&getE('card');
-    });
     const invalid=[];
-    const firstField=wrap.querySelector('[data-key="firstName"]')?.closest('.contact-field');
     const lastField=wrap.querySelector('[data-key="lastName"]')?.closest('.contact-field');
-    const nationalFieldEl=wrap.querySelector('[data-key="nationalId"]')?.closest('.contact-field');
     const typeField=wrap.querySelector('[data-key="type"]')?.closest('.contact-field');
     const activityField=actSec;
     const phoneField=phoneSec;
-    const bankField=bankSec;
-    [firstField,lastField,nationalFieldEl,typeField,activityField,phoneField,bankField].forEach(clearInvalid);
-    bankEntries.forEach(e=>{
-      e.classList.remove('contact-invalid');
-      ['ownerName','bankName','card'].forEach(k=>{
-        const f=e.querySelector(`[data-key="${k}"]`)?.closest('.contact-field');
-        clearInvalid(f);
-      });
-    });
-    if(!firstName){markInvalid(firstField);invalid.push(firstField);}
+    [lastField,typeField,activityField,phoneField].forEach(clearInvalid);
+
     if(!lastName){markInvalid(lastField);invalid.push(lastField);}
-    if(nat==='ایرانی'&&!nationalId){markInvalid(nationalFieldEl);invalid.push(nationalFieldEl);}
     if(!phoneVals.length){markInvalid(phoneField);invalid.push(phoneField);}
     if(!typeVal||typeVal==='انتخاب کنید'){markInvalid(typeField);invalid.push(typeField);}
     if(!selected.size){markInvalid(activityField);invalid.push(activityField);}
-    if(!requiredBank){
-      markInvalid(bankField); invalid.push(bankField);
-      bankEntries.forEach(entry=>{
-        const getE=k=>entry.querySelector(`[data-key="${k}"]`)?.value.trim()||'';
-        ['ownerName','bankName','card'].forEach(k=>{
-          if(!getE(k)) markInvalid(entry.querySelector(`[data-key="${k}"]`)?.closest('.contact-field'));
-        });
-      });
-    }
     if(invalid.length){
       runtime.showToast('لطفاً موارد مشخص‌شده را تکمیل کنید');
       const target=invalid[0]; target?.scrollIntoView({behavior:'smooth',block:'center'}); return;
