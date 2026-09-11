@@ -194,10 +194,18 @@ export function ensureViewToolbar(root, viewId){
   let expand = root.querySelector('.wbs-tree-toggle');
   if(!expand) expand = createExpandButton(root.ownerDocument, project);
 
-  const level = createLevelTool(root.ownerDocument, root, project);
-  const config = createConfigTool(root.ownerDocument, root);
+  let levelWrap = root.querySelector('.wbs-gantt-level-toggle')?.closest('.wbs-gantt-header-tool-wrap');
+  if(!levelWrap) levelWrap = createLevelTool(root.ownerDocument, root, project);
 
-  actions.replaceChildren(timescale, expand, level, config);
+  let configWrap = root.querySelector('.wbs-gantt-config-toggle')?.closest('.wbs-gantt-header-tool-wrap');
+  if(!configWrap) configWrap = createConfigTool(root.ownerDocument, root);
+
+  // Keep toolbar setup idempotent. Timeline enhancement is driven by a
+  // MutationObserver; replacing/re-appending the same controls on every pass
+  // would create a self-sustaining mutation loop and keep the Gantt unstable.
+  [timescale, expand, levelWrap, configWrap].forEach(control => {
+    if(control.parentElement !== actions) actions.appendChild(control);
+  });
 
   if(!root.dataset.ganttMenuDismissInstalled){
     root.dataset.ganttMenuDismissInstalled = '1';
