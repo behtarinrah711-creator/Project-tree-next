@@ -39,6 +39,7 @@ import { toEnglishDigits } from '../../ui/digits.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { openCreateWorkTaskSheet, renderWorkTasks } from './workTaskView.js';
 import { predecessorField } from './predecessorField.js';
+import { isGanttLevelVisible } from './timelineViewOptions.js';
 import { scheduleRangeOf } from '../../domain/wbs/scheduling.js';
 import {
   advanceExpansionLevel,
@@ -570,12 +571,29 @@ function jalaliLabelFromDay(day){
   return `${new Intl.NumberFormat('fa-IR', { useGrouping:false }).format(j.jm)}/${new Intl.NumberFormat('fa-IR', { useGrouping:false }).format(j.jd)}`;
 }
 
-function flattenTimeline(items, depth = 0, out = []){
+function flattenTimeline(items, depth = 0, visibleDepth = 0, out = []){
   (items || []).filter(x => !x.trashed).forEach(item => {
-    out.push({ item, depth, range:scheduleRange(item) });
-    if(isExpanded(projectIdOf(), item.id)){
-      if(isStage(item)) flattenTimeline(item.subtasks, depth + 1, out);
-      else activeWorkTasks(item).forEach(task => out.push({ item:{ ...task, kind:'workTask', text:task.title, parentWork:item }, depth:depth + 1, range:scheduleRange(task) }));
+    const stage = isStage(item);
+    const kind = stage ? 'stage' : 'work';
+    const visible = isGanttLevelVisible({ item, kind, depth });
+    if(visible) out.push({ item, kind, depth:visibleDepth, sourceDepth:depth, range:scheduleRange(item) });
+
+    const descend = !visible || isExpanded(projectIdOf(), item.id);
+    if(stage && descend){
+      flattenTimeline(item.subtasks, depth + 1, visibleDepth + (visible ? 1 : 0), out);
+    }else if(!stage && descend){
+      activeWorkTasks(item).forEach(task => {
+        const taskItem = { ...task, kind:'workTask', text:task.title, parentWork:item };
+        if(isGanttLevelVisible({ item:taskItem, kind:'workTask', depth:depth + 1 })){
+          out.push({
+            item:taskItem,
+            kind:'workTask',
+            depth:visibleDepth + (visible ? 1 : 0),
+            sourceDepth:depth + 1,
+            range:scheduleRange(taskItem),
+          });
+        }
+      });
     }
   });
   return out;
