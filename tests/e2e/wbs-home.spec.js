@@ -373,6 +373,14 @@ test('Timeline details survive initial render, timescale changes, and tree reren
   expect(Math.abs(endpoints.start.y - (endpoints.sourceRect.top + endpoints.sourceRect.height / 2))).toBeLessThanOrEqual(1);
   expect(Math.abs(endpoints.finish.x - endpoints.targetRect.right)).toBeLessThanOrEqual(1);
   expect(Math.abs(endpoints.finish.y - (endpoints.targetRect.top + endpoints.targetRect.height / 2))).toBeLessThanOrEqual(1);
+  const arrowDirection = await page.evaluate(() => {
+    const path = document.querySelector('.wbs-gantt-dependency-arrow-segment[data-source-id="w1"][data-target-id="w2"]');
+    const total = path.getTotalLength();
+    const a = path.getPointAtLength(Math.max(0, total - 0.5));
+    const b = path.getPointAtLength(total);
+    return Math.sign(b.x - a.x);
+  });
+  expect(arrowDirection).toBe(1);
   await expect(page.locator('.wbs-gantt-detail-title', { hasText:'اجرای فونداسیون' })).toBeVisible();
   await expect(page.locator('.wbs-gantt-detail-actual').filter({ hasText:/^٪۱۰$/ })).toBeVisible();
 

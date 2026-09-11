@@ -36,10 +36,29 @@ function connectorLane(source, target, geometries, width, sourceX = source.finis
     row.centerY > Math.min(source.centerY, target.centerY) && row.centerY < Math.max(source.centerY, target.centerY));
   const clear = x => x >= 4 && x <= width - 4 && !between.some(row => x >= row.start - 6 && x <= row.finish + 6);
   const gap = targetX - sourceX;
+  const direction = Math.sign(gap) || 1;
+
+  // Keep the final lane on the predecessor side of the successor Start.
+  // This prevents tight gaps from forcing the last horizontal segment to
+  // approach the target from the wrong side and flipping the arrow visually.
+  const sameSide = x => direction > 0 ? x < targetX : x > targetX;
   const candidates = Math.abs(gap) >= 20
-    ? [sourceX + gap / 2, sourceX + Math.sign(gap || 1) * 8, targetX - Math.sign(gap || 1) * 8]
-    : [Math.max(source.finish, target.finish) + 12, Math.min(source.start, target.start) - 12];
-  return candidates.find(clear) ?? candidates.find(x => x >= 4 && x <= width - 4) ?? Math.max(4, Math.min(width - 4, sourceX + 12));
+    ? [
+        sourceX + gap / 2,
+        targetX - (direction * 8),
+        sourceX + (direction * 8),
+      ]
+    : [
+        targetX - (direction * 12),
+        sourceX - (direction * 12),
+        direction > 0
+          ? Math.min(source.start, target.start) - 12
+          : Math.max(source.finish, target.finish) + 12,
+      ];
+
+  return candidates.find(x => sameSide(x) && clear(x))
+    ?? candidates.find(x => sameSide(x) && x >= 4 && x <= width - 4)
+    ?? Math.max(4, Math.min(width - 4, targetX - (direction * 12)));
 }
 
 function timelineDomainFromSignature(signature){
@@ -138,7 +157,7 @@ export function applyTimelineDependencies(gantt, entries, projectItems, document
       class:'wbs-gantt-dependency-link', d,
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
     }));
-    const approachDirection = Math.sign(targetStartX - laneX) || 1;
+    const approachDirection = Math.sign(targetStartX - sourceFinishX) || 1;
     // Keep the connector itself behind the task bar. Only a tiny terminal
     // segment is promoted above the bars so the marker remains readable.
     // Starting the foreground segment at the target edge (instead of 8px
