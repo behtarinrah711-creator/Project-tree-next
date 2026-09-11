@@ -194,10 +194,18 @@ export function effectiveDependencyLinks(items){
     return [...new Set(ids)];
   };
   const rangeFor = row => row && scheduleRangeOf(row.kind === 'workTask' ? { ...row.item, kind:'workTask' } : row.item);
-  const latestScheduledLeaf = predecessorId => leafIds(byId.get(String(predecessorId)))
+  const scheduledLeaves = predecessorId => leafIds(byId.get(String(predecessorId)))
     .map(id => ({ id, range:rangeFor(byId.get(id)) }))
-    .filter(row => row.range)
-    .sort((a, b) => b.range.end - a.range.end || a.id.localeCompare(b.id))[0] || null;
+    .filter(row => row.range);
+
+  const sourceLeafFor = (predecessorId, relationType) => {
+    const leaves = scheduledLeaves(predecessorId);
+    if(!leaves.length) return null;
+    if(relationType === 'SS'){
+      return [...leaves].sort((a, b) => a.range.start - b.range.start || a.id.localeCompare(b.id))[0];
+    }
+    return [...leaves].sort((a, b) => b.range.end - a.range.end || a.id.localeCompare(b.id))[0];
+  };
 
   const links = [];
   candidates.forEach(consumer => {
@@ -206,7 +214,7 @@ export function effectiveDependencyLinks(items){
     if(!rangeFor(consumer)) return;
     dependencyRows(consumer.item).forEach(dependency => {
       const predecessorId = dependency.predecessorId;
-      const source = latestScheduledLeaf(predecessorId);
+      const source = sourceLeafFor(predecessorId, dependency.type);
       if(source && source.id !== consumer.id) links.push({
         sourceId:source.id,
         targetId:consumer.id,

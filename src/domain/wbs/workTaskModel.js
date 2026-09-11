@@ -35,6 +35,14 @@ export function workTaskProgress(work){
   return total ? Math.round(weighted / total) : 0;
 }
 
+function normalizeDependencies(value){
+  return (Array.isArray(value) ? value : []).map(row => ({
+    predecessorId:String(row?.predecessorId || row?.id || ''),
+    type:['FS','SS','FF'].includes(row?.type) ? row.type : 'FS',
+    lagDays:Number.isFinite(Number(row?.lagDays)) ? Number(row.lagDays) : 0,
+  })).filter(row => row.predecessorId);
+}
+
 export function normalizeWorkTask(task, workId = ''){
   if(!task || typeof task !== 'object') return task;
   return {
@@ -52,6 +60,7 @@ export function normalizeWorkTask(task, workId = ''){
     progress:taskProgressOf(task),
     amount:taskCostOf(task),
     predecessorIds:Array.isArray(task.predecessorIds) ? [...new Set(task.predecessorIds.map(String).filter(Boolean))] : [],
+    dependencies:normalizeDependencies(task.dependencies),
     completed:isTaskComplete(task),
     completedAt:isTaskComplete(task) ? (task.completedAt || null) : null,
     completionState:task.completionState || (isTaskComplete(task) ? 'approved' : 'incomplete'),

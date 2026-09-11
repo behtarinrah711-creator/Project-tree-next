@@ -124,6 +124,14 @@ export function canAcceptChild(parent, childKind){
   return existingKinds.size === 0 || (existingKinds.size === 1 && existingKinds.has(childKind));
 }
 
+function normalizeDependencies(value){
+  return (Array.isArray(value) ? value : []).map(row => ({
+    predecessorId:String(row?.predecessorId || row?.id || ''),
+    type:['FS','SS','FF'].includes(row?.type) ? row.type : 'FS',
+    lagDays:Number.isFinite(Number(row?.lagDays)) ? Number(row.lagDays) : 0,
+  })).filter(row => row.predecessorId);
+}
+
 export function normalizeItem(item){
   if(!item || typeof item !== 'object') return item;
   const kind = itemKind(item);
@@ -159,6 +167,7 @@ export function normalizeItem(item){
     executionHistory:kind === KIND_WORK && Array.isArray(item.executionHistory) ? item.executionHistory.map(entry => ({ ...entry })) : [],
     workTasks:kind === KIND_WORK && Array.isArray(item.workTasks) ? item.workTasks.map(task => ({ ...task })) : [],
     predecessorIds:kind === KIND_WORK && Array.isArray(item.predecessorIds) ? [...new Set(item.predecessorIds.map(String).filter(Boolean))] : [],
+    dependencies:kind === KIND_WORK ? normalizeDependencies(item.dependencies) : [],
     subtasks: Array.isArray(item.subtasks) ? item.subtasks.map(normalizeItem) : [],
   };
 }

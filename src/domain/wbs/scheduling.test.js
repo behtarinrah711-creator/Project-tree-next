@@ -57,3 +57,24 @@ test('dependency drawing omits unscheduled endpoints and aggregate Work consumer
   ];
   assert.deepEqual(effectiveDependencyLinks(tree), [{ sourceId:'source', targetId:'dated', predecessorId:'source', type:'FS', lagDays:0 }]);
 });
+
+
+test('SS aggregate predecessor resolves from earliest scheduled leaf while FS and FF resolve from latest finish', () => {
+  const source = {
+    id:'package', kind:'stage', subtasks:[{
+      id:'source', kind:'work', workTasks:[
+        { id:'early', title:'Early', scheduleStart:'1405/01/01', scheduleEnd:'1405/01/03' },
+        { id:'late', title:'Late', scheduleStart:'1405/01/04', scheduleEnd:'1405/01/08' },
+      ],
+    }],
+  };
+  const target = type => ({
+    id:'target', kind:'work', scheduleStart:'1405/01/09', scheduleEnd:'1405/01/10',
+    predecessorIds:['package'],
+    dependencies:[{ predecessorId:'package', type, lagDays:0 }],
+    workTasks:[],
+  });
+  assert.equal(effectiveDependencyLinks([source, target('SS')])[0].sourceId, 'early');
+  assert.equal(effectiveDependencyLinks([source, target('FS')])[0].sourceId, 'late');
+  assert.equal(effectiveDependencyLinks([source, target('FF')])[0].sourceId, 'late');
+});
