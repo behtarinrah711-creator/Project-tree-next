@@ -214,8 +214,8 @@ export function renderWorkTasks({ documentRef = document, projectId, work, view,
     row.dataset.taskId = task.id;
     row.setAttribute('role', 'listitem');
     row.innerHTML = `
-      <span class="wbs-task-connector" aria-hidden="true"></span>
       <span class="wbs-task-grip" aria-label="جابجایی کار" role="button">⋮⋮</span>
+      <span class="wbs-task-connector" aria-hidden="true"></span>
       <span class="wbs-task-content">
         <span class="wbs-task-main"><span class="wbs-type-chip ${TYPE_CLASSES.get(task.type) || 'type-7'}">${escapeHtml(task.type || '؟')}</span><span class="wbs-task-title">${escapeHtml(task.title)}</span></span>
         <span class="wbs-task-secondary">${contact ? `<span class="wbs-task-assignee">${escapeHtml(contactName(contact))}</span>` : ''}${contractor ? `<span class="wbs-task-contractor">${escapeHtml(contactName(contractor))}</span>` : ''}<span class="wbs-task-priority priority-${task.priority}">${escapeHtml(PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal)}</span>${view === 'progress' ? `<span class="wbs-task-progress">٪${new Intl.NumberFormat('fa-IR').format(task.progress || 0)}</span>` : ''}${view === 'estimate' ? `<span class="wbs-task-cost">${new Intl.NumberFormat('fa-IR').format(task.amount || 0)} تومان</span>` : ''}</span>
