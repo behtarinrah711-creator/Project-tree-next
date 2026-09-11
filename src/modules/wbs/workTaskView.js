@@ -99,7 +99,7 @@ function taskForm({ projectId, work, task = null, onChanged }){
       root.appendChild(fieldRow('وزن', textInput(String(task?.weight || 1), { name:'taskWeight', type:'number', min:'0.01', step:'0.01', required:true })));
       root.appendChild(fieldRow('پیشرفت ٪', textInput(String(task?.progress || 0), { name:'taskProgress', type:'number', min:'0', max:'100', step:'1' })));
       root.appendChild(fieldRow('مبلغ', textInput(String(task?.amount || 0), { name:'taskAmount', type:'number', min:'0', step:'1' })));
-      const dependency = predecessorField({ documentRef, project:projectRepository.find(projectId), consumerId:task?.id || `new:${work.id}`, initial:task?.predecessorIds || [] });
+      const dependency = predecessorField({ documentRef, project:projectRepository.find(projectId), consumerId:task?.id || `new:${work.id}`, initial:task?.dependencies || task?.predecessorIds || [] });
       root.appendChild(dependency.element); root._taskDependency = dependency;
 
       if(editing){
@@ -142,6 +142,7 @@ function taskForm({ projectId, work, task = null, onChanged }){
         progress:Number(toEnglishDigits(root.querySelector('[name="taskProgress"]').value)) || 0,
         amount:Number(toEnglishDigits(root.querySelector('[name="taskAmount"]').value)) || 0,
         predecessorIds:root._taskDependency?.value() || [],
+        dependencies:root._taskDependency?.relations() || [],
       };
       const result = editing
         ? workTaskApi.update(projectId, work.id, task.id, draft)
