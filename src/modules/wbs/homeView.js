@@ -552,6 +552,7 @@ function openWorkEditSheet(item){
         scheduleStart,
         scheduleEnd,
         predecessorIds:taskDerived ? current.predecessorIds || [] : (root._workDependency?.value() || []),
+        dependencies:taskDerived ? (current.dependencies || []) : (root._workDependency?.relations() || []),
       });
       render();
       return true;
