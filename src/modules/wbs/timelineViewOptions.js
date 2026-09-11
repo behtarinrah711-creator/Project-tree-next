@@ -5,7 +5,7 @@ const config = {
   dates:true,
   actualProgress:true,
   plannedProgress:true,
-  dependencies:true,
+  dependencies:false,
   float:false,
   criticalPath:false,
 };
