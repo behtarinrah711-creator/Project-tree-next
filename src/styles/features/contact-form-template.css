@@ -50,3 +50,24 @@
   z-index:5 !important;
 }
 
+
+
+/* Required-field error state in the flat contact form.
+   Keep the whole missing field/section visibly red, even though this template
+   normally removes borders and forces gray labels. */
+#contactsPage.contact-form-mode .contacts-page-form.form-template .contact-invalid{
+  border-bottom:2px solid var(--danger) !important;
+  background:color-mix(in srgb,var(--danger) 5%,#fff) !important;
+}
+#contactsPage.contact-form-mode .contacts-page-form.form-template .contact-invalid>label,
+#contactsPage.contact-form-mode .contacts-page-form.form-template .contact-invalid>.repeat-head .repeat-title,
+#contactsPage.contact-form-mode .contacts-page-form.form-template .contact-invalid>.ft-label{
+  color:var(--danger) !important;
+}
+#contactsPage.contact-form-mode .contacts-page-form.form-template .contact-invalid input.contact-input,
+#contactsPage.contact-form-mode .contacts-page-form.form-template .contact-invalid input:not([type="radio"]):not([type="checkbox"]):not([type="file"]),
+#contactsPage.contact-form-mode .contacts-page-form.form-template .contact-invalid .contact-custom-select-trigger,
+#contactsPage.contact-form-mode .contacts-page-form.form-template .contact-invalid .ft-value{
+  color:var(--danger) !important;
+  border-bottom-color:var(--danger) !important;
+}
