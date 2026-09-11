@@ -110,7 +110,7 @@ export function openContactForm(contact=null,{activityId=null}={}){
     options.forEach(opt=>{
       const row=document.createElement('button'); row.type='button'; row.className='contact-custom-select-option';
       row.textContent=opt;
-      row.onclick=()=>{hidden.value=opt;text.textContent=opt;closeMenu();};
+      row.onclick=()=>{hidden.value=opt;text.textContent=opt;d.classList.remove('contact-invalid');closeMenu();};
       menu.appendChild(row);
     });
     trigger.onclick=()=>{ const willOpen=!menu.classList.contains('open'); document.querySelectorAll('.contact-custom-select-menu.open').forEach(m=>m.classList.remove('open')); document.querySelectorAll('.contact-custom-select-trigger.open').forEach(t=>t.classList.remove('open')); menu.classList.toggle('open',willOpen); trigger.classList.toggle('open',willOpen); };
@@ -152,7 +152,7 @@ export function openContactForm(contact=null,{activityId=null}={}){
   const phoneSec=document.createElement('div'); phoneSec.className='contact-section repeat-section';
   const phoneHead=document.createElement('div'); phoneHead.className='repeat-head'; const phoneTitle=document.createElement('div'); phoneTitle.className='repeat-title'; phoneTitle.textContent='شماره تماس'; const phoneAdd=document.createElement('button'); phoneAdd.type='button'; phoneAdd.className='repeat-add'; phoneAdd.textContent='+'; phoneHead.append(phoneTitle,phoneAdd); phoneSec.appendChild(phoneHead);
   const phoneRows=document.createElement('div'); phoneRows.className='contact-repeat-rows'; phoneSec.appendChild(phoneRows); wrap.appendChild(phoneSec);
-  const addPhone=(value='')=>{const r=document.createElement('div');r.className='repeat-row';const i=document.createElement('input');i.className='contact-input numeric-field contact-phone-input';i.readOnly=true;i.inputMode='none';i.value=value;i.placeholder='شماره موبایل';i.addEventListener('click',()=>runtime.openNumpadGeneric(i.value,v=>{i.value=v;saveContactDraft();},{suffix:'',prefix:'',maxLen:15,group:false}));const rm=document.createElement('button');rm.type='button';rm.className='repeat-remove';rm.textContent='حذف';rm.onclick=()=>{r.remove();saveContactDraft();};r.append(i,rm);phoneRows.appendChild(r);};
+  const addPhone=(value='')=>{const r=document.createElement('div');r.className='repeat-row';const i=document.createElement('input');i.className='contact-input numeric-field contact-phone-input';i.readOnly=true;i.inputMode='none';i.value=value;i.placeholder='شماره موبایل';i.addEventListener('click',()=>runtime.openNumpadGeneric(i.value,v=>{i.value=v;phoneSec.classList.remove('contact-invalid');saveContactDraft();},{suffix:'',prefix:'',maxLen:15,group:false}));const rm=document.createElement('button');rm.type='button';rm.className='repeat-remove';rm.textContent='حذف';rm.onclick=()=>{r.remove();saveContactDraft();};r.append(i,rm);phoneRows.appendChild(r);};
   (c.phones||[]).filter(Boolean).forEach(addPhone); if(!phoneRows.children.length) addPhone(''); phoneAdd.onclick=()=>{addPhone('');saveContactDraft();};
   wrap.append(makeSelect('نوع مخاطب',c.type,'type',['کارفرما','کارگر','راننده','فروشنده','پیمانکار','مهندس','ناظر']));
 
@@ -186,6 +186,7 @@ export function openContactForm(contact=null,{activityId=null}={}){
         selectedActivityId=String(item.id);
         c.activities=selectedActivityId?[selectedActivityId]:[];
         syncActVal();
+        actSec.classList.remove('contact-invalid');
         try{ saveContactDraft(); }catch(e){}
         try{ formIsDirty=true; }catch(e){}
       }
