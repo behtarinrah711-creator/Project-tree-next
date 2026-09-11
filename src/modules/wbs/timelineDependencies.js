@@ -31,15 +31,15 @@ function roundedOrthogonalPath(sourceX, sourceY, targetX, targetY, radius = RADI
   ].join(' ');
 }
 
-function connectorLane(source, target, geometries, width){
+function connectorLane(source, target, geometries, width, sourceX = source.finish, targetX = target.start){
   const between = geometries.filter(row => row !== source && row !== target &&
     row.centerY > Math.min(source.centerY, target.centerY) && row.centerY < Math.max(source.centerY, target.centerY));
   const clear = x => x >= 4 && x <= width - 4 && !between.some(row => x >= row.start - 6 && x <= row.finish + 6);
-  const gap = target.start - source.finish;
-  const candidates = gap >= 20
-    ? [source.finish + gap / 2, source.finish + 8, target.start - 8]
+  const gap = targetX - sourceX;
+  const candidates = Math.abs(gap) >= 20
+    ? [sourceX + gap / 2, sourceX + Math.sign(gap || 1) * 8, targetX - Math.sign(gap || 1) * 8]
     : [Math.max(source.finish, target.finish) + 12, Math.min(source.start, target.start) - 12];
-  return candidates.find(clear) ?? candidates.find(x => x >= 4 && x <= width - 4) ?? Math.max(4, Math.min(width - 4, source.finish + 12));
+  return candidates.find(clear) ?? candidates.find(x => x >= 4 && x <= width - 4) ?? Math.max(4, Math.min(width - 4, sourceX + 12));
 }
 
 function rowGeometry(line, top){
@@ -107,8 +107,14 @@ export function applyTimelineDependencies(gantt, entries, projectItems, document
   const geometries = [...byId.values()];
   links.forEach(link => {
     const source = byId.get(link.sourceId); const target = byId.get(link.targetId);
-    const laneX = connectorLane(source, target, geometries, width);
-    const d = roundedOrthogonalPath(source.finish, source.centerY, target.start, target.centerY, RADIUS, laneX);
+    // RTL rule used by the Gantt UI:
+    // predecessor FINISH -> successor START.
+    // In screen space, the requested successor START is the opposite edge from
+    // the one previously used, so anchor the target to its other bar edge.
+    const sourceFinishX = source.finish;
+    const targetStartX = target.finish;
+    const laneX = connectorLane(source, target, geometries, width, sourceFinishX, targetStartX);
+    const d = roundedOrthogonalPath(sourceFinishX, source.centerY, targetStartX, target.centerY, RADIUS, laneX);
     layer.appendChild(svgElement(documentRef, 'path', {
       class:'wbs-gantt-dependency-halo', d,
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
@@ -117,15 +123,15 @@ export function applyTimelineDependencies(gantt, entries, projectItems, document
       class:'wbs-gantt-dependency-link', d,
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
     }));
-    const approachDirection = Math.sign(target.start - laneX) || 1;
+    const approachDirection = Math.sign(targetStartX - laneX) || 1;
     // Keep the connector itself behind the task bar. Only a tiny terminal
     // segment is promoted above the bars so the marker remains readable.
     // Starting the foreground segment at the target edge (instead of 8px
     // inside the bar) prevents the visible connector from crossing the bar.
-    const arrowTailX = target.start - (approachDirection * 0.75);
+    const arrowTailX = targetStartX - (approachDirection * 0.75);
     arrowLayer.appendChild(svgElement(documentRef, 'path', {
       class:'wbs-gantt-dependency-arrow-segment',
-      d:`M ${arrowTailX} ${target.centerY} H ${target.start}`,
+      d:`M ${arrowTailX} ${target.centerY} H ${targetStartX}`,
       'marker-end':'url(#wbs-gantt-fs-arrow)',
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
     }));
