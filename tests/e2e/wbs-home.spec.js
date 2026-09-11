@@ -345,10 +345,12 @@ test('Timeline details survive initial render, timescale changes, and tree reren
   await assertDetails(3);
   const dependency = page.locator('.wbs-gantt-dependency-link[data-source-id="w1"][data-target-id="w2"]');
   await expect(page.locator('.wbs-timeline-view-header .wbs-view-title')).toHaveText('نمودار گانت');
-  await expect(page.locator('.wbs-dependency-toggle')).toHaveAttribute('aria-pressed', 'false');
+  await expect(page.locator('.wbs-dependency-toggle')).toHaveCount(0);
   await expect(dependency).toBeHidden();
-  await page.locator('.wbs-dependency-toggle').click();
-  await expect(page.locator('.wbs-dependency-toggle')).toHaveAttribute('aria-pressed', 'true');
+  await page.getByRole('button', { name:'کانفیگور نمودار گانت' }).click();
+  const dependencyOption = page.locator('.wbs-gantt-menu-row', { hasText:'خطوط پیش‌نیاز' }).locator('input');
+  await expect(dependencyOption).not.toBeChecked();
+  await dependencyOption.check();
   await expect(dependency).toBeVisible();
   const dependencyArrow = page.locator('.wbs-gantt-dependency-arrow-segment[data-source-id="w1"][data-target-id="w2"]');
   const dependencyArrowLayer = page.locator('.wbs-gantt-dependency-arrow-layer');

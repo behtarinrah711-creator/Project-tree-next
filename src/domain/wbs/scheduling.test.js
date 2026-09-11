@@ -44,7 +44,7 @@ test('dependency drawing resolves aggregate predecessors to their latest schedul
     ] }] },
     { id:'target', kind:'work', scheduleStart:'1405/01/09', scheduleEnd:'1405/01/10', predecessorIds:['package'], workTasks:[] },
   ];
-  assert.deepEqual(effectiveDependencyLinks(tree), [{ sourceId:'late', targetId:'target', predecessorId:'package' }]);
+  assert.deepEqual(effectiveDependencyLinks(tree), [{ sourceId:'late', targetId:'target', predecessorId:'package', type:'FS', lagDays:0 }]);
 });
 
 test('dependency drawing omits unscheduled endpoints and aggregate Work consumers', () => {
@@ -55,5 +55,5 @@ test('dependency drawing omits unscheduled endpoints and aggregate Work consumer
       { id:'undated', title:'Undated', predecessorIds:['source'] },
     ] },
   ];
-  assert.deepEqual(effectiveDependencyLinks(tree), [{ sourceId:'source', targetId:'dated', predecessorId:'source' }]);
+  assert.deepEqual(effectiveDependencyLinks(tree), [{ sourceId:'source', targetId:'dated', predecessorId:'source', type:'FS', lagDays:0 }]);
 });

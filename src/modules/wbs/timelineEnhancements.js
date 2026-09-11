@@ -10,6 +10,7 @@ import { applyTimelineStickyHeader } from './timelineStickyHeader.js';
 import { ensureViewToolbar } from './viewToolbar.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { actualProgress, plannedProgressOf, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
+import { ganttConfig, isGanttLevelVisible } from './timelineViewOptions.js';
 
 const MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 const SEASONS = ['بهار','تابستان','پاییز','زمستان'];
@@ -76,13 +77,33 @@ function maxStageDepth(items, depth = 0){
   return max;
 }
 
-function flattenVisible(items, projectId, maxDepth, depth = 0, out = []){
+function flattenVisible(items, projectId, maxDepth, depth = 0, visibleDepth = 0, out = []){
   (items || []).filter(x => !x.trashed).forEach(item => {
-    const shadeLevel = isStage(item) ? Math.max(1, maxDepth - depth + 1) : 0;
-    out.push({ item, depth, range:scheduleRange(item), shadeLevel });
-    if(isExpanded(projectId, item.id)){
-      if(isStage(item)) flattenVisible(item.subtasks, projectId, maxDepth, depth + 1, out);
-      else activeWorkTasks(item).forEach(task => out.push({ item:{ ...task, kind:'workTask', text:task.title, parentWork:item }, depth:depth + 1, range:scheduleRange(task), shadeLevel:0 }));
+    const stage = isStage(item);
+    const kind = stage ? 'stage' : 'work';
+    const rawEntry = { item, kind, depth };
+    const visible = isGanttLevelVisible(rawEntry);
+    const shadeLevel = stage ? Math.max(1, maxDepth - depth + 1) : 0;
+    if(visible) out.push({ item, kind, depth:visibleDepth, sourceDepth:depth, range:scheduleRange(item), shadeLevel });
+
+    const descend = !visible || isExpanded(projectId, item.id);
+    if(stage && descend){
+      flattenVisible(item.subtasks, projectId, maxDepth, depth + 1, visibleDepth + (visible ? 1 : 0), out);
+    }else if(!stage && descend){
+      activeWorkTasks(item).forEach(task => {
+        const taskItem = { ...task, kind:'workTask', text:task.title, parentWork:item };
+        const taskEntry = { item:taskItem, kind:'workTask', depth:depth + 1 };
+        if(isGanttLevelVisible(taskEntry)){
+          out.push({
+            item:taskItem,
+            kind:'workTask',
+            depth:visibleDepth + (visible ? 1 : 0),
+            sourceDepth:depth + 1,
+            range:scheduleRange(taskItem),
+            shadeLevel:0,
+          });
+        }
+      });
     }
   });
   return out;
@@ -416,6 +437,11 @@ function paintProgress(gantt, entries){
 function enhance(windowRef, documentRef){
   const gantt = documentRef.querySelector('.wbs-gantt');
   if(!gantt) return;
+  const config = ganttConfig();
+  gantt.classList.toggle('hide-gantt-title', !config.title);
+  gantt.classList.toggle('hide-gantt-dates', !config.dates);
+  gantt.classList.toggle('hide-gantt-actual', !config.actualProgress);
+  gantt.classList.toggle('hide-gantt-planned', !config.plannedProgress);
   const project = activeProject();
   if(!project) return;
   const maxDepth = maxStageDepth(project.tasks || []);

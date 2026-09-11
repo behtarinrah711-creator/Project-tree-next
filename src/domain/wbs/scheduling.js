@@ -114,6 +114,17 @@ export function parentTemporalDelay(item, today = tehranTodayDayNumber()){
   return values.length ? Math.max(...values) : null;
 }
 
+function dependencyRows(item){
+  if(Array.isArray(item?.dependencies) && item.dependencies.length){
+    return item.dependencies.map(row => ({
+      predecessorId:String(row?.predecessorId || row?.id || ''),
+      type:['FS','SS','FF'].includes(row?.type) ? row.type : 'FS',
+      lagDays:Number.isFinite(Number(row?.lagDays)) ? Number(row.lagDays) : 0,
+    })).filter(row => row.predecessorId);
+  }
+  return (item?.predecessorIds || []).map(id => ({ predecessorId:String(id), type:'FS', lagDays:0 }));
+}
+
 export function flattenDependencyCandidates(items){
   const out = [];
   const visit = nodes => (nodes || []).filter(node => node && !node.trashed).forEach(node => {
@@ -193,12 +204,15 @@ export function effectiveDependencyLinks(items){
     if(consumer.kind === 'stage') return;
     if(consumer.kind === 'work' && activeWorkTasks(consumer.item).length) return;
     if(!rangeFor(consumer)) return;
-    (consumer.item.predecessorIds || []).map(String).forEach(predecessorId => {
+    dependencyRows(consumer.item).forEach(dependency => {
+      const predecessorId = dependency.predecessorId;
       const source = latestScheduledLeaf(predecessorId);
       if(source && source.id !== consumer.id) links.push({
         sourceId:source.id,
         targetId:consumer.id,
         predecessorId,
+        type:dependency.type,
+        lagDays:dependency.lagDays,
       });
     });
   });

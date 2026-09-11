@@ -143,31 +143,33 @@ export function applyTimelineDependencies(gantt, entries, projectItems, document
   const geometries = [...byId.values()];
   links.forEach(link => {
     const source = byId.get(link.sourceId); const target = byId.get(link.targetId);
-    // Date-driven FS anchors. Geometry is calculated from schedule dates,
-    // not from physical left/right edges, so RTL mirroring cannot swap Start/Finish.
-    const sourceFinishX = source.finish;
-    const targetStartX = target.start;
-    const laneX = connectorLane(source, target, geometries, width, sourceFinishX, targetStartX);
-    const d = roundedOrthogonalPath(sourceFinishX, source.centerY, targetStartX, target.centerY, RADIUS, laneX);
+    const relationType = ['FS','SS','FF'].includes(link.type) ? link.type : 'FS';
+    const sourceX = relationType === 'SS' ? source.start : source.finish;
+    const targetX = relationType === 'FF' ? target.finish : target.start;
+    const laneX = connectorLane(source, target, geometries, width, sourceX, targetX);
+    const d = roundedOrthogonalPath(sourceX, source.centerY, targetX, target.centerY, RADIUS, laneX);
     layer.appendChild(svgElement(documentRef, 'path', {
       class:'wbs-gantt-dependency-halo', d,
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
+      'data-relation-type':relationType, 'data-lag-days':link.lagDays || 0,
     }));
     layer.appendChild(svgElement(documentRef, 'path', {
       class:'wbs-gantt-dependency-link', d,
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
+      'data-relation-type':relationType, 'data-lag-days':link.lagDays || 0,
     }));
-    const approachDirection = Math.sign(targetStartX - sourceFinishX) || 1;
+    const approachDirection = Math.sign(targetX - sourceX) || 1;
     // Keep the connector itself behind the task bar. Only a tiny terminal
     // segment is promoted above the bars so the marker remains readable.
     // Starting the foreground segment at the target edge (instead of 8px
     // inside the bar) prevents the visible connector from crossing the bar.
-    const arrowTailX = targetStartX - (approachDirection * 0.75);
+    const arrowTailX = targetX - (approachDirection * 0.75);
     arrowLayer.appendChild(svgElement(documentRef, 'path', {
       class:'wbs-gantt-dependency-arrow-segment',
-      d:`M ${arrowTailX} ${target.centerY} H ${targetStartX}`,
+      d:`M ${arrowTailX} ${target.centerY} H ${targetX}`,
       'marker-end':'url(#wbs-gantt-fs-arrow)',
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
+      'data-relation-type':relationType, 'data-lag-days':link.lagDays || 0,
     }));
   });
   timeline.append(layer, arrowLayer);

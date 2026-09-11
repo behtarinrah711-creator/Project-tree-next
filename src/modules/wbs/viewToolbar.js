@@ -5,9 +5,28 @@ import {
   getExpansionProgress,
   getExpandedIds,
 } from './wbsExpandState.js';
-import { areTimelineDependenciesVisible, setTimelineDependenciesVisible } from './timelineDependencies.js';
+import { setTimelineDependenciesVisible } from './timelineDependencies.js';
+import {
+  ganttConfig,
+  ganttLevelOptions,
+  ganttLevelState,
+  setGanttConfig,
+  setGanttLevelVisible,
+} from './timelineViewOptions.js';
 import { expandIconMarkup, materialIconMarkup } from '../../ui/materialIcons.js';
-const DEPENDENCY_ICON = 'M296-270q-42 35-87.5 32T129-269q-34-28-46.5-73.5T99-436l75-124q-25-22-39.5-53T120-680q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47q-9 0-18-1t-17-3l-77 130q-11 18-7 35.5t17 28.5q13 11 31 12.5t35-12.5l420-361q42-35 88-31.5t80 31.5q34 28 46 73.5T861-524l-75 124q25 22 39.5 53t14.5 67q0 66-47 113t-113 47q-66 0-113-47t-47-113q0-66 47-113t113-47q9 0 17.5 1t16.5 3l78-130q11-18 7-35.5T782-630q-13-11-31-12.5T716-630L296-270Zm40.5-353.5Q360-647 360-680t-23.5-56.5Q313-760 280-760t-56.5 23.5Q200-713 200-680t23.5 56.5Q247-600 280-600t56.5-23.5Zm400 400Q760-247 760-280t-23.5-56.5Q713-360 680-360t-56.5 23.5Q600-313 600-280t23.5 56.5Q647-200 680-200t56.5-23.5ZM280-680Zm400 400Z';
+
+const CONFIG_ICON = 'M120-840h320v320H120v-320Zm400 0h320v320H520v-320ZM120-440h320v320H120v-320Zm520 0h80v120h120v80H720v120h-80v-120H520v-80h120v-120Zm-40-320v160h160v-160H600Zm-400 0v160h160v-160H200Zm0 400v160h160v-160H200Z';
+const LEVEL_ICON = 'M80-200v-80h240v-240h240v-240h320v80H640v240H400v240H80Z';
+
+const CONFIG_ITEMS = [
+  ['dates','تاریخ'],
+  ['title','عنوان'],
+  ['actualProgress','درصد پیشرفت'],
+  ['plannedProgress','پیشرفت برنامه‌ریزی‌شده'],
+  ['dependencies','خطوط پیش‌نیاز'],
+  ['float','شناوری'],
+  ['criticalPath','مسیر بحرانی'],
+];
 
 function activeProject(){
   const id = projectContext.getProjectId?.() || projectContext.getActiveProjectId?.() || null;
@@ -18,25 +37,110 @@ function refreshWbs(){
   import('./homeView.js').then(module => module.render?.());
 }
 
-function createDependencyButton(documentRef, gantt){
-  const button = documentRef.createElement('button');
-  const sync = () => {
-    const active = areTimelineDependenciesVisible();
-    button.classList.toggle('is-active', active);
-    button.setAttribute('aria-pressed', active ? 'true' : 'false');
-    button.setAttribute('title', active ? 'پنهان کردن ارتباط‌های Finish to Start' : 'نمایش ارتباط‌های Finish to Start');
-    gantt.classList.toggle('show-dependencies', active);
-  };
-  button.type = 'button';
-  button.className = 'wbs-dependency-toggle';
-  button.setAttribute('aria-label', 'نمایش ارتباط‌های Finish to Start');
-  button.innerHTML = materialIconMarkup(DEPENDENCY_ICON);
-  button.addEventListener('click', () => {
-    setTimelineDependenciesVisible(!areTimelineDependenciesVisible());
-    sync();
+function closeMenus(root, except = null){
+  root.querySelectorAll('.wbs-gantt-header-menu.is-open').forEach(menu => {
+    if(menu !== except) menu.classList.remove('is-open');
   });
-  sync();
-  return button;
+  root.querySelectorAll('.wbs-gantt-header-tool[aria-expanded="true"]').forEach(button => {
+    if(!except || button.getAttribute('aria-controls') !== except.id) button.setAttribute('aria-expanded','false');
+  });
+}
+
+function checkboxRow(documentRef, labelText, checked, onChange, { disabled = false } = {}){
+  const label = documentRef.createElement('label');
+  label.className = 'wbs-gantt-menu-row' + (disabled ? ' is-disabled' : '');
+  const input = documentRef.createElement('input');
+  input.type = 'checkbox';
+  input.checked = Boolean(checked);
+  input.disabled = disabled;
+  const text = documentRef.createElement('span');
+  text.textContent = labelText;
+  input.addEventListener('change', () => onChange(input.checked));
+  label.append(input, text);
+  return label;
+}
+
+function createMenuTool(documentRef, { className, ariaLabel, iconPath, menuId, buildMenu, root }){
+  const wrap = documentRef.createElement('div');
+  wrap.className = 'wbs-gantt-header-tool-wrap';
+
+  const button = documentRef.createElement('button');
+  button.type = 'button';
+  button.className = `wbs-gantt-header-tool ${className}`;
+  button.setAttribute('aria-label', ariaLabel);
+  button.setAttribute('title', ariaLabel);
+  button.setAttribute('aria-expanded','false');
+  button.setAttribute('aria-controls', menuId);
+  button.innerHTML = materialIconMarkup(iconPath);
+
+  const menu = documentRef.createElement('div');
+  menu.id = menuId;
+  menu.className = 'wbs-gantt-header-menu';
+  menu.setAttribute('role','menu');
+  buildMenu(menu);
+
+  button.addEventListener('click', event => {
+    event.stopPropagation();
+    const next = !menu.classList.contains('is-open');
+    closeMenus(root, next ? menu : null);
+    menu.classList.toggle('is-open', next);
+    button.setAttribute('aria-expanded', next ? 'true' : 'false');
+  });
+
+  wrap.append(button, menu);
+  return wrap;
+}
+
+function createConfigTool(documentRef, root){
+  return createMenuTool(documentRef, {
+    className:'wbs-gantt-config-toggle',
+    ariaLabel:'کانفیگور نمودار گانت',
+    iconPath:CONFIG_ICON,
+    menuId:'wbsGanttConfigMenu',
+    root,
+    buildMenu(menu){
+      const title = documentRef.createElement('div');
+      title.className = 'wbs-gantt-menu-title';
+      title.textContent = 'نمایش در نمودار';
+      menu.appendChild(title);
+      const state = ganttConfig();
+      CONFIG_ITEMS.forEach(([key, label]) => {
+        const unavailable = key === 'float' || key === 'criticalPath';
+        menu.appendChild(checkboxRow(documentRef, label, state[key], checked => {
+          setGanttConfig(key, checked);
+          if(key === 'dependencies') setTimelineDependenciesVisible(checked);
+          refreshWbs();
+        }, { disabled:unavailable }));
+      });
+      const note = documentRef.createElement('small');
+      note.className = 'wbs-gantt-menu-note';
+      note.textContent = 'شناوری و مسیر بحرانی پس از اتصال موتور CPM فعال می‌شوند.';
+      menu.appendChild(note);
+    },
+  });
+}
+
+function createLevelTool(documentRef, root, project){
+  return createMenuTool(documentRef, {
+    className:'wbs-gantt-level-toggle',
+    ariaLabel:'لول‌های WBS',
+    iconPath:LEVEL_ICON,
+    menuId:'wbsGanttLevelMenu',
+    root,
+    buildMenu(menu){
+      const title = documentRef.createElement('div');
+      title.className = 'wbs-gantt-menu-title';
+      title.textContent = 'لول‌های WBS';
+      menu.appendChild(title);
+      const state = ganttLevelState();
+      ganttLevelOptions(project.tasks || []).forEach(option => {
+        menu.appendChild(checkboxRow(documentRef, option.label, state.get(option.key) !== false, checked => {
+          setGanttLevelVisible(option.key, checked);
+          refreshWbs();
+        }));
+      });
+    },
+  });
 }
 
 function createExpandButton(documentRef, project){
@@ -45,7 +149,7 @@ function createExpandButton(documentRef, project){
   const expansionProgress = getExpansionProgress(project.id, project.tasks || []);
   button.type = 'button';
   button.className = 'wbs-tree-toggle' + (isTreeOpen ? ' is-active' : '') + (expansionProgress.ratio >= .5 ? ' is-past-midpoint' : '');
-  button.setAttribute('aria-label', 'تغییر سطح نمایش نمودار');
+  button.setAttribute('aria-label', 'تغییر سطح بازشدگی نمودار');
   button.setAttribute('aria-pressed', isTreeOpen ? 'true' : 'false');
   button.dataset.expandedLevels = String(expansionProgress.expandedLevels);
   button.dataset.totalLevels = String(expansionProgress.totalLevels);
@@ -64,6 +168,8 @@ export function ensureViewToolbar(root, viewId){
   const corner = gantt?.querySelector('.wbs-gantt-corner');
   const timescale = root.querySelector('.wbs-timescale-toggle');
   if(!project || !gantt || !corner || !timescale) return;
+
+  setTimelineDependenciesVisible(ganttConfig().dependencies);
 
   let header = root.querySelector('.wbs-timeline-view-header');
   if(!header){
@@ -88,10 +194,23 @@ export function ensureViewToolbar(root, viewId){
   let expand = root.querySelector('.wbs-tree-toggle');
   if(!expand) expand = createExpandButton(root.ownerDocument, project);
 
-  let dependency = root.querySelector('.wbs-dependency-toggle');
-  if(!dependency) dependency = createDependencyButton(root.ownerDocument, gantt);
+  let levelWrap = root.querySelector('.wbs-gantt-level-toggle')?.closest('.wbs-gantt-header-tool-wrap');
+  if(!levelWrap) levelWrap = createLevelTool(root.ownerDocument, root, project);
 
-  [timescale, expand, dependency].forEach(control => {
+  let configWrap = root.querySelector('.wbs-gantt-config-toggle')?.closest('.wbs-gantt-header-tool-wrap');
+  if(!configWrap) configWrap = createConfigTool(root.ownerDocument, root);
+
+  // Keep toolbar setup idempotent. Timeline enhancement is driven by a
+  // MutationObserver; replacing/re-appending the same controls on every pass
+  // would create a self-sustaining mutation loop and keep the Gantt unstable.
+  [timescale, expand, levelWrap, configWrap].forEach(control => {
     if(control.parentElement !== actions) actions.appendChild(control);
   });
+
+  if(!root.dataset.ganttMenuDismissInstalled){
+    root.dataset.ganttMenuDismissInstalled = '1';
+    root.ownerDocument.addEventListener('click', event => {
+      if(!event.target.closest('.wbs-gantt-header-tool-wrap')) closeMenus(root);
+    });
+  }
 }
