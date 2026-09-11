@@ -64,9 +64,16 @@ export const workTaskApi = {
     const work = workTaskRepository.work(projectId, workId);
     const firstTask = activeWorkTasks(work).length === 0;
     const inherited = firstTask ? predecessorIds(work?.predecessorIds) : [];
+    const inheritedDependencies = firstTask && Array.isArray(work?.dependencies)
+      ? work.dependencies.map(row => ({ ...row }))
+      : [];
+    const explicitIds = predecessorIds(checked.value.predecessorIds);
     const task = normalizeWorkTask({
       ...checked.value,
-      predecessorIds:predecessorIds(checked.value.predecessorIds).length ? predecessorIds(checked.value.predecessorIds) : inherited,
+      predecessorIds:explicitIds.length ? explicitIds : inherited,
+      dependencies:explicitIds.length
+        ? (checked.value.dependencies || [])
+        : inheritedDependencies,
       id, workId, completed:false, completedAt:null, createdAt:now, updatedAt:now,
     }, workId);
     const saved = workTaskRepository.save(projectId, workId, task, { clearWorkPredecessors:firstTask && inherited.length > 0 });
@@ -102,6 +109,7 @@ export const workTaskApi = {
     const saved = workTaskRepository.mutate(projectId, workId, work => ({
       ...work,
       predecessorIds:remaining.length ? work.predecessorIds : predecessorIds(current.predecessorIds),
+      dependencies:remaining.length ? (work.dependencies || []) : (current.dependencies || []),
       workTasks:(work.workTasks || []).filter(task => String(task?.id) !== String(taskId)),
       updatedAt:clock(),
     }));
