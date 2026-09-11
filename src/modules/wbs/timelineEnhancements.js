@@ -393,11 +393,10 @@ function paintProgress(gantt, entries){
     bar.setAttribute('aria-label', `${entry.item.text || ''}، پیشرفت ${faNumber(progress)} درصد`);
 
     let meter = bar.querySelector('.wbs-gantt-progress-meter');
-    let label = bar.querySelector('.wbs-gantt-progress-label');
+    bar.querySelector('.wbs-gantt-progress-label')?.remove();
 
     if(progress <= 0){
       meter?.remove();
-      label?.remove();
       return;
     }
 
@@ -410,13 +409,7 @@ function paintProgress(gantt, entries){
     }
     meter.value = progress;
 
-    if(!label){
-      label = bar.ownerDocument.createElement('span');
-      label.className = 'wbs-gantt-progress-label';
-      label.dir = 'rtl';
-      bar.appendChild(label);
-    }
-    if(label.textContent !== progressText) label.textContent = progressText;
+
   });
 }
 

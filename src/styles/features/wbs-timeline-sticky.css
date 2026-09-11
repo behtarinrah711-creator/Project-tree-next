@@ -25,7 +25,7 @@
   background:#f7f4ef;
   border:1px solid #e4ddd3;
   border-bottom:0;
-  border-radius:7px 7px 0 0;
+  border-radius:0;
   box-sizing:border-box;
   isolation:isolate;
 }
