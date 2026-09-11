@@ -36,8 +36,10 @@
 .wbs-gantt-detail-actual .wbs-gantt-detail-label{color:#fff;font-size:10px;font-weight:700;text-align:right;justify-content:flex-end;padding:0;white-space:nowrap;text-shadow:0 1px 1px rgba(0,0,0,.35);direction:rtl;unicode-bidi:isolate;}
 .wbs-gantt-scale-canvas{position:relative;z-index:2;}
 .wbs-gantt-dependency-layer{position:absolute;z-index:1;top:0;left:0;display:block;overflow:visible;pointer-events:none;}
+.wbs-gantt-dependency-arrow-layer{position:absolute;z-index:3;top:0;left:0;display:block;overflow:visible;pointer-events:none;}
+.wbs-gantt-dependency-arrow-segment{fill:none;stroke:#625b52;stroke-width:1.35;stroke-linecap:round;vector-effect:non-scaling-stroke;visibility:hidden;}
 .wbs-gantt-dependency-halo,.wbs-gantt-dependency-link{fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;visibility:hidden;}
 .wbs-gantt-dependency-halo{stroke:rgba(255,255,255,.9);stroke-width:4;}
 .wbs-gantt-dependency-link{stroke:#625b52;stroke-width:1.35;}
 .wbs-gantt-dependency-arrow{fill:#625b52;stroke:none;}
-.wbs-gantt.show-dependencies .wbs-gantt-dependency-halo,.wbs-gantt.show-dependencies .wbs-gantt-dependency-link{visibility:visible;}
+.wbs-gantt.show-dependencies .wbs-gantt-dependency-halo,.wbs-gantt.show-dependencies .wbs-gantt-dependency-link,.wbs-gantt.show-dependencies .wbs-gantt-dependency-arrow-segment{visibility:visible;}
