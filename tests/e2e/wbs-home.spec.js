@@ -366,12 +366,12 @@ test('Timeline details survive initial render, timescale changes, and tree reren
     return {
       start:{ x:start.x, y:start.y }, finish:{ x:finish.x, y:finish.y },
       sourceRect:{ left:sourceRect.left, top:sourceRect.top, height:sourceRect.height },
-      targetRect:{ right:targetRect.right, top:targetRect.top, height:targetRect.height },
+      targetRect:{ left:targetRect.left, top:targetRect.top, height:targetRect.height },
     };
   });
   expect(Math.abs(endpoints.start.x - endpoints.sourceRect.left)).toBeLessThanOrEqual(1);
   expect(Math.abs(endpoints.start.y - (endpoints.sourceRect.top + endpoints.sourceRect.height / 2))).toBeLessThanOrEqual(1);
-  expect(Math.abs(endpoints.finish.x - endpoints.targetRect.right)).toBeLessThanOrEqual(1);
+  expect(Math.abs(endpoints.finish.x - endpoints.targetRect.left)).toBeLessThanOrEqual(1);
   expect(Math.abs(endpoints.finish.y - (endpoints.targetRect.top + endpoints.targetRect.height / 2))).toBeLessThanOrEqual(1);
   await expect(page.locator('.wbs-gantt-detail-title', { hasText:'اجرای فونداسیون' })).toBeVisible();
   await expect(page.locator('.wbs-gantt-detail-actual').filter({ hasText:/^٪۱۰$/ })).toBeVisible();
