@@ -67,8 +67,7 @@ export function applyTimelineDependencies(gantt, entries, projectItems, document
   const timeline = gantt?.querySelector('.wbs-gantt-timeline');
   if(!timeline || !gantt.classList.contains('is-scale-enhanced')) return;
   gantt.classList.toggle('show-dependencies', dependenciesVisible);
-  timeline.querySelector('.wbs-gantt-dependency-layer')?.remove();
-  timeline.querySelector('.wbs-gantt-dependency-arrow-layer')?.remove();
+  timeline.querySelectorAll('.wbs-gantt-dependency-layer,.wbs-gantt-dependency-arrow-layer').forEach(node => node.remove());
 
   const lines = [...gantt.querySelectorAll('.wbs-gantt-line')];
   const names = [...gantt.querySelectorAll('.wbs-gantt-name')];
