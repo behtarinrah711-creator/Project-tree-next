@@ -52,8 +52,12 @@ test('project drawer keeps management below the project list', () => {
   const list = html.indexOf('id="drawerProjectList"');
   const management = html.indexOf('id="drawerProjectsBtn"');
   const notebook = html.indexOf('id="globalNotebookBtn"');
-  assert.ok(account < profile && profile < signin && signin < add && add < title && title < list && list < management && management < notebook);
-  assert.match(read('src/styles/index.css'), /#drawerOverlay #drawerProjectsBtn\s*\{[^}]*order:6;/s);
+  assert.ok(account < add && add < title && title < list && list < management && management < profile && profile < notebook && notebook < signin);
+  const drawerCss = read('src/styles/index.css');
+  assert.match(drawerCss, /#drawerOverlay #drawerProjectsBtn\s*\{[^}]*order:4;/s);
+  assert.match(drawerCss, /#drawerOverlay #drawerProfileBtn\{order:5;\}/);
+  assert.match(drawerCss, /#drawerOverlay #globalNotebookBtn\{order:6;\}/);
+  assert.match(drawerCss, /#drawerOverlay #drawerSigninBtn\{order:7;/);
   assert.equal(html.includes('id="globalMenuOverlay"'), false);
   assert.equal(html.includes('id="drawerGlobalTrashBtn"'), false);
 });
