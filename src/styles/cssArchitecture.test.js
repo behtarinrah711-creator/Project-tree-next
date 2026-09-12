@@ -44,12 +44,15 @@ test('the application has one deterministic CSS manifest and no embedded applica
 
 test('project drawer keeps management below the project list', () => {
   const html = read('index.html');
+  const account = html.indexOf('id="drawerAvatarWrap"');
+  const signin = html.indexOf('id="drawerSigninBtn"');
   const add = html.indexOf('id="drawerAddProjectBtn"');
   const title = html.indexOf('class="drawer-section-title">پروژه‌ها');
   const list = html.indexOf('id="drawerProjectList"');
   const management = html.indexOf('id="drawerProjectsBtn"');
-  assert.ok(add < title && title < list && list < management);
-  assert.match(read('src/styles/index.css'), /#drawerOverlay #drawerProjectsBtn\s*\{[^}]*order:4;/s);
+  assert.ok(account < signin && signin < add && add < title && title < list && list < management);
+  assert.match(read('src/styles/index.css'), /#drawerOverlay #drawerProjectsBtn\s*\{[^}]*order:5;/s);
+  assert.equal(html.slice(html.indexOf('id="globalMenuOverlay"')).includes('id="drawerSigninBtn"'), false);
 });
 
 test('tokens have one canonical owner and style modules contain no application logic', () => {

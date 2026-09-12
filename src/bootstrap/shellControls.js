@@ -124,40 +124,22 @@ function installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avata
     }
   };
 
-  const accountDrawer = globalMenu?.querySelector?.('.drawer');
-  let accountHead = byId(documentRef, 'globalAccountHead');
-  if(accountDrawer && !accountHead){
-    accountHead = documentRef.createElement('div');
-    accountHead.id = 'globalAccountHead';
-    accountHead.className = 'drawer-account global-account-head';
-    accountHead.innerHTML = `
-      <div class="avatar-circle big">
-        <img id="globalAccountImg" class="avatar-image hidden" alt="">
-        <svg id="globalAccountDefaultIcon" width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 12c2.5 0 4.5-2 4.5-4.5S14.5 3 12 3 7.5 5 7.5 7.5 9.5 12 12 12zM4 20.5c0-3.6 3.6-6.5 8-6.5s8 2.9 8 6.5" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
-      </div>
-      <div class="drawer-account-info">
-        <div class="drawer-account-name" id="globalAccountName">مهمان</div>
-        <div class="drawer-account-sub" id="globalAccountEmail">وارد نشده‌اید</div>
-      </div>`;
-    accountDrawer.prepend(accountHead);
-  }
-
   const syncUser = user => {
     const avatarImg = byId(documentRef, 'avatarImg');
     const avatarDefault = byId(documentRef, 'avatarDefaultIcon');
-    const globalImg = byId(documentRef, 'globalAccountImg');
-    const globalDefault = byId(documentRef, 'globalAccountDefaultIcon');
-    const name = byId(documentRef, 'globalAccountName');
-    const email = byId(documentRef, 'globalAccountEmail');
+    const drawerAvatarImg = byId(documentRef, 'drawerAvatarImg');
+    const drawerAvatarDefault = byId(documentRef, 'drawerAvatarDefaultIcon');
+    const drawerAccountName = byId(documentRef, 'drawerAccountName');
+    const drawerAccountSub = byId(documentRef, 'drawerAccountSub');
     const photo = user?.photoURL || '';
-    [avatarImg, globalImg].forEach(img => {
+    [avatarImg, drawerAvatarImg].forEach(img => {
       if(!img) return;
       if(photo){ img.src = photo; img.classList.remove('hidden'); }
       else { img.removeAttribute('src'); img.classList.add('hidden'); }
     });
-    [avatarDefault, globalDefault].forEach(icon => icon?.classList?.toggle?.('hidden', !!photo));
-    if(name) name.textContent = user?.displayName || (user ? 'کاربر' : 'مهمان');
-    if(email) email.textContent = user?.email || 'وارد نشده‌اید';
+    [avatarDefault, drawerAvatarDefault].forEach(icon => icon?.classList?.toggle?.('hidden', !!photo));
+    if(drawerAccountName) drawerAccountName.textContent = user?.displayName || (user ? 'کاربر' : 'مهمان');
+    if(drawerAccountSub) drawerAccountSub.textContent = user?.email || 'وارد نشده‌اید';
     if(signin){
       signin.textContent = user ? 'خروج از حساب' : 'ورود با گوگل';
       signin.dataset.authAction = user ? 'signout' : 'signin';
@@ -168,19 +150,7 @@ function installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avata
 
   const syncAccountDrawerImmediately = () => {
     const auth = windowRef.firebase?.auth?.();
-    if(auth?.currentUser){
-      syncUser(auth.currentUser);
-      return;
-    }
-    const avatarImg = byId(documentRef, 'avatarImg');
-    const globalImg = byId(documentRef, 'globalAccountImg');
-    const globalDefault = byId(documentRef, 'globalAccountDefaultIcon');
-    const photo = avatarImg?.src || '';
-    if(photo && globalImg){
-      globalImg.src = photo;
-      globalImg.classList.remove('hidden');
-      globalDefault?.classList?.add?.('hidden');
-    }
+    if(auth?.currentUser) syncUser(auth.currentUser);
   };
 
   const attachAuthState = auth => {
