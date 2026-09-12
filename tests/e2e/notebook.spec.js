@@ -15,7 +15,9 @@ test.beforeEach(async ({ page }) => {
       ],
     }));
   });
-  await page.goto('/#/notebook');
+  await page.goto('/');
+  await page.locator('#avatarBtn').click();
+  await page.locator('#globalNotebookBtn').click();
 });
 
 test('notebook owns horizontal lists, unlimited hierarchy, and global starred view', async ({ page }) => {
