@@ -23,10 +23,13 @@ test.beforeEach(async ({ page }) => {
 
 test('notebook owns horizontal lists, unlimited hierarchy, and global starred view', async ({ page }) => {
   await expect(page.locator('.nb-tabs')).toBeVisible();
+  await expect(page.locator('#topbarTitle .app-title-main')).toHaveText('دفترچه');
+  await expect(page.locator('#topbarTitle')).toHaveAttribute('aria-haspopup', 'false');
   await expect(page.locator('.nb-tab[data-list]')).toHaveCount(2);
   let parent = 'ریشه';
   for(const title of ['سطح یک','سطح دو','سطح سه','سطح چهار']){
     await page.locator('.nb-row', { hasText:parent }).locator('[data-act="child"]').click();
+    await expect(page.locator('.nb-editor')).toHaveCSS('position', 'static');
     await page.locator('#nbInput').fill(title);
     await page.locator('[data-editor="save"]').click();
     parent = title;

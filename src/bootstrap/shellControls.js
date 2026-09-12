@@ -98,6 +98,18 @@ function installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avata
 
   const syncProjectHeader = () => {
     const moduleId = windowRef.KarhaRoute?.moduleId || 'dashboard';
+    const notebook = moduleId === 'notebook' || moduleId === 'notebook-export' || /^#\/notebook/i.test(windowRef.location?.hash || '');
+    title?.classList.toggle('notebook-context', notebook);
+    if(notebook){
+      if(main) main.textContent = 'دفترچه';
+      if(projectLabel) projectLabel.textContent = '';
+      title?.classList.remove('has-active-project');
+      title?.setAttribute('aria-haspopup', 'false');
+      title?.setAttribute('aria-label', 'دفترچه');
+      return;
+    }
+    title?.setAttribute('aria-haspopup', 'true');
+    title?.setAttribute('aria-label', 'فهرست پروژه‌ها');
     if(moduleId !== 'dashboard' && moduleId !== 'tasks') return;
 
     const project = windowRef.KarhaApp?.projectWorkspace?.getActiveProject?.();
@@ -216,6 +228,7 @@ export function bindShellControls({ windowRef = window, documentRef = document }
   drawer.dataset.shellControlsBound = 'true';
 
   const openProjectMenu = () => {
+    if(/^#\/notebook/i.test(windowRef.location?.hash || '')) return;
     globalMenu?.classList?.add?.('hidden');
     drawer.classList.remove('hidden');
     windowRef.dispatchEvent(new windowRef.CustomEvent('karha:drawer-open'));
