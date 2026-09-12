@@ -15,6 +15,7 @@ function element(id, initial=[]){
     setAttribute(name,value){this.attrs[name]=value;},
     getBoundingClientRect(){return {height:id==='topbar'?50:20};},
     replaceChildren(...children){this.childNodes=children;this.cleared=true;},
+    remove(){this.parentNode?.removeChild?.(this);},
     querySelector(selector){return selector==='.app-title-main'?this.main:null;},
   };
 }
@@ -32,6 +33,14 @@ function harness(){
   ids.get('drawerOverlay').classList.add('hidden');
   const events=new Map();
   const body=element('body');
+  body.childNodes.push(ids.get('bottomNav'));
+  body.insertBefore=function(child,before){
+    const current=this.childNodes.indexOf(child);if(current>=0)this.childNodes.splice(current,1);
+    const index=before?this.childNodes.indexOf(before):-1;
+    this.childNodes.splice(index>=0?index:this.childNodes.length,0,child);child.parentNode=this;
+  };
+  body.removeChild=function(child){const index=this.childNodes.indexOf(child);if(index>=0)this.childNodes.splice(index,1);child.parentNode=null;};
+  ids.get('bottomNav').parentNode=body;
   const documentRef={
     body,
     documentElement:{style:{setProperty(name,value){this[name]=value;}}},
@@ -66,6 +75,7 @@ test('route presentation preserves mounted dashboard content while switching pag
   assert.deepEqual(content.childNodes,[mountedDashboard]);
   assert.equal(content.cleared,false);
   assert.equal(h.ids.get('bottomProjectsBtn').classList.contains('active'),true);
+  assert.equal(h.ids.get('topbarTitle').main.textContent,'Alpha');
 
   syncRoute('reports');
   assert.equal(h.ids.get('reportsPage').classList.contains('hidden'),false);
@@ -111,14 +121,17 @@ test('drawer event opens chrome and refreshes drawer/context presentation',()=>{
   assert.equal(h.ids.get('drawerOverlay').classList.contains('hidden'),true);
 });
 
-test('global menu destinations own the fixed header title and hide project footer chrome',()=>{
+test('global menu destinations keep one header and do not mount the project footer',()=>{
   const h=harness();
   h.windowRef.KarhaRoute={moduleId:'notebook'};
   h.chrome.openDrawer();
   assert.equal(h.ids.get('topbarTitle').main.textContent,'دفترچه یادداشت');
   assert.equal(h.body.classList.contains('global-surface'),true);
+  assert.equal(h.ids.get('bottomNav').parentNode,null);
+  assert.equal(h.ids.get('topbar').classList.contains('workspace-context'),false);
+  assert.equal(h.ids.get('topbarTitle').classList.contains('global-menu-context'),true);
 
-  h.windowRef.KarhaRoute={moduleId:'dashboard'};
+  // The just-clicked menu item must supersede a route value that has not synced yet.
   h.state={...h.state,menuRootMode:'profile'};
   h.chrome.setBottomNavActive('Projects');
   assert.equal(h.ids.get('topbarTitle').main.textContent,'ثبت مشخصات');
@@ -129,8 +142,11 @@ test('global menu destinations own the fixed header title and hide project foote
   assert.equal(h.ids.get('topbarTitle').main.textContent,'مدیریت پروژه‌ها');
 
   h.state={...h.state,menuRootMode:null};
+  h.windowRef.KarhaRoute={moduleId:'dashboard'};
   h.chrome.applyRoute('dashboard',getProjectRouteSurface('dashboard'));
   assert.equal(h.body.classList.contains('global-surface'),false);
+  assert.equal(h.ids.get('bottomNav').parentNode,h.body);
+  assert.equal(h.ids.get('topbarTitle').classList.contains('global-menu-context'),false);
 });
 
 test('project switches and repeated route application never leave stale footer or context',()=>{

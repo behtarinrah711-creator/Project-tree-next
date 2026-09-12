@@ -19,12 +19,7 @@
   box-shadow:inset 0 -3px 0 var(--green) !important;
 }
 
-/* legacy style independent-menu-pages-no-footer */
-/* مدیریت پروژه‌ها و ثبت مشخصات صفحات مستقل هستند؛ فوتر در آنها نمایش داده نمی‌شود و فضای آن نیز رزرو نمی‌شود. */
-body:has(#projectsPage:not(.hidden)) #bottomNav,
-body:has(#profilePage:not(.hidden)) #bottomNav {
-  display: none !important;
-}
+/* مدیریت پروژه‌ها و ثبت مشخصات صفحات مستقل هستند؛ فضای فوتر پروژه را رزرو نمی‌کنند. */
 body:has(#projectsPage:not(.hidden)) .content,
 body:has(#profilePage:not(.hidden)) .content {
   padding-bottom: 0 !important;
@@ -86,4 +81,3 @@ body:has(#profilePage:not(.hidden)) .content {
 .inner-section-action[hidden]{display:none !important;}
 .inner-section-back svg,
 .inner-section-action svg{width:22px;height:22px;}
-

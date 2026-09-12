@@ -49,6 +49,18 @@ export function installWorkspaceChrome({
   if(windowRef.KarhaWorkspaceChrome) return windowRef.KarhaWorkspaceChrome;
 
   const get = id => documentRef.getElementById?.(id);
+  const footer = get('bottomNav');
+  const footerParent = footer?.parentNode || null;
+  const footerNextSibling = footer?.nextSibling || null;
+
+  function setProjectFooterMounted(mounted){
+    if(!footer || !footerParent) return;
+    if(mounted){
+      if(!footer.parentNode) footerParent.insertBefore?.(footer, footerNextSibling);
+      return;
+    }
+    if(footer.parentNode) footer.remove?.();
+  }
 
   function hideAllWorkspacePages(){
     WORKSPACE_PAGE_IDS.forEach(id => get(id)?.classList?.add?.('hidden'));
@@ -98,11 +110,17 @@ export function installWorkspaceChrome({
     const globalRouteTitle = GLOBAL_ROUTE_TITLES[routeModuleId] || (/^#\/notebook(?:\/export)?/i.test(windowRef.location?.hash || '')
       ? (/\/export/i.test(windowRef.location?.hash || '') ? GLOBAL_ROUTE_TITLES['notebook-export'] : GLOBAL_ROUTE_TITLES.notebook)
       : '');
-    const rootTitle = globalRouteTitle || MENU_TITLES[state.menuRootMode] || (profileVisible ? MENU_TITLES.profile : managementVisible ? MENU_TITLES.projects : '');
+    // A freshly selected drawer destination must win over a stale global route.
+    const menuTitle = MENU_TITLES[state.menuRootMode] || (profileVisible ? MENU_TITLES.profile : managementVisible ? MENU_TITLES.projects : '');
+    const rootTitle = menuTitle || globalRouteTitle;
     documentRef.body?.classList?.toggle?.('global-surface', !!rootTitle);
+    setProjectFooterMounted(!rootTitle);
     if(rootTitle){
-      topbar?.classList?.add?.('workspace-context');
-      topbar?.classList?.add?.('root-workspace-context');
+      topbar?.classList?.remove?.('workspace-context');
+      topbar?.classList?.remove?.('root-workspace-context');
+      get('topbarTitle')?.classList?.add?.('global-menu-context');
+      get('topbarTitle')?.classList?.remove?.('notebook-context');
+      get('topbarTitle')?.classList?.remove?.('has-active-project');
       if(topbarMain) topbarMain.textContent = rootTitle;
       if(topbarProject) topbarProject.textContent = '';
       contextName.textContent = '';
@@ -116,10 +134,13 @@ export function installWorkspaceChrome({
     }
 
     const isWorkspace = key !== 'Projects';
+    get('topbarTitle')?.classList?.remove?.('global-menu-context');
+    get('topbarTitle')?.classList?.remove?.('notebook-context');
     const subpage = state.workspaceSubpage || null;
     const sectionTitle = SECTION_TITLES[key] || (key === 'Projects' && subpage === 'archive' ? 'آرشیو شده ها' : '');
-    if(topbarMain) topbarMain.textContent = isWorkspace ? sectionTitle : 'کارها';
+    if(topbarMain) topbarMain.textContent = isWorkspace ? sectionTitle : (state.project?.name || 'پروژه‌ها');
     if(topbarProject) topbarProject.textContent = isWorkspace && state.project?.name ? `(پروژه ${state.project.name})` : '';
+    get('topbarTitle')?.classList?.toggle?.('has-active-project', !isWorkspace && !!state.project?.name);
 
     if(!isWorkspace){
       contextName.textContent = '';
@@ -161,6 +182,9 @@ export function installWorkspaceChrome({
   function setBottomNavActive(requestedKey){
     const state = getPresentationState() || {};
     const key = state.menuRootMode ? 'Projects' : requestedKey;
+    // Re-mount first so project footer controls participate in this update.
+    // Global destinations are detached again by updateWorkspaceContextBar().
+    setProjectFooterMounted(true);
     documentRef.querySelectorAll?.('.bottom-nav-item')?.forEach?.(item => item.classList?.remove?.('active'));
     get(`bottom${key}Btn`)?.classList?.add?.('active');
     const isWorkspace = key !== 'Projects';
@@ -207,7 +231,7 @@ export function installWorkspaceChrome({
   const api = Object.freeze({
     WORKSPACE_PAGE_IDS, activeFooter, applyRoute, closeBottomPages, closeDrawer, enterProjectsSurface,
     enterWorkspaceSurface, hideAllWorkspacePages, openDrawer, setBottomNavActive, showOnlyWorkspacePage,
-    syncWorkspacePageTop, updateWorkspaceContextBar,
+    setProjectFooterMounted, syncWorkspacePageTop, updateWorkspaceContextBar,
   });
   windowRef.KarhaWorkspaceChrome = api;
   windowRef.KarhaWorkspaceSurface = api;
