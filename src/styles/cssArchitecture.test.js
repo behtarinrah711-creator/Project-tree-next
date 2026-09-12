@@ -60,6 +60,7 @@ test('project drawer keeps management below the project list', () => {
   assert.match(drawerCss, /#drawerOverlay #drawerSigninBtn\{order:7;/);
   assert.match(drawerCss, /#drawerOverlay #drawerProfileBtn,[\s\S]*#drawerOverlay #globalNotebookBtn\{[\s\S]*margin:0;/);
   assert.match(drawerCss, /#drawerOverlay #globalNotebookBtn\{margin-bottom:12px;\}/);
+  assert.doesNotMatch(drawerCss, /#drawerOverlay > \.drawer > \.drawer-section-title\{[^}]*border-top:/s);
   assert.equal(html.includes('id="globalMenuOverlay"'), false);
   assert.equal(html.includes('id="drawerGlobalTrashBtn"'), false);
 });
