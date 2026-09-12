@@ -83,7 +83,7 @@ async function signInWithGoogle({firebaseRef, auth, windowRef, documentRef}){
   }
 }
 
-function installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avatar, signin}){
+function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
   const title = byId(documentRef, 'topbarTitle');
   const main = title?.querySelector?.('.app-title-main');
   const projectLabel = byId(documentRef, 'topbarProjectName');
@@ -178,7 +178,7 @@ function installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avata
   windowRef.addEventListener?.('karha:project-context-changed', syncProjectHeader);
   windowRef.addEventListener?.('popstate', () => windowRef.setTimeout(syncProjectHeader, 0));
   windowRef.addEventListener?.('karha:drawer-open', syncProjectHeader);
-  windowRef.addEventListener?.('karha:global-menu-open', syncAccountDrawerImmediately);
+  windowRef.addEventListener?.('karha:drawer-open', syncAccountDrawerImmediately);
   windowRef.addEventListener?.('karha:projects-recovered', syncProjectHeader);
   windowRef.addEventListener?.('karha:workspace-route-synced', () => windowRef.setTimeout(syncProjectHeader, 0));
   syncProjectHeader();
@@ -189,7 +189,6 @@ function installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avata
 /** Bind project/account drawers and authentication controls. */
 export function bindShellControls({ windowRef = window, documentRef = document } = {}){
   const drawer = byId(documentRef, 'drawerOverlay');
-  const globalMenu = byId(documentRef, 'globalMenuOverlay');
   const avatar = byId(documentRef, 'avatarBtn');
   const signin = byId(documentRef, 'drawerSigninBtn');
   const title = byId(documentRef, 'topbarTitle');
@@ -197,40 +196,28 @@ export function bindShellControls({ windowRef = window, documentRef = document }
   if(drawer.dataset.shellControlsBound === 'true') return true;
   drawer.dataset.shellControlsBound = 'true';
 
-  const openProjectMenu = () => {
-    if(/^#\/notebook/i.test(windowRef.location?.hash || '')) return;
-    globalMenu?.classList?.add?.('hidden');
+  const openProjectMenu = ({allowNotebook = false} = {}) => {
+    if(!allowNotebook && /^#\/notebook/i.test(windowRef.location?.hash || '')) return;
     drawer.classList.remove('hidden');
     windowRef.dispatchEvent(new windowRef.CustomEvent('karha:drawer-open'));
   };
   const closeProjectMenu = () => drawer.classList.add('hidden');
-  const openGlobalMenu = () => {
-    drawer.classList.add('hidden');
-    globalMenu?.classList?.remove?.('hidden');
-    windowRef.dispatchEvent(new windowRef.CustomEvent('karha:global-menu-open'));
-  };
-  const closeGlobalMenu = () => globalMenu?.classList?.add?.('hidden');
-  const close = () => { closeProjectMenu(); closeGlobalMenu(); };
 
-  installUnifiedHeader({windowRef, documentRef, drawer, globalMenu, avatar, signin});
+  installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin});
 
   title?.addEventListener('click', openProjectMenu);
   title?.addEventListener('keydown', event => {
     if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); openProjectMenu(); }
   });
-  avatar.addEventListener('click', openGlobalMenu);
+  avatar.addEventListener('click', () => openProjectMenu({allowNotebook:true}));
   drawer.addEventListener('click', event => {
     if(event.target === drawer) closeProjectMenu();
   });
-  globalMenu?.addEventListener?.('click', event => {
-    if(event.target === globalMenu) closeGlobalMenu();
-  });
   byId(documentRef, 'globalNotebookBtn')?.addEventListener?.('click', () => {
-    close();
+    closeProjectMenu();
     windowRef.dispatchEvent(new windowRef.CustomEvent('karha:open-notebook'));
   });
-  byId(documentRef, 'drawerProfileBtn')?.addEventListener?.('click', closeGlobalMenu);
-  byId(documentRef, 'drawerGlobalTrashBtn')?.addEventListener?.('click', closeGlobalMenu);
+  byId(documentRef, 'drawerProfileBtn')?.addEventListener?.('click', closeProjectMenu);
   byId(documentRef, 'closeNotebookPage')?.addEventListener?.('click', () => {
     windowRef.dispatchEvent(new windowRef.CustomEvent('karha:close-notebook'));
   });
@@ -254,7 +241,7 @@ export function bindShellControls({ windowRef = window, documentRef = document }
       const { firebaseRef, auth } = ready;
       if(auth.currentUser){
         await auth.signOut();
-        close();
+        closeProjectMenu();
         return;
       }
 

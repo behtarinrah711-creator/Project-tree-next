@@ -4,7 +4,7 @@ import { bindShellControls } from './shellControls.js';
 
 function element(id){
   const listeners = {};
-  const classes = new Set(id in {drawerOverlay:1, globalMenuOverlay:1} ? ['hidden'] : []);
+  const classes = new Set(id === 'drawerOverlay' ? ['hidden'] : []);
   return {
     id, dataset: {}, textContent:'',
     setAttribute(){},
@@ -28,7 +28,7 @@ function element(id){
 }
 
 function harness({user=null,popupErrors=[],redirectErrors=[]}={}){
-  const elements = Object.fromEntries(['drawerOverlay','globalMenuOverlay','topbarTitle','avatarBtn','drawerSigninBtn','toast','globalNotebookBtn'].map(id=>[id,element(id)]));
+  const elements = Object.fromEntries(['drawerOverlay','topbarTitle','avatarBtn','drawerSigninBtn','toast','globalNotebookBtn'].map(id=>[id,element(id)]));
   const events=[];
   class CustomEvent { constructor(type,options={}){ this.type=type; this.detail=options.detail; } }
   const popupQueue=[...popupErrors];
@@ -120,13 +120,12 @@ test('redirect failure is surfaced after a popup failure', async () => {
   assert.equal(h.events.at(-1).type,'karha:auth-error');
 });
 
-test('project title opens project menu only and avatar opens a separate global menu', async () => {
+test('project title and avatar open the one unified right drawer', async () => {
   const h=harness();
   bindShellControls(h);
   await h.elements.topbarTitle.click();
   assert.equal(h.elements.drawerOverlay.classList.contains('hidden'),false);
-  assert.equal(h.elements.globalMenuOverlay.classList.contains('hidden'),true);
+  h.elements.drawerOverlay.classList.add('hidden');
   await h.elements.avatarBtn.click();
-  assert.equal(h.elements.drawerOverlay.classList.contains('hidden'),true);
-  assert.equal(h.elements.globalMenuOverlay.classList.contains('hidden'),false);
+  assert.equal(h.elements.drawerOverlay.classList.contains('hidden'),false);
 });

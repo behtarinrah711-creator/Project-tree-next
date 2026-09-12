@@ -45,14 +45,17 @@ test('the application has one deterministic CSS manifest and no embedded applica
 test('project drawer keeps management below the project list', () => {
   const html = read('index.html');
   const account = html.indexOf('id="drawerAvatarWrap"');
+  const profile = html.indexOf('id="drawerProfileBtn"');
   const signin = html.indexOf('id="drawerSigninBtn"');
   const add = html.indexOf('id="drawerAddProjectBtn"');
   const title = html.indexOf('class="drawer-section-title">پروژه‌ها');
   const list = html.indexOf('id="drawerProjectList"');
   const management = html.indexOf('id="drawerProjectsBtn"');
-  assert.ok(account < signin && signin < add && add < title && title < list && list < management);
-  assert.match(read('src/styles/index.css'), /#drawerOverlay #drawerProjectsBtn\s*\{[^}]*order:5;/s);
-  assert.equal(html.slice(html.indexOf('id="globalMenuOverlay"')).includes('id="drawerSigninBtn"'), false);
+  const notebook = html.indexOf('id="globalNotebookBtn"');
+  assert.ok(account < profile && profile < signin && signin < add && add < title && title < list && list < management && management < notebook);
+  assert.match(read('src/styles/index.css'), /#drawerOverlay #drawerProjectsBtn\s*\{[^}]*order:6;/s);
+  assert.equal(html.includes('id="globalMenuOverlay"'), false);
+  assert.equal(html.includes('id="drawerGlobalTrashBtn"'), false);
 });
 
 test('tokens have one canonical owner and style modules contain no application logic', () => {
