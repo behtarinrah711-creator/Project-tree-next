@@ -9,7 +9,7 @@ import { applyTimelineDependencies } from './timelineDependencies.js';
 import { applyTimelineStickyHeader } from './timelineStickyHeader.js';
 import { ensureViewToolbar } from './viewToolbar.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
-import { actualProgress, plannedProgressOf, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
+import { PROJECT_FINISH_MILESTONE_ID, actualProgress, plannedProgressOf, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
 import { ganttConfig, isGanttLevelVisible } from './timelineViewOptions.js';
 
 const MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
@@ -404,7 +404,7 @@ function paintProgress(gantt, entries){
   lines.forEach((line, index) => {
     const entry = entries[index];
     const bar = line.querySelector('.wbs-gantt-bar');
-    if(!entry || !bar) return;
+    if(!entry || !bar || entry.item.kind === 'milestone') return;
 
     const progress = displayedProgress(entry.item);
     const progressText = formatProgress(progress);
@@ -446,6 +446,12 @@ function enhance(windowRef, documentRef){
   if(!project) return;
   const maxDepth = maxStageDepth(project.tasks || []);
   const entries = flattenVisible(project.tasks || [], project.id, maxDepth);
+  const schedule = projectScheduleAnalysis(project);
+  if(Number.isFinite(schedule.projectFinish)) entries.push({
+    item:{ id:PROJECT_FINISH_MILESTONE_ID, kind:'milestone', text:'پایان پروژه', systemMilestone:true },
+    kind:'milestone', depth:0, sourceDepth:0, shadeLevel:0,
+    range:{ start:schedule.projectFinish, end:schedule.projectFinish },
+  });
 
   paintCorner(gantt, project, windowRef, documentRef);
   const root = gantt.closest('.wbs-home-root');
@@ -457,7 +463,7 @@ function enhance(windowRef, documentRef){
   paintProgress(gantt, entries);
   applyTimelineDetails(gantt, entries, documentRef);
   applyTimelineStickyHeader(gantt, windowRef, documentRef);
-  applyTimelineDependencies(gantt, entries, project.tasks || [], documentRef);
+  applyTimelineDependencies(gantt, entries, project, documentRef);
 }
 
 function resumeObservation(){

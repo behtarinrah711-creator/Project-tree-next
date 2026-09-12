@@ -68,6 +68,7 @@ export const todayApi = {
     const at = clock(); const by = actorValue(actor);
     return mutate(projectId, ref, entity => ({
       ...entity, completed:false, done:false, completionState:'pending_approval', workflowStatus:'pending_approval',
+      completionSubmittedAt:at, actualFinishDay:null,
       ...(ref.kind === 'work' ? { progressBeforeApproval:Number(entity.progress) || 0, status:'in_progress' } : {}),
       executionHistory:[...(entity.executionHistory || []), event('marked_complete', by, at), event('sent_for_approval', by, at)],
       updatedAt:at,
@@ -77,7 +78,10 @@ export const todayApi = {
   approve(projectId, ref, actor, clock = Date.now){
     const at = clock(); const by = actorValue(actor);
     return mutate(projectId, ref, entity => ({
-      ...entity, completed:true, done:true, completionState:'approved', workflowStatus:'approved', completedAt:at,
+      ...entity, completed:true, done:true, completionState:'approved', workflowStatus:'approved',
+      completedAt:entity.completionSubmittedAt || at,
+      actualFinishDay:entity.completionSubmittedAt || at,
+      approvedAt:at,
       ...(ref.kind === 'work' ? { progress:100, status:'completed' } : {}),
       executionHistory:[...(entity.executionHistory || []), event('approved', by, at)], updatedAt:at,
     }), { completion:true });
@@ -89,6 +93,7 @@ export const todayApi = {
     const at = clock(); const by = actorValue(actor); const commentId = uid();
     return mutate(projectId, ref, entity => ({
       ...entity, completed:false, done:false, completionState:'incomplete', workflowStatus:'in_progress', completedAt:null,
+      completionSubmittedAt:null, actualFinishDay:null, approvedAt:null,
       returnedToTodayOn:tehranTodayJalali(new Date(at)),
       ...(ref.kind === 'work' ? { progress:Number(entity.progressBeforeApproval) || 0, status:'in_progress' } : {}),
       executionComments:[...(entity.executionComments || []), { id:commentId, text, createdBy:by, createdAt:at, type:'approval_rejected' }],
