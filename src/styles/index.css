@@ -193,7 +193,7 @@ body:not(.global-surface){background:#f2f3f5;}
   font:inherit;
   font-weight:600;
   padding:12px 4px;
-  margin:0 0 12px;
+  margin:0;
   justify-content:space-between;
   border-bottom:1px solid var(--divider);
 }
