@@ -192,7 +192,7 @@ export function bindShellControls({ windowRef = window, documentRef = document }
   const avatar = byId(documentRef, 'avatarBtn');
   const signin = byId(documentRef, 'drawerSigninBtn');
   const title = byId(documentRef, 'topbarTitle');
-  if(!drawer || !avatar || !signin) return false;
+  if(!drawer || !signin) return false;
   if(drawer.dataset.shellControlsBound === 'true') return true;
   drawer.dataset.shellControlsBound = 'true';
 
@@ -209,7 +209,6 @@ export function bindShellControls({ windowRef = window, documentRef = document }
   title?.addEventListener('keydown', event => {
     if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); openProjectMenu(); }
   });
-  avatar.addEventListener('click', () => openProjectMenu({allowNotebook:true}));
   drawer.addEventListener('click', event => {
     if(event.target === drawer) closeProjectMenu();
   });
