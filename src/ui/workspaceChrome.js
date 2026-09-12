@@ -138,8 +138,9 @@ export function installWorkspaceChrome({
     get('topbarTitle')?.classList?.remove?.('notebook-context');
     const subpage = state.workspaceSubpage || null;
     const sectionTitle = SECTION_TITLES[key] || (key === 'Projects' && subpage === 'archive' ? 'آرشیو شده ها' : '');
-    if(topbarMain) topbarMain.textContent = isWorkspace ? sectionTitle : 'کارها';
+    if(topbarMain) topbarMain.textContent = isWorkspace ? sectionTitle : (state.project?.name || 'پروژه‌ها');
     if(topbarProject) topbarProject.textContent = isWorkspace && state.project?.name ? `(پروژه ${state.project.name})` : '';
+    get('topbarTitle')?.classList?.toggle?.('has-active-project', !isWorkspace && !!state.project?.name);
 
     if(!isWorkspace){
       contextName.textContent = '';

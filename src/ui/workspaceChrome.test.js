@@ -75,6 +75,7 @@ test('route presentation preserves mounted dashboard content while switching pag
   assert.deepEqual(content.childNodes,[mountedDashboard]);
   assert.equal(content.cleared,false);
   assert.equal(h.ids.get('bottomProjectsBtn').classList.contains('active'),true);
+  assert.equal(h.ids.get('topbarTitle').main.textContent,'Alpha');
 
   syncRoute('reports');
   assert.equal(h.ids.get('reportsPage').classList.contains('hidden'),false);
