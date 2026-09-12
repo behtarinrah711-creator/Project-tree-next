@@ -52,3 +52,41 @@
     display:flex;align-items:center;justify-content:center;touch-action:manipulation;
   }
 
+
+
+  /* Profile, project management and notebook use one identical navigation row. */
+  .drawer-menu-row{
+    box-sizing:border-box;
+    width:100%;
+    min-height:48px;
+    margin:0;
+    padding:12px 4px;
+    border:0;
+    border-bottom:1px solid var(--divider);
+    border-radius:0;
+    background:transparent;
+    color:var(--text);
+    font-family:inherit;
+    font-size:14.5px;
+    font-weight:700;
+    line-height:1.5;
+    text-align:right;
+    display:flex;
+    align-items:center;
+    justify-content:flex-start;
+    gap:10px;
+    cursor:pointer;
+    touch-action:manipulation;
+  }
+  .drawer-menu-row::after{
+    content:'‹';
+    margin-inline-start:auto;
+    color:var(--text-dim);
+    font-size:24px;
+    font-weight:400;
+    line-height:1;
+  }
+  .drawer-menu-row:active{
+    background:transparent;
+    border-radius:0;
+  }
