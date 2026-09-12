@@ -11,6 +11,7 @@ import { ensureViewToolbar } from './viewToolbar.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { PROJECT_FINISH_MILESTONE_ID, actualProgress, plannedProgressOf, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
 import { ganttConfig, isGanttLevelVisible } from './timelineViewOptions.js';
+import { applyTimelineCpm } from './timelineCpm.js';
 
 const MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 const SEASONS = ['بهار','تابستان','پاییز','زمستان'];
@@ -464,6 +465,7 @@ function enhance(windowRef, documentRef){
   applyTimelineDetails(gantt, entries, documentRef);
   applyTimelineStickyHeader(gantt, windowRef, documentRef);
   applyTimelineDependencies(gantt, entries, project, documentRef);
+  applyTimelineCpm(gantt, entries, project, config, documentRef);
 }
 
 function resumeObservation(){

@@ -144,7 +144,12 @@ export function applyTimelineDependencies(gantt, entries, projectOrItems, docume
     markerWidth:6, markerHeight:6, orient:'auto', markerUnits:'strokeWidth',
   });
   marker.appendChild(svgElement(documentRef, 'path', { d:'M 0 0 L 6 3 L 0 6 z', class:'wbs-gantt-dependency-arrow' }));
-  defs.appendChild(marker); arrowLayer.appendChild(defs);
+  const criticalMarker = svgElement(documentRef, 'marker', {
+    id:'wbs-gantt-critical-arrow', viewBox:'0 0 6 6', refX:5.5, refY:3,
+    markerWidth:6, markerHeight:6, orient:'auto', markerUnits:'strokeWidth',
+  });
+  criticalMarker.appendChild(svgElement(documentRef, 'path', { d:'M 0 0 L 6 3 L 0 6 z', class:'wbs-gantt-dependency-arrow is-critical' }));
+  defs.append(marker, criticalMarker); arrowLayer.appendChild(defs);
   const geometries = [...byId.values()];
   links.forEach(link => {
     const source = byId.get(link.sourceId); const target = byId.get(link.targetId);

@@ -105,17 +105,12 @@ function createConfigTool(documentRef, root){
       menu.appendChild(title);
       const state = ganttConfig();
       CONFIG_ITEMS.forEach(([key, label]) => {
-        const unavailable = key === 'float' || key === 'criticalPath';
         menu.appendChild(checkboxRow(documentRef, label, state[key], checked => {
           setGanttConfig(key, checked);
           if(key === 'dependencies') setTimelineDependenciesVisible(checked);
           refreshWbs();
-        }, { disabled:unavailable }));
+        }));
       });
-      const note = documentRef.createElement('small');
-      note.className = 'wbs-gantt-menu-note';
-      note.textContent = 'شناوری و مسیر بحرانی پس از اتصال موتور CPM فعال می‌شوند.';
-      menu.appendChild(note);
     },
   });
 }

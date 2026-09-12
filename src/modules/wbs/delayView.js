@@ -34,8 +34,9 @@ export function renderDelayView(project, documentRef = document, onEditFinish = 
     const actual = actualProgress(entity); const planned = plannedProgressOf(entity);
     const variance = progressVariance(entity); const delay = temporalDelay(entity);
     const cpm = cpmRows.get(String(row.id));
-    const float = cpm?.totalFloat ?? null;
-    return { row, entity, actual, planned, variance, delay, float, transferred:transferredDelay(delay, float), unresolved:unresolvedConsumers.has(String(row.id)) };
+    const unresolved = unresolvedConsumers.has(String(row.id));
+    const float = unresolved ? null : (cpm?.totalFloat ?? null);
+    return { row, entity, actual, planned, variance, delay, float, transferred:transferredDelay(delay, float), unresolved };
   }).filter(item => item.variance < 0 || item.delay > 0 || item.float === 0 || item.transferred > 0 || item.unresolved);
   const summary = documentRef.createElement('div');
   summary.className = 'wbs-note wbs-delay-summary';
