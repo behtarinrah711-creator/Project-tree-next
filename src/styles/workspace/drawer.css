@@ -90,3 +90,17 @@
     background:transparent;
     border-radius:0;
   }
+
+
+  /* Account action is the final drawer item; no card border/background. */
+  .drawer-account-action{
+    margin-top:auto;
+    margin-bottom:0;
+    border:0;
+    border-radius:0;
+    background:transparent;
+    justify-content:flex-start;
+    padding-inline:4px;
+  }
+  .drawer-account-action:active{background:transparent;}
+  .drawer-account-action[data-auth-action="signout"]{color:var(--danger);}
