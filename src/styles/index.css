@@ -128,11 +128,14 @@ body.global-surface .topbar-title.project-menu-trigger.notebook-context .app-tit
 .topbar.workspace-context .topbar-title.project-menu-trigger .app-title-main::after{content:none;}
 .topbar.workspace-context .topbar-title.project-menu-trigger .app-title-project{display:inline;}
 
-/* The right drawer is project-only; account identity belongs to the left drawer. */
+/* Unified right drawer: account, profile, authentication, projects, notebook. */
 #drawerOverlay{justify-content:flex-start;}
-#drawerOverlay > .drawer > .drawer-account{display:none !important;}
+#drawerOverlay > .drawer > .drawer-account{display:flex !important;order:0;padding-bottom:12px;border-bottom:1px solid var(--divider);margin:0 0 12px;}
+#drawerOverlay #drawerProfileBtn{order:1;}
+#drawerOverlay #drawerSigninBtn{order:2;margin:0 0 12px;color:var(--primary);}
+#drawerOverlay #drawerSigninBtn[data-auth-action="signout"]{color:var(--danger);}
 #drawerOverlay #drawerProjectsBtn{
-  order:0;
+  order:6;
   width:100%;
   min-height:52px;
   box-sizing:border-box;
@@ -144,7 +147,7 @@ body.global-surface .topbar-title.project-menu-trigger.notebook-context .app-tit
   font:inherit;
   font-weight:600;
   padding:12px 4px;
-  margin:0 0 12px;
+  margin:12px 0 0;
   justify-content:space-between;
   box-shadow:inset 0 -1px 0 var(--divider);
 }
@@ -157,13 +160,13 @@ body.global-surface .topbar-title.project-menu-trigger.notebook-context .app-tit
   flex:0 0 auto;
 }
 #drawerOverlay .drawer-add-project{
-  order:1;
+  order:3;
   margin:0 0 12px;
 }
 #drawerOverlay .drawer-add-project::after{content:none;}
 #drawerOverlay > .drawer > .drawer-section-title{
   display:block !important;
-  order:2;
+  order:4;
   margin:0 0 12px;
   padding:12px 4px;
   border-top:1px solid var(--divider);
@@ -173,42 +176,10 @@ body.global-surface .topbar-title.project-menu-trigger.notebook-context .app-tit
   font-weight:500;
 }
 #drawerOverlay > .drawer > .drawer-section-title::after{content:none !important;}
-#drawerOverlay #drawerProjectList{order:3;}
-
-/* Account drawer: identity, auth action, then uniformly separated navigation items. */
-#globalMenuOverlay{justify-content:flex-end;}
-#globalMenuOverlay > .drawer{box-shadow:2px 0 10px rgba(0,0,0,.15);}
-#globalMenuOverlay > .drawer > .drawer-account:not(#globalAccountHead){display:none;}
-.global-account-head{
-  order:0;
-  padding-bottom:12px;
-  border-bottom:1px solid var(--divider);
-  margin:0 0 12px;
-}
-#globalMenuOverlay #drawerSigninBtn{
-  order:1;
-  width:100%;
-  box-sizing:border-box;
-  appearance:none;
-  -webkit-appearance:none;
-  border:1px solid var(--divider);
-  border-radius:8px;
-  background:var(--surface);
-  color:var(--primary);
-  font-family:inherit;
-  font-size:14px;
-  font-weight:600;
-  padding:11px;
-  margin:0 0 12px;
-  justify-content:center;
-}
-#globalMenuOverlay #drawerSigninBtn[data-auth-action="signout"]{
-  color:var(--danger);
-}
-#globalMenuOverlay #globalNotebookBtn,
-#globalMenuOverlay #drawerProfileBtn,
-#globalMenuOverlay #drawerGlobalTrashBtn{
-  order:2;
+#drawerOverlay #drawerProjectList{order:5;}
+#drawerOverlay #globalNotebookBtn{order:7;}
+#drawerOverlay #drawerProfileBtn,
+#drawerOverlay #globalNotebookBtn{
   width:100%;
   min-height:52px;
   box-sizing:border-box;
@@ -222,9 +193,8 @@ body.global-surface .topbar-title.project-menu-trigger.notebook-context .app-tit
   justify-content:space-between;
   border-bottom:1px solid var(--divider);
 }
-#globalMenuOverlay #globalNotebookBtn::after,
-#globalMenuOverlay #drawerProfileBtn::after,
-#globalMenuOverlay #drawerGlobalTrashBtn::after{
+#drawerOverlay #globalNotebookBtn::after,
+#drawerOverlay #drawerProfileBtn::after{
   content:'›';
   color:var(--text-dim);
   font-size:24px;

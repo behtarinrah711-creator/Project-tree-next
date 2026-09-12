@@ -25,7 +25,7 @@ function shellHarness(){
     addEventListener(type, callback){ (listeners[`${id}:${type}`] ||= []).push(callback); },
     click(){ (listeners[`${id}:click`] || []).forEach(callback => callback({ target:this })); },
   });
-  const elements = Object.fromEntries(['drawerOverlay','globalMenuOverlay','topbarTitle','avatarBtn','drawerSigninBtn'].map(id => [id, element(id)]));
+  const elements = Object.fromEntries(['drawerOverlay','topbarTitle','avatarBtn','drawerSigninBtn'].map(id => [id, element(id)]));
   class CustomEvent { constructor(type, options={}){ this.type=type; this.detail=options.detail; } }
   const events = [];
   const windowRef = { CustomEvent, dispatchEvent:event=>events.push(event) };

@@ -143,8 +143,6 @@ const drawerProjectsBtn=browserDocument?.getElementById('drawerProjectsBtn');
 if(drawerProjectsBtn) drawerProjectsBtn.onclick=()=>{ closeDrawer(); openProjectsPage(); };
 const drawerAddProjectBtn=browserDocument?.getElementById('drawerAddProjectBtn');
 if(drawerAddProjectBtn) drawerAddProjectBtn.onclick=()=>{ closeDrawer(); openCreatePage(); };
-const drawerGlobalTrashBtn=browserDocument?.getElementById('drawerGlobalTrashBtn');
-if(drawerGlobalTrashBtn) drawerGlobalTrashBtn.onclick=openGlobalTrashFromDrawer;
 const closeProjectsPage=browserDocument?.getElementById('closeProjectsPage');
 if(closeProjectsPage) closeProjectsPage.onclick=()=>{ closeMenuRootPage(false); };
 
