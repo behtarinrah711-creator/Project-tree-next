@@ -11,7 +11,7 @@ test.beforeEach(async({page})=>{
   await page.waitForFunction(()=>Boolean(window.KarhaLegacy&&window.KarhaApp&&window.KarhaBrowserHistory));
 });
 
-test('route Back/Forward and application Back share browser session history',async({page})=>{
+test('route Back/Forward and footer navigation share browser session history',async({page})=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   await page.locator('#bottomReportsBtn').click();
   await expect(page).toHaveURL(/\/reports$/);
@@ -27,7 +27,7 @@ test('route Back/Forward and application Back share browser session history',asy
   await page.goForward();
   await expect(page).toHaveURL(/\/people$/);
 
-  await page.locator('#closeSettingsPage').click();
+  await page.locator('#bottomReportsBtn').click();
   await expect(page).toHaveURL(/\/reports$/);
   expect(errors).toEqual([]);
 });
