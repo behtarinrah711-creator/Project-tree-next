@@ -4,6 +4,7 @@
 @import url("./utilities.css");
 @import url("./workspace/chrome.css");
 @import url("./features/tasks.css");
+@import url("./features/notebook.css");
 @import url("./components/dialogs.css");
 @import url("./widgets/numpad.css");
 @import url("./features/task-details.css");
@@ -37,11 +38,6 @@ body.global-surface #bottomNav,
 body.global-surface #tabbar,
 body.global-surface #workspaceProjectContext { display: none !important; }
 body:not(.global-surface){background:#f2f3f5;}
-.nb-tabs { display:flex; gap:8px; overflow-x:auto; padding:8px 0; }
-.nb-tab { border:0; background:#eee; border-radius:16px; padding:6px 12px; white-space:nowrap; }
-.nb-tab.active { background:#1d4ed8; color:#fff; }
-.nb-tree { list-style:none; padding:0; }
-.nb-item { display:flex; gap:8px; align-items:center; min-height:44px; }
 
 /* Unified application header: project switcher right, title centered, account left. */
 #projectSearch,

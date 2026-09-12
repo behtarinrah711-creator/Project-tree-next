@@ -28,7 +28,7 @@ test('the application has one deterministic CSS manifest and no embedded applica
     .map(match => stripQuery(match[1]));
   assert.equal(imports.length, new Set(imports).size, 'each owner must be imported once');
   assert.deepEqual(imports, [
-    'tokens.css', 'base.css', 'utilities.css', 'workspace/chrome.css', 'features/tasks.css',
+    'tokens.css', 'base.css', 'utilities.css', 'workspace/chrome.css', 'features/tasks.css', 'features/notebook.css',
     'components/dialogs.css', 'widgets/numpad.css', 'features/task-details.css',
     'workspace/drawer.css', 'components/feedback.css', 'workspace/workspace.css',
     'features/contacts.css', 'features/accounting-settings.css', 'components/forms.css',
