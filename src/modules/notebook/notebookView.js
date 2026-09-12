@@ -22,7 +22,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
         <button data-act="done" class="nb-check"></button><button data-act="edit" class="nb-title">${esc(item.text||'بدون عنوان')}${source?`<small>${esc(source)}</small>`:''}</button>
         ${item.cost!=null&&item.cost!==''?`<span class="nb-cost">${new Intl.NumberFormat('fa-IR').format(Number(item.cost)||0)} تومان</span>`:''}
         <button data-act="star" class="nb-star ${item.starred?'active':''}">${star}</button><button data-act="child" class="nb-child">＋</button>
-      </div>${source||item.expanded===false?'':`<div class="nb-children">${rows(item.children,depth+1,null)}</div>`}</div>`;
+      </div>${editor?.mode==='item'&&editor.parentId===item.id?editorHtml():''}${source||item.expanded===false?'':`<div class="nb-children">${rows(item.children,depth+1,null)}</div>`}</div>`;
     }).join('');
   }
   function editorHtml(){if(!editor)return'';return`<div class="nb-editor"><strong>${editor.mode==='list'?'افزودن دفتر':editor.mode==='edit'?'ویرایش مورد':editor.mode==='rename'?'ویرایش نام دفتر':'افزودن مورد'}</strong><input id="nbInput" value="${esc(editor.value||'')}" placeholder="عنوان را بنویسید…">${editor.mode==='edit'? `<input id="nbCostInput" inputmode="numeric" value="${esc(editor.cost??'')}" placeholder="مبلغ به تومان (اختیاری)">`:''}<div>${editor.mode==='edit'||editor.mode==='rename'?'<button class="danger" data-editor="delete">حذف</button>':''}<button data-editor="cancel">لغو</button><button class="primary" data-editor="save">ثبت</button></div></div>`;}
@@ -34,9 +34,9 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
       ${nb.lists.filter(x=>!x.trashed).map(x=>`<button data-list="${esc(x.id)}" class="nb-tab ${!starredMode&&x.id===list.id?'active':''}"><span>${esc(x.title)}</span><small>${(x.items||[]).filter(i=>!i.done&&!i.trashed).length.toLocaleString('fa-IR')}</small></button>`).join('')}
       <button data-add-list class="nb-tab nb-add-tab">＋</button></nav>
       <div class="nb-actions"><strong>${starredMode?'ستاره‌دارها':esc(list.title)}</strong><span></span>${starredMode?'':'<button data-rename>ویرایش نام</button>'}<button data-trash>حذف‌شده‌ها</button><a href="#/notebook/export">خروجی</a></div>
-      <main class="nb-list">${content||`<div class="nb-empty">${starredMode?'هنوز چیزی ستاره‌دار نشده است.':'هنوز موردی در این دفتر نیست.'}</div>`}</main>
+      <main class="nb-list">${content||`<div class="nb-empty">${starredMode?'هنوز چیزی ستاره‌دار نشده است.':'هنوز موردی در این دفتر نیست.'}</div>`}${editor?.mode==='item'&&!editor.parentId?editorHtml():''}</main>
       ${starredMode?'':`<button data-add-root class="nb-add-root">＋ افزودن مورد</button><details class="nb-completed"><summary>انجام‌شده‌ها (${completed.length.toLocaleString('fa-IR')})</summary>${completed.map(x=>`<div class="nb-done-row">${esc(x.text)}<button data-restore="${esc(x.id)}">بازگردانی</button></div>`).join('')}</details><div class="nb-total">جمع: ${new Intl.NumberFormat('fa-IR').format(sumCost(list.items))} تومان</div>`}
-      ${editorHtml()}</div>`;
+      ${editor?.mode!=='item'?editorHtml():''}</div>`;
     bind(body);if(editor)queueMicrotask(()=>body.querySelector('#nbInput')?.focus());
   }
   function save(body){

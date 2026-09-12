@@ -102,6 +102,10 @@ body:not(.global-surface){background:#f2f3f5;}
   font-weight:600;
 }
 .topbar:not(.workspace-context) .topbar-title.project-menu-trigger .app-title-project{display:none;}
+body.global-surface .topbar-title.project-menu-trigger.notebook-context{cursor:default;}
+body.global-surface .topbar-title.project-menu-trigger.notebook-context .app-title-main{font-size:15px;font-weight:600;}
+body.global-surface .topbar-title.project-menu-trigger.notebook-context .app-title-main::before,
+body.global-surface .topbar-title.project-menu-trigger.notebook-context .app-title-main::after{content:none;}
 .topbar .account-trigger{
   margin-inline-start:auto;
   margin-inline-end:0;
