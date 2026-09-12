@@ -31,7 +31,9 @@ function harness(){
     'workspaceContextAction','drawerOverlay','closeReportsPage','closeAccountingPage','closeSettingsPage'].forEach(id=>make(id));
   ids.get('drawerOverlay').classList.add('hidden');
   const events=new Map();
+  const body=element('body');
   const documentRef={
+    body,
     documentElement:{style:{setProperty(name,value){this[name]=value;}}},
     getElementById:id=>ids.get(id)||null,
     querySelector(selector){return selector==='.bottom-nav-item.active'?footers.find(x=>x.classList.contains('active'))||null:null;},
@@ -48,7 +50,7 @@ function harness(){
     renderDrawerProjectList:()=>calls.push(['drawer']),
     clearWorkspaceSubpage:()=>{state={...state,workspaceSubpage:null};},
   });
-  return {ids,footers,events,calls,chrome,windowRef,documentRef,get state(){return state;},set state(value){state=value;}};
+  return {ids,footers,events,calls,chrome,windowRef,documentRef,body,get state(){return state;},set state(value){state=value;}};
 }
 
 test('route presentation preserves mounted dashboard content while switching page shells',()=>{
@@ -107,6 +109,28 @@ test('drawer event opens chrome and refreshes drawer/context presentation',()=>{
   assert.equal(h.ids.get('topbarProjectName').textContent,'(پروژه Alpha)');
   h.chrome.closeDrawer();
   assert.equal(h.ids.get('drawerOverlay').classList.contains('hidden'),true);
+});
+
+test('global menu destinations own the fixed header title and hide project footer chrome',()=>{
+  const h=harness();
+  h.windowRef.KarhaRoute={moduleId:'notebook'};
+  h.chrome.openDrawer();
+  assert.equal(h.ids.get('topbarTitle').main.textContent,'دفترچه یادداشت');
+  assert.equal(h.body.classList.contains('global-surface'),true);
+
+  h.windowRef.KarhaRoute={moduleId:'dashboard'};
+  h.state={...h.state,menuRootMode:'profile'};
+  h.chrome.setBottomNavActive('Projects');
+  assert.equal(h.ids.get('topbarTitle').main.textContent,'ثبت مشخصات');
+  assert.equal(h.body.classList.contains('global-surface'),true);
+
+  h.state={...h.state,menuRootMode:'projects'};
+  h.chrome.setBottomNavActive('Projects');
+  assert.equal(h.ids.get('topbarTitle').main.textContent,'مدیریت پروژه‌ها');
+
+  h.state={...h.state,menuRootMode:null};
+  h.chrome.applyRoute('dashboard',getProjectRouteSurface('dashboard'));
+  assert.equal(h.body.classList.contains('global-surface'),false);
 });
 
 test('project switches and repeated route application never leave stale footer or context',()=>{

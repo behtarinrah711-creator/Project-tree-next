@@ -22,6 +22,11 @@ const MENU_TITLES = Object.freeze({
   projects: 'مدیریت پروژه‌ها',
 });
 
+const GLOBAL_ROUTE_TITLES = Object.freeze({
+  notebook: 'دفترچه یادداشت',
+  'notebook-export': 'خروجی دفترچه',
+});
+
 const INNER_SECTION_SUBPAGES = new Set([
   'statusList','statusForm','collab','projectTrash','contractTemplates','contractTemplateForm',
   'statusTest','contracts','contractForm',
@@ -89,7 +94,12 @@ export function installWorkspaceChrome({
     const key = activeFooter();
     const profileVisible = !get('profilePage')?.classList?.contains?.('hidden');
     const managementVisible = !get('projectsPage')?.classList?.contains?.('hidden');
-    const rootTitle = MENU_TITLES[state.menuRootMode] || (profileVisible ? MENU_TITLES.profile : managementVisible ? MENU_TITLES.projects : '');
+    const routeModuleId = windowRef.KarhaRoute?.moduleId;
+    const globalRouteTitle = GLOBAL_ROUTE_TITLES[routeModuleId] || (/^#\/notebook(?:\/export)?/i.test(windowRef.location?.hash || '')
+      ? (/\/export/i.test(windowRef.location?.hash || '') ? GLOBAL_ROUTE_TITLES['notebook-export'] : GLOBAL_ROUTE_TITLES.notebook)
+      : '');
+    const rootTitle = globalRouteTitle || MENU_TITLES[state.menuRootMode] || (profileVisible ? MENU_TITLES.profile : managementVisible ? MENU_TITLES.projects : '');
+    documentRef.body?.classList?.toggle?.('global-surface', !!rootTitle);
     if(rootTitle){
       topbar?.classList?.add?.('workspace-context');
       topbar?.classList?.add?.('root-workspace-context');
