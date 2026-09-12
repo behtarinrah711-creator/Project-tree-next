@@ -35,5 +35,9 @@ test('completion waits for approval; rejection is typed and returns actionable',
   todayApi.approve('p1',ref,actor,()=>400);
   assert.equal(entity(store).completionState,'approved');
   assert.equal(entity(store).completed,true);
+  assert.equal(entity(store).completionSubmittedAt,300);
+  assert.equal(entity(store).completedAt,300);
+  assert.equal(entity(store).actualFinishDay,300);
+  assert.equal(entity(store).approvedAt,400);
   assert.equal(store.getSnapshot().projects[0].tasks[0].progress,100);
 });

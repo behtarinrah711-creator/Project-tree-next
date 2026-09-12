@@ -1,4 +1,4 @@
-import { effectiveDependencyLinks } from '../../domain/wbs/scheduling.js';
+import { PROJECT_FINISH_MILESTONE_ID, effectiveDependencyLinks, projectScheduleAnalysis } from '../../domain/wbs/scheduling.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const BAR_HEIGHT = 8;
@@ -97,7 +97,7 @@ export function setTimelineDependenciesVisible(value){
   dependenciesVisible = Boolean(value);
 }
 
-export function applyTimelineDependencies(gantt, entries, projectItems, documentRef = document){
+export function applyTimelineDependencies(gantt, entries, projectOrItems, documentRef = document){
   const timeline = gantt?.querySelector('.wbs-gantt-timeline');
   if(!timeline || !gantt.classList.contains('is-scale-enhanced')) return;
   gantt.classList.toggle('show-dependencies', dependenciesVisible);
@@ -123,7 +123,12 @@ export function applyTimelineDependencies(gantt, entries, projectItems, document
   });
   if(top <= 0) return;
 
-  const links = effectiveDependencyLinks(projectItems).filter(link => byId.has(link.sourceId) && byId.has(link.targetId));
+  const project = Array.isArray(projectOrItems) ? { tasks:projectOrItems } : projectOrItems;
+  const finishLinks = projectScheduleAnalysis(project).milestone?.predecessorIds.map(sourceId => ({
+    sourceId, targetId:PROJECT_FINISH_MILESTONE_ID, predecessorId:sourceId, type:'FS', lagDays:0,
+  })) || [];
+  const links = [...effectiveDependencyLinks(project?.tasks || []), ...finishLinks]
+    .filter(link => byId.has(link.sourceId) && byId.has(link.targetId));
   if(!links.length) return;
   const layer = svgElement(documentRef, 'svg', {
     class:'wbs-gantt-dependency-layer', width, height:top, viewBox:`0 0 ${width} ${top}`,

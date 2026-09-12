@@ -321,11 +321,14 @@ test('Timeline details survive initial render, timescale changes, and tree reren
   await page.locator('.wbs-tab[aria-label="تایم‌لاین"]').click();
 
   const assertDetails = async expectedBars => {
-    await expect(page.locator('.wbs-gantt-scale-foreign .wbs-gantt-bar')).toHaveCount(expectedBars);
+    const activityBars = page.locator('.wbs-gantt-scale-foreign .wbs-gantt-bar:not(.is-milestone)');
+    await expect(activityBars).toHaveCount(expectedBars);
+    await expect(page.locator('.wbs-gantt-scale-foreign .wbs-gantt-bar.is-milestone')).toHaveCount(1);
+    await expect(page.locator('.wbs-gantt-name.is-milestone')).toContainText('پایان پروژه');
     await expect(page.locator('.wbs-gantt-detail-title').filter({ hasText:/^فونداسیون$/ })).toBeVisible();
     await expect(page.locator('.wbs-gantt-detail-date', { hasText:'۶/۱' }).first()).toBeVisible();
     await expect(page.locator('.wbs-gantt-detail-date', { hasText:'۶/۸' }).first()).toBeVisible();
-    const heights = await page.locator('.wbs-gantt-scale-foreign .wbs-gantt-bar').evaluateAll(bars =>
+    const heights = await activityBars.evaluateAll(bars =>
       bars.map(bar => bar.getBoundingClientRect().height)
     );
     expect(heights).toEqual(Array(expectedBars).fill(13));

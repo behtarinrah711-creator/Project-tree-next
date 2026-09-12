@@ -40,7 +40,7 @@ import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { openCreateWorkTaskSheet, renderWorkTasks } from './workTaskView.js';
 import { predecessorField } from './predecessorField.js';
 import { isGanttLevelVisible } from './timelineViewOptions.js';
-import { scheduleRangeOf } from '../../domain/wbs/scheduling.js';
+import { PROJECT_FINISH_MILESTONE_ID, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
 import {
   advanceExpansionLevel,
   getExpansionProgress,
@@ -303,6 +303,25 @@ function openCreateWorkSheet(parentId = null){
       wbsApi.createWorkItem(projectIdOf(), title, parentId, { progressWeight });
       render();
       return true;
+    },
+  });
+}
+
+function openProjectFinishSheet(){
+  const project = projectOf();
+  if(!project) return;
+  openWbsSheet({
+    title:'موعد پایان پروژه',
+    saveLabel:'ذخیره',
+    body(root){
+      root.appendChild(dateField('plannedFinish', 'موعد پایان اختیاری', project.plannedFinish || ''));
+      const note = document.createElement('div'); note.className = 'wbs-note';
+      note.textContent = 'اگر خالی باشد، پایان پروژه از دیرترین پایان برنامه‌ریزی‌شده فعالیت‌ها محاسبه می‌شود.';
+      root.appendChild(note);
+    },
+    onSave(root){
+      projectRepository.updateProject(project.id, current => ({ ...current, plannedFinish:root.querySelector('[name="plannedFinish"]').dataset.value || '' }));
+      render(); return true;
     },
   });
 }
@@ -601,6 +620,12 @@ function flattenTimeline(items, depth = 0, visibleDepth = 0, out = []){
 
 function renderTimeline(items){
   const rows = flattenTimeline(items);
+  const analysis = projectScheduleAnalysis(projectOf());
+  if(Number.isFinite(analysis.projectFinish)) rows.push({
+    item:{ id:PROJECT_FINISH_MILESTONE_ID, kind:'milestone', text:'پایان پروژه', systemMilestone:true },
+    kind:'milestone', depth:0, sourceDepth:0,
+    range:{ start:analysis.projectFinish, end:analysis.projectFinish },
+  });
   const scheduled = rows.filter(x => x.range);
   const min = scheduled.length ? Math.min(...scheduled.map(x => x.range.start)) : 0;
   const max = scheduled.length ? Math.max(...scheduled.map(x => x.range.end)) : min + 27;
@@ -641,7 +666,8 @@ function timelineColor(item){
 function tNameRow(entry){
   const row = document.createElement('div');
   const task = entry.item.kind === 'workTask';
-  row.className = 'wbs-gantt-name depth-' + Math.min(entry.depth, 6) + (isStage(entry.item) ? ' is-stage' : (task ? ' is-task' : ' is-work'));
+  const milestone = entry.item.kind === 'milestone';
+  row.className = 'wbs-gantt-name depth-' + Math.min(entry.depth, 6) + (isStage(entry.item) ? ' is-stage' : (task ? ' is-task' : (milestone ? ' is-milestone' : ' is-work')));
   const kids = task ? [] : (isWork(entry.item) ? activeWorkTasks(entry.item) : (entry.item.subtasks || []).filter(x => !x.trashed));
   row.innerHTML = `${kids.length ? '<button type="button" class="wbs-gantt-chev">'+(isExpanded(projectIdOf(), entry.item.id)?'▾':'▸')+'</button>' : '<span class="wbs-gantt-chev"></span>'}<span>${escapeHtml(entry.item.text)}</span>`;
   row.querySelector('button')?.addEventListener('click', () => { toggleExpanded(projectIdOf(), String(entry.item.id)); render(); });
@@ -655,12 +681,12 @@ function tBarRow(entry, min, dayWidth){
     const bar = document.createElement('button');
     bar.type = 'button';
     const task = entry.item.kind === 'workTask';
-    bar.className = 'wbs-gantt-bar' + (isStage(entry.item) ? ' is-stage' : '') + (task ? ' is-task' : '');
+    bar.className = 'wbs-gantt-bar' + (isStage(entry.item) ? ' is-stage' : '') + (task ? ' is-task' : '') + (entry.item.kind === 'milestone' ? ' is-milestone' : '');
     bar.style.left = `${(entry.range.start - min) * dayWidth}px`;
     bar.style.width = `${Math.max(dayWidth, (entry.range.end - entry.range.start + 1) * dayWidth)}px`;
     bar.style.backgroundColor = timelineColor(entry.item);
     bar.title = `${scheduleStartOf(entry.item) || ''} تا ${scheduleEndOf(entry.item) || ''}`;
-    bar.addEventListener('click', () => task
+    if(entry.item.kind !== 'milestone') bar.addEventListener('click', () => task
       ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render })
       : (isWork(entry.item) ? openWorkDetailSheet(entry.item) : openStageDetailSheet(entry.item)));
     row.appendChild(bar);
@@ -918,7 +944,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   }
 
   if(currentView === 'delay'){
-    root.appendChild(renderDelayView(project));
+    root.appendChild(renderDelayView(project, document, openProjectFinishSheet));
     return;
   }
 

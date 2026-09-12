@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildEffectiveNetwork, calculateCpm, effectiveDependencyLinks, plannedProgress, validatePredecessors } from './scheduling.js';
+import { buildEffectiveNetwork, calculateCpm, effectiveDependencyLinks, plannedProgress, projectScheduleAnalysis, temporalDelay, validatePredecessors } from './scheduling.js';
 
 test('planned progress is calendar-day based and bounded', () => {
   assert.equal(plannedProgress('1405/01/01', '1405/01/10', 20532), 0);
@@ -33,7 +33,7 @@ test('package predecessors expand to all effective Task leaves', () => {
   ];
   const network = buildEffectiveNetwork(tree);
   assert.deepEqual(network.activities.find(row => row.id === 'target').predecessorIds, ['t1','t2']);
-  assert.deepEqual(network.unresolved, []);
+  assert.deepEqual(network.unresolved.map(row => row.sourceId), ['t1','t2']);
 });
 
 test('dependency drawing resolves aggregate predecessors to their latest scheduled leaf', () => {
@@ -77,4 +77,39 @@ test('SS aggregate predecessor resolves from earliest scheduled leaf while FS an
   assert.equal(effectiveDependencyLinks([source, target('SS')])[0].sourceId, 'early');
   assert.equal(effectiveDependencyLinks([source, target('FS')])[0].sourceId, 'late');
   assert.equal(effectiveDependencyLinks([source, target('FF')])[0].sourceId, 'late');
+});
+
+test('project analysis anchors every terminal path to the system finish milestone', () => {
+  const project = { tasks:[
+    { id:'short', kind:'work', scheduleStart:'1405/01/01', scheduleEnd:'1405/01/02', predecessorIds:[], workTasks:[] },
+    { id:'late', kind:'work', scheduleStart:'1405/01/05', scheduleEnd:'1405/01/08', predecessorIds:[], workTasks:[] },
+  ] };
+  const result = projectScheduleAnalysis(project);
+  assert.equal(result.ok, true);
+  assert.deepEqual(result.milestone.predecessorIds, ['short','late']);
+  assert.equal(result.rows.get('late').totalFloat, 0);
+  assert.equal(result.rows.get('short').totalFloat, 6);
+  assert.equal(result.rows.get('__project_finish__').totalFloat, 0);
+});
+
+test('manual project finish adds float after the calculated finish', () => {
+  const project = { plannedFinish:'1405/01/10', tasks:[
+    { id:'a', kind:'work', scheduleStart:'1405/01/01', scheduleEnd:'1405/01/08', predecessorIds:[], workTasks:[] },
+  ] };
+  const result = projectScheduleAnalysis(project);
+  assert.equal(result.rows.get('a').totalFloat, 2);
+});
+
+test('an unscheduled predecessor leaves the dependency unresolved', () => {
+  const project = { tasks:[
+    { id:'a', kind:'work', predecessorIds:[], workTasks:[] },
+    { id:'b', kind:'work', scheduleStart:'1405/01/03', scheduleEnd:'1405/01/04', predecessorIds:['a'], workTasks:[] },
+  ] };
+  const result = projectScheduleAnalysis(project);
+  assert.equal(result.network.unresolved[0].reason, 'unscheduled');
+});
+
+test('approved completion delay uses submission date rather than approval date', () => {
+  const submitted = new Date('2026-08-25T12:00:00Z').getTime();
+  assert.equal(temporalDelay({ scheduleStart:'1405/06/01', scheduleEnd:'1405/06/02', progress:100, actualFinishDay:submitted }), 1);
 });

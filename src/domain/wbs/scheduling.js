@@ -92,7 +92,9 @@ export function temporalDelay(item, today = tehranTodayDayNumber()){
   if(actualProgress(item) >= 100){
     const explicit = Number(item?.actualFinishDay);
     const completedAt = Number(item?.completedAt);
-    const finished = Number.isFinite(explicit) ? explicit : (Number.isFinite(completedAt) ? tehranTodayDayNumber(new Date(completedAt)) : null);
+    const finished = Number.isFinite(explicit)
+      ? (explicit > 100000000 ? tehranTodayDayNumber(new Date(explicit)) : explicit)
+      : (Number.isFinite(completedAt) ? tehranTodayDayNumber(new Date(completedAt)) : null);
     return Number.isFinite(finished) ? Math.max(0, finished - range.end) : 0;
   }
   return Math.max(0, today - range.end);
@@ -159,7 +161,14 @@ export function buildEffectiveNetwork(items){
     (row.item.predecessorIds || []).map(String).forEach(id => {
       const source = byId.get(id); const expanded = effectiveIds(source);
       if(!source || !expanded.length) unresolved.push({ consumerId:row.id, predecessorId:id });
-      dependencies.push(...expanded);
+      expanded.forEach(expandedId => {
+        const expandedRow = byId.get(expandedId);
+        const expandedRange = expandedRow && scheduleRangeOf(expandedRow.kind === 'workTask'
+          ? { ...expandedRow.item, kind:'workTask' }
+          : expandedRow.item);
+        if(!expandedRange) unresolved.push({ consumerId:row.id, predecessorId:id, sourceId:expandedId, reason:'unscheduled' });
+        dependencies.push(expandedId);
+      });
     });
     return {
       id:row.id, title:row.title,
@@ -255,13 +264,16 @@ export function validatePredecessors(items, consumerId, selectedIds){
 }
 
 export function calculateCpm(activities, { projectFinish = null } = {}){
-  const rows = (activities || []).map(row => ({ ...row, id:String(row.id), predecessorIds:(row.predecessorIds || []).map(String), duration:Math.max(1, Number(row.duration) || 1) }));
+  const rows = (activities || []).map(row => {
+    const rawDuration = Number(row.duration);
+    return { ...row, id:String(row.id), predecessorIds:(row.predecessorIds || []).map(String), duration:row.milestone ? 0 : Math.max(1, rawDuration || 1) };
+  });
   const byId = new Map(rows.map(row => [row.id, row])); const successors = new Map(rows.map(row => [row.id, []]));
   rows.forEach(row => row.predecessorIds.forEach(id => { if(byId.has(id)) successors.get(id).push(row.id); }));
   const result = new Map(); const pending = new Set(rows.map(row => row.id)); const order = [];
   while(pending.size){
     let moved = false;
-    [...pending].forEach(id => { const row = byId.get(id); if(row.predecessorIds.filter(p => byId.has(p)).every(p => result.has(p))){ const es = Math.max(0, ...row.predecessorIds.map(p => result.get(p)?.earlyFinish || 0)); result.set(id, { earlyStart:es, earlyFinish:es + row.duration }); pending.delete(id); order.push(id); moved = true; } });
+    [...pending].forEach(id => { const row = byId.get(id); if(row.predecessorIds.filter(p => byId.has(p)).every(p => result.has(p))){ const es = Math.max(Number(row.notBefore) || 0, ...row.predecessorIds.map(p => result.get(p)?.earlyFinish || 0)); result.set(id, { earlyStart:es, earlyFinish:es + row.duration }); pending.delete(id); order.push(id); moved = true; } });
     if(!moved) return { ok:false, code:'cycle', rows:result };
   }
   const anchored = Number.isFinite(projectFinish) || rows.some(row => successors.get(row.id).length === 0 && Number.isFinite(row.deadline));
@@ -272,4 +284,39 @@ export function calculateCpm(activities, { projectFinish = null } = {}){
     current.lateFinish = boundary; current.lateStart = boundary - row.duration; current.totalFloat = current.lateStart - current.earlyStart;
   });
   return { ok:true, rows:result };
+}
+
+export const PROJECT_FINISH_MILESTONE_ID = '__project_finish__';
+
+/** Build the effective CPM network and terminate every open path at one
+ * zero-duration project-finish milestone. A manually supplied plannedFinish
+ * acts as the contractual/managerial boundary; otherwise the calculated
+ * latest planned leaf finish is used.
+ */
+export function projectScheduleAnalysis(project){
+  const network = buildEffectiveNetwork(project?.tasks || []);
+  const scheduled = network.activities.filter(row => row.scheduled);
+  if(!scheduled.length) return { ok:true, rows:new Map(), network, projectFinish:null, calculatedFinish:null, milestone:null };
+  const successorCount = new Map(scheduled.map(row => [row.id, 0]));
+  scheduled.forEach(row => row.predecessorIds.forEach(id => {
+    if(successorCount.has(id)) successorCount.set(id, successorCount.get(id) + 1);
+  }));
+  const terminals = scheduled.filter(row => successorCount.get(row.id) === 0).map(row => row.id);
+  const minStart = Math.min(...scheduled.map(row => row.range.start));
+  const calculatedFinish = Math.max(...scheduled.map(row => row.range.end));
+  const explicitFinish = jalaliDayNumber(project?.plannedFinish);
+  const boundaryDay = explicitFinish === null ? calculatedFinish : explicitFinish;
+  const deadline = Math.max(0, boundaryDay - minStart + 1);
+  const normalized = scheduled.map(row => ({ ...row, notBefore:row.range.start - minStart }));
+  const milestone = {
+    id:PROJECT_FINISH_MILESTONE_ID,
+    title:'پایان پروژه',
+    predecessorIds:terminals,
+    duration:0,
+    milestone:true,
+    scheduled:true,
+    deadline,
+  };
+  const cpm = calculateCpm([...normalized, milestone]);
+  return { ...cpm, network, projectFinish:boundaryDay, calculatedFinish, milestone };
 }
