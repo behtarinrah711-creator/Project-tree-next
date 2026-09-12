@@ -351,6 +351,14 @@ test('Timeline details survive initial render, timescale changes, and tree reren
   await expect(page.locator('.wbs-dependency-toggle')).toHaveCount(0);
   await expect(dependency).toBeHidden();
   await page.getByRole('button', { name:'کانفیگور نمودار گانت' }).click();
+  const floatOption = page.locator('.wbs-gantt-menu-row', { hasText:'شناوری' }).locator('input');
+  const criticalOption = page.locator('.wbs-gantt-menu-row', { hasText:'مسیر بحرانی' }).locator('input');
+  await expect(floatOption).toBeEnabled();
+  await expect(criticalOption).toBeEnabled();
+  await criticalOption.check();
+  await expect(page.locator('.wbs-gantt-bar.is-cpm-critical')).toHaveCount(3);
+  await page.getByRole('button', { name:'کانفیگور نمودار گانت' }).click();
+  await expect(floatOption).toBeEnabled();
   const dependencyOption = page.locator('.wbs-gantt-menu-row', { hasText:'خطوط پیش‌نیاز' }).locator('input');
   await expect(dependencyOption).not.toBeChecked();
   await dependencyOption.check();
@@ -359,7 +367,8 @@ test('Timeline details survive initial render, timescale changes, and tree reren
   const dependencyArrowLayer = page.locator('.wbs-gantt-dependency-arrow-layer');
   await expect(dependencyArrowLayer).toHaveCSS('display', 'block');
   await expect(dependencyArrow).toHaveCSS('visibility', 'visible');
-  await expect(dependencyArrow).toHaveAttribute('marker-end', 'url(#wbs-gantt-fs-arrow)');
+  await expect(dependencyArrow).toHaveAttribute('marker-end', 'url(#wbs-gantt-critical-arrow)');
+  await expect(dependencyArrow).toHaveClass(/is-critical/);
   const endpoints = await page.evaluate(() => {
     const path = document.querySelector('.wbs-gantt-dependency-link[data-source-id="w1"][data-target-id="w2"]');
     const source = document.querySelector('.wbs-gantt-line[data-dependency-entry-id="w1"] .wbs-gantt-bar');
