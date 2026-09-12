@@ -101,11 +101,11 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     const notebook = moduleId === 'notebook' || moduleId === 'notebook-export' || /^#\/notebook/i.test(windowRef.location?.hash || '');
     title?.classList.toggle('notebook-context', notebook);
     if(notebook){
-      if(main) main.textContent = 'دفترچه';
+      if(main) main.textContent = 'دفترچه یادداشت';
       if(projectLabel) projectLabel.textContent = '';
       title?.classList.remove('has-active-project');
-      title?.setAttribute('aria-haspopup', 'false');
-      title?.setAttribute('aria-label', 'دفترچه');
+      title?.setAttribute('aria-haspopup', 'true');
+      title?.setAttribute('aria-label', 'باز کردن منو از دفترچه یادداشت');
       return;
     }
     title?.setAttribute('aria-haspopup', 'true');
@@ -196,8 +196,7 @@ export function bindShellControls({ windowRef = window, documentRef = document }
   if(drawer.dataset.shellControlsBound === 'true') return true;
   drawer.dataset.shellControlsBound = 'true';
 
-  const openProjectMenu = ({allowNotebook = false} = {}) => {
-    if(!allowNotebook && /^#\/notebook/i.test(windowRef.location?.hash || '')) return;
+  const openProjectMenu = () => {
     drawer.classList.remove('hidden');
     windowRef.dispatchEvent(new windowRef.CustomEvent('karha:drawer-open'));
   };
