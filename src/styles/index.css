@@ -139,7 +139,7 @@ body:not(.global-surface){background:#f2f3f5;}
 #drawerOverlay #drawerSigninBtn{order:7;margin:0;color:var(--primary);}
 #drawerOverlay #drawerSigninBtn[data-auth-action="signout"]{color:var(--danger);}
 #drawerOverlay #drawerProjectsBtn{
-  order:2;
+  order:4;
   width:100%;
   min-height:52px;
   box-sizing:border-box;
@@ -170,7 +170,7 @@ body:not(.global-surface){background:#f2f3f5;}
 #drawerOverlay .drawer-add-project::after{content:none;}
 #drawerOverlay > .drawer > .drawer-section-title{
   display:block !important;
-  order:4;
+  order:2;
   margin:0 0 12px;
   padding:12px 4px;
   border-top:1px solid var(--divider);
