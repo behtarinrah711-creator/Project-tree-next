@@ -42,6 +42,16 @@ test('the application has one deterministic CSS manifest and no embedded applica
   assert.deepEqual(new Set(imports.map(path => join(stylesRoot, path))), new Set(cssFiles.filter(path => !path.endsWith('/index.css'))));
 });
 
+test('project drawer keeps management below the project list', () => {
+  const html = read('index.html');
+  const add = html.indexOf('id="drawerAddProjectBtn"');
+  const title = html.indexOf('class="drawer-section-title">پروژه‌ها');
+  const list = html.indexOf('id="drawerProjectList"');
+  const management = html.indexOf('id="drawerProjectsBtn"');
+  assert.ok(add < title && title < list && list < management);
+  assert.match(read('src/styles/index.css'), /#drawerOverlay #drawerProjectsBtn\s*\{[^}]*order:4;/s);
+});
+
 test('tokens have one canonical owner and style modules contain no application logic', () => {
   const rootOwners = cssFiles.filter(path => /:root\s*\{/.test(readFileSync(path, 'utf8')));
   assert.deepEqual(rootOwners.map(path => relative(root, path)), ['src/styles/tokens.css']);
