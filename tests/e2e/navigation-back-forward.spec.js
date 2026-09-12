@@ -15,8 +15,14 @@ test('route Back/Forward and footer navigation share browser session history',as
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   await page.locator('#bottomReportsBtn').click();
   await expect(page).toHaveURL(/\/reports$/);
+  await expect(page.locator('#topbarTitle .app-title-main')).toHaveText('History matrix');
+  await expect(page.locator('#workspaceProjectContext')).toBeVisible();
+  await expect(page.locator('#workspaceProjectName')).toHaveText('گزارش');
+  await expect(page.locator('#reportsPage > .wbs-view-header')).toHaveCount(0);
   await page.locator('#bottomSettingsBtn').click();
   await expect(page).toHaveURL(/\/people$/);
+  await expect(page.locator('#workspaceProjectName')).toHaveText('تنظیمات');
+  await expect(page.locator('#settingsPage > .wbs-view-header')).toHaveCount(0);
 
   await page.goBack();
   await expect(page).toHaveURL(/\/reports$/);

@@ -116,7 +116,8 @@ test('drawer event opens chrome and refreshes drawer/context presentation',()=>{
   h.events.get('karha:drawer-open')();
   assert.equal(h.ids.get('drawerOverlay').classList.contains('hidden'),false);
   assert.ok(h.calls.some(call=>call[0]==='drawer'));
-  assert.equal(h.ids.get('topbarProjectName').textContent,'(پروژه Alpha)');
+  assert.equal(h.ids.get('topbarTitle').main.textContent,'Alpha');
+  assert.equal(h.ids.get('topbarProjectName').textContent,'');
   h.chrome.closeDrawer();
   assert.equal(h.ids.get('drawerOverlay').classList.contains('hidden'),true);
 });
@@ -152,14 +153,17 @@ test('global menu destinations keep one header and do not mount the project foot
 test('project switches and repeated route application never leave stale footer or context',()=>{
   const h=harness();
   h.chrome.applyRoute('reports',getProjectRouteSurface('reports'));
-  assert.equal(h.ids.get('topbarProjectName').textContent,'(پروژه Alpha)');
+  assert.equal(h.ids.get('topbarTitle').main.textContent,'Alpha');
+  assert.equal(h.ids.get('workspaceProjectName').textContent,'گزارش');
+  assert.equal(h.ids.get('workspaceProjectContext').hidden,false);
   h.state={...h.state,project:{id:'B',name:'Beta'}};
   h.chrome.applyRoute('people',getProjectRouteSurface('people'));
-  assert.equal(h.ids.get('topbarProjectName').textContent,'(پروژه Beta)');
+  assert.equal(h.ids.get('topbarTitle').main.textContent,'Beta');
+  assert.equal(h.ids.get('topbarProjectName').textContent,'');
   assert.equal(h.ids.get('bottomReportsBtn').classList.contains('active'),false);
   assert.equal(h.ids.get('bottomSettingsBtn').classList.contains('active'),true);
   h.chrome.applyRoute('reports',getProjectRouteSurface('reports'));
-  assert.equal(h.ids.get('topbarProjectName').textContent,'(پروژه Beta)');
+  assert.equal(h.ids.get('topbarTitle').main.textContent,'Beta');
   assert.equal(h.ids.get('bottomReportsBtn').classList.contains('active'),true);
 });
 

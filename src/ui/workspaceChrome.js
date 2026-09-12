@@ -134,13 +134,15 @@ export function installWorkspaceChrome({
     }
 
     const isWorkspace = key !== 'Projects';
+    topbar?.classList?.remove?.('workspace-context');
+    topbar?.classList?.remove?.('root-workspace-context');
     get('topbarTitle')?.classList?.remove?.('global-menu-context');
     get('topbarTitle')?.classList?.remove?.('notebook-context');
     const subpage = state.workspaceSubpage || null;
     const sectionTitle = SECTION_TITLES[key] || (key === 'Projects' && subpage === 'archive' ? 'آرشیو شده ها' : '');
-    if(topbarMain) topbarMain.textContent = isWorkspace ? sectionTitle : (state.project?.name || 'پروژه‌ها');
-    if(topbarProject) topbarProject.textContent = isWorkspace && state.project?.name ? `(پروژه ${state.project.name})` : '';
-    get('topbarTitle')?.classList?.toggle?.('has-active-project', !isWorkspace && !!state.project?.name);
+    if(topbarMain) topbarMain.textContent = state.project?.name || 'پروژه‌ها';
+    if(topbarProject) topbarProject.textContent = '';
+    get('topbarTitle')?.classList?.toggle?.('has-active-project', !!state.project?.name);
 
     if(!isWorkspace){
       contextName.textContent = '';
@@ -154,13 +156,12 @@ export function installWorkspaceChrome({
       return;
     }
 
-    let subTitle = '';
+    let subTitle = INNER_SECTION_SUBPAGES.has(subpage) ? '' : sectionTitle;
     if(!INNER_SECTION_SUBPAGES.has(subpage)){
       if(key === 'Accounting' && (subpage === 'statusList' || subpage === 'statusForm')) subTitle = 'صورت وضعیت';
       else if(key === 'Settings' && subpage === 'collab') subTitle = 'همکاران پروژه';
     }
     const showSubpageBar = !!subTitle;
-    topbar?.classList?.toggle?.('root-workspace-context', !showSubpageBar);
     context.hidden = !showSubpageBar;
     context.classList.toggle('subpage-context', showSubpageBar);
     context.setAttribute('aria-hidden', showSubpageBar ? 'false' : 'true');
@@ -188,7 +189,7 @@ export function installWorkspaceChrome({
     documentRef.querySelectorAll?.('.bottom-nav-item')?.forEach?.(item => item.classList?.remove?.('active'));
     get(`bottom${key}Btn`)?.classList?.add?.('active');
     const isWorkspace = key !== 'Projects';
-    get('topbar')?.classList?.toggle?.('workspace-context', isWorkspace);
+    get('topbar')?.classList?.remove?.('workspace-context');
     get('tabbar')?.setAttribute?.('aria-hidden', isWorkspace ? 'true' : 'false');
     get('bottomNav')?.classList?.remove?.('starred-disabled');
     updateWorkspaceContextBar();
