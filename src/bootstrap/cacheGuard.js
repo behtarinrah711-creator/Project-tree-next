@@ -1,5 +1,5 @@
 (function(){
-  const DEV_CACHE_VERSION = '20260908-0257';
+  const DEV_CACHE_VERSION = '__DEPLOYMENT_VERSION__';
   const refreshKey = `karha:dev-cache-refresh:${DEV_CACHE_VERSION}`;
 
   if('serviceWorker' in navigator){
