@@ -35,3 +35,12 @@ test('runtime source contains no production Firebase project or production app-d
   assert.match(sw,/key\.startsWith\(CACHE_PREFIX\)/);
   assert.doesNotMatch(sw,/filter\(key => key !== RUNTIME_CACHE\)/);
 });
+
+test('Pages stamps every deployment with a unique cache refresh version',()=>{
+  const html=fs.readFileSync(path.join(root,'index.html'),'utf8');
+  const guard=fs.readFileSync(path.join(root,'src/bootstrap/cacheGuard.js'),'utf8');
+  const workflow=fs.readFileSync(path.join(root,'.github/workflows/pages.yml'),'utf8');
+  assert.match(html,/cacheGuard\.js\?v=__DEPLOYMENT_VERSION__/);
+  assert.match(guard,/DEV_CACHE_VERSION = '__DEPLOYMENT_VERSION__'/);
+  assert.match(workflow,/s\/__DEPLOYMENT_VERSION__\/\$\{GITHUB_SHA\}\/g/);
+});

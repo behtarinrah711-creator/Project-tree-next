@@ -54,6 +54,9 @@ jobs:
       - name: Run Playwright E2E
         run: npm run test:e2e
 
+      - name: Stamp deployment cache version
+        run: sed -i "s/__DEPLOYMENT_VERSION__/${GITHUB_SHA}/g" index.html src/bootstrap/cacheGuard.js
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 
