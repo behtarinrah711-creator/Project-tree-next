@@ -97,6 +97,10 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
   }
 
   const syncProjectHeader = () => {
+    if(windowRef.KarhaWorkspaceChrome){
+      windowRef.KarhaWorkspaceChrome.updateWorkspaceContextBar?.();
+      return;
+    }
     const moduleId = windowRef.KarhaRoute?.moduleId || 'dashboard';
     const notebook = moduleId === 'notebook' || moduleId === 'notebook-export' || /^#\/notebook/i.test(windowRef.location?.hash || '');
     title?.classList.toggle('notebook-context', notebook);
