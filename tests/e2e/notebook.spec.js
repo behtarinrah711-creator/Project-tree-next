@@ -17,7 +17,7 @@ test.beforeEach(async ({ page }) => {
   });
   await page.goto('/');
   await page.waitForFunction(() => Boolean(window.KarhaLegacy && window.KarhaApp));
-  await page.locator('#avatarBtn').click();
+  await page.locator('#topbarTitle').click();
   await page.locator('#globalNotebookBtn').click();
 });
 
