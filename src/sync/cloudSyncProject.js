@@ -1,5 +1,6 @@
 import { markPending, acknowledgePending } from './storeSyncState.js';
 import { mergeTaskRecords } from './taskRecordMerge.js';
+import { stageModeOf } from '../domain/wbs/branchingPolicy.js';
 
 /**
  * Phase 7.4 — full project cloud sync (metadata + tasks).
@@ -21,7 +22,7 @@ export function buildProjectCloudPayload(p, store, policy, normalizeEmail, DATA_
     name: p.name,
     type: 'project',
     completedOpen: !!p.completedOpen,
-    settings: { ...(p.settings || {}), allowNestedStages:p.settings?.allowNestedStages === true },
+    settings: { ...Object.fromEntries(Object.entries(p.settings || {}).filter(([key]) => key !== 'allowNestedStages')), stageMode:stageModeOf(p) },
     ownerUid: p.ownerUid,
     ownerEmail: normalizeEmail(p.ownerEmail),
     sharedWith: sharedNorm,

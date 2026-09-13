@@ -36,7 +36,7 @@ const t2 = () => new Date('2026-01-02T00:00:00.000Z');
 const t3 = () => new Date('2026-01-03T00:00:00.000Z');
 
 test('createStage may nest stages and works, but work items cannot own children', () => {
-  boot({ id:'p-wbs-1', name:'P', tasks:[] });
+  boot({ id:'p-wbs-1', name:'P', tasks:[], settings:{stageMode:'single'} });
   const stage = wbsApi.createStage('p-wbs-1', 'فونداسیون', null, t1);
   const nestedStage = wbsApi.createStage('p-wbs-1', 'بتن‌ریزی', stage.id, t1);
   const work = wbsApi.createWorkItem('p-wbs-1', 'بتن', nestedStage.id, { quantity:2, unitCost:10 }, t1);
@@ -92,7 +92,7 @@ test('reorder stamps updatedAt on persisted siblings', () => {
 });
 
 test('reorder persists sibling stages below the root', () => {
-  boot({ id:'p-wbs-nested-order', name:'P', tasks:[] });
+  boot({ id:'p-wbs-nested-order', name:'P', tasks:[], settings:{stageMode:'single'} });
   const root = wbsApi.createStage('p-wbs-nested-order', 'Root', null, t1);
   const first = wbsApi.createStage('p-wbs-nested-order', 'First', root.id, t1);
   const second = wbsApi.createStage('p-wbs-nested-order', 'Second', root.id, t1);
@@ -113,7 +113,7 @@ test('reorder persists sibling stages below the root', () => {
 });
 
 test('editing an unfinished work weight immediately lowers every ancestor progress', () => {
-  boot({ id:'p-wbs-weight-update', name:'P', tasks:[] });
+  boot({ id:'p-wbs-weight-update', name:'P', tasks:[], settings:{stageMode:'single'} });
   const root = wbsApi.createStage('p-wbs-weight-update', 'Root', null, { progressWeight:1 }, t1);
   const nested = wbsApi.createStage('p-wbs-weight-update', 'Nested', root.id, { progressWeight:1 }, t1);
   const done = wbsApi.createWorkItem('p-wbs-weight-update', 'Done', nested.id, { progressWeight:1 }, t1);
@@ -189,11 +189,11 @@ test('unrelated functional updates preserve partial progress', () => {
 });
 
 test('stage child type is locked by its first active child', () => {
-  boot({ id:'p-wbs-child-kind', name:'P', tasks:[] });
+  boot({ id:'p-wbs-child-kind', name:'P', tasks:[], settings:{stageMode:'multiple'} });
   const stageParent = wbsApi.createStage('p-wbs-child-kind', 'مراحل', null, { progressWeight:2 }, t1);
   wbsApi.createStage('p-wbs-child-kind', 'زیرمرحله', stageParent.id, { progressWeight:3 }, t1);
   assert.equal(wbsApi.createWorkItem('p-wbs-child-kind', 'کار نامعتبر', stageParent.id, {}, t1), null);
-  const workParent = wbsApi.createStage('p-wbs-child-kind', 'کارها', null, { progressWeight:4 }, t1);
+  const workParent = wbsApi.createStage('p-wbs-child-kind', 'کارها', stageParent.id, { progressWeight:4 }, t1);
   wbsApi.createWorkItem('p-wbs-child-kind', 'کار', workParent.id, {}, t1);
   assert.equal(wbsApi.createStage('p-wbs-child-kind', 'زیرمرحله نامعتبر', workParent.id, { progressWeight:1 }, t1), null);
 });

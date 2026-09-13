@@ -11,11 +11,11 @@ test('settings page has its own project workspace route and the Settings footer'
     pageId:'projectSettingsPage',footer:'Settings',subpage:'projectSettings'
   });
 });
-test('cloud payload defaults to false and preserves future settings', () => {
+test('cloud payload defaults to none and preserves future settings', () => {
   const build=p=>buildProjectCloudPayload(p,{},null,x=>x,8);
-  assert.deepEqual(build({}).settings,{allowNestedStages:false});
+  assert.deepEqual(build({}).settings,{stageMode:'none'});
   assert.deepEqual(build({settings:{allowNestedStages:true,future:'keep'}}).settings,
-    {allowNestedStages:true,future:'keep'});
+    {stageMode:'multiple',future:'keep'});
 });
 test('cloud hydration and project recovery retain settings', () => {
   const settings={allowNestedStages:true,future:2};
@@ -28,4 +28,13 @@ test('cloud hydration and project recovery retain settings', () => {
   assert.deepEqual(docToProjectFromCloud(legacy,old,{appDataStore}).settings,settings);
   appDataStore.markProjectDirty('p');
   assert.deepEqual(docToProjectFromCloud({id:'p',data:()=>({settings:{allowNestedStages:false}})},old,{appDataStore}).settings,settings);
+});
+test('all explicit stage modes survive cloud payload and hydration', () => {
+  const appDataStore=createAppDataStore();
+  for(const stageMode of ['none','single','multiple']){
+    const settings={stageMode,future:'keep'};
+    const payload=buildProjectCloudPayload({settings},{},null,x=>x,8);
+    assert.deepEqual(payload.settings,settings);
+    assert.deepEqual(docToProjectFromCloud({id:'p',data:()=>payload},null,{appDataStore}).settings,settings);
+  }
 });

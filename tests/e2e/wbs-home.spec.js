@@ -84,9 +84,8 @@ test('add menu does not create an incompatible option', async ({ page }) => {
   await expect(page.locator('#wbsSheetOverlay .wbs-choice', { hasText:'افزودن زیرمرحله' })).toHaveCount(0);
   await page.locator('#wbsSheetOverlay .close-btn').click();
 
-  await page.locator('.wbs-row.is-stage', { hasText:'ساختمان' }).locator('.wbs-add').click();
-  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('افزودن مرحله');
-  await expect(page.locator('#wbsSheetOverlay .wbs-choice', { hasText:'افزودن کار' })).toHaveCount(0);
+  // Existing phase containers are preserved; default none never offers another phase.
+  await expect(page.locator('.wbs-row.is-stage', { hasText:'ساختمان' }).locator('.wbs-add')).toHaveCount(0);
 });
 
 test('leaf stages reserve the same responsive disclosure column as expandable stages', async ({ page }) => {
