@@ -89,6 +89,8 @@ export function lineTotal(item){
     const amount = Number(task.amount ?? task.cost);
     return sum + (Number.isFinite(amount) ? Math.max(0, amount) : 0);
   }, 0);
+  const manualCost = item?.manualCost == null ? NaN : Number(item.manualCost);
+  if(Number.isFinite(manualCost)) return Math.max(0, manualCost);
   return quantityOf(item) * unitCostOf(item);
 }
 

@@ -68,7 +68,10 @@ test('editing unfinished work weight immediately recalculates its stage progress
 
   await execution.locator('.wbs-title').click();
   await page.locator('#wbsSheetOverlay .wbs-primary-action', { hasText:'ویرایش اطلاعات کار' }).click();
-  await page.locator('#wbsSheetOverlay [name="progressWeight"]').fill('9');
+  await page.locator('#wbsSheetOverlay [name="progressWeight"]').click();
+  await page.locator('#numpadBackspace').click();
+  await page.locator('.numpad-key[data-d="9"]').click();
+  await page.locator('#numpadDoneBtn').click();
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
 
   await expect(foundation.locator('.wbs-meta')).toHaveText('٪۱۹');
