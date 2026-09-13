@@ -91,3 +91,23 @@ test('base mode creates work directly from the tree header and retains it when s
   await page.locator('.wbs-root-add').click();
   await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('افزودن بسته کار');
 });
+
+for(const stageMode of ['base','none','single','multiple']){
+  test(`work information excludes removed fields and preserves stored values in ${stageMode}`, async ({ page }) => {
+    const work={id:'work',kind:'work',text:'کار تست',progressWeight:1,type:'اجرا',scheduleStart:'1405/06/01',scheduleEnd:'1405/06/03',progress:35,priority:'high',assigneeContactId:'contact',predecessorIds:['previous'],dependencies:[],quantity:2,unit:'متر',unitCost:500,subtasks:[]};
+    await page.addInitScript(({stageMode,work}) => {
+      localStorage.setItem('ptnext-v1:app-data',JSON.stringify({schemaVersion:8,activeTab:'info',viewMode:'simple',starredOrder:[],projects:[{id:'info',name:'اطلاعات کار',settings:{stageMode},tasks:[{id:'previous',kind:'work',text:'پیش‌نیاز',subtasks:[]},work]}]}));
+    },{stageMode,work});
+    await page.goto('/index.html#/projects/info/dashboard');
+    await page.locator('.wbs-row.is-work',{hasText:'کار تست'}).locator('.wbs-title').click();
+    await page.locator('#wbsSheetOverlay .wbs-primary-action',{hasText:'ویرایش اطلاعات کار'}).click();
+    const sheet=page.locator('#wbsSheetOverlay');
+    for(const name of ['scheduleStart','scheduleEnd','progress','priority','assigneeContactId','quantity','unit','unitCost']) await expect(sheet.locator(`[name="${name}"]`)).toHaveCount(0);
+    await expect(sheet.locator('.wbs-duration-output,.wbs-live-total,.wbs-predecessor-field')).toHaveCount(0);
+    await sheet.locator('[name="title"]').fill('کار ویرایش‌شده');
+    await sheet.locator('.wbs-sheet-save').click();
+    await expect(page.locator('.wbs-row.is-work',{hasText:'کار ویرایش‌شده'})).toBeVisible();
+    const stored=await page.evaluate(()=>window.KarhaAppData.getSnapshot().projects.find(p=>p.id==='info').tasks.find(t=>t.id==='work'));
+    for(const key of ['scheduleStart','scheduleEnd','progress','priority','assigneeContactId','predecessorIds','quantity','unit','unitCost']) expect(stored[key]).toEqual(work[key]);
+  });
+}
