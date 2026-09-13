@@ -68,10 +68,6 @@
   font-size:13px;
 }
 
-.wbs-view-frame.is-standard-view .wbs-chev{
-  font-size:15px;
-}
-
 .wbs-tree-mode-tabs{
   display:flex;
   align-items:center;

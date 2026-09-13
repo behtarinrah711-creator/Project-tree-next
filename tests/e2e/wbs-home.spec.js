@@ -25,7 +25,9 @@ const project = {
   archived: false,
 };
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page }, testInfo) => {
+  const stageMode = testInfo.title.match(/tree squares are absent in (none|single|multiple)/)?.[1];
+  const seed = stageMode ? { ...project, settings:{ stageMode } } : project;
   await page.addInitScript(seedProject => {
     localStorage.clear();
     localStorage.setItem('ptnext-v1:app-data', JSON.stringify({
@@ -35,7 +37,7 @@ test.beforeEach(async ({ page }) => {
       viewMode: 'simple',
       starredOrder: [],
     }));
-  }, project);
+  }, seed);
   await page.goto('/index.html#/projects/e2e-wbs-home/dashboard');
   await page.waitForFunction(() => Boolean(window.KarhaLegacy && window.KarhaApp));
 });
@@ -44,17 +46,23 @@ async function selectTreeMode(page, label){
   await page.locator(`.wbs-tree-mode-tab[aria-label="${label}"]`).click();
 }
 
-test('progress is weighted, work checkbox resets progress, and stage checkbox is derived', async ({ page }) => {
+test('progress remains weighted and editable without tree row squares', async ({ page }) => {
   await selectTreeMode(page, 'درصد پیشرفت');
   await page.locator('.wbs-tree-toggle').click();
   const foundation = page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' });
   await expect(foundation.locator('.wbs-meta')).toHaveText('٪۳۳');
-  await expect(foundation.locator('.wbs-check')).toBeDisabled();
+  await expect(foundation.locator('.wbs-check')).toHaveCount(0);
 
   const execution = page.locator('.wbs-row.is-work', { hasText:'اجرای فونداسیون' });
-  await execution.locator('.wbs-check').click();
+  await execution.locator('.wbs-title').click();
+  await page.locator('#wbsSheetOverlay .wbs-primary-action', { hasText:'ویرایش اطلاعات کار' }).click();
+  await page.locator('#wbsSheetOverlay [name="progress"]').fill('100');
+  await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
   await expect(foundation.locator('.wbs-meta')).toHaveText('٪۱۰۰');
-  await execution.locator('.wbs-check').click();
+  await execution.locator('.wbs-title').click();
+  await page.locator('#wbsSheetOverlay .wbs-primary-action', { hasText:'ویرایش اطلاعات کار' }).click();
+  await page.locator('#wbsSheetOverlay [name="progress"]').fill('0');
+  await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
   await expect(foundation.locator('.wbs-meta')).toHaveText('٪۲۵');
 });
 
@@ -222,7 +230,7 @@ test('Work Task create, edit, connector, modes and weighted completion share one
   await selectTreeMode(page, 'درصد پیشرفت');
   task = page.locator('.wbs-work-task', { hasText:'تحویل آهن' });
   await expect(task.locator('.wbs-task-progress')).toHaveText('٪۰');
-  await expect(work.locator('.wbs-check')).toBeDisabled();
+  await expect(work.locator('.wbs-check')).toHaveCount(0);
   await task.click();
   await sheet.locator('[name="taskWeight"]').fill('3');
   await sheet.locator('.wbs-sheet-save').click();
@@ -413,3 +421,15 @@ test('Timeline details survive initial render, timescale changes, and tree reren
   await expect(page.locator('.wbs-gantt-detail-title', { hasText:'اجرای فونداسیون' })).toHaveCount(0);
   await assertDetails(1);
 });
+
+for (const stageMode of ['none', 'single', 'multiple']) {
+  test(`tree squares are absent in ${stageMode} categorization mode`, async ({ page }) => {
+    await page.locator('.wbs-tree-toggle').click();
+    for (const mode of ['ثبت و ویرایش', 'هزینه‌ها', 'درصد پیشرفت']) {
+      await selectTreeMode(page, mode);
+      await expect(page.locator('.wbs-row.is-stage').first()).toBeVisible();
+      await expect(page.locator('.wbs-row.is-work').first()).toBeVisible();
+      await expect(page.locator('.wbs-check')).toHaveCount(0);
+    }
+  });
+}
