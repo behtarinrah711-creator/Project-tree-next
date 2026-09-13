@@ -42,9 +42,6 @@ body:has(.wbs-home-root){background:#fff;}
 .wbs-row.is-done .wbs-title{opacity:.7;}
 .wbs-grip{color:#bbb;font-size:12px;width:16px;flex:0 0 16px;order:99;touch-action:none;cursor:grab;user-select:none;}
 .wbs-grip:active{cursor:grabbing;color:#77706a;}
-.wbs-check{box-sizing:border-box;appearance:none;-webkit-appearance:none;width:12px;height:12px;min-width:12px;max-width:12px;min-height:12px;max-height:12px;border:1.5px solid #8a8176;border-radius:3px;background:#fff;padding:0;margin:0;flex:0 0 12px;line-height:9px;font-size:9px;}
-.wbs-check:disabled{opacity:1;cursor:default;background:#f4f2ee;}
-.wbs-row.depth-0 .wbs-check,.wbs-simple-row.depth-0 .wbs-check{width:18px;height:18px;min-width:18px;max-width:18px;min-height:18px;max-height:18px;flex:0 0 18px;line-height:15px;font-size:12px;}
 .wbs-title{border:0;background:transparent;text-align:right;flex:1;min-width:0;display:flex;align-items:center;gap:4px;font-size:14px;}
 .wbs-title-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .wbs-meta{font-size:11px;color:#6f675d;max-width:42%;}
@@ -53,7 +50,10 @@ body:has(.wbs-home-root){background:#fff;}
 .wbs-meta.is-estimate,.wbs-general-amount,.wbs-total{font-family:'IRANYekan',IRANYekan,Tahoma,sans-serif;}
 .wbs-meta.is-estimate::after,.wbs-general-amount::after,.wbs-total::after{content:' تومان';font-size:8px;font-weight:400;color:#8a8176;margin-inline-start:2px;}
 .wbs-add,.wbs-chev{border:0;background:transparent;min-width:32px;min-height:32px;}
-.wbs-chev,.wbs-chev-spacer{box-sizing:border-box;width:32px;min-width:32px;flex:0 0 32px;}
+.wbs-chev,.wbs-chev{display:inline-flex;align-items:center;justify-content:center;padding:0;}
+.wbs-chev-icon{display:block;width:24px;height:24px;flex:0 0 24px;}
+.wbs-chev[aria-expanded="false"] .wbs-chev-icon{transform:rotate(-90deg);}
+.wbs-chev-spacer{box-sizing:border-box;width:32px;min-width:32px;flex:0 0 32px;}
 .wbs-chev-spacer{display:block;height:32px;pointer-events:none;}
 .wbs-add{order:98;}
 .wbs-simple-card{overflow:hidden;border-radius:5px;margin-bottom:10px;}

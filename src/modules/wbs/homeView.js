@@ -52,6 +52,7 @@ import {
 } from './wbsExpandState.js';
 
 const COSTLINE_ICON = 'M640-160v-280h160v280H640Zm-240 0v-640h160v640H400Zm-240 0v-440h160v440H160Z';
+const BRANCH_ARROW_ICON = 'm480-360 160-160H320l160 160Zm0 280q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z';
 const TREE_ICON = 'M160-360v-80h640v80H160Zm0 160v-80h640v80H160Zm0-320v-80h640v80H160Zm0-160v-80h640v80H160Z';
 
 const VIEWS = [
@@ -827,7 +828,6 @@ function renderRow(item, codes, view, depth){
   const chipClass = rawType ? (SIMPLE_TYPE_CLASSES.get(rawType) || 'type-7') : 'type-7';
   const readOnlyView = view === 'estimate' || view === 'progress';
   const mayAdd = !stage || stageAddKinds(projectOf(), item.id).length > 0;
-  const taskDerived = isWork(item) && workTasks.length > 0;
   const meta = [];
   if(view === 'estimate' && isWork(item)){
     meta.push(new Intl.NumberFormat('fa-IR').format(lineTotal(item)));
@@ -843,8 +843,7 @@ function renderRow(item, codes, view, depth){
   row.className = 'wbs-row depth-' + Math.min(6, depth) + (checked ? ' is-done' : '') + (stage ? ' is-stage' : ' is-work');
   row.innerHTML = `
     ${readOnlyView ? '' : '<span class="wbs-grip" aria-hidden="true">⋮⋮</span>'}
-    <button type="button" class="wbs-check" aria-label="${stage || taskDerived ? 'پیشرفت محاسبه‌شده' : 'وضعیت'}" ${stage || taskDerived ? 'disabled' : ''}>${checked ? '✓' : ''}</button>
-    ${hasExpandableContent ? `<button type="button" class="wbs-chev" aria-label="${open?'بستن':'باز کردن'}">${open?'▾':'▸'}</button>` : '<span class="wbs-chev-spacer"></span>'}
+    ${hasExpandableContent ? `<button type="button" class="wbs-chev" aria-label="${open?'بستن':'باز کردن'}" aria-expanded="${open}"><svg class="wbs-chev-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24" height="24" fill="#1f1f1f" aria-hidden="true" focusable="false"><path d="${BRANCH_ARROW_ICON}"/></svg></button>` : '<span class="wbs-chev-spacer"></span>'}
     <button type="button" class="wbs-title">
       ${stage ? '' : `<span class="wbs-type-chip ${chipClass}">${escapeHtml(chipLabel)}</span>`}
       ${code ? `<b>${escapeHtml(code)}</b>` : ''}
@@ -853,11 +852,6 @@ function renderRow(item, codes, view, depth){
     <span class="wbs-meta${view === 'estimate' ? ' is-estimate' : ''}${view === 'progress' ? ' is-progress' : ''}">${escapeHtml(meta.join(' · '))}</span>
     ${!readOnlyView && mayAdd ? `<button type="button" class="wbs-add" aria-label="${stage ? 'افزودن' : 'ساخت کار'}">+</button>` : ''}
   `;
-  row.querySelector('.wbs-check')?.addEventListener('click', ev => {
-    ev.stopPropagation();
-    if(isWork(item)) wbsApi.updateItem(projectIdOf(), item.id, { progress: checked ? 0 : 100 });
-    render();
-  });
   row.querySelector('.wbs-chev')?.addEventListener('click', ev => {
     ev.stopPropagation();
     toggleExpanded(projectIdOf(), String(item.id));
