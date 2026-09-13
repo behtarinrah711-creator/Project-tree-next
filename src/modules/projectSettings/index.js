@@ -1,3 +1,4 @@
+import { STAGE_EXAMPLES } from '../../domain/wbs/stagePresentation.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { appRouter } from '../../core/router.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
@@ -21,10 +22,10 @@ export default {
     legend.textContent = 'نوع مرحله‌بندی';
     group.appendChild(legend);
     const options = [
-      ['base', 'حالت پایه', 'کار ← خرده‌کار'],
-      ['none', 'بدون مرحله', 'بسته کاری ← کار ← خرده‌کار'],
-      ['single', 'یک مرحله‌ای', 'بسته کاری ← مرحله ← کار ← خرده‌کار'],
-      ['multiple', 'بیش از یک مرحله', 'بسته کاری ← مرحله ← زیرمرحله‌های دلخواه ← کار ← خرده‌کار'],
+      ['base', 'تک‌مرحله‌ای', 'مرحله ← کار'],
+      ['none', 'دو‌مرحله‌ای', 'مرحله ← مرحله ← کار'],
+      ['single', 'سه‌مرحله‌ای', 'مرحله ← مرحله ← مرحله ← کار'],
+      ['multiple', 'چندمرحله‌ای', 'مرحله ← مرحله ← مرحله ← مراحل دلخواه ← کار'],
     ];
     options.forEach(([value, label, description]) => {
       const row = document.createElement('label');
@@ -37,7 +38,10 @@ export default {
       const detail = document.createElement('span');
       detail.className = 'workspace-option-meta';
       detail.textContent = description;
-      main.append(title, detail);
+      const exampleLine = document.createElement('span');
+      exampleLine.className = 'workspace-option-meta project-stage-example';
+      exampleLine.textContent = `مثال: ${[...STAGE_EXAMPLES[value], 'خرید سیم و کابل'].join(' ← ')}`;
+      main.append(title, detail, exampleLine);
       const input = document.createElement('input');
       input.type = 'radio';
       input.name = 'project-stage-mode';

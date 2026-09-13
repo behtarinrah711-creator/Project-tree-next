@@ -1,3 +1,4 @@
+import { stageCreationPlaceholder } from '../../domain/wbs/stagePresentation.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { wbsApi } from '../../domain/wbs/wbsApi.js';
@@ -244,21 +245,27 @@ function infoRow(label, value, { action = false, danger = false, onClick = null 
   return row;
 }
 
-function openCreateStageSheet(parentId = null){
+function openCreateGroupingSheet(parentId, createItem){
   openWbsSheet({
-    title: parentId ? (wbsApi.list(projectIdOf()).some(item => String(item.id) === String(parentId)) ? 'افزودن مرحله' : 'افزودن زیرمرحله') : 'افزودن بسته کار',
+    presentation: 'stage-create',
+    title: 'ایجاد مرحله جدید',
     saveLabel: 'ذخیره',
     body(root){
-      root.appendChild(fieldRow('نام مرحله', textInput('', { name:'title', placeholder:'نام مرحله' })));
+      root.appendChild(fieldRow('نام مرحله', textInput('', {
+        name:'title', placeholder:stageCreationPlaceholder(projectOf(), parentId),
+      })));
     },
     onSave(root){
       const title = root.querySelector('[name="title"]').value.trim();
-      if(!title) return false;
-      if(!wbsApi.createStage(projectIdOf(), title, parentId)) return false;
+      if(!title || !createItem(projectIdOf(), title, parentId)) return false;
       render();
       return true;
     },
   });
+}
+
+function openCreateStageSheet(parentId = null){
+  openCreateGroupingSheet(parentId, (...args) => wbsApi.createStage(...args));
 }
 
 function workNumberInput(value, attrs, { money = false } = {}){
@@ -274,22 +281,7 @@ function workNumberInput(value, attrs, { money = false } = {}){
 }
 
 function openCreateWorkSheet(parentId = null){
-  const isBaseStage = parentId === null && stageModeOf(projectOf()) === 'base';
-  openWbsSheet({
-    presentation: isBaseStage ? 'stage-create' : '',
-    title: isBaseStage ? 'ایجاد مرحله جدید' : 'افزودن کار',
-    saveLabel: 'ذخیره',
-    body(root){
-      root.appendChild(fieldRow(isBaseStage ? 'نام مرحله' : 'عنوان کار', textInput('', { name:'title', placeholder:isBaseStage ? 'مثال: گچ کاری' : 'عنوان کار' })));
-    },
-    onSave(root){
-      const title = root.querySelector('[name="title"]').value.trim();
-      if(!title) return false;
-      if(!wbsApi.createWorkItem(projectIdOf(), title, parentId)) return false;
-      render();
-      return true;
-    },
-  });
+  openCreateGroupingSheet(parentId, (...args) => wbsApi.createWorkItem(...args));
 }
 
 function openProjectFinishSheet(){
