@@ -307,6 +307,7 @@ function openAddMenu(stageId){
   const kinds = stageAddKinds(projectOf(), stageId);
   if(kinds.length === 1){
     if(kinds[0] === 'stage') openCreateStageSheet(stageId);
+    else if(stageModeOf(projectOf()) === 'multiple' && !(wbsApi.get(projectIdOf(), stageId)?.subtasks || []).some(child => !child.trashed)) openWorkRegistration(stageId);
     else openCreateWorkSheet(stageId);
     return;
   }
@@ -549,7 +550,7 @@ function tBarRow(entry, min, dayWidth){
     bar.title = `${scheduleStartOf(entry.item) || ''} تا ${scheduleEndOf(entry.item) || ''}`;
     if(entry.item.kind !== 'milestone') bar.addEventListener('click', () => task
       ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render })
-      : (isWork(entry.item) ? openWorkDetailSheet(entry.item) : openStageDetailSheet(entry.item)));
+      : openItemDetails(entry.item));
     row.appendChild(bar);
   }else if(isWork(entry.item) || entry.item.kind === 'workTask'){
     const empty = document.createElement('button');
@@ -566,13 +567,24 @@ function renderTimelineRows(rows, names, timeline, min, dayWidth){
   rows.forEach(entry => { names.appendChild(tNameRow(entry)); timeline.appendChild(tBarRow(entry, min, dayWidth)); });
 }
 
+function isWorkRegistrationLevel(item){
+  if(isWork(item)) return true;
+  const children = (item.subtasks || []).filter(child => !child.trashed);
+  return !children.length && (item.registrationLevel === 'work' || stageAddKinds(projectOf(), item.id).length === 0);
+}
+
+function openItemDetails(item){
+  if(isWorkRegistrationLevel(item)) openWorkRegistration(item.id);
+  else openStageDetailSheet(item);
+}
+
 function openWorkRegistration(itemId){
   let item = wbsApi.get(projectIdOf(), itemId);
   if(!item) return;
   if(isStage(item)){
     // Choosing work ends the hierarchy at this existing empty stage.
-    if(stageModeOf(projectOf()) !== 'multiple' || (item.subtasks || []).some(child => !child.trashed)) return;
-    item = wbsApi.updateItem(projectIdOf(), item.id, { kind:'work' });
+    if((item.subtasks || []).some(child => !child.trashed)) return;
+    item = wbsApi.updateItem(projectIdOf(), item.id, { kind:'work', registrationLevel:'work' });
     if(!item) return;
     render();
   }
@@ -691,7 +703,8 @@ function renderRow(item, codes, view, depth){
   const open = isExpanded(projectIdOf(), item.id);
   const code = stage ? (codes.get(String(item.id)) || '') : '';
   const readOnlyView = view === 'estimate' || view === 'progress';
-  const mayAdd = !stage || stageAddKinds(projectOf(), item.id).length > 0;
+  const registrationLevel = isWorkRegistrationLevel(item);
+  const mayAdd = registrationLevel || stageAddKinds(projectOf(), item.id).length > 0;
   const meta = [];
   if(view === 'estimate' && isWork(item)){
     meta.push(new Intl.NumberFormat('fa-IR').format(lineTotal(item)));
@@ -722,13 +735,12 @@ function renderRow(item, codes, view, depth){
   });
   row.querySelector('.wbs-title')?.addEventListener('click', ev => {
     ev.stopPropagation();
-    if(isWork(item)) openWorkDetailSheet(item);
-    else openStageDetailSheet(item);
+    openItemDetails(item);
   });
   row.querySelector('.wbs-add')?.addEventListener('click', ev => {
     ev.stopPropagation();
-    if(stage) openAddMenu(item.id);
-    else openWorkRegistration(item.id);
+    if(registrationLevel) openWorkRegistration(item.id);
+    else openAddMenu(item.id);
   });
   const wrap = document.createElement('div');
   wrap.className = depth === 0 ? 'wbs-card' : 'wbs-branch';
