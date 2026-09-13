@@ -33,6 +33,7 @@ import { TODAY_ICON, renderTodayView } from './todayView.js';
 import { DELAY_ICON, renderDelayView } from './delayView.js';
 import { DEFAULT_TREE_MODE, createTreeModeTabs } from './treeModes.js';
 import { toEnglishDigits } from '../../ui/digits.js';
+import { openNumpadGeneric } from '../../ui/numpad.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { openCreateWorkTaskSheet, renderWorkTasks } from './workTaskView.js';
 import { isGanttLevelVisible } from './timelineViewOptions.js';
@@ -276,13 +277,25 @@ function openCreateStageSheet(parentId = null){
   });
 }
 
+function workNumberInput(value, attrs, { money = false } = {}){
+  const input = textInput(value, { ...attrs, type:'text' });
+  input.readOnly = true;
+  input.inputMode = 'none';
+  input.addEventListener('click', () => openNumpadGeneric(input.value, raw => {
+    input.value = raw;
+    input.dispatchEvent(new Event('input', { bubbles:true }));
+    input.dispatchEvent(new Event('change', { bubbles:true }));
+  }, { suffix:money ? ' تومان' : '', group:money, maxLen:16 }));
+  return input;
+}
+
 function openCreateWorkSheet(parentId = null){
   openWbsSheet({
     title: 'افزودن کار',
     saveLabel: 'ذخیره',
     body(root){
       root.appendChild(fieldRow('عنوان کار', textInput('', { name:'title', placeholder:'عنوان کار' })));
-      root.appendChild(fieldRow('وزن پیشرفت', textInput('1', { name:'progressWeight', type:'number', min:'0.01', step:'0.01', required:true })));
+      root.appendChild(fieldRow('وزن پیشرفت', workNumberInput('1', { name:'progressWeight', type:'number', min:'0.01', step:'0.01', required:true })));
       const note = document.createElement('div');
       note.className = 'wbs-note';
       note.textContent = 'وزن نسبی است؛ لازم نیست مجموع وزن‌ها ۱۰۰ شود.';
@@ -428,12 +441,12 @@ function openWorkEditSheet(item){
     saveLabel: 'ذخیره',
     body(root){
       root.appendChild(fieldRow('عنوان', textInput(current.text || '', { name:'title' })));
-      root.appendChild(fieldRow('وزن پیشرفت', textInput(String(progressWeightOf(current)), { name:'progressWeight', type:'number', min:'0.01', step:'0.01', required:true })));
+      root.appendChild(fieldRow('وزن پیشرفت', workNumberInput(String(progressWeightOf(current)), { name:'progressWeight', type:'number', min:'0.01', step:'0.01', required:true })));
       const progressNote = document.createElement('div');
       progressNote.className = 'wbs-note';
       progressNote.textContent = 'وزن نسبی است و لازم نیست مجموع وزن‌ها ۱۰۰ شود.';
       root.appendChild(progressNote);
-      if(!hasTasks) root.appendChild(fieldRow('هزینه', textInput(String(lineTotal(current)), { name:'manualCost', type:'number', min:'0', step:'any' })));
+      if(!hasTasks) root.appendChild(fieldRow('هزینه', workNumberInput(String(lineTotal(current)), { name:'manualCost' }, { money:true })));
       root.appendChild(fieldRow('توضیح', textInput(current.description || '', { name:'description' })));
     },
     onSave(root){

@@ -130,7 +130,11 @@ for(const stageMode of ['base','none','single','multiple']){
     await expect(sheet.locator('[name="type"],[name="contractorContactId"]')).toHaveCount(0);
     await expect(sheet).not.toContainText('افزودن فعالیت');
     await expect(sheet.locator('[name="manualCost"]')).toHaveValue('500');
-    await sheet.locator('[name="manualCost"]').fill('750');
+    await expect(sheet.locator('[name="manualCost"]')).toHaveAttribute('readonly', '');
+    await sheet.locator('[name="manualCost"]').click();
+    for(let i=0;i<3;i++) await page.locator('#numpadBackspace').click();
+    for(const digit of '750') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
+    await page.locator('#numpadDoneBtn').click();
     await sheet.locator('.wbs-sheet-save').click();
     await openEdit('کار والد');
     await expect(sheet.locator('[name="manualCost"]')).toHaveCount(0);
