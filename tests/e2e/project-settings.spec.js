@@ -27,9 +27,9 @@ test('project settings persist and switch the phase add flow without changing ex
   await page.locator('#bottomSettingsBtn').click();
   await page.getByRole('button',{name:'تنظیمات پروژه',exact:false}).click();
   await expect(page.locator('#projectSettingsPage')).toBeVisible();
-  const none=page.getByRole('radio',{name:'بدون مرحله',exact:true});
-  const single=page.getByRole('radio',{name:'یک مرحله‌ای',exact:true});
-  const multiple=page.getByRole('radio',{name:'بیش از یک مرحله',exact:true});
+  const none=page.getByRole('radio',{name:'دو‌مرحله‌ای',exact:true});
+  const single=page.getByRole('radio',{name:'سه‌مرحله‌ای',exact:true});
+  const multiple=page.getByRole('radio',{name:'چندمرحله‌ای',exact:true});
   await expect(none).toBeChecked();
   await single.check();
   await page.reload();
@@ -102,9 +102,9 @@ test('base mode creates work directly from the tree header and retains it when s
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await page.locator('#bottomSettingsBtn').click();
   await page.getByRole('button',{name:'تنظیمات پروژه',exact:false}).click();
-  await expect(page.getByRole('radio',{name:'حالت پایه',exact:true})).toBeChecked();
+  await expect(page.getByRole('radio',{name:'تک‌مرحله‌ای',exact:true})).toBeChecked();
   await expect(page.locator('.project-stage-mode')).toHaveCount(4);
-  await page.getByRole('radio',{name:'بدون مرحله',exact:true}).check();
+  await page.getByRole('radio',{name:'دو‌مرحله‌ای',exact:true}).check();
   await page.locator('#closeProjectSettingsPage').click();
   await page.locator('#bottomProjectsBtn').click();
   await expect(page.locator('.wbs-row.is-work')).toHaveCount(1);
