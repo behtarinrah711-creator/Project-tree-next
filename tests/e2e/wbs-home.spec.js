@@ -205,12 +205,14 @@ test('Work Task create, edit, connector, modes and weighted completion share one
     expect(Math.abs(grip.x - parentGrip.x)).toBeLessThanOrEqual(1);
     expect(grip.x + grip.width).toBeLessThanOrEqual(content.x);
     expect(connector.x).toBeGreaterThanOrEqual(content.x + content.width - 1);
-    const parentChip = await work.locator('.wbs-type-chip').boundingBox();
+    const parentTitle = await work.locator('.wbs-title-text').boundingBox();
     const taskChip = await task.locator('.wbs-type-chip').boundingBox();
     const arrow = await work.locator('.wbs-chev').boundingBox();
-    expect(Math.abs((parentChip.x + parentChip.width) - (taskChip.x + taskChip.width) - 12)).toBeLessThanOrEqual(1);
+    expect(Math.abs((parentTitle.x + parentTitle.width) - (taskChip.x + taskChip.width) - 12)).toBeLessThanOrEqual(1);
     expect(Math.abs(connector.x + connector.width - (arrow.x + arrow.width / 2))).toBeLessThanOrEqual(1);
   }
+  await expect(work.locator('.wbs-type-chip')).toHaveCount(0);
+  await expect(task.locator('.wbs-type-chip')).toHaveCount(1);
   await expect(task.locator('.wbs-check')).toHaveCount(0);
   await expect(task.locator('.wbs-task-main')).toContainText('خرید');
   await expect(task.locator('.wbs-task-secondary')).toContainText('مهندس احمدی');
