@@ -71,6 +71,7 @@ export function docToProjectFromCloud(doc, localExisting, ctx = {}){
     id: doc.id,
     name: meta.name,
     type: 'project',
+    settings: projectDirty ? (localExisting?.settings || d.settings || {}) : (d.settings || localExisting?.settings || {}),
     tasks: cachedTasks,
     contacts,
     activityTemplates,

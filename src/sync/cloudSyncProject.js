@@ -21,6 +21,7 @@ export function buildProjectCloudPayload(p, store, policy, normalizeEmail, DATA_
     name: p.name,
     type: 'project',
     completedOpen: !!p.completedOpen,
+    settings: { ...(p.settings || {}), allowNestedStages:p.settings?.allowNestedStages === true },
     ownerUid: p.ownerUid,
     ownerEmail: normalizeEmail(p.ownerEmail),
     sharedWith: sharedNorm,

@@ -194,6 +194,9 @@ function renderSettingsWorkspace(){
   body.innerHTML='';
   if(!p){ body.innerHTML='<div class="mgmt-empty">برای نمایش تنظیمات، یک پروژه را انتخاب کنید.</div>'; return; }
   const wrap=document.createElement('div'); wrap.className='workspace-option-list';
+  const projectSettingsRow=document.createElement('button'); projectSettingsRow.type='button'; projectSettingsRow.className='workspace-option';
+  projectSettingsRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">تنظیمات پروژه</span></span><span class="workspace-option-arrow">›</span>';
+  projectSettingsRow.onclick=()=>window.KarhaApp?.router?.navigate(p.id, 'project-settings'); wrap.appendChild(projectSettingsRow);
   const contactRow=document.createElement('button'); contactRow.type='button'; contactRow.className='workspace-option';
   contactRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">مخاطبین</span></span><span class="workspace-option-arrow">›</span>';
   contactRow.onclick=()=>openContactsPage(); wrap.appendChild(contactRow);

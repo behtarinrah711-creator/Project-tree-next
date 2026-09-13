@@ -33,6 +33,7 @@ export function projectFromCloudDoc(doc,user,existing=null){
     id: doc.id,
     name: data.name ?? existing?.name ?? 'پروژه بدون نام',
     type: 'project',
+    settings: data.settings || existing?.settings || {},
     tasks: mergeTaskRecords([asArray(data.tasks),asArray(existing?.tasks)]),
     contacts: pickArray('contacts'),
     activityTemplates: pickArray('activityTemplates'),

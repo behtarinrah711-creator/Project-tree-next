@@ -1,6 +1,6 @@
 const WORKSPACE_PAGE_IDS = Object.freeze([
   'projectsPage','profilePage','calendarPage','createPage','reportsPage','accountingPage','settingsPage',
-  'projectActivitiesPage','contactsPage','projectTrashPage','contractsPage','contractFormPage',
+  'projectSettingsPage','projectActivitiesPage','contactsPage','projectTrashPage','contractsPage','contractFormPage',
   'contractTemplateFormPage','contractTemplatesPage','activityFormPage',
 ]);
 
@@ -29,7 +29,7 @@ const GLOBAL_ROUTE_TITLES = Object.freeze({
 
 const INNER_SECTION_SUBPAGES = new Set([
   'statusList','statusForm','collab','projectTrash','contractTemplates','contractTemplateForm',
-  'statusTest','contracts','contractForm',
+  'statusTest','contracts','contractForm','projectSettings',
 ]);
 
 export function installWorkspaceChrome({
