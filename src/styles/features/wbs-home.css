@@ -271,5 +271,8 @@ body:has(.wbs-home-root){background:#fff;}
 
 /* Base-mode grouping stage creation. Native buttons previously used 13.333px. */
 .wbs-stage-create-overlay .wbs-sheet-save{font-size:calc(13.333px + 3px);font-weight:700;}
-.wbs-stage-create-overlay .sheet-head .close-btn{font-size:calc(13.333px + 5px);font-weight:700;color:var(--danger);}
+.wbs-stage-create-overlay .sheet-head .close-btn{font-size:calc(13.333px + 9px);font-weight:700;color:var(--danger);}
 .wbs-stage-create-overlay{bottom:auto;}
+.wbs-stage-create-overlay .sheet-caption{font-size:15px;font-weight:700;}
+/* Mobile keyboard scrolling can leave space below the visual viewport. */
+.wbs-stage-create-overlay::after{content:"";position:absolute;top:100%;left:0;right:0;height:100vh;background:#fff;pointer-events:none;}

@@ -79,6 +79,16 @@ test('base mode creates work directly from the tree header and retains it when s
   await expect(page.locator('#wbsSheetOverlay [name="title"]')).toHaveAttribute('placeholder','مثال: گچ کاری');
   await expect(page.locator('#wbsSheetOverlay .wbs-sheet-save')).toHaveCSS('font-weight','700');
   await expect(page.locator('#wbsSheetOverlay .close-btn')).toHaveCSS('color','rgb(217, 48, 37)');
+  await expect(page.locator('#wbsSheetOverlay .close-btn')).toHaveCSS('font-size','22.333px');
+  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveCSS('font-size','15px');
+  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveCSS('font-weight','700');
+  const bottomFill = await page.locator('#wbsSheetOverlay').evaluate(el => {
+    const style = getComputedStyle(el, '::after');
+    return {background:style.backgroundColor,top:style.top,height:style.height};
+  });
+  expect(bottomFill.background).toBe('rgb(255, 255, 255)');
+  expect(parseFloat(bottomFill.height)).toBeGreaterThan(0);
+
   const bounds = await page.locator('#wbsSheetOverlay .wbs-sheet').boundingBox();
   const viewportBottom = await page.evaluate(() => visualViewport.offsetTop + visualViewport.height);
   expect(Math.abs(bounds.y + bounds.height - viewportBottom)).toBeLessThan(2);
