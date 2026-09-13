@@ -174,3 +174,51 @@ for(const stageMode of ['base','none','single','multiple']){
     await expect(page.locator('.wbs-row.is-work',{hasText:'کار والد'}).locator('.wbs-meta')).toHaveText('۲۰۰');
   });
 }
+
+
+test('multiple-stage work selection persists the shared final-level title and plus behavior', async ({page}) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('ptnext-v1:app-data', JSON.stringify({schemaVersion:8,activeTab:'terminal',projects:[
+      {id:'terminal',name:'terminal',settings:{stageMode:'multiple'},tasks:[
+        {id:'a',kind:'stage',text:'مجتمع',subtasks:[
+          {id:'b',kind:'stage',text:'بلوک',subtasks:[
+            {id:'c',kind:'stage',text:'تاسیسات',subtasks:[
+              {id:'d',kind:'stage',text:'برق کشی',subtasks:[]}
+            ]}
+          ]}
+        ]}
+      ]}
+    ]}));
+  });
+  await page.goto('/index.html#/projects/terminal/dashboard');
+  await page.waitForFunction(() => Boolean(window.KarhaApp && window.KarhaLegacy));
+  let row=page.locator('.wbs-row', {hasText:'برق کشی'});
+  for(let i=0;i<4 && !await row.isVisible();i++) await page.locator('.wbs-tree-toggle').click();
+  await row.locator('.wbs-add').click();
+  await page.locator('#wbsSheetOverlay .wbs-choice', {hasText:'افزودن کار'}).click();
+  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('جزئیات کار');
+  await page.locator('#wbsSheetOverlay .close-btn').click();
+  await expect.poll(() => page.evaluate(() => {
+    const data=JSON.parse(localStorage.getItem('ptnext-v1:app-data'));
+    return data.projects.find(p=>p.id==='terminal').tasks[0].subtasks[0].subtasks[0].subtasks[0].kind;
+  })).toBe('work');
+  // addInitScript also runs on reload: preserve the current saved project first.
+  await page.evaluate(() => sessionStorage.setItem('terminal-saved',localStorage.getItem('ptnext-v1:app-data')));
+  await page.addInitScript(() => {
+    const saved=sessionStorage.getItem('terminal-saved');
+    if(saved) localStorage.setItem('ptnext-v1:app-data',saved);
+  });
+  await page.reload();
+  await page.waitForFunction(() => Boolean(window.KarhaApp && window.KarhaLegacy));
+  row=page.locator('.wbs-row.is-work', {hasText:'برق کشی'});
+  for(let i=0;i<4 && !await row.isVisible();i++) await page.locator('.wbs-tree-toggle').click();
+  await expect(row.locator('.wbs-add')).toBeVisible();
+  for(const control of ['.wbs-title','.wbs-add']){
+    await row.locator(control).click();
+    await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('جزئیات کار');
+    await expect(page.locator('#wbsSheetOverlay .wbs-primary-action', {hasText:'ویرایش اطلاعات کار'})).toBeVisible();
+    await page.locator('#wbsSheetOverlay .wbs-primary-action', {hasText:'ساخت کار'}).click();
+    await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('ساخت کار');
+    await page.locator('#wbsSheetOverlay .close-btn').click();
+  }
+});
