@@ -245,14 +245,14 @@ function infoRow(label, value, { action = false, danger = false, onClick = null 
   return row;
 }
 
-function openCreateGroupingSheet(parentId, createItem){
+function openCreateGroupingSheet(parentId, createItem, { isWorkCreation = false } = {}){
   openWbsSheet({
     presentation: 'stage-create',
-    title: 'ایجاد مرحله جدید',
+    title: isWorkCreation ? 'ایجاد کار جدید' : 'ایجاد مرحله جدید',
     saveLabel: 'ذخیره',
     body(root){
-      root.appendChild(fieldRow('نام مرحله', textInput('', {
-        name:'title', placeholder:stageCreationPlaceholder(projectOf(), parentId),
+      root.appendChild(fieldRow(isWorkCreation ? 'نام کار' : 'نام مرحله', textInput('', {
+        name:'title', placeholder:isWorkCreation ? 'مثال: خرید سیم و کابل' : stageCreationPlaceholder(projectOf(), parentId),
       })));
     },
     onSave(root){
@@ -281,7 +281,9 @@ function workNumberInput(value, attrs, { money = false } = {}){
 }
 
 function openCreateWorkSheet(parentId = null){
-  openCreateGroupingSheet(parentId, (...args) => wbsApi.createWorkItem(...args));
+  openCreateGroupingSheet(parentId, (...args) => wbsApi.createWorkItem(...args), {
+    isWorkCreation: parentId !== null && stageModeOf(projectOf()) === 'multiple',
+  });
 }
 
 function openProjectFinishSheet(){
