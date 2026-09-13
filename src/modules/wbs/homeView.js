@@ -1,6 +1,7 @@
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { wbsApi } from '../../domain/wbs/wbsApi.js';
+import { stageAddKinds } from '../../domain/wbs/branchingPolicy.js';
 import { generalCostApi } from '../../domain/wbs/generalCostApi.js';
 import {
   WORK_TYPES,
@@ -263,7 +264,7 @@ function infoRow(label, value, { action = false, danger = false, onClick = null 
 
 function openCreateStageSheet(parentId = null){
   openWbsSheet({
-    title: parentId ? 'افزودن زیرمرحله' : 'افزودن بسته کار',
+    title: parentId ? (wbsApi.list(projectIdOf()).some(item => String(item.id) === String(parentId)) ? 'افزودن مرحله' : 'افزودن زیرمرحله') : 'افزودن بسته کار',
     saveLabel: 'ذخیره',
     body(root){
       root.appendChild(fieldRow('نام مرحله', textInput('', { name:'title', placeholder:'نام مرحله' })));
@@ -277,7 +278,7 @@ function openCreateStageSheet(parentId = null){
       const title = root.querySelector('[name="title"]').value.trim();
       const progressWeight = numberFromInput(root.querySelector('[name="progressWeight"]'));
       if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
-      wbsApi.createStage(projectIdOf(), title, parentId, { progressWeight });
+      if(!wbsApi.createStage(projectIdOf(), title, parentId, { progressWeight })) return false;
       render();
       return true;
     },
@@ -300,7 +301,7 @@ function openCreateWorkSheet(parentId = null){
       const title = root.querySelector('[name="title"]').value.trim();
       const progressWeight = numberFromInput(root.querySelector('[name="progressWeight"]'));
       if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
-      wbsApi.createWorkItem(projectIdOf(), title, parentId, { progressWeight });
+      if(!wbsApi.createWorkItem(projectIdOf(), title, parentId, { progressWeight })) return false;
       render();
       return true;
     },
@@ -327,10 +328,15 @@ function openProjectFinishSheet(){
 }
 
 function openAddMenu(stageId){
-  const stage = wbsApi.get(projectIdOf(), stageId);
-  const childKinds = new Set((stage?.subtasks || []).filter(item => !item.trashed).map(item => isStage(item) ? 'stage' : 'work'));
-  const mayAddStage = childKinds.size === 0 || (childKinds.size === 1 && childKinds.has('stage'));
-  const mayAddWork = childKinds.size === 0 || (childKinds.size === 1 && childKinds.has('work'));
+  const kinds = stageAddKinds(projectOf(), stageId);
+  if(kinds.length === 1){
+    if(kinds[0] === 'stage') openCreateStageSheet(stageId);
+    else openCreateWorkSheet(stageId);
+    return;
+  }
+  if(!kinds.length) return;
+  const mayAddStage = kinds.includes('stage');
+  const mayAddWork = kinds.includes('work');
   openWbsSheet({
     title: 'افزودن',
     saveLabel: 'بستن',
@@ -820,6 +826,7 @@ function renderRow(item, codes, view, depth){
   const chipLabel = rawType || '؟';
   const chipClass = rawType ? (SIMPLE_TYPE_CLASSES.get(rawType) || 'type-7') : 'type-7';
   const readOnlyView = view === 'estimate' || view === 'progress';
+  const mayAdd = !stage || stageAddKinds(projectOf(), item.id).length > 0;
   const taskDerived = isWork(item) && workTasks.length > 0;
   const meta = [];
   if(view === 'estimate' && isWork(item)){
@@ -844,7 +851,7 @@ function renderRow(item, codes, view, depth){
       <span class="wbs-title-text">${escapeHtml(item.text || '')}</span>
     </button>
     <span class="wbs-meta${view === 'estimate' ? ' is-estimate' : ''}${view === 'progress' ? ' is-progress' : ''}">${escapeHtml(meta.join(' · '))}</span>
-    ${!readOnlyView ? `<button type="button" class="wbs-add" aria-label="${stage ? 'افزودن' : 'ساخت کار'}">+</button>` : ''}
+    ${!readOnlyView && mayAdd ? `<button type="button" class="wbs-add" aria-label="${stage ? 'افزودن' : 'ساخت کار'}">+</button>` : ''}
   `;
   row.querySelector('.wbs-check')?.addEventListener('click', ev => {
     ev.stopPropagation();

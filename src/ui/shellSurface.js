@@ -5,7 +5,7 @@
 
 const DEFAULT_PAGE_IDS = [
   'projectsPage','profilePage','calendarPage','createPage','reportsPage','accountingPage','settingsPage',
-  'projectActivitiesPage','contactsPage','projectTrashPage','contractsPage','contractFormPage',
+  'projectSettingsPage','projectActivitiesPage','contactsPage','projectTrashPage','contractsPage','contractFormPage',
   'contractTemplateFormPage','contractTemplatesPage','activityFormPage',
 ];
 

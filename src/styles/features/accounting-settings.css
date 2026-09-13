@@ -170,4 +170,9 @@
   .project-trash-clear{
     color:#DC2626 !important;
   }
-
+/* Accessible project-scoped switch; rows retain the workspace menu styling. */
+.project-setting-switch{appearance:none;position:relative;width:40px;height:24px;flex:0 0 40px;border:1px solid var(--divider);border-radius:999px;background:var(--text-dim);cursor:pointer;margin:0;}
+.project-setting-switch::before{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--surface,#fff);}
+.project-setting-switch:checked{background:var(--primary);}
+.project-setting-switch:checked::before{left:19px;}
+.project-setting-switch:focus-visible{outline:2px solid var(--primary);outline-offset:3px;}
