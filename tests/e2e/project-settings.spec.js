@@ -15,11 +15,13 @@ test('project settings persist and switch the phase add flow without changing ex
   await page.waitForFunction(() => Boolean(window.KarhaApp && window.KarhaLegacy));
   await page.locator('.wbs-row.is-stage', {hasText:'بسته خالی'}).locator('.wbs-add').click();
   await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('افزودن کار');
+  await expect(page.locator('#wbsSheetOverlay [name="progressWeight"]')).toHaveCount(0);
   await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(0);
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await page.locator('.wbs-tree-toggle').click();
   await page.locator('.wbs-row.is-stage', {hasText:'مرحله تست'}).locator('.wbs-add').click();
   await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('افزودن کار');
+  await expect(page.locator('#wbsSheetOverlay [name="progressWeight"]')).toHaveCount(0);
   await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(0);
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await page.locator('#bottomSettingsBtn').click();
@@ -73,6 +75,7 @@ test('base mode creates work directly from the tree header and retains it when s
   await page.waitForFunction(() => Boolean(window.KarhaApp && window.KarhaLegacy));
   await page.locator('.wbs-root-add').click();
   await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('افزودن کار');
+  await expect(page.locator('#wbsSheetOverlay [name="progressWeight"]')).toHaveCount(0);
   await page.locator('#wbsSheetOverlay [name="title"]').fill('کار پایه');
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
   await expect(page.locator('.wbs-row.is-work')).toHaveCount(1);
@@ -90,6 +93,7 @@ test('base mode creates work directly from the tree header and retains it when s
   await expect(page.locator('.wbs-row.is-work')).toHaveCount(1);
   await page.locator('.wbs-root-add').click();
   await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('افزودن بسته کار');
+  await expect(page.locator('#wbsSheetOverlay [name="progressWeight"]')).toHaveCount(0);
 });
 
 for(const stageMode of ['base','none','single','multiple']){
