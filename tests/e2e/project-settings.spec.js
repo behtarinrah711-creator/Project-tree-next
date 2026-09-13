@@ -111,3 +111,34 @@ for(const stageMode of ['base','none','single','multiple']){
     for(const key of ['scheduleStart','scheduleEnd','progress','priority','assigneeContactId','predecessorIds','quantity','unit','unitCost']) expect(stored[key]).toEqual(work[key]);
   });
 }
+
+for(const stageMode of ['base','none','single','multiple']){
+  test(`manual work cost is shown only without active child tasks in ${stageMode}`, async ({ page }) => {
+    await page.addInitScript(stageMode=>{
+      localStorage.setItem('ptnext-v1:app-data',JSON.stringify({schemaVersion:8,activeTab:'cost',viewMode:'simple',starredOrder:[],projects:[{id:'cost',name:'هزینه',settings:{stageMode},tasks:[
+        {id:'single',kind:'work',text:'کار مستقل',manualCost:500,progressWeight:1,subtasks:[]},
+        {id:'parent',kind:'work',text:'کار والد',manualCost:900,progressWeight:1,subtasks:[],workTasks:[{id:'child',workId:'parent',title:'خرده‌کار',amount:200,weight:1}]}
+      ]}]}));
+    },stageMode);
+    await page.goto('/index.html#/projects/cost/dashboard');
+    const openEdit=async title=>{
+      await page.locator('.wbs-row.is-work',{hasText:title}).locator('.wbs-title').click();
+      await page.locator('#wbsSheetOverlay .wbs-primary-action',{hasText:'ویرایش اطلاعات کار'}).click();
+    };
+    await openEdit('کار مستقل');
+    const sheet=page.locator('#wbsSheetOverlay');
+    await expect(sheet.locator('[name="type"],[name="contractorContactId"]')).toHaveCount(0);
+    await expect(sheet).not.toContainText('افزودن فعالیت');
+    await expect(sheet.locator('[name="manualCost"]')).toHaveValue('500');
+    await sheet.locator('[name="manualCost"]').fill('750');
+    await sheet.locator('.wbs-sheet-save').click();
+    await openEdit('کار والد');
+    await expect(sheet.locator('[name="manualCost"]')).toHaveCount(0);
+    await sheet.locator('.wbs-sheet-save').click();
+    const costs=await page.evaluate(()=>window.KarhaAppData.getSnapshot().projects.find(p=>p.id==='cost').tasks.map(t=>t.manualCost));
+    expect(costs).toEqual([750,900]);
+    await page.locator('.wbs-tree-mode-tab[aria-label="هزینه‌ها"]').click();
+    await expect(page.locator('.wbs-row.is-work',{hasText:'کار مستقل'}).locator('.wbs-meta')).toHaveText('۷۵۰');
+    await expect(page.locator('.wbs-row.is-work',{hasText:'کار والد'}).locator('.wbs-meta')).toHaveText('۲۰۰');
+  });
+}

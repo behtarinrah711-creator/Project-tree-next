@@ -17,16 +17,12 @@ import {
   wbsCodeMap,
 } from '../../domain/wbs/normalize.js';
 import { formatJalaliDisplay, gregorianToJalali, jalaliToGregorian } from '../../ui/jalali.js';
-import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 import { rollupEstimate, rollupProgress } from '../../domain/wbs/estimate.js';
-import { activityRepository } from '../../data/activityRepository.js';
 import {
   bindLiveTotal,
   closeWbsSheet,
   fieldRow,
-  openActivitySearchPicker,
   openWbsSheet,
-  renderAttachedActivities,
   selectInput,
   textInput,
 } from './wbsSheet.js';
@@ -426,7 +422,7 @@ function openStageDetailSheet(item){
 
 function openWorkEditSheet(item){
   const current = wbsApi.get(projectIdOf(), item.id) || item;
-  const linkedContract = (projectOf()?.contracts || []).find(contract => !contract.trashed && String(contract.projectItemId || '') === String(current.id));
+  const hasTasks = activeWorkTasks(current).length > 0;
   openWbsSheet({
     title: 'ویرایش کار',
     saveLabel: 'ذخیره',
@@ -437,67 +433,21 @@ function openWorkEditSheet(item){
       progressNote.className = 'wbs-note';
       progressNote.textContent = 'وزن نسبی است و لازم نیست مجموع وزن‌ها ۱۰۰ شود.';
       root.appendChild(progressNote);
-      root.appendChild(fieldRow('نوع', selectInput(
-        [{ value:'', label:'—' }, ...WORK_TYPES.map(t => ({ value:t, label:t }))],
-        current.type || ''
-      )));
-      root.lastChild.querySelector('select').name = 'type';
-      const contacts = (projectOf()?.contacts || []).filter(contact => contact && !contact.trashed);
-      if(linkedContract){
-        const contractor = contacts.find(contact => String(contact.id) === String(linkedContract.contractorId || linkedContract.contactId));
-        const note = document.createElement('div'); note.className = 'wbs-note'; note.textContent = `پیمانکار از قرارداد خوانده می‌شود: ${contactDisplayName(contractor)}`; root.appendChild(note);
-      }else{
-        const contractor = document.createElement('button');
-        contractor.type = 'button'; contractor.name = 'contractorContactId'; contractor.className = 'wbs-input';
-        contractor.dataset.value = current.contractorContactId || '';
-        const paintContractor = () => {
-          const selected = contacts.find(contact => String(contact.id) === String(contractor.dataset.value));
-          contractor.textContent = selected ? contactDisplayName(selected) : 'انتخاب پیمانکار';
-        };
-        contractor.addEventListener('click', () => openSearchPicker({
-          title:'انتخاب پیمانکار', listTitle:'مخاطبین', selectedTitle:'پیمانکار منتخب',
-          contextKey:`wbs-work-contractor:${current.id}`,
-          items:contacts.map(contact => ({ id:contact.id, name:contactDisplayName(contact) })),
-          showStar:false, showAdd:false,
-          onSelect:selected => { contractor.dataset.value = String(selected.id); paintContractor(); },
-        }));
-        paintContractor();
-        root.appendChild(fieldRow('پیمانکار', contractor));
-      }
-      const acts = document.createElement('div');
-      const paintActivities = () => {
-        const latest = wbsApi.get(projectIdOf(), current.id) || current;
-        const catalog = (activityRepository.list(projectIdOf()) || []).filter(item => !item.trashed);
-        renderAttachedActivities(acts, {
-          attached: activityIdsOf(latest),
-          catalog,
-          onDetach(id){
-            wbsApi.detachActivity(projectIdOf(), current.id, id);
-            paintActivities();
-          },
-          onAdd(){
-            const attached = new Set(activityIdsOf(wbsApi.get(projectIdOf(), current.id) || current));
-            const catalog = (activityRepository.list(projectIdOf()) || []).filter(item => !item.trashed && !attached.has(String(item.id)));
-            openActivitySearchPicker(catalog, activityId => {
-              wbsApi.attachActivity(projectIdOf(), current.id, activityId);
-              paintActivities();
-            });
-          },
-        });
-      };
-      paintActivities();
-      root.appendChild(acts);
+      if(!hasTasks) root.appendChild(fieldRow('هزینه', textInput(String(lineTotal(current)), { name:'manualCost', type:'number', min:'0', step:'any' })));
       root.appendChild(fieldRow('توضیح', textInput(current.description || '', { name:'description' })));
     },
     onSave(root){
       const title = root.querySelector('[name="title"]').value.trim();
       const progressWeight = numberFromInput(root.querySelector('[name="progressWeight"]'));
       if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
+      const costInput = root.querySelector('[name="manualCost"]');
+      const manualCost = costInput ? numberFromInput(costInput) : null;
+      if(costInput && (!Number.isFinite(manualCost) || manualCost < 0)) return false;
+      const costPatch = costInput && !activeWorkTasks(wbsApi.get(projectIdOf(), current.id)).length ? { manualCost } : {};
       wbsApi.updateItem(projectIdOf(), current.id, {
+        ...costPatch,
         text: title,
         progressWeight,
-        type: root.querySelector('[name="type"]').value,
-        contractorContactId:linkedContract ? '' : (root.querySelector('[name="contractorContactId"]')?.dataset.value || ''),
         description: root.querySelector('[name="description"]').value,
       });
       render();
