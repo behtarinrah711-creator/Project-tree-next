@@ -869,6 +869,7 @@ function renderRow(item, codes, view, depth){
   });
   const wrap = document.createElement('div');
   wrap.className = depth === 0 ? 'wbs-card' : 'wbs-branch';
+  wrap.className += ' wbs-depth-' + Math.min(6, depth);
   wrap.appendChild(row);
   if(!readOnlyView){
     bindRowDrag(row, {
