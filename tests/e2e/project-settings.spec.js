@@ -198,6 +198,10 @@ test('multiple-stage work selection persists the shared final-level title and pl
   await page.locator('#wbsSheetOverlay .wbs-choice', {hasText:'افزودن کار'}).click();
   await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('جزئیات کار');
   await page.locator('#wbsSheetOverlay .close-btn').click();
+  await expect.poll(() => page.evaluate(() => {
+    const data=JSON.parse(localStorage.getItem('ptnext-v1:app-data'));
+    return data.projects.find(p=>p.id==='terminal').tasks[0].subtasks[0].subtasks[0].subtasks[0].kind;
+  })).toBe('work');
   // addInitScript also runs on reload: preserve the current saved project first.
   await page.evaluate(() => sessionStorage.setItem('terminal-saved',localStorage.getItem('ptnext-v1:app-data')));
   await page.addInitScript(() => {
@@ -207,6 +211,7 @@ test('multiple-stage work selection persists the shared final-level title and pl
   await page.reload();
   await page.waitForFunction(() => Boolean(window.KarhaApp && window.KarhaLegacy));
   row=page.locator('.wbs-row.is-work', {hasText:'برق کشی'});
+  for(let i=0;i<4 && !await row.isVisible();i++) await page.locator('.wbs-tree-toggle').click();
   await expect(row.locator('.wbs-add')).toBeVisible();
   for(const control of ['.wbs-title','.wbs-add']){
     await row.locator(control).click();
