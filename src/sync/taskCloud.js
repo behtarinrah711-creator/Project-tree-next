@@ -12,7 +12,7 @@ import { isDirty, isPending, markPending, acknowledgePending } from './storeSync
 export async function writeTaskRecordsNormalized(ctx, pid, tasks){
   if(!ctx?.cloudMode || !ctx.currentUser || !ctx.db) return;
   const col = ctx.taskCollection(pid);
-  const records = (tasks || []).map(ctx.normalizeTaskRecord);
+  const records = (tasks || []).map((task,sortOrder) => ({...ctx.normalizeTaskRecord(task),sortOrder}));
   for(let i = 0; i < records.length; i += 450){
     const batch = ctx.db.batch();
     records.slice(i, i + 450).forEach(t => {

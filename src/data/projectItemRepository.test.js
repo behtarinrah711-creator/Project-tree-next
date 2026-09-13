@@ -93,7 +93,8 @@ export function assertProjectItemRepositoryBehavior(){
   const persisted=JSON.parse(storage.getItem('ptnext-v1:app-data'));
   const project=persisted.projects[0];
   const preserved=project.tasks.find(item=>item.id==='t1');
-  if(JSON.stringify(preserved) !== JSON.stringify(original) ||
+  const {sortOrder,...preservedFields}=preserved;
+  if(JSON.stringify(preservedFields) !== JSON.stringify(original) || !Number.isInteger(sortOrder) || sortOrder < 0 ||
      project.contacts[0].id !== 'c1' || project.activityTemplates[0].id !== 'a1' ||
      project.contracts[0].id !== 'co1' || project.projectMetadata?.preserved !== true ||
      persisted.activeTab !== 'p1' || persisted.unrelatedTopLevelData?.preserved !== true){
@@ -115,4 +116,3 @@ export function assertProjectItemRepositoryLegacyKeyCompatibility(){
   }
   return true;
 }
-

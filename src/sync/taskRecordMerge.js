@@ -73,10 +73,10 @@ function mergeEntityRecord(first, second){
   const merged = { ...fallback, ...preferred };
 
   if(Array.isArray(first.subtasks) || Array.isArray(second.subtasks)){
-    merged.subtasks = mergeEntityArrays(first.subtasks, second.subtasks);
+    merged.subtasks = mergeEntityArrays(preferred.subtasks, fallback.subtasks);
   }
   if(Array.isArray(first.workTasks) || Array.isArray(second.workTasks)){
-    merged.workTasks = mergeEntityArrays(first.workTasks, second.workTasks);
+    merged.workTasks = mergeEntityArrays(preferred.workTasks, fallback.workTasks);
   }
   return merged;
 }
@@ -101,5 +101,7 @@ export function mergeTaskRecords(groups, normalize = value => value){
       byId.set(id, current ? mergeEntityRecord(current, value) : value);
     });
   });
-  return [...byId.values()];
+  const rank = task => Number.isInteger(task.sortOrder) && task.sortOrder >= 0
+    ? task.sortOrder : Number.MAX_SAFE_INTEGER;
+  return [...byId.values()].sort((a,b)=>rank(a)-rank(b));
 }
