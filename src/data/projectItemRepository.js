@@ -41,7 +41,7 @@ export class ProjectItemRepository{
       const index=tasks.findIndex(current => String(current.id) === String(item.id));
       if(index >= 0) tasks[index]=item;
       else tasks.push(item);
-      return {...project,tasks};
+      return {...project,tasks:tasks.map((task,sortOrder)=>({...task,sortOrder}))};
     });
 
     return saved ? item : null;
@@ -130,7 +130,7 @@ export class ProjectItemRepository{
     };
     if(!parentId) {
       const tasks=this.list(projectId);
-      const ordered=reorderList(tasks);
+      const ordered=reorderList(tasks).map((task,sortOrder)=>({...task,sortOrder}));
       const projectSaved=this.projectRepository.updateProject(projectId,project=>({...project,tasks:ordered}));
       return projectSaved ? ordered : null;
     }
