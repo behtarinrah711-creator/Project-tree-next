@@ -64,3 +64,17 @@ test('no-stage project creates work directly and cannot create a phase', () => {
   assert.ok(wbsApi.createWorkItem('none','work',root.id));
   delete globalThis.KarhaAppData;
 });
+
+
+test('base projects create root work and reject packages and phases without migrating legacy settings', () => {
+  const store=createAppDataStore();
+  globalThis.KarhaAppData=store;
+  store.replaceSnapshot({projects:[{id:'base',settings:{stageMode:'base'},tasks:[]}]});
+  assert.equal(stageModeOf({settings:{stageMode:'base'}}),'base');
+  assert.equal(stageModeOf({tasks:[]}),'none');
+  assert.equal(wbsApi.createStage('base','بسته'),null);
+  const work=wbsApi.createWorkItem('base','کار');
+  assert.equal(work.kind,'work');
+  assert.deepEqual(stageAddKinds(projectRepository.find('base'),work.id),[]);
+  assert.equal(wbsApi.createStage('base','مرحله',work.id),null);
+});

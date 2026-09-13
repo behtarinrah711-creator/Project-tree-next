@@ -1,6 +1,6 @@
 import { findInTree, isStage } from './normalize.js';
 
-export const STAGE_MODES = Object.freeze(['none', 'single', 'multiple']);
+export const STAGE_MODES = Object.freeze(['base', 'none', 'single', 'multiple']);
 
 export function stageModeOf(project){
   const mode = project?.settings?.stageMode;
@@ -12,6 +12,7 @@ export function stageModeOf(project){
 export function allowsNestedStages(project){ return stageModeOf(project) === 'multiple'; }
 
 export function stageAddKinds(project, stageId){
+  if(stageModeOf(project) === 'base') return [];
   const found = findInTree(project?.tasks || [], stageId);
   if(!found || !isStage(found.item)) return [];
   const existing = new Set((found.item.subtasks || []).filter(item => !item.trashed)

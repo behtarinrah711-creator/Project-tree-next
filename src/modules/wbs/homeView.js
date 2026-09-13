@@ -1,7 +1,7 @@
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { wbsApi } from '../../domain/wbs/wbsApi.js';
-import { stageAddKinds } from '../../domain/wbs/branchingPolicy.js';
+import { stageAddKinds, stageModeOf } from '../../domain/wbs/branchingPolicy.js';
 import { generalCostApi } from '../../domain/wbs/generalCostApi.js';
 import {
   WORK_TYPES,
@@ -955,9 +955,10 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   const addRoot = document.createElement('button');
   addRoot.type = 'button';
   addRoot.className = 'wbs-root-add';
-  addRoot.setAttribute('aria-label', 'افزودن بسته کار');
-  addRoot.innerHTML = `${materialIcon(ADD_WORK_PACKAGE_ICON)}<span>بسته کار</span>`;
-  addRoot.addEventListener('click', () => openCreateStageSheet(null));
+  const baseMode = stageModeOf(project) === 'base';
+  addRoot.setAttribute('aria-label', baseMode ? 'افزودن کار' : 'افزودن بسته کار');
+  addRoot.innerHTML = `${materialIcon(ADD_WORK_PACKAGE_ICON)}<span>${baseMode ? 'کار' : 'بسته کار'}</span>`;
+  addRoot.addEventListener('click', () => baseMode ? openCreateWorkSheet(null) : openCreateStageSheet(null));
 
   const treeToggle = document.createElement('button');
   const isTreeOpen = getExpandedIds(project.id).size > 0;
@@ -989,7 +990,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   const effectiveView = currentView === 'tree' ? currentTreeMode : currentView;
   const codes = wbsCodeMap(items);
   if(currentView === 'costline') tree.appendChild(renderCostline(project));
-  else if(!items.length) tree.innerHTML = '<div class="empty-state">مرحله یا کاری ثبت نشده است.</div>';
+  else if(!items.length) tree.innerHTML = `<div class="empty-state">${baseMode ? 'کاری ثبت نشده است.' : 'مرحله یا کاری ثبت نشده است.'}</div>`;
   else if(currentView === 'timeline') tree.appendChild(renderTimeline(items));
   else items.forEach(item => tree.appendChild(renderRow(item, codes, effectiveView, 0)));
   root.appendChild(tree);

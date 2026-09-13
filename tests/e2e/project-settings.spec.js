@@ -62,3 +62,32 @@ test('project settings persist and switch the phase add flow without changing ex
   expect(data.find(p=>p.id==='other').settings?.stageMode).toBeUndefined();
   expect(data.find(p=>p.id==='branching').tasks[0].subtasks[0].id).toBe('phase');
 });
+
+test('base mode creates work directly from the tree header and retains it when switching modes', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('ptnext-v1:app-data', JSON.stringify({schemaVersion:8,activeTab:'base-project',viewMode:'simple',starredOrder:[],projects:[
+      {id:'base-project',name:'پروژه پایه',settings:{stageMode:'base'},tasks:[]}
+    ]}));
+  });
+  await page.goto('/index.html#/projects/base-project/dashboard');
+  await page.waitForFunction(() => Boolean(window.KarhaApp && window.KarhaLegacy));
+  await page.locator('.wbs-root-add').click();
+  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('افزودن کار');
+  await page.locator('#wbsSheetOverlay [name="title"]').fill('کار پایه');
+  await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
+  await expect(page.locator('.wbs-row.is-work')).toHaveCount(1);
+  await expect(page.locator('.wbs-row.is-stage')).toHaveCount(0);
+  await page.locator('.wbs-row.is-work .wbs-title').click();
+  await expect(page.locator('#wbsSheetOverlay .wbs-primary-action', {hasText:'ساخت کار'})).toBeVisible();
+  await page.locator('#wbsSheetOverlay .close-btn').click();
+  await page.locator('#bottomSettingsBtn').click();
+  await page.getByRole('button',{name:'تنظیمات پروژه',exact:false}).click();
+  await expect(page.getByRole('radio',{name:'حالت پایه',exact:true})).toBeChecked();
+  await expect(page.locator('.project-stage-mode')).toHaveCount(4);
+  await page.getByRole('radio',{name:'بدون مرحله',exact:true}).check();
+  await page.locator('#closeProjectSettingsPage').click();
+  await page.locator('#bottomProjectsBtn').click();
+  await expect(page.locator('.wbs-row.is-work')).toHaveCount(1);
+  await page.locator('.wbs-root-add').click();
+  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('افزودن بسته کار');
+});
