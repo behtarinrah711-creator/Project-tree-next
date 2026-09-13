@@ -21,12 +21,12 @@ export default {
     legend.textContent = 'نوع مرحله‌بندی';
     group.appendChild(legend);
     const options = [
-      ['base', 'تک‌مرحله‌ای', 'مرحله ← کار'],
-      ['none', 'دو‌مرحله‌ای', 'مرحله ← مرحله ← کار'],
-      ['single', 'سه‌مرحله‌ای', 'مرحله ← مرحله ← مرحله ← کار'],
-      ['multiple', 'چندمرحله‌ای', 'مرحله ← مرحله ← مرحله ← مراحل دلخواه ← کار'],
+      ['base', 'تک‌مرحله‌ای', 'مرحله ← کار', 'برق کشی ← خرید سیم و کابل'],
+      ['none', 'دو‌مرحله‌ای', 'مرحله ← مرحله ← کار', 'تاسیسات الکتریکی ← برق کشی ← خرید سیم و کابل'],
+      ['single', 'سه‌مرحله‌ای', 'مرحله ← مرحله ← مرحله ← کار', 'بلوک شماره ۱ ← تاسیسات الکتریکی ← برق کشی ← خرید سیم و کابل'],
+      ['multiple', 'چندمرحله‌ای', 'مرحله ← مرحله ← مرحله ← مراحل دلخواه ← کار', 'مجتمع شماره ۱ ← بلوک شماره ۱ ← تاسیسات الکتریکی ← برق کشی ← خرید سیم و کابل'],
     ];
-    options.forEach(([value, label, description]) => {
+    options.forEach(([value, label, description, example]) => {
       const row = document.createElement('label');
       row.className = 'workspace-option';
       const main = document.createElement('span');
@@ -37,7 +37,10 @@ export default {
       const detail = document.createElement('span');
       detail.className = 'workspace-option-meta';
       detail.textContent = description;
-      main.append(title, detail);
+      const exampleLine = document.createElement('span');
+      exampleLine.className = 'workspace-option-meta project-stage-example';
+      exampleLine.textContent = `مثال: ${example}`;
+      main.append(title, detail, exampleLine);
       const input = document.createElement('input');
       input.type = 'radio';
       input.name = 'project-stage-mode';
