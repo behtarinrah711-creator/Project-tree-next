@@ -245,14 +245,14 @@ function infoRow(label, value, { action = false, danger = false, onClick = null 
   return row;
 }
 
-function openCreateGroupingSheet(parentId, createItem, { isWorkCreation = false } = {}){
+function openCreateGroupingSheet(parentId, createItem){
   openWbsSheet({
     presentation: 'stage-create',
-    title: isWorkCreation ? 'ایجاد کار جدید' : 'ایجاد مرحله جدید',
+    title: 'ایجاد مرحله جدید',
     saveLabel: 'ذخیره',
     body(root){
-      root.appendChild(fieldRow(isWorkCreation ? 'نام کار' : 'نام مرحله', textInput('', {
-        name:'title', placeholder:isWorkCreation ? 'مثال: خرید سیم و کابل' : stageCreationPlaceholder(projectOf(), parentId),
+      root.appendChild(fieldRow('نام مرحله', textInput('', {
+        name:'title', placeholder:stageCreationPlaceholder(projectOf(), parentId),
       })));
     },
     onSave(root){
@@ -281,9 +281,7 @@ function workNumberInput(value, attrs, { money = false } = {}){
 }
 
 function openCreateWorkSheet(parentId = null){
-  openCreateGroupingSheet(parentId, (...args) => wbsApi.createWorkItem(...args), {
-    isWorkCreation: parentId !== null && stageModeOf(projectOf()) === 'multiple',
-  });
+  openCreateGroupingSheet(parentId, (...args) => wbsApi.createWorkItem(...args));
 }
 
 function openProjectFinishSheet(){
@@ -332,7 +330,7 @@ function openAddMenu(stageId){
         workBtn.type = 'button';
         workBtn.className = 'wbs-choice';
         workBtn.textContent = 'افزودن کار';
-        workBtn.addEventListener('click', () => { closeWbsSheet(); openCreateWorkSheet(stageId); });
+        workBtn.addEventListener('click', () => { closeWbsSheet(); openWorkRegistration(stageId); });
         root.appendChild(workBtn);
       }
       if(!mayAddStage && !mayAddWork){
@@ -568,6 +566,19 @@ function renderTimelineRows(rows, names, timeline, min, dayWidth){
   rows.forEach(entry => { names.appendChild(tNameRow(entry)); timeline.appendChild(tBarRow(entry, min, dayWidth)); });
 }
 
+function openWorkRegistration(itemId){
+  let item = wbsApi.get(projectIdOf(), itemId);
+  if(!item) return;
+  if(isStage(item)){
+    // Choosing work ends the hierarchy at this existing empty stage.
+    if(stageModeOf(projectOf()) !== 'multiple' || (item.subtasks || []).some(child => !child.trashed)) return;
+    item = wbsApi.updateItem(projectIdOf(), item.id, { kind:'work' });
+    if(!item) return;
+    render();
+  }
+  openWorkDetailSheet(item);
+}
+
 function openWorkDetailSheet(item){
   const current = wbsApi.get(projectIdOf(), item.id) || item;
   const activities = activityIdsOf(current);
@@ -717,7 +728,7 @@ function renderRow(item, codes, view, depth){
   row.querySelector('.wbs-add')?.addEventListener('click', ev => {
     ev.stopPropagation();
     if(stage) openAddMenu(item.id);
-    else openWorkDetailSheet(item);
+    else openWorkRegistration(item.id);
   });
   const wrap = document.createElement('div');
   wrap.className = depth === 0 ? 'wbs-card' : 'wbs-branch';

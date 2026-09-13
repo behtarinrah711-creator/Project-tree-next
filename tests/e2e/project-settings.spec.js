@@ -54,9 +54,10 @@ test('project settings persist and switch the phase add flow without changing ex
   await page.locator('.wbs-row.is-stage', {hasText:'مرحله تست'}).locator('.wbs-add').click();
   await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(2);
   await page.locator('#wbsSheetOverlay .wbs-choice', {hasText:'افزودن کار'}).click();
-  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('ایجاد کار جدید');
-  await expect(page.locator('#wbsSheetOverlay .wbs-field-label')).toHaveText('نام کار');
-  await expect(page.locator('#wbsSheetOverlay [name="title"]')).toHaveAttribute('placeholder','مثال: خرید سیم و کابل');
+  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('جزئیات کار');
+  await expect(page.locator('#wbsSheetOverlay .wbs-primary-action', {hasText:'ویرایش اطلاعات کار'})).toBeVisible();
+  await expect(page.locator('#wbsSheetOverlay .wbs-primary-action', {hasText:'ساخت کار'})).toBeVisible();
+  await expect(page.locator('#wbsSheetOverlay [name="title"]')).toHaveCount(0);
 
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await page.locator('#bottomSettingsBtn').click();
