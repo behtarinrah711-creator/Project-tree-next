@@ -46,24 +46,17 @@ async function selectTreeMode(page, label){
   await page.locator(`.wbs-tree-mode-tab[aria-label="${label}"]`).click();
 }
 
-test('progress remains weighted and editable without tree row squares', async ({ page }) => {
+test('editing work preserves existing progress after removing its progress input', async ({ page }) => {
   await selectTreeMode(page, 'درصد پیشرفت');
   await page.locator('.wbs-tree-toggle').click();
   const foundation = page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' });
   await expect(foundation.locator('.wbs-meta')).toHaveText('٪۳۳');
-  await expect(foundation.locator('.wbs-check')).toHaveCount(0);
-
-  const execution = page.locator('.wbs-row.is-work', { hasText:'اجرای فونداسیون' });
-  await execution.locator('.wbs-title').click();
+  await page.locator('.wbs-row.is-work', { hasText:'اجرای فونداسیون' }).locator('.wbs-title').click();
   await page.locator('#wbsSheetOverlay .wbs-primary-action', { hasText:'ویرایش اطلاعات کار' }).click();
-  await page.locator('#wbsSheetOverlay [name="progress"]').fill('100');
+  await expect(page.locator('#wbsSheetOverlay [name="progress"]')).toHaveCount(0);
+  await page.locator('#wbsSheetOverlay [name="title"]').fill('اجرای جدید فونداسیون');
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
-  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۱۰۰');
-  await execution.locator('.wbs-title').click();
-  await page.locator('#wbsSheetOverlay .wbs-primary-action', { hasText:'ویرایش اطلاعات کار' }).click();
-  await page.locator('#wbsSheetOverlay [name="progress"]').fill('0');
-  await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
-  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۲۵');
+  await expect(foundation.locator('.wbs-meta')).toHaveText('٪۳۳');
 });
 
 test('editing unfinished work weight immediately recalculates its stage progress', async ({ page }) => {

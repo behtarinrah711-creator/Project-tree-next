@@ -39,7 +39,6 @@ import { DEFAULT_TREE_MODE, createTreeModeTabs } from './treeModes.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { openCreateWorkTaskSheet, renderWorkTasks } from './workTaskView.js';
-import { predecessorField } from './predecessorField.js';
 import { isGanttLevelVisible } from './timelineViewOptions.js';
 import { PROJECT_FINISH_MILESTONE_ID, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
 import {
@@ -151,11 +150,6 @@ function jalaliDayNumber(value){
   if(!jy || !jm || !jd) return null;
   const g = jalaliToGregorian(jy, jm, jd);
   return Math.floor(Date.UTC(g.gy, g.gm - 1, g.gd) / 86400000);
-}
-
-function scheduleDuration(start, end){
-  const a = jalaliDayNumber(start), b = jalaliDayNumber(end);
-  return a !== null && b !== null && b >= a ? b - a + 1 : 0;
 }
 
 function dateField(name, label, value, onChange){
@@ -432,49 +426,23 @@ function openStageDetailSheet(item){
 
 function openWorkEditSheet(item){
   const current = wbsApi.get(projectIdOf(), item.id) || item;
-  const taskDerived = activeWorkTasks(current).length > 0;
   const linkedContract = (projectOf()?.contracts || []).find(contract => !contract.trashed && String(contract.projectItemId || '') === String(current.id));
   openWbsSheet({
     title: 'ویرایش کار',
     saveLabel: 'ذخیره',
     body(root){
       root.appendChild(fieldRow('عنوان', textInput(current.text || '', { name:'title' })));
-      const duration = document.createElement('output');
-      duration.className = 'wbs-input wbs-duration-output';
-      duration.setAttribute('aria-live', 'polite');
-      const paintDuration = () => {
-        const start = root.querySelector('[name="scheduleStart"]')?.dataset.value || '';
-        const end = root.querySelector('[name="scheduleEnd"]')?.dataset.value || '';
-        const days = scheduleDuration(start, end);
-        duration.textContent = days ? `${new Intl.NumberFormat('fa-IR').format(days)} روز` : '—';
-      };
-      root.appendChild(dateField('scheduleStart', 'تاریخ شروع', scheduleStartOf(current), paintDuration));
-      root.appendChild(dateField('scheduleEnd', 'تاریخ پایان', scheduleEndOf(current), paintDuration));
-      root.appendChild(fieldRow('مدت زمان', duration));
-      paintDuration();
-      const progressInput = textInput(String(progressOf(current)), { name:'progress', type:'number', min:'0', max:'100', step:'1' });
-      progressInput.disabled = taskDerived;
-      root.appendChild(fieldRow('پیشرفت ٪', progressInput));
       root.appendChild(fieldRow('وزن پیشرفت', textInput(String(progressWeightOf(current)), { name:'progressWeight', type:'number', min:'0.01', step:'0.01', required:true })));
       const progressNote = document.createElement('div');
       progressNote.className = 'wbs-note';
-      progressNote.textContent = 'وضعیت از درصد ساخته می‌شود؛ وزن نسبی است و لازم نیست مجموع وزن‌ها ۱۰۰ شود.';
+      progressNote.textContent = 'وزن نسبی است و لازم نیست مجموع وزن‌ها ۱۰۰ شود.';
       root.appendChild(progressNote);
-      root.appendChild(fieldRow('اولویت', selectInput([
-        { value:'', label:'—' },
-        { value:'low', label:'کم' },
-        { value:'normal', label:'عادی' },
-        { value:'high', label:'زیاد' },
-      ], current.priority || '')));
-      root.lastChild.querySelector('select').name = 'priority';
       root.appendChild(fieldRow('نوع', selectInput(
         [{ value:'', label:'—' }, ...WORK_TYPES.map(t => ({ value:t, label:t }))],
         current.type || ''
       )));
       root.lastChild.querySelector('select').name = 'type';
       const contacts = (projectOf()?.contacts || []).filter(contact => contact && !contact.trashed);
-      root.appendChild(fieldRow('مسئول', selectInput([{ value:'', label:'—' }, ...contacts.map(contact => ({ value:String(contact.id), label:contactDisplayName(contact) }))], current.assigneeContactId || '')));
-      root.lastChild.querySelector('select').name = 'assigneeContactId';
       if(linkedContract){
         const contractor = contacts.find(contact => String(contact.id) === String(linkedContract.contractorId || linkedContract.contactId));
         const note = document.createElement('div'); note.className = 'wbs-note'; note.textContent = `پیمانکار از قرارداد خوانده می‌شود: ${contactDisplayName(contractor)}`; root.appendChild(note);
@@ -519,67 +487,18 @@ function openWorkEditSheet(item){
       };
       paintActivities();
       root.appendChild(acts);
-      const dependency = predecessorField({ documentRef:document, project:projectOf(), consumerId:current.id, initial:current.dependencies || current.predecessorIds || [] });
-      if(taskDerived){
-        dependency.element.classList.add('is-disabled');
-        dependency.element.querySelectorAll('button').forEach(button => { button.disabled = true; });
-        const note = document.createElement('div'); note.className = 'wbs-note'; note.textContent = 'پیش‌نیاز Work از Taskهای آن محاسبه می‌شود.'; dependency.element.appendChild(note);
-      }
-      root.appendChild(dependency.element); root._workDependency = dependency;
-      const qty = textInput(String(current.quantity || 0), { name:'quantity', type:'number' });
-      const cost = textInput(String(current.unitCost || 0), { name:'unitCost', type:'number' });
-      qty.disabled = taskDerived; cost.disabled = taskDerived;
-      if(taskDerived){
-        const note = document.createElement('div'); note.className = 'wbs-note';
-        note.textContent = 'هزینه Work از مجموع مبلغ Taskها محاسبه می‌شود.';
-        root.appendChild(note);
-      }
-      root.appendChild(fieldRow('مقدار', qty));
-      root.appendChild(fieldRow('واحد', selectInput(
-        [{ value:'', label:'—' }, ...UNITS.map(u => ({ value:u, label:u }))],
-        current.unit || ''
-      )));
-      root.lastChild.querySelector('select').name = 'unit';
-      root.appendChild(fieldRow('فی', cost));
-      const total = document.createElement('div');
-      total.className = 'wbs-note wbs-live-total';
-      root.appendChild(total);
-      bindLiveTotal(qty, cost, total);
       root.appendChild(fieldRow('توضیح', textInput(current.description || '', { name:'description' })));
     },
     onSave(root){
       const title = root.querySelector('[name="title"]').value.trim();
       const progressWeight = numberFromInput(root.querySelector('[name="progressWeight"]'));
-      const scheduleStart = root.querySelector('[name="scheduleStart"]').dataset.value;
-      const scheduleEnd = root.querySelector('[name="scheduleEnd"]').dataset.value;
       if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
-      if((scheduleStart || scheduleEnd) && !scheduleDuration(scheduleStart, scheduleEnd)){
-        window.KarhaUI?.showToast?.(!scheduleStart || !scheduleEnd
-          ? 'تاریخ شروع و پایان را کامل کنید'
-          : 'تاریخ پایان باید برابر یا بعد از تاریخ شروع باشد');
-        return false;
-      }
-      const dependencyCheck = taskDerived ? { ok:true } : root._workDependency?.validate();
-      if(dependencyCheck && !dependencyCheck.ok){
-        window.KarhaUI?.showToast?.(dependencyCheck.code === 'cycle' ? 'وابستگی دوری مجاز نیست' : 'انتخاب پیش‌نیاز تکراری یا نامعتبر است');
-        return false;
-      }
       wbsApi.updateItem(projectIdOf(), current.id, {
         text: title,
-        progress: numberFromInput(root.querySelector('[name="progress"]')) || 0,
         progressWeight,
-        priority: root.querySelector('[name="priority"]').value,
         type: root.querySelector('[name="type"]').value,
-        assigneeContactId:root.querySelector('[name="assigneeContactId"]').value,
         contractorContactId:linkedContract ? '' : (root.querySelector('[name="contractorContactId"]')?.dataset.value || ''),
-        quantity: numberFromInput(root.querySelector('[name="quantity"]')) || 0,
-        unit: root.querySelector('[name="unit"]').value,
-        unitCost: numberFromInput(root.querySelector('[name="unitCost"]')) || 0,
         description: root.querySelector('[name="description"]').value,
-        scheduleStart,
-        scheduleEnd,
-        predecessorIds:taskDerived ? current.predecessorIds || [] : (root._workDependency?.value() || []),
-        dependencies:taskDerived ? (current.dependencies || []) : (root._workDependency?.relations() || []),
       });
       render();
       return true;
