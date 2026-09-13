@@ -84,7 +84,7 @@ test('editing unfinished work weight immediately recalculates its stage progress
 test('add menu does not create an incompatible option', async ({ page }) => {
   await expect(page.locator('.wbs-tree-mode-tab[aria-label="ثبت و ویرایش"]')).toHaveAttribute('aria-selected', 'true');
   await page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' }).locator('.wbs-add').click();
-  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('افزودن کار');
+  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('ایجاد مرحله جدید');
   await expect(page.locator('#wbsSheetOverlay .wbs-choice', { hasText:'افزودن زیرمرحله' })).toHaveCount(0);
   await page.locator('#wbsSheetOverlay .close-btn').click();
 
