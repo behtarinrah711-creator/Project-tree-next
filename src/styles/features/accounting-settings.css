@@ -170,9 +170,10 @@
   .project-trash-clear{
     color:#DC2626 !important;
   }
-/* Accessible project-scoped switch; rows retain the workspace menu styling. */
-.project-setting-switch{appearance:none;position:relative;width:40px;height:24px;flex:0 0 40px;border:1px solid var(--divider);border-radius:999px;background:var(--text-dim);cursor:pointer;margin:0;}
-.project-setting-switch::before{content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:var(--surface,#fff);}
-.project-setting-switch:checked{background:var(--primary);}
-.project-setting-switch:checked::before{left:19px;}
-.project-setting-switch:focus-visible{outline:2px solid var(--primary);outline-offset:3px;}
+/* Native single-selection semantics with the requested tick-box appearance. */
+.project-stage-modes{border:0;margin:0;padding:0;min-width:0;}
+.project-stage-modes legend{padding:14px 16px;}
+.project-stage-mode{appearance:none;display:grid;place-content:center;width:22px;height:22px;flex:0 0 22px;border:1px solid var(--text-dim);border-radius:4px;background:var(--surface);cursor:pointer;margin:0;}
+.project-stage-mode:checked{background:var(--primary);border-color:var(--primary);}
+.project-stage-mode:checked::before{content:'';width:10px;height:5px;border-left:2px solid #fff;border-bottom:2px solid #fff;transform:rotate(-45deg);}
+.project-stage-mode:focus-visible{outline:2px solid var(--primary);outline-offset:3px;}

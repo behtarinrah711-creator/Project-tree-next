@@ -1,7 +1,7 @@
 import { projectRepository } from '../../data/projectRepository.js';
 import { appRouter } from '../../core/router.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
-import { allowsNestedStages } from '../../domain/wbs/branchingPolicy.js';
+import { stageModeOf } from '../../domain/wbs/branchingPolicy.js';
 
 export default {
   id:'project-settings',
@@ -14,24 +14,49 @@ export default {
     if(!project) return { projectId, moduleId:this.id };
     const list = document.createElement('div');
     list.className = 'workspace-option-list';
-    const row = document.createElement('label');
-    row.className = 'workspace-option';
-    const title = document.createElement('span');
-    title.className = 'workspace-option-title';
-    title.textContent = 'اضافه کردن بیش از یک شاخه به بسته کاری';
-    const toggle = document.createElement('input');
-    toggle.type = 'checkbox';
-    toggle.className = 'project-setting-switch';
-    toggle.setAttribute('role', 'switch');
-    toggle.checked = allowsNestedStages(project);
-    toggle.addEventListener('change', () => {
-      projectRepository.updateProject(projectId, current => ({ ...current,
-        settings:{ ...current.settings, allowNestedStages:toggle.checked } }));
-      markDirty(projectId);
-      persist();
+    const group = document.createElement('fieldset');
+    group.className = 'project-stage-modes';
+    const legend = document.createElement('legend');
+    legend.className = 'workspace-option-title';
+    legend.textContent = 'نوع مرحله‌بندی';
+    group.appendChild(legend);
+    const options = [
+      ['none', 'بدون مرحله', 'بسته کاری ← کار ← خرده‌کار'],
+      ['single', 'یک مرحله‌ای', 'بسته کاری ← مرحله ← کار ← خرده‌کار'],
+      ['multiple', 'بیش از یک مرحله', 'بسته کاری ← مرحله ← زیرمرحله‌های دلخواه ← کار ← خرده‌کار'],
+    ];
+    options.forEach(([value, label, description]) => {
+      const row = document.createElement('label');
+      row.className = 'workspace-option';
+      const main = document.createElement('span');
+      main.className = 'workspace-option-main';
+      const title = document.createElement('span');
+      title.className = 'workspace-option-title';
+      title.textContent = label;
+      const detail = document.createElement('span');
+      detail.className = 'workspace-option-meta';
+      detail.textContent = description;
+      main.append(title, detail);
+      const input = document.createElement('input');
+      input.type = 'radio';
+      input.name = 'project-stage-mode';
+      input.value = value;
+      input.className = 'project-stage-mode';
+      input.setAttribute('aria-label', label);
+      input.checked = stageModeOf(project) === value;
+      input.addEventListener('change', () => {
+        if(!input.checked) return;
+        projectRepository.updateProject(projectId, current => {
+          const { allowNestedStages, ...settings } = current.settings || {};
+          return { ...current, settings:{ ...settings, stageMode:value } };
+        });
+        markDirty(projectId);
+        persist();
+      });
+      row.append(main, input);
+      group.appendChild(row);
     });
-    row.append(title, toggle);
-    list.appendChild(row);
+    list.appendChild(group);
     body.appendChild(list);
     return { projectId, moduleId:this.id };
   },

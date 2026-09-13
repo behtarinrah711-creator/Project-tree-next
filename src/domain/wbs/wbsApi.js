@@ -16,7 +16,7 @@ import {
 } from './normalize.js';
 import { projectEstimateTotal, rollupEstimate, rollupProgress } from './estimate.js';
 import { validatePredecessors } from './scheduling.js';
-import { allowsNestedStages } from './branchingPolicy.js';
+import { stageAddKinds } from './branchingPolicy.js';
 
 function publish(projectId){
   if(typeof window !== 'undefined'){
@@ -105,7 +105,7 @@ export const wbsApi = {
     }
     const parent = locate(projectId, parentId);
     if(!parent || !canAcceptChild(parent.item, KIND_STAGE)) return null;
-    if(parent.parent && !allowsNestedStages(projectRepository.find(projectId))) return null;
+    if(!stageAddKinds(projectRepository.find(projectId), parentId).includes(KIND_STAGE)) return null;
     const saved = projectItemRepository.addSubtask(projectId, parent.rootId, parentId, node);
     if(saved) publish(projectId);
     return saved;
@@ -122,6 +122,7 @@ export const wbsApi = {
     }
     const parent = locate(projectId, parentId);
     if(!parent || !canAcceptChild(parent.item, KIND_WORK)) return null;
+    if(!stageAddKinds(projectRepository.find(projectId), parentId).includes(KIND_WORK)) return null;
     const saved = projectItemRepository.addSubtask(projectId, parent.rootId, parentId, node);
     if(saved) publish(projectId);
     return saved;
