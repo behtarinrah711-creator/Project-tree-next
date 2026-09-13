@@ -153,3 +153,33 @@ test('work edit sheet defines a single description field', async () => {
   assert.equal([...block.matchAll(/name:'description'/g)].length, 1);
   assert.equal([...block.matchAll(/fieldRow\('توضیح'/g)].length, 1);
 });
+
+
+test('stage creation follows the visible keyboard viewport and releases listeners on close', () => {
+  const body = el('body');
+  const listeners = new Map();
+  const viewport = {
+    height:420, offsetTop:0,
+    addEventListener(type, fn){ listeners.set(type, fn); },
+    removeEventListener(type, fn){ if(listeners.get(type) === fn) listeners.delete(type); },
+  };
+  globalThis.document = {
+    body, defaultView:{ visualViewport:viewport },
+    getElementById(id){ return body.children.find(x => x.id === id) || null; },
+    createElement(tag){
+      const node = el(tag);
+      node.style = {};
+      node.classList = { add(cls){ node.className += ' ' + cls; } };
+      return node;
+    },
+  };
+  const overlay = openWbsSheet({ title:'ایجاد مرحله جدید', presentation:'stage-create' });
+  assert.equal(overlay.style.height, '420px');
+  viewport.height = 300;
+  viewport.offsetTop = 12;
+  listeners.get('resize')();
+  assert.equal(overlay.style.height, '300px');
+  assert.equal(overlay.style.top, '12px');
+  closeWbsSheet();
+  assert.equal(listeners.size, 0);
+});

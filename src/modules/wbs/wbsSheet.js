@@ -1,14 +1,36 @@
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 
+let releaseSheetViewport = null;
+
 export function closeWbsSheet(){
+  releaseSheetViewport?.();
+  releaseSheetViewport = null;
   document.getElementById('wbsSheetOverlay')?.remove();
 }
 
-export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره' } = {}){
+export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', presentation = '' } = {}){
   closeWbsSheet();
   const overlay = document.createElement('div');
   overlay.id = 'wbsSheetOverlay';
   overlay.className = 'overlay wbs-sheet-overlay';
+  if(presentation === 'stage-create'){
+    overlay.classList.add('wbs-stage-create-overlay');
+    // Anchor the sheet to the visible area above the mobile keyboard.
+    const viewport = document.defaultView?.visualViewport;
+    if(viewport){
+      const syncViewport = () => {
+        overlay.style.top = `${viewport.offsetTop}px`;
+        overlay.style.height = `${viewport.height}px`;
+      };
+      syncViewport();
+      viewport.addEventListener('resize', syncViewport);
+      viewport.addEventListener('scroll', syncViewport);
+      releaseSheetViewport = () => {
+        viewport.removeEventListener('resize', syncViewport);
+        viewport.removeEventListener('scroll', syncViewport);
+      };
+    }
+  }
   overlay.setAttribute('role', 'dialog');
   overlay.setAttribute('aria-label', title || 'جزئیات');
   overlay.innerHTML = `
