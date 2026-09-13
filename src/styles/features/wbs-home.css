@@ -268,3 +268,8 @@ body:has(.wbs-home-root){background:#fff;}
 .wbs-depth-4{--wbs-parent-indent:56px;}
 .wbs-depth-5{--wbs-parent-indent:68px;}
 .wbs-depth-6{--wbs-parent-indent:80px;}
+
+/* Base-mode grouping stage creation. Native buttons previously used 13.333px. */
+.wbs-stage-create-overlay .wbs-sheet-save{font-size:calc(13.333px + 3px);font-weight:700;}
+.wbs-stage-create-overlay .sheet-head .close-btn{font-size:calc(13.333px + 5px);font-weight:700;color:var(--danger);}
+.wbs-stage-create-overlay{bottom:auto;}

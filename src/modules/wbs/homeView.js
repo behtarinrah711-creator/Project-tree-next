@@ -274,11 +274,13 @@ function workNumberInput(value, attrs, { money = false } = {}){
 }
 
 function openCreateWorkSheet(parentId = null){
+  const isBaseStage = parentId === null && stageModeOf(projectOf()) === 'base';
   openWbsSheet({
-    title: 'افزودن کار',
+    presentation: isBaseStage ? 'stage-create' : '',
+    title: isBaseStage ? 'ایجاد مرحله جدید' : 'افزودن کار',
     saveLabel: 'ذخیره',
     body(root){
-      root.appendChild(fieldRow('عنوان کار', textInput('', { name:'title', placeholder:'عنوان کار' })));
+      root.appendChild(fieldRow(isBaseStage ? 'نام مرحله' : 'عنوان کار', textInput('', { name:'title', placeholder:isBaseStage ? 'مثال: گچ کاری' : 'عنوان کار' })));
     },
     onSave(root){
       const title = root.querySelector('[name="title"]').value.trim();

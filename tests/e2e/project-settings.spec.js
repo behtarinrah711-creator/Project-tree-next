@@ -74,7 +74,14 @@ test('base mode creates work directly from the tree header and retains it when s
   await page.goto('/index.html#/projects/base-project/dashboard');
   await page.waitForFunction(() => Boolean(window.KarhaApp && window.KarhaLegacy));
   await page.locator('.wbs-root-add').click();
-  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('افزودن کار');
+  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('ایجاد مرحله جدید');
+  await expect(page.locator('#wbsSheetOverlay .wbs-field-label')).toHaveText('نام مرحله');
+  await expect(page.locator('#wbsSheetOverlay [name="title"]')).toHaveAttribute('placeholder','مثال: گچ کاری');
+  await expect(page.locator('#wbsSheetOverlay .wbs-sheet-save')).toHaveCSS('font-weight','700');
+  await expect(page.locator('#wbsSheetOverlay .close-btn')).toHaveCSS('color','rgb(217, 48, 37)');
+  const bounds = await page.locator('#wbsSheetOverlay .wbs-sheet').boundingBox();
+  const viewportBottom = await page.evaluate(() => visualViewport.offsetTop + visualViewport.height);
+  expect(Math.abs(bounds.y + bounds.height - viewportBottom)).toBeLessThan(2);
   await expect(page.locator('#wbsSheetOverlay [name="progressWeight"]')).toHaveCount(0);
   await page.locator('#wbsSheetOverlay [name="title"]').fill('کار پایه');
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();

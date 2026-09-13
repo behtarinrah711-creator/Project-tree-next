@@ -103,6 +103,7 @@ test('remaining direct style mutations are intentional runtime geometry or gener
     'src/modules/contracts/contractTemplateFormModule.js',
     'src/modules/export/exportView.js',
     'src/modules/wbs/homeView.js',
+    'src/modules/wbs/wbsSheet.js', // Visual viewport geometry above the mobile keyboard.
   ]);
   const offenders = jsFiles.filter(path => /\.style(?:\.|\s*=)|cssText/.test(readFileSync(path, 'utf8')))
     .map(path => relative(root, path)).filter(path => !allowlist.has(path));
