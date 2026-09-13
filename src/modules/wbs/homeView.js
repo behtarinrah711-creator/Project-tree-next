@@ -4,7 +4,6 @@ import { wbsApi } from '../../domain/wbs/wbsApi.js';
 import { stageAddKinds, stageModeOf } from '../../domain/wbs/branchingPolicy.js';
 import { generalCostApi } from '../../domain/wbs/generalCostApi.js';
 import {
-  WORK_TYPES,
   UNITS,
   activityIdsOf,
   isStage,
@@ -66,15 +65,6 @@ const ADD_WORK_PACKAGE_ICON = 'M160-160q-33 0-56.5-23.5T80-240v-480q0-33 23.5-56
 function materialIcon(path){
   return `<svg viewBox="0 -960 960 960" aria-hidden="true" focusable="false"><path d="${path}"/></svg>`;
 }
-
-const SIMPLE_TYPE_CLASSES = new Map([
-  ['اجرا', 'type-1'],
-  ['خرید', 'type-2'],
-  ['نیروی کار', 'type-3'],
-  ['پیمانکار', 'type-4'],
-  ['کرایه', 'type-5'],
-  ['خدمات', 'type-6'],
-]);
 
 let currentView = 'tree';
 let currentTreeMode = DEFAULT_TREE_MODE;
@@ -705,9 +695,6 @@ function renderRow(item, codes, view, depth){
   const hasExpandableContent = kids.length > 0 || workTasks.length > 0;
   const open = isExpanded(projectIdOf(), item.id);
   const code = stage ? (codes.get(String(item.id)) || '') : '';
-  const rawType = isWork(item) && WORK_TYPES.includes(item.type) ? item.type : '';
-  const chipLabel = rawType || '؟';
-  const chipClass = rawType ? (SIMPLE_TYPE_CLASSES.get(rawType) || 'type-7') : 'type-7';
   const readOnlyView = view === 'estimate' || view === 'progress';
   const mayAdd = !stage || stageAddKinds(projectOf(), item.id).length > 0;
   const meta = [];
@@ -727,7 +714,6 @@ function renderRow(item, codes, view, depth){
     ${readOnlyView ? '' : '<span class="wbs-grip" aria-hidden="true">⋮⋮</span>'}
     ${hasExpandableContent ? `<button type="button" class="wbs-chev" aria-label="${open?'بستن':'باز کردن'}" aria-expanded="${open}"><svg class="wbs-chev-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24" height="24" fill="#1f1f1f" aria-hidden="true" focusable="false"><path d="${BRANCH_ARROW_ICON}"/></svg></button>` : '<span class="wbs-chev-spacer"></span>'}
     <button type="button" class="wbs-title">
-      ${stage ? '' : `<span class="wbs-type-chip ${chipClass}">${escapeHtml(chipLabel)}</span>`}
       ${code ? `<b>${escapeHtml(code)}</b>` : ''}
       <span class="wbs-title-text">${escapeHtml(item.text || '')}</span>
     </button>

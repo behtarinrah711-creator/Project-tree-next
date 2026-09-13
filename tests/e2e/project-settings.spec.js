@@ -125,6 +125,7 @@ for(const stageMode of ['base','none','single','multiple']){
       await page.locator('.wbs-row.is-work',{hasText:title}).locator('.wbs-title').click();
       await page.locator('#wbsSheetOverlay .wbs-primary-action',{hasText:'ویرایش اطلاعات کار'}).click();
     };
+    await expect(page.locator('.wbs-row.is-work .wbs-type-chip')).toHaveCount(0);
     await openEdit('کار مستقل');
     const sheet=page.locator('#wbsSheetOverlay');
     await expect(sheet.locator('[name="type"],[name="contractorContactId"]')).toHaveCount(0);
