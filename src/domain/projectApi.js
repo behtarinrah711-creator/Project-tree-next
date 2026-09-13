@@ -72,6 +72,7 @@ export const projectApi = {
       id: makeId(),
       name: trimmed,
       type:'project',
+      settings:{ stageMode:'base' },
       tasks: [],
       contacts: [],
       activityTemplates: [],

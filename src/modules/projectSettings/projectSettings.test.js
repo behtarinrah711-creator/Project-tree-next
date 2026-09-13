@@ -31,7 +31,7 @@ test('cloud hydration and project recovery retain settings', () => {
 });
 test('all explicit stage modes survive cloud payload and hydration', () => {
   const appDataStore=createAppDataStore();
-  for(const stageMode of ['none','single','multiple']){
+  for(const stageMode of ['base','none','single','multiple']){
     const settings={stageMode,future:'keep'};
     const payload=buildProjectCloudPayload({settings},{},null,x=>x,8);
     assert.deepEqual(payload.settings,settings);

@@ -92,7 +92,7 @@ export function createCloudRuntime(ctx){
     for(const project of ctx.getProjects().filter(p=>!p.ownerUid&&!p.trashed)){
       project.type='project';project.ownerUid=user.uid;project.ownerEmail=ctx.normalizeEmail(user.email);project.sharedWith=[];
       store.markCloudWritePending(project.id);
-      try{await collections.project(project.id).set({name:project.name,type:'project',completedOpen:!!project.completedOpen,
+      try{await collections.project(project.id).set({name:project.name,type:'project',settings:project.settings||{},completedOpen:!!project.completedOpen,
         ownerUid:user.uid,ownerEmail:ctx.normalizeEmail(user.email),sharedWith:[],contacts:project.contacts||[],
         activityTemplates:project.activityTemplates||[],trashed:!!project.trashed,archived:!!project.archived,schemaVersion:ctx.schemaVersion},{merge:true});
         await writeTasks(project.id,project.tasks);store.clearCloudWritePending(project.id);
@@ -105,7 +105,7 @@ export function createCloudRuntime(ctx){
     const user=getSession().currentUser;if(!user)return;
     project.ownerUid=user.uid;project.ownerEmail=ctx.normalizeEmail(user.email);project.sharedWith=[];
     store.markCloudWritePending(project.id);
-    try{await collections.project(project.id).set({name:project.name,type:'project',completedOpen:false,ownerUid:user.uid,
+    try{await collections.project(project.id).set({name:project.name,type:'project',settings:project.settings||{},completedOpen:false,ownerUid:user.uid,
       ownerEmail:project.ownerEmail,sharedWith:[],contacts:project.contacts||[],activityTemplates:project.activityTemplates||[],
       contractTemplates:project.contractTemplates||[],contracts:project.contracts||[],contractStatusReports:project.contractStatusReports||[],schemaVersion:ctx.schemaVersion});
       await writeTasks(project.id,project.tasks);store.clearCloudWritePending(project.id);

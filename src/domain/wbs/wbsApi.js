@@ -16,7 +16,7 @@ import {
 } from './normalize.js';
 import { projectEstimateTotal, rollupEstimate, rollupProgress } from './estimate.js';
 import { validatePredecessors } from './scheduling.js';
-import { stageAddKinds } from './branchingPolicy.js';
+import { stageAddKinds, stageModeOf } from './branchingPolicy.js';
 
 function publish(projectId){
   if(typeof window !== 'undefined'){
@@ -91,6 +91,7 @@ export const wbsApi = {
   },
 
   createStage(projectId, text, parentId = null, extra = {}, clock){
+    if(stageModeOf(projectRepository.find(projectId)) === 'base') return null;
     const title = String(text || '').trim();
     if(!projectId || !title) return null;
     if(typeof extra === 'function'){
@@ -194,6 +195,7 @@ export const wbsApi = {
     if(newParentId && String(newParentId) === String(itemId)) return null;
     const movingFound = locate(projectId, itemId);
     if(!movingFound) return null;
+    if(stageModeOf(projectRepository.find(projectId)) === 'base' && (newParentId || isStage(movingFound.item))) return null;
     if(newParentId && findInTree(movingFound.item.subtasks || [], newParentId)) return null;
     if(newParentId){
       const dest = locate(projectId, newParentId);
