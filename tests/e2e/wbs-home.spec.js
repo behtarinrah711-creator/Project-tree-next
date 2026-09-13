@@ -188,8 +188,7 @@ test('Work Task create, edit, connector, modes and weighted completion share one
   await sheet.locator('[name="taskPriority"]').selectOption('high');
   await sheet.locator('[name="taskAssignee"]').click();
   await page.locator('#searchTemplatePage .stpl-row[data-id="c1"]').click();
-  await expect(sheet.locator('[name="taskWeight"]')).toHaveValue('1');
-  await sheet.locator('[name="taskWeight"]').fill('2');
+  await expect(sheet.locator('[name="taskWeight"]')).toHaveCount(0);
   await sheet.locator('[name="taskAmount"]').fill('25');
   await sheet.locator('.wbs-sheet-save').click();
 
@@ -222,7 +221,7 @@ test('Work Task create, edit, connector, modes and weighted completion share one
   await expect.poll(() => page.evaluate(() => {
     const work = window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0];
     return { workId:work.workTasks[0].workId, weight:work.workTasks[0].weight };
-  })).toEqual({ workId:'w1', weight:2 });
+  })).toEqual({ workId:'w1', weight:1 });
 
   await selectTreeMode(page, 'هزینه‌ها');
   task = page.locator('.wbs-work-task', { hasText:'تحویل آهن' });

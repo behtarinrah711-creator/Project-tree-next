@@ -250,17 +250,11 @@ function openCreateStageSheet(parentId = null){
     saveLabel: 'ذخیره',
     body(root){
       root.appendChild(fieldRow('نام مرحله', textInput('', { name:'title', placeholder:'نام مرحله' })));
-      root.appendChild(fieldRow('وزن پیشرفت', textInput('1', { name:'progressWeight', type:'number', min:'0.01', step:'0.01', required:true })));
-      const note = document.createElement('div');
-      note.className = 'wbs-note';
-      note.textContent = 'وزن نسبی است؛ لازم نیست مجموع وزن‌ها ۱۰۰ شود.';
-      root.appendChild(note);
     },
     onSave(root){
       const title = root.querySelector('[name="title"]').value.trim();
-      const progressWeight = numberFromInput(root.querySelector('[name="progressWeight"]'));
-      if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
-      if(!wbsApi.createStage(projectIdOf(), title, parentId, { progressWeight })) return false;
+      if(!title) return false;
+      if(!wbsApi.createStage(projectIdOf(), title, parentId)) return false;
       render();
       return true;
     },
@@ -285,17 +279,11 @@ function openCreateWorkSheet(parentId = null){
     saveLabel: 'ذخیره',
     body(root){
       root.appendChild(fieldRow('عنوان کار', textInput('', { name:'title', placeholder:'عنوان کار' })));
-      root.appendChild(fieldRow('وزن پیشرفت', workNumberInput('1', { name:'progressWeight', type:'number', min:'0.01', step:'0.01', required:true })));
-      const note = document.createElement('div');
-      note.className = 'wbs-note';
-      note.textContent = 'وزن نسبی است؛ لازم نیست مجموع وزن‌ها ۱۰۰ شود.';
-      root.appendChild(note);
     },
     onSave(root){
       const title = root.querySelector('[name="title"]').value.trim();
-      const progressWeight = numberFromInput(root.querySelector('[name="progressWeight"]'));
-      if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
-      if(!wbsApi.createWorkItem(projectIdOf(), title, parentId, { progressWeight })) return false;
+      if(!title) return false;
+      if(!wbsApi.createWorkItem(projectIdOf(), title, parentId)) return false;
       render();
       return true;
     },

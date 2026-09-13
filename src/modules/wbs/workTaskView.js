@@ -96,7 +96,7 @@ function taskForm({ projectId, work, task = null, onChanged }){
         note.textContent = `پیمانکار از قرارداد خوانده می‌شود: ${contactName(contractor)}`;
         root.appendChild(note);
       }
-      root.appendChild(fieldRow('وزن', textInput(String(task?.weight || 1), { name:'taskWeight', type:'number', min:'0.01', step:'0.01', required:true })));
+      if(editing) root.appendChild(fieldRow('وزن', textInput(String(task?.weight || 1), { name:'taskWeight', type:'number', min:'0.01', step:'0.01', required:true })));
       root.appendChild(fieldRow('پیشرفت ٪', textInput(String(task?.progress || 0), { name:'taskProgress', type:'number', min:'0', max:'100', step:'1' })));
       root.appendChild(fieldRow('مبلغ', textInput(String(task?.amount || 0), { name:'taskAmount', type:'number', min:'0', step:'1' })));
       const dependency = predecessorField({ documentRef, project:projectRepository.find(projectId), consumerId:task?.id || `new:${work.id}`, initial:task?.dependencies || task?.predecessorIds || [] });
@@ -138,7 +138,7 @@ function taskForm({ projectId, work, task = null, onChanged }){
         priority:root.querySelector('[name="taskPriority"]').value,
         assigneeContactId:root.querySelector('[name="taskAssignee"]').dataset.value,
         contractorContactId:'',
-        weight:Number(toEnglishDigits(root.querySelector('[name="taskWeight"]').value)),
+        weight:editing ? Number(toEnglishDigits(root.querySelector('[name="taskWeight"]').value)) : 1,
         progress:Number(toEnglishDigits(root.querySelector('[name="taskProgress"]').value)) || 0,
         amount:Number(toEnglishDigits(root.querySelector('[name="taskAmount"]').value)) || 0,
         predecessorIds:root._taskDependency?.value() || [],
