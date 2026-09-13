@@ -192,6 +192,16 @@ test('Work Task create, edit, connector, modes and weighted completion share one
   let task = page.locator('.wbs-work-task', { hasText:'تحویل آهن' });
   await expect(task).toBeVisible();
   await expect(task.locator('.wbs-task-connector')).toBeVisible();
+  for (const width of [390, 1024]) {
+    await page.setViewportSize({ width, height:900 });
+    const grip = await task.locator('.wbs-grip').boundingBox();
+    const parentGrip = await work.locator('.wbs-grip').boundingBox();
+    const content = await task.locator('.wbs-task-content').boundingBox();
+    const connector = await task.locator('.wbs-task-connector').boundingBox();
+    expect(Math.abs(grip.x - parentGrip.x)).toBeLessThanOrEqual(1);
+    expect(grip.x + grip.width).toBeLessThanOrEqual(content.x);
+    expect(connector.x).toBeGreaterThanOrEqual(content.x + content.width - 1);
+  }
   await expect(task.locator('.wbs-check')).toHaveCount(0);
   await expect(task.locator('.wbs-task-main')).toContainText('خرید');
   await expect(task.locator('.wbs-task-secondary')).toContainText('مهندس احمدی');
@@ -235,8 +245,8 @@ test('Work Task create, edit, connector, modes and weighted completion share one
   await expect(task.locator('.wbs-task-progress')).toHaveText('٪۱۰۰');
   await expect(work.locator('.wbs-meta')).toHaveText('٪۱۰۰');
   await expect.poll(() => task.locator('.wbs-task-connector').evaluate(element => ({
-    color:getComputedStyle(element).borderInlineStartColor,
-    width:getComputedStyle(element).borderInlineStartWidth,
+    color:getComputedStyle(element).borderRightColor,
+    width:getComputedStyle(element).borderRightWidth,
   }))).toEqual({ color:'rgb(22, 163, 74)', width:'3px' });
   await expect.poll(() => page.evaluate(() => (
     window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0].workTasks[0].weight
