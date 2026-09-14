@@ -104,3 +104,28 @@ test('Task reorder persists active order without reviving deleted Tasks', () => 
   const raw = store.getSnapshot().projects[0].tasks[0].subtasks[0].workTasks;
   assert.equal(raw.find(task => task.id === second.id).trashed, true);
 });
+
+test('title-only creation under a leaf stage preserves stage identity through execution', async () => {
+  const { lineTotal } = await import('./normalize.js');
+  const { collectPlannedWorks } = await import('./costline.js');
+  const { collectShoppingItems } = await import('./shoppingDomain.js');
+  const { TodayRepository } = await import('../../data/todayRepository.js');
+  const store=installFixture();
+  store.getSnapshot().projects[0].tasks[0].subtasks[0].kind='stage';
+  const created=workTaskApi.create('p1','w1',draft({type:'',assigneeContactId:'',priority:'normal',scheduleStart:'',scheduleEnd:''}),()=>100);
+  assert.equal(created.ok,true);
+  assert.equal(created.task.type,'');
+  const edit=workTaskApi.update('p1','w1',created.task.id,{type:'خرید',amount:1500,scheduleStart:'1405/06/01',scheduleEnd:'1405/06/03'});
+  assert.equal(edit.ok,true);
+  const project=()=>store.getSnapshot().projects[0];
+  const stage=()=>project().tasks[0].subtasks[0];
+  assert.equal(stage().kind,'stage');
+  assert.equal(lineTotal(stage()),1500);
+  assert.equal(collectPlannedWorks(project().tasks)[0].amount,1500);
+  assert.equal(collectShoppingItems(project())[0].entity.id,created.task.id);
+  assert.ok(new TodayRepository().update('p1',{kind:'task',workId:'w1',id:created.task.id},task=>({...task,description:'updated'})));
+  assert.equal(workTaskApi.get('p1','w1',created.task.id).description,'updated');
+  workTaskApi.setCompleted('p1','w1',created.task.id,true);
+  assert.equal(rollupProgress(project().tasks),100);
+  assert.equal(stage().kind,'stage');
+});
