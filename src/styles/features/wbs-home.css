@@ -279,7 +279,7 @@ body:has(.wbs-home-root){background:#fff;}
 
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-caption{display:flex;flex-direction:column;align-items:center;gap:4px;}
 .wbs-create-parent{font-size:17px;font-weight:800;}
-.wbs-work-create-overlay .wbs-sheet,.wbs-work-create-overlay::after{background:var(--wbs-work-create-background,#E6F0F0);}
+.wbs-work-create-overlay .wbs-sheet,.wbs-work-create-overlay::after{background:var(--wbs-work-create-background,#f7f4ef);}
 .wbs-stage-edit-body .wbs-field{flex-direction:row;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--divider);}
 .wbs-inline-number{display:flex;align-items:baseline;gap:5px;border:0;background:transparent;font:inherit;color:var(--text);cursor:pointer;}
 .wbs-inline-number small{font-size:10px;color:var(--text-dim);}
