@@ -71,7 +71,6 @@ export function collectTodayItems(project, today = tehranTodayJalali()){
           path:[...ancestors].filter(Boolean), mode:timeState(node, today),
         });
       }
-      return;
     }
     walk(node.subtasks, [...ancestors, title]);
   });

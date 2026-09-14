@@ -8,6 +8,7 @@ import {
   getExpansionProgress,
   isExpanded,
   resetExpandState,
+  revealBranch,
   seedCollapsed,
   seedRootLevel,
 } from './wbsExpandState.js';
@@ -74,4 +75,13 @@ test('work tasks are the final progressive expansion level without becoming WBS 
   assert.equal(isExpanded('tasks', 'work'), true);
   assert.equal(isExpanded('tasks', 'task'), false);
   assert.deepEqual(advanceExpansionLevel('tasks', tree), { collapsed:true, visibleDepth:0 });
+});
+
+test('saving reveals every ancestor and the new branch without opening unrelated branches', () => {
+  resetExpandState();
+  const items=[{id:'root',subtasks:[{id:'parent',subtasks:[{id:'created'}]}]},{id:'other'}];
+  seedCollapsed('save');
+  revealBranch('save',items,'created');
+  assert.deepEqual([...getExpandedIds('save')],['created','parent','root']);
+  assert.equal(isExpanded('save','other'),false);
 });

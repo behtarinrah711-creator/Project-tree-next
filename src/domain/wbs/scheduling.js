@@ -38,21 +38,23 @@ function weighted(items, valueOf, weightOf){
 
 export function actualProgress(item){
   if(item?.kind === 'workTask') return taskProgressOf(item);
+  const children = (item?.subtasks || []).filter(child => child && !child.trashed);
+  if(children.length) return weighted([...children, ...activeWorkTasks(item).map(task => ({...task, kind:'workTask'}))], actualProgress, unit => unit.kind === 'workTask' ? taskWeightOf(unit) : progressWeightOf(unit)) ?? 0;
   if(canHoldWorkTasks(item)){
     const tasks = activeWorkTasks(item);
     return tasks.length ? weighted(tasks, taskProgressOf, taskWeightOf) : progressOf(item);
   }
-  const children = (item?.subtasks || []).filter(child => child && !child.trashed);
   return weighted(children, actualProgress, progressWeightOf) ?? 0;
 }
 
 export function plannedProgressOf(item, today = tehranTodayDayNumber()){
   if(item?.kind === 'workTask') return plannedProgress(item.scheduleStart, item.scheduleEnd, today);
+  const children = (item?.subtasks || []).filter(child => child && !child.trashed);
+  if(children.length) return weighted([...children, ...activeWorkTasks(item).map(task => ({...task, kind:'workTask'}))], child => plannedProgressOf(child, today), unit => unit.kind === 'workTask' ? taskWeightOf(unit) : progressWeightOf(unit));
   if(canHoldWorkTasks(item)){
     const units = effectiveWorkUnits(item);
     return weighted(units, unit => plannedProgress(unit.scheduleStart, unit.scheduleEnd, today), unit => unit.kind === 'workTask' ? taskWeightOf(unit) : 1);
   }
-  const children = (item?.subtasks || []).filter(child => child && !child.trashed);
   return weighted(children, child => plannedProgressOf(child, today), progressWeightOf);
 }
 
@@ -66,6 +68,8 @@ export function scheduleRangeOf(item){
     const start = jalaliDayNumber(item.scheduleStart); const end = jalaliDayNumber(item.scheduleEnd);
     return start !== null && end !== null && end >= start ? { start, end, startDate:item.scheduleStart, endDate:item.scheduleEnd } : null;
   }
+  const children = (item?.subtasks || []).filter(child => child && !child.trashed);
+  if(children.length) return aggregateRange([...children, ...activeWorkTasks(item).map(task => ({...task, kind:'workTask'}))]);
   if(canHoldWorkTasks(item)){
     const tasks = activeWorkTasks(item);
     if(!tasks.length){
@@ -106,6 +110,11 @@ export function transferredDelay(delay, totalFloat){
 }
 
 export function parentTemporalDelay(item, today = tehranTodayDayNumber()){
+  const children = (item?.subtasks || []).filter(child => child && !child.trashed);
+  if(children.length){
+    const values = [...children, ...activeWorkTasks(item).map(task => ({...task, kind:'workTask'}))].map(child => parentTemporalDelay(child, today)).filter(Number.isFinite);
+    return values.length ? Math.max(...values) : null;
+  }
   if(item?.kind === 'workTask' || canHoldWorkTasks(item)){
     const units = item?.kind === 'workTask' ? [item] : effectiveWorkUnits(item);
     const values = units.map(unit => temporalDelay(unit, today)).filter(Number.isFinite);
@@ -146,9 +155,9 @@ export function buildEffectiveNetwork(items){
       const tasks = activeWorkTasks(row.item);
       return tasks.length ? tasks.map(task => String(task.id)) : [row.id];
     }
-    const ids = [];
+    const ids = activeWorkTasks(row.item).map(task => String(task.id));
     const walk = nodes => (nodes || []).filter(node => node && !node.trashed).forEach(node => {
-      if(isStage(node)) walk(node.subtasks);
+      if(isStage(node)){ ids.push(...activeWorkTasks(node).map(task => String(task.id))); walk(node.subtasks); }
       else ids.push(...effectiveIds(byId.get(String(node.id))));
     });
     walk(row.item.subtasks); return [...new Set(ids)];
@@ -194,9 +203,9 @@ export function effectiveDependencyLinks(items){
       const tasks = activeWorkTasks(row.item);
       return tasks.length ? tasks.map(task => String(task.id)) : [row.id];
     }
-    const ids = [];
+    const ids = activeWorkTasks(row.item).map(task => String(task.id));
     const walk = nodes => (nodes || []).filter(node => node && !node.trashed).forEach(node => {
-      if(isStage(node)) walk(node.subtasks);
+      if(isStage(node)){ ids.push(...activeWorkTasks(node).map(task => String(task.id))); walk(node.subtasks); }
       else ids.push(...leafIds(byId.get(String(node.id))));
     });
     walk(row.item.subtasks);

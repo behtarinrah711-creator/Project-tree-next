@@ -1,4 +1,5 @@
-import { isExpanded, toggleExpanded } from './wbsExpandState.js';
+import { revealBranch } from './wbsExpandState.js';
+import { projectRepository } from '../../data/projectRepository.js';
 import { workTaskApi } from '../../domain/wbs/workTaskApi.js';
 import { fieldRow, openWbsSheet, textInput } from './wbsSheet.js';
 
@@ -15,13 +16,13 @@ export function openWorkCreationSheet({ projectId, stage, onChanged } = {}){
         scheduleStart:'',scheduleEnd:'',assigneeContactId:'',contractorContactId:'',
       });
       if(!result.ok) return false;
-      if(!isExpanded(projectId,stage.id)) toggleExpanded(projectId,stage.id);
+      revealBranch(projectId, projectRepository.find(projectId)?.tasks || [], stage.id);
       onChanged?.();
       return true;
     },
   });
   const subtitle=document.createElement('strong');
-  subtitle.className='wbs-work-create-parent';
+  subtitle.className='wbs-create-parent';
   subtitle.textContent=stage.text || '';
   overlay.querySelector('.sheet-caption').appendChild(subtitle);
   return overlay;

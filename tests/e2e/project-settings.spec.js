@@ -14,13 +14,13 @@ test('project settings persist and switch the phase add flow without changing ex
   await page.goto('/index.html#/projects/branching/dashboard');
   await page.waitForFunction(() => Boolean(window.KarhaApp && window.KarhaLegacy));
   await page.locator('.wbs-row.is-stage', {hasText:'بسته خالی'}).locator('.wbs-add').click();
-  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('ایجاد مرحله جدید');
+  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('ایجاد مرحله جدید برای:');
   await expect(page.locator('#wbsSheetOverlay [name="progressWeight"]')).toHaveCount(0);
   await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(0);
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await page.locator('.wbs-tree-toggle').click();
   await page.locator('.wbs-row.is-stage', {hasText:'مرحله تست'}).locator('.wbs-add').click();
-  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('ایجاد مرحله جدید');
+  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('ایجاد مرحله جدید برای:');
   await expect(page.locator('#wbsSheetOverlay [name="progressWeight"]')).toHaveCount(0);
   await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(0);
   await page.locator('#wbsSheetOverlay .close-btn').click();
@@ -37,7 +37,7 @@ test('project settings persist and switch the phase add flow without changing ex
   await expect(none).not.toBeChecked();
   await page.locator('#bottomProjectsBtn').click();
   await page.locator('.wbs-row.is-stage', {hasText:'بسته خالی'}).locator('.wbs-add').click();
-  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('ایجاد مرحله جدید');
+  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('ایجاد مرحله جدید برای:');
   await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(0);
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await page.locator('#bottomSettingsBtn').click();
@@ -52,10 +52,9 @@ test('project settings persist and switch the phase add flow without changing ex
   await page.locator('#bottomProjectsBtn').click();
   await page.locator('.wbs-tree-toggle').click();
   await page.locator('.wbs-row.is-stage', {hasText:'مرحله تست'}).locator('.wbs-add').click();
-  await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(2);
-  await page.locator('#wbsSheetOverlay .wbs-choice', {hasText:'افزودن کار'}).click();
-  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('اضافه کردن کار به:');
-  await expect(page.locator('#wbsSheetOverlay [name="title"]')).toHaveAttribute('placeholder','مثال: خرید سیم و کابل');
+  await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(0);
+  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('ایجاد مرحله جدید برای:');
+  await expect(page.locator('#wbsSheetOverlay [name="title"]')).toHaveAttribute('placeholder','مثال: تاسیسات الکتریکی');
 
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await page.locator('#bottomSettingsBtn').click();
@@ -138,7 +137,7 @@ for(const stageMode of ['base','none','single','multiple']){
     await page.locator('.wbs-row',{hasText:'کار ویرایش‌شده'}).locator('.wbs-add').click();
     await expect(sheet).toHaveClass(/wbs-work-create-overlay/);
     await expect(sheet.locator('.sheet-caption')).toContainText('اضافه کردن کار به:');
-    await expect(sheet.locator('.wbs-work-create-parent')).toHaveText('کار ویرایش‌شده');
+    await expect(sheet.locator('.wbs-create-parent')).toHaveText('کار ویرایش‌شده');
     await expect(sheet.locator('.wbs-field-label')).toHaveText('عنوان کار');
     await expect(sheet.locator('[name="title"]')).toHaveAttribute('placeholder','مثال: خرید سیم و کابل');
     await sheet.locator('[name="title"]').fill('خرید سیم و کابل');
@@ -225,6 +224,8 @@ test('multiple-stage work selection persists the shared final-level title and pl
   await expect(page.getByRole('textbox',{name:'عنوان مرحله'})).toHaveText('برق کشی');
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await row.locator('.wbs-add').click();
+  await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(2);
+  await page.locator('#wbsSheetOverlay .wbs-choice', {hasText:'افزودن کار'}).click();
   await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('اضافه کردن کار به:');
   await page.locator('#wbsSheetOverlay [name="title"]').fill('خرید سیم و کابل');
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
@@ -233,3 +234,51 @@ test('multiple-stage work selection persists the shared final-level title and pl
   expect(stage.kind).toBe('stage');
   expect(stage.workTasks[0].title).toBe('خرید سیم و کابل');
 });
+
+for(const [mode, levels] of [['base',1],['none',2],['single',3],['multiple',4]]){
+  test(`creation reveals branches and preserves shared stage styles in ${mode}`, async ({page}) => {
+    await page.addInitScript(mode => {
+      localStorage.setItem('ptnext-v1:app-data',JSON.stringify({schemaVersion:8,activeTab:'flow',viewMode:'simple',projects:[{id:'flow',name:'flow',settings:{stageMode:mode},tasks:[]}]}));
+    },mode);
+    await page.goto('/index.html#/projects/flow/dashboard');
+    await page.waitForFunction(() => Boolean(window.KarhaApp && window.KarhaLegacy));
+    await page.locator('.wbs-root-add').click();
+    for(let level=1;level<=levels;level++){
+      if(level>1){
+        await page.locator('.wbs-row',{hasText:`سطح ${level-1}`}).locator('.wbs-add').click();
+        await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('ایجاد مرحله جدید برای:');
+        await expect(page.locator('#wbsSheetOverlay .wbs-create-parent')).toHaveText(`سطح ${level-1}`);
+      }
+      await expect(page.locator('#wbsSheetOverlay [name="progressWeight"]')).toHaveCount(0);
+      await page.locator('#wbsSheetOverlay [name="title"]').fill(`سطح ${level}`);
+      await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
+      const row=page.locator('.wbs-row',{hasText:`سطح ${level}`});
+      await expect(row).toBeVisible();
+      await expect(row.locator('.wbs-title')).toHaveCSS('font-size','14px');
+      await expect(row.locator('.wbs-title')).toHaveCSS('font-weight','700');
+      await expect(row).not.toHaveCSS('background-color','rgb(255, 255, 255)');
+    }
+    const parent=page.locator('.wbs-row',{hasText:`سطح ${levels}`});
+    await parent.locator('.wbs-add').click();
+    if(mode==='multiple'){
+      await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(2);
+      await page.locator('#wbsSheetOverlay .wbs-choice',{hasText:'افزودن کار'}).click();
+    }
+    await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('اضافه کردن کار به:');
+    await expect(page.locator('#wbsSheetOverlay [name="title"]')).toHaveAttribute('placeholder','مثال: خرید سیم و کابل');
+    await page.locator('#wbsSheetOverlay [name="title"]').fill('کار نهایی');
+    await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
+    await expect(page.locator('.wbs-work-task',{hasText:'کار نهایی'})).toBeVisible();
+    await expect(page.locator('.wbs-work-task',{hasText:'کار نهایی'})).toHaveCSS('background-color','rgb(255, 255, 255)');
+    if(mode==='multiple'){
+      await parent.locator('.wbs-add').click();
+      await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(2);
+      await page.locator('#wbsSheetOverlay .wbs-choice',{hasText:'افزودن زیرمرحله'}).click();
+      await expect(page.locator('#wbsSheetOverlay [name="title"]')).toHaveAttribute('placeholder','پیشنهاد می شود تعداد مراحل را کمتر کنید');
+      await page.locator('#wbsSheetOverlay [name="title"]').fill('سطح پنجم');
+      await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
+      await expect(page.locator('.wbs-row',{hasText:'سطح پنجم'})).toBeVisible();
+      await expect(page.locator('.wbs-work-task',{hasText:'کار نهایی'})).toBeVisible();
+    }
+  });
+}

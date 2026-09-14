@@ -1,3 +1,4 @@
+import { findInTree } from '../../domain/wbs/normalize.js';
 const byProject = new Map();
 
 function bucket(projectId){
@@ -112,4 +113,16 @@ export function resetExpandState(projectId){
     return;
   }
   byProject.delete(String(projectId));
+}
+
+// Reveal the complete path, including ancestors collapsed before saving.
+export function revealBranch(projectId, items, itemId){
+  const ids = bucket(projectId).ids;
+  let found = findInTree(items, itemId);
+  while(found){
+    ids.add(String(found.item.id));
+    found = found.parent ? findInTree(items, found.parent.id) : null;
+  }
+  bucket(projectId).seeded = true;
+  return ids;
 }

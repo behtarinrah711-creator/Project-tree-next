@@ -16,7 +16,7 @@ test('single mode uses package → stage → work without a choice', () => {
 });
 test('only explicit true enables deeper stages; works never accept stages', () => {
   const project={settings:{allowNestedStages:true},tasks:[stage('package',[stage('phase',[stage('nested')])])]};
-  assert.deepEqual(stageAddKinds(project,'nested'),['stage','work']);
+  assert.deepEqual(stageAddKinds(project,'nested'),['stage']);
   assert.deepEqual(stageAddKinds(project,'phase'),['stage']);
   assert.equal(allowsNestedStages({settings:{allowNestedStages:'true'}}), false);
   assert.deepEqual(stageAddKinds({tasks:[{id:'work',kind:'work'}]},'work'),[]);
@@ -51,9 +51,9 @@ test('none is the default; explicit mode takes precedence over the legacy boolea
   assert.equal(stageModeOf({settings:{stageMode:'none',allowNestedStages:true}}),'none');
   assert.equal(stageModeOf({settings:{allowNestedStages:true}}),'multiple');
 });
-test('multiple mode retains the existing legacy root-work continuation', () => {
+test('multiple mode requires four stages before the work choice', () => {
   const project={settings:{stageMode:'multiple'},tasks:[stage('package',[{id:'work',kind:'work'}])]};
-  assert.deepEqual(stageAddKinds(project,'package'),['work']);
+  assert.deepEqual(stageAddKinds(project,'package'),['stage']);
 });
 test('no-stage project creates work directly and cannot create a phase', () => {
   const store=createAppDataStore();
@@ -77,4 +77,16 @@ test('base projects create root work and reject packages and phases without migr
   assert.equal(work.kind,'work');
   assert.deepEqual(stageAddKinds(projectRepository.find('base'),work.id),[]);
   assert.equal(wbsApi.createStage('base','مرحله',work.id),null);
+});
+
+test('multiple choice is based on depth and never changes after existing children or work selection', () => {
+  const leaf=stage('four');
+  const project={settings:{stageMode:'multiple'},tasks:[stage('one',[stage('two',[stage('three',[leaf])])])]};
+  for(const id of ['one','two','three']) assert.deepEqual(stageAddKinds(project,id),['stage']);
+  assert.deepEqual(stageAddKinds(project,'four'),['stage','work']);
+  leaf.registrationLevel='work';
+  leaf.workTasks=[{id:'task'}];
+  leaf.subtasks=[stage('five')];
+  assert.deepEqual(stageAddKinds(project,'four'),['stage','work']);
+  assert.deepEqual(stageAddKinds(project,'five'),['stage','work']);
 });

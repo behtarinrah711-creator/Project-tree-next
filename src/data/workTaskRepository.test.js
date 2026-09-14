@@ -28,10 +28,12 @@ test('task is persisted under its referenced Work and can be edited', () => {
   assert.equal(tasks.get('p1', 'w1', 't1').weight, 3);
 });
 
-test('task cannot be persisted under a Stage', () => {
+test('task can be persisted alongside child stages without changing the parent kind', () => {
   const { repo } = fixture();
   const tasks = new WorkTaskRepository(repo);
-  assert.equal(tasks.save('p1', 's1', { id:'t1', title:'نامعتبر', type:'اجرا' }), null);
+  assert.ok(tasks.save('p1', 's1', { id:'t1', title:'کار جدید', type:'اجرا' }));
+  assert.equal(tasks.work('p1','s1').kind,'stage');
+  assert.equal(tasks.work('p1','s1').subtasks[0].id,'w1');
 });
 
 test('leaf stage holds tasks without changing its kind and restores manual cost after deletion', async () => {
@@ -51,4 +53,24 @@ test('leaf stage holds tasks without changing its kind and restores manual cost 
   tasks.update('p1','leaf','t2',{...tasks.get('p1','leaf','t2'),trashed:true});
   assert.equal(lineTotal(leaf()),900);
   assert.equal(leaf().kind,'stage');
+});
+
+test('mixed children keep task costs, weighted progress, schedule and list visibility', async () => {
+  const {rollupEstimate,rollupProgress}=await import('../domain/wbs/estimate.js');
+  const {actualProgress,scheduleRangeOf,buildEffectiveNetwork}=await import('../domain/wbs/scheduling.js');
+  const {collectTodayItems}=await import('../domain/wbs/todayDomain.js');
+  const {collectShoppingItems}=await import('../domain/wbs/shoppingDomain.js');
+  const {project,repo}=fixture();
+  project.tasks[0]={id:'s1',kind:'stage',text:'والد',manualCost:900,subtasks:[{id:'s2',kind:'stage',text:'فرزند',progressWeight:1,subtasks:[],workTasks:[{id:'child-task',workId:'s2',title:'فرزند',weight:1,amount:300,progress:100,completed:true,scheduleStart:'1405/01/01',scheduleEnd:'1405/01/02'}]}]};
+  const tasks=new WorkTaskRepository(repo);
+  tasks.save('p1','s1',{id:'direct',title:'خرید',type:'خرید',weight:3,amount:200,progress:0,scheduleStart:'1405/01/03',scheduleEnd:'1405/01/05'});
+  assert.equal(rollupEstimate(project.tasks),500);
+  assert.equal(rollupProgress(project.tasks),25);
+  assert.equal(actualProgress(project.tasks[0]),25);
+  assert.equal(scheduleRangeOf(project.tasks[0]).endDate,'1405/01/05');
+  assert.equal(scheduleRangeOf(project.tasks[0]).startDate,'1405/01/01');
+  assert.deepEqual(collectTodayItems(project).map(row=>row.id),['direct']);
+  assert.deepEqual(collectShoppingItems(project).map(row=>row.id),['direct']);
+  assert.equal(buildEffectiveNetwork(project.tasks).activities.length,2);
+  assert.equal(project.tasks[0].kind,'stage');
 });

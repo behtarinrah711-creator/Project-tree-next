@@ -17,7 +17,7 @@ export function isWork(item){
 }
 
 export function canHoldWorkTasks(item){
-  return !!item && !item.trashed && (isWork(item) || !(item.subtasks || []).some(child=>child && !child.trashed));
+  return !!item && !item.trashed && (isWork(item) || (item.workTasks || []).some(task=>task && !task.trashed) || !(item.subtasks || []).some(child=>child && !child.trashed));
 }
 
 export function activityIdsOf(item){
@@ -93,6 +93,7 @@ export function lineTotal(item){
     const amount = Number(task.amount ?? task.cost);
     return sum + (Number.isFinite(amount) ? Math.max(0, amount) : 0);
   }, 0);
+  if((item.subtasks || []).some(child=>child && !child.trashed)) return 0;
   const manualCost = item?.manualCost == null ? NaN : Number(item.manualCost);
   if(Number.isFinite(manualCost)) return Math.max(0, manualCost);
   return quantityOf(item) * unitCostOf(item);
