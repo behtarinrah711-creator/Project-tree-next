@@ -1,3 +1,4 @@
+import { buildTimelineRows } from './timelineRows.js';
 import { openWorkCreationSheet } from './workCreationSheet.js';
 import { openStageEditSheet as openStageEditor } from './stageEditSheet.js';
 import { stageCreationPlaceholder } from '../../domain/wbs/stagePresentation.js';
@@ -39,7 +40,6 @@ import { toEnglishDigits } from '../../ui/digits.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { openCreateWorkTaskSheet, renderWorkTasks } from './workTaskView.js';
-import { isGanttLevelVisible } from './timelineViewOptions.js';
 import { PROJECT_FINISH_MILESTONE_ID, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
 import {
   advanceExpansionLevel,
@@ -359,33 +359,8 @@ function jalaliLabelFromDay(day){
   return `${new Intl.NumberFormat('fa-IR', { useGrouping:false }).format(j.jm)}/${new Intl.NumberFormat('fa-IR', { useGrouping:false }).format(j.jd)}`;
 }
 
-function flattenTimeline(items, depth = 0, visibleDepth = 0, out = []){
-  (items || []).filter(x => !x.trashed).forEach(item => {
-    const stage = isStage(item);
-    const kind = stage ? 'stage' : 'work';
-    const visible = isGanttLevelVisible({ item, kind, depth });
-    if(visible) out.push({ item, kind, depth:visibleDepth, sourceDepth:depth, range:scheduleRange(item) });
-
-    const descend = !visible || isExpanded(projectIdOf(), item.id);
-    if(stage && descend){
-      flattenTimeline(item.subtasks, depth + 1, visibleDepth + (visible ? 1 : 0), out);
-    }
-    if(canHoldWorkTasks(item) && descend){
-      activeWorkTasks(item).forEach(task => {
-        const taskItem = { ...task, kind:'workTask', text:task.title, parentWork:item };
-        if(isGanttLevelVisible({ item:taskItem, kind:'workTask', depth:depth + 1 })){
-          out.push({
-            item:taskItem,
-            kind:'workTask',
-            depth:visibleDepth + (visible ? 1 : 0),
-            sourceDepth:depth + 1,
-            range:scheduleRange(taskItem),
-          });
-        }
-      });
-    }
-  });
-  return out;
+function flattenTimeline(items){
+  return buildTimelineRows(items, projectIdOf());
 }
 
 function renderTimeline(items){
@@ -429,7 +404,7 @@ function renderTimeline(items){
 }
 
 function timelineColor(item){
-  if(isStage(item)) return '#77706a';
+  if(item.kind !== 'workTask') return '#77706a';
   return ({ اجرا:'#03045E', خرید:'#033E8A', 'نیروی کار':'#0078B7', پیمانکار:'#0096C8', کرایه:'#00B4D7', خدمات:'#48CAE4', پیگیری:'#6D8EA0' })[item.type] || '#91A4AF';
 }
 
@@ -438,7 +413,7 @@ function tNameRow(entry){
   const task = entry.item.kind === 'workTask';
   const milestone = entry.item.kind === 'milestone';
   row.className = 'wbs-gantt-name depth-' + Math.min(entry.depth, 6) + (isStage(entry.item) ? ' is-stage' : (task ? ' is-task' : (milestone ? ' is-milestone' : ' is-work')));
-  const kids = task ? [] : (canHoldWorkTasks(entry.item) ? activeWorkTasks(entry.item) : (entry.item.subtasks || []).filter(x => !x.trashed));
+  const kids = task ? [] : [...(entry.item.subtasks || []).filter(x => x && !x.trashed), ...activeWorkTasks(entry.item)];
   row.innerHTML = `${kids.length ? '<button type="button" class="wbs-gantt-chev">'+(isExpanded(projectIdOf(), entry.item.id)?'▾':'▸')+'</button>' : '<span class="wbs-gantt-chev"></span>'}<span>${escapeHtml(entry.item.text)}</span>`;
   row.querySelector('button')?.addEventListener('click', () => { toggleExpanded(projectIdOf(), String(entry.item.id)); render(); });
   return row;
@@ -455,7 +430,7 @@ function tBarRow(entry, min, dayWidth){
     bar.style.left = `${(entry.range.start - min) * dayWidth}px`;
     bar.style.width = `${Math.max(dayWidth, (entry.range.end - entry.range.start + 1) * dayWidth)}px`;
     bar.style.backgroundColor = timelineColor(entry.item);
-    bar.title = `${scheduleStartOf(entry.item) || ''} تا ${scheduleEndOf(entry.item) || ''}`;
+    bar.title = `${entry.range.startDate || ''} تا ${entry.range.endDate || ''}`;
     if(entry.item.kind !== 'milestone') bar.addEventListener('click', () => task
       ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render })
       : openItemDetails(entry.item));

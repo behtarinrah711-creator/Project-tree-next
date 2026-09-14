@@ -1,16 +1,16 @@
+import { buildTimelineRows } from './timelineRows.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { isStage, isWork, progressOf, scheduleEndOf, scheduleStartOf } from '../../domain/wbs/normalize.js';
 import { rollupProgress } from '../../domain/wbs/estimate.js';
 import { gregorianToJalali, jalaliToGregorian } from '../../ui/jalali.js';
-import { isExpanded } from './wbsExpandState.js';
 import { applyTimelineDetails } from './timelineDetails.js';
 import { applyTimelineDependencies } from './timelineDependencies.js';
 import { applyTimelineStickyHeader } from './timelineStickyHeader.js';
 import { ensureViewToolbar } from './viewToolbar.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { PROJECT_FINISH_MILESTONE_ID, actualProgress, plannedProgressOf, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
-import { ganttConfig, isGanttLevelVisible } from './timelineViewOptions.js';
+import { ganttConfig } from './timelineViewOptions.js';
 import { applyTimelineCpm } from './timelineCpm.js';
 
 const MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
@@ -68,48 +68,6 @@ function scheduleRange(item){
   return scheduleRangeOf(item);
 }
 
-function maxStageDepth(items, depth = 0){
-  let max = -1;
-  (items || []).filter(x => !x.trashed).forEach(item => {
-    if(!isStage(item)) return;
-    max = Math.max(max, depth);
-    max = Math.max(max, maxStageDepth(item.subtasks || [], depth + 1));
-  });
-  return max;
-}
-
-function flattenVisible(items, projectId, maxDepth, depth = 0, visibleDepth = 0, out = []){
-  (items || []).filter(x => !x.trashed).forEach(item => {
-    const stage = isStage(item);
-    const kind = stage ? 'stage' : 'work';
-    const rawEntry = { item, kind, depth };
-    const visible = isGanttLevelVisible(rawEntry);
-    const shadeLevel = stage ? Math.max(1, maxDepth - depth + 1) : 0;
-    if(visible) out.push({ item, kind, depth:visibleDepth, sourceDepth:depth, range:scheduleRange(item), shadeLevel });
-
-    const descend = !visible || isExpanded(projectId, item.id);
-    if(stage && descend){
-      flattenVisible(item.subtasks, projectId, maxDepth, depth + 1, visibleDepth + (visible ? 1 : 0), out);
-    }else if(!stage && descend){
-      activeWorkTasks(item).forEach(task => {
-        const taskItem = { ...task, kind:'workTask', text:task.title, parentWork:item };
-        const taskEntry = { item:taskItem, kind:'workTask', depth:depth + 1 };
-        if(isGanttLevelVisible(taskEntry)){
-          out.push({
-            item:taskItem,
-            kind:'workTask',
-            depth:visibleDepth + (visible ? 1 : 0),
-            sourceDepth:depth + 1,
-            range:scheduleRange(taskItem),
-            shadeLevel:0,
-          });
-        }
-      });
-    }
-  });
-  return out;
-}
-
 function activeProject(){
   const id = projectContext.getProjectId?.() || projectContext.getActiveProjectId?.() || null;
   return id ? projectRepository.getActiveProject(id) : null;
@@ -155,7 +113,7 @@ function paintCorner(gantt, project, windowRef, documentRef){
     workPackagesTitle.className = 'wbs-gantt-work-packages-title';
     corner.appendChild(workPackagesTitle);
   }
-  workPackagesTitle.textContent = 'بسته های کاری';
+  workPackagesTitle.textContent = 'مراحل و کارها';
   const scale = currentTimescale();
   toggle.classList.toggle('is-past-midpoint', scale.shade >= .4);
   toggle.setAttribute('aria-label', `نمای ${scale.label}`);
@@ -283,7 +241,7 @@ function headerCanvas(documentRef, domain, scale, buckets, canvasWidth){
 }
 
 function colorClass(item){
-  if(isStage(item)) return 'wbs-gantt-color-stage';
+  if(item.kind !== 'workTask') return 'wbs-gantt-color-stage';
   return ({
     'اجرا':'wbs-gantt-color-1',
     'خرید':'wbs-gantt-color-2',
@@ -445,8 +403,7 @@ function enhance(windowRef, documentRef){
   gantt.classList.toggle('hide-gantt-planned', !config.plannedProgress);
   const project = activeProject();
   if(!project) return;
-  const maxDepth = maxStageDepth(project.tasks || []);
-  const entries = flattenVisible(project.tasks || [], project.id, maxDepth);
+  const entries = buildTimelineRows(project.tasks || [], project.id);
   const schedule = projectScheduleAnalysis(project);
   if(Number.isFinite(schedule.projectFinish)) entries.push({
     item:{ id:PROJECT_FINISH_MILESTONE_ID, kind:'milestone', text:'پایان پروژه', systemMilestone:true },

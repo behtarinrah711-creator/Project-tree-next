@@ -1,5 +1,3 @@
-import { isStage } from '../../domain/wbs/normalize.js';
-
 const config = {
   title:true,
   dates:true,
@@ -14,8 +12,10 @@ const levels = new Map();
 
 function levelKey(entry){
   if(entry.kind === 'workTask') return 'workTask';
-  if(entry.kind === 'work') return 'work';
-  if(entry.kind === 'stage') return entry.depth === 0 ? 'package' : `stage:${entry.depth}`;
+  if(entry.kind === 'work' || entry.kind === 'stage'){
+    const depth = entry.sourceDepth ?? entry.depth;
+    return depth === 0 ? 'package' : `stage:${depth}`;
+  }
   return null;
 }
 
@@ -30,15 +30,13 @@ export function setGanttConfig(key, value){
 export function ganttLevelOptions(items){
   let maxStageDepth = 0;
   const visit = (nodes, depth = 0) => (nodes || []).filter(node => node && !node.trashed).forEach(node => {
-    if(isStage(node)){
-      maxStageDepth = Math.max(maxStageDepth, depth);
-      visit(node.subtasks || [], depth + 1);
-    }
+    maxStageDepth = Math.max(maxStageDepth, depth);
+    visit(node.subtasks || [], depth + 1);
   });
   visit(items || [], 0);
-  const options = [{ key:'package', label:'بسته های کاری' }];
-  for(let depth = 1; depth <= maxStageDepth; depth += 1) options.push({ key:`stage:${depth}`, label:`مرحله ${depth}` });
-  options.push({ key:'work', label:'کارها' }, { key:'workTask', label:'خرده کارها' });
+  const options = [{ key:'package', label:'مرحله ۱' }];
+  for(let depth = 1; depth <= maxStageDepth; depth += 1) options.push({ key:`stage:${depth}`, label:`مرحله ${new Intl.NumberFormat('fa-IR').format(depth + 1)}` });
+  options.push({ key:'workTask', label:'کارها' });
   options.forEach(option => { if(!levels.has(option.key)) levels.set(option.key, true); });
   return options;
 }
