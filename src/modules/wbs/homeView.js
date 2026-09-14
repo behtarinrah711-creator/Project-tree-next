@@ -1,3 +1,5 @@
+import { openWorkCreationSheet } from './workCreationSheet.js';
+import { openStageEditSheet as openStageEditor } from './stageEditSheet.js';
 import { stageCreationPlaceholder } from '../../domain/wbs/stagePresentation.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
@@ -7,6 +9,7 @@ import { generalCostApi } from '../../domain/wbs/generalCostApi.js';
 import {
   UNITS,
   activityIdsOf,
+  canHoldWorkTasks,
   isStage,
   isWork,
   lineTotal,
@@ -268,18 +271,6 @@ function openCreateStageSheet(parentId = null){
   openCreateGroupingSheet(parentId, (...args) => wbsApi.createStage(...args));
 }
 
-function workNumberInput(value, attrs, { money = false } = {}){
-  const input = textInput(value, { ...attrs, type:'text' });
-  input.readOnly = true;
-  input.inputMode = 'none';
-  input.addEventListener('click', () => openNumpadGeneric(input.value, raw => {
-    input.value = raw;
-    input.dispatchEvent(new Event('input', { bubbles:true }));
-    input.dispatchEvent(new Event('change', { bubbles:true }));
-  }, { suffix:money ? ' تومان' : '', group:money, maxLen:16 }));
-  return input;
-}
-
 function openCreateWorkSheet(parentId = null){
   openCreateGroupingSheet(parentId, (...args) => wbsApi.createWorkItem(...args));
 }
@@ -331,7 +322,12 @@ function openAddMenu(stageId){
         workBtn.type = 'button';
         workBtn.className = 'wbs-choice';
         workBtn.textContent = 'افزودن کار';
-        workBtn.addEventListener('click', () => { closeWbsSheet(); openWorkRegistration(stageId); });
+        workBtn.addEventListener('click', () => {
+          closeWbsSheet();
+          wbsApi.updateItem(projectIdOf(),stageId,{registrationLevel:'work'});
+          render();
+          openWorkRegistration(stageId);
+        });
         root.appendChild(workBtn);
       }
       if(!mayAddStage && !mayAddWork){
@@ -342,103 +338,6 @@ function openAddMenu(stageId){
       }
     },
     onSave(){ return true; },
-  });
-}
-
-function openStageEditSheet(item){
-  const current = wbsApi.get(projectIdOf(), item.id) || item;
-  openWbsSheet({
-    title: 'ویرایش مرحله',
-    saveLabel: 'ذخیره',
-    body(root){
-      root.appendChild(fieldRow('نام مرحله', textInput(current.text || '', { name:'title' })));
-      root.appendChild(fieldRow('وزن پیشرفت', textInput(String(progressWeightOf(current)), { name:'progressWeight', type:'number', min:'0.01', step:'0.01', required:true })));
-      root.appendChild(fieldRow('توضیحات', textInput(current.description || '', { name:'description' })));
-    },
-    onSave(root){
-      const title = root.querySelector('[name="title"]').value.trim();
-      const progressWeight = numberFromInput(root.querySelector('[name="progressWeight"]'));
-      if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
-      wbsApi.updateItem(projectIdOf(), current.id, {
-        text:title,
-        progressWeight,
-        description:root.querySelector('[name="description"]').value,
-      });
-      render();
-      return true;
-    },
-  });
-}
-
-function openStageDetailSheet(item){
-  const current = wbsApi.get(projectIdOf(), item.id) || item;
-  const summary = descendantSummary(current);
-  openWbsSheet({
-    title: 'جزئیات مرحله',
-    saveLabel: 'بستن',
-    body(root){
-      summaryHeader(root, 'مرحله', current, breadcrumbFor(current.id));
-      const metrics = document.createElement('div');
-      metrics.className = 'wbs-stage-metrics';
-      metrics.innerHTML = `
-        <div><b>${summary.stages}</b><span>زیرمرحله</span></div>
-        <div><b>${summary.works}</b><span>کار</span></div>
-        <div><b>${escapeHtml(formatMoney(rollupEstimate([current])))}</b><span>برآورد</span></div>
-      `;
-      root.appendChild(metrics);
-
-      const add = document.createElement('button');
-      add.type = 'button';
-      add.className = 'wbs-primary-action';
-      add.textContent = '+ افزودن';
-      add.addEventListener('click', () => { closeWbsSheet(); openAddMenu(current.id); });
-      root.appendChild(add);
-
-      const section = document.createElement('div');
-      section.className = 'wbs-info-section';
-      section.appendChild(infoRow('توضیحات', current.description || 'بدون توضیح'));
-      section.appendChild(infoRow('ویرایش مرحله', '›', { action:true, onClick:()=>{ closeWbsSheet(); openStageEditSheet(current); } }));
-      section.appendChild(infoRow('جابجایی مرحله', 'از دستگیره فهرست', { action:true, onClick:()=>closeWbsSheet() }));
-      section.appendChild(infoRow('حذف مرحله', 'حذف', { action:true, danger:true, onClick:()=>requestDelete(current) }));
-      root.appendChild(section);
-    },
-    onSave(){ return true; },
-  });
-}
-
-function openWorkEditSheet(item){
-  const current = wbsApi.get(projectIdOf(), item.id) || item;
-  const hasTasks = activeWorkTasks(current).length > 0;
-  openWbsSheet({
-    title: 'ویرایش کار',
-    saveLabel: 'ذخیره',
-    body(root){
-      root.appendChild(fieldRow('عنوان', textInput(current.text || '', { name:'title' })));
-      root.appendChild(fieldRow('وزن پیشرفت', workNumberInput(String(progressWeightOf(current)), { name:'progressWeight', type:'number', min:'0.01', step:'0.01', required:true })));
-      const progressNote = document.createElement('div');
-      progressNote.className = 'wbs-note';
-      progressNote.textContent = 'وزن نسبی است و لازم نیست مجموع وزن‌ها ۱۰۰ شود.';
-      root.appendChild(progressNote);
-      if(!hasTasks) root.appendChild(fieldRow('هزینه', workNumberInput(String(lineTotal(current)), { name:'manualCost' }, { money:true })));
-      root.appendChild(fieldRow('توضیح', textInput(current.description || '', { name:'description' })));
-    },
-    onSave(root){
-      const title = root.querySelector('[name="title"]').value.trim();
-      const progressWeight = numberFromInput(root.querySelector('[name="progressWeight"]'));
-      if(!title || !Number.isFinite(progressWeight) || progressWeight <= 0) return false;
-      const costInput = root.querySelector('[name="manualCost"]');
-      const manualCost = costInput ? numberFromInput(costInput) : null;
-      if(costInput && (!Number.isFinite(manualCost) || manualCost < 0)) return false;
-      const costPatch = costInput && !activeWorkTasks(wbsApi.get(projectIdOf(), current.id)).length ? { manualCost } : {};
-      wbsApi.updateItem(projectIdOf(), current.id, {
-        ...costPatch,
-        text: title,
-        progressWeight,
-        description: root.querySelector('[name="description"]').value,
-      });
-      render();
-      return true;
-    },
   });
 }
 
@@ -462,7 +361,8 @@ function flattenTimeline(items, depth = 0, visibleDepth = 0, out = []){
     const descend = !visible || isExpanded(projectIdOf(), item.id);
     if(stage && descend){
       flattenTimeline(item.subtasks, depth + 1, visibleDepth + (visible ? 1 : 0), out);
-    }else if(!stage && descend){
+    }
+    if(canHoldWorkTasks(item) && descend){
       activeWorkTasks(item).forEach(task => {
         const taskItem = { ...task, kind:'workTask', text:task.title, parentWork:item };
         if(isGanttLevelVisible({ item:taskItem, kind:'workTask', depth:depth + 1 })){
@@ -557,7 +457,7 @@ function tBarRow(entry, min, dayWidth){
     empty.type = 'button'; empty.className = 'wbs-gantt-unscheduled'; empty.textContent = 'بدون تاریخ';
     empty.addEventListener('click', () => entry.item.kind === 'workTask'
       ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render })
-      : openWorkEditSheet(entry.item));
+      : openItemDetails(entry.item));
     row.appendChild(empty);
   }
   return row;
@@ -574,76 +474,15 @@ function isWorkRegistrationLevel(item){
 }
 
 function openItemDetails(item){
-  if(isWorkRegistrationLevel(item)) openWorkRegistration(item.id);
-  else openStageDetailSheet(item);
+  openStageEditor({projectId:projectIdOf(),stage:wbsApi.get(projectIdOf(),item.id)||item,onChanged:render,onDelete:()=>requestDelete(item)});
 }
 
 function openWorkRegistration(itemId){
-  let item = wbsApi.get(projectIdOf(), itemId);
-  if(!item) return;
-  if(isStage(item)){
-    // Choosing work ends the hierarchy at this existing empty stage.
-    if((item.subtasks || []).some(child => !child.trashed)) return;
-    item = wbsApi.updateItem(projectIdOf(), item.id, { kind:'work', registrationLevel:'work' });
-    if(!item) return;
-    render();
-  }
-  openWorkDetailSheet(item);
+  const item=wbsApi.get(projectIdOf(),itemId);
+  if(!item || (item.subtasks || []).some(child=>!child.trashed)) return;
+  openWorkCreationSheet({projectId:projectIdOf(),stage:item,onChanged:render});
 }
 
-function openWorkDetailSheet(item){
-  const current = wbsApi.get(projectIdOf(), item.id) || item;
-  const activities = activityIdsOf(current);
-  openWbsSheet({
-    title: 'جزئیات کار',
-    saveLabel: 'بستن',
-    body(root){
-      summaryHeader(root, 'کار', current, breadcrumbFor(current.id));
-
-      const total = document.createElement('div');
-      total.className = 'wbs-work-total';
-      total.innerHTML = `<span>هزینه کل</span><b>${escapeHtml(formatMoney(lineTotal(current)))}</b>`;
-      root.appendChild(total);
-
-      const section = document.createElement('div');
-      section.className = 'wbs-info-section';
-      const tasks = activeWorkTasks(current);
-      if(tasks.length) section.appendChild(infoRow('Taskها', `${new Intl.NumberFormat('fa-IR').format(tasks.length)} مورد`));
-      else{
-        section.appendChild(infoRow('مقدار', new Intl.NumberFormat('fa-IR').format(Number(current.quantity) || 0)));
-        section.appendChild(infoRow('واحد', current.unit || '—'));
-        section.appendChild(infoRow('فی', formatMoney(current.unitCost || 0)));
-      }
-      section.appendChild(infoRow('فعالیت‌ها', `${activities.length}  ›`, { action:true, onClick:()=>{ closeWbsSheet(); openWorkEditSheet(current); } }));
-      section.appendChild(infoRow('توضیحات', current.description || 'بدون توضیح'));
-      root.appendChild(section);
-
-      const edit = document.createElement('button');
-      edit.type = 'button';
-      edit.className = 'wbs-primary-action is-secondary';
-      edit.textContent = 'ویرایش اطلاعات کار';
-      edit.addEventListener('click', () => { closeWbsSheet(); openWorkEditSheet(current); });
-      root.appendChild(edit);
-
-      const createTask = document.createElement('button');
-      createTask.type = 'button';
-      createTask.className = 'wbs-primary-action';
-      createTask.textContent = 'ساخت کار';
-      createTask.addEventListener('click', () => {
-        closeWbsSheet();
-        openCreateWorkTaskSheet({ projectId:projectIdOf(), work:current, onChanged:render });
-      });
-      root.appendChild(createTask);
-
-      const actions = document.createElement('div');
-      actions.className = 'wbs-info-section';
-      actions.appendChild(infoRow('جابجایی کار', 'از دستگیره فهرست', { action:true, onClick:()=>closeWbsSheet() }));
-      actions.appendChild(infoRow('حذف کار', 'حذف', { action:true, danger:true, onClick:()=>requestDelete(current) }));
-      root.appendChild(actions);
-    },
-    onSave(){ return true; },
-  });
-}
 
 function openGeneralCreateSheet(){
   openWbsSheet({
@@ -698,7 +537,7 @@ function renderRow(item, codes, view, depth){
   const displayedProgress = stage ? rollupProgress([item]) : progressOf(item);
   const checked = displayedProgress === 100;
   const kids = (item.subtasks || []).filter(x => !x.trashed && !isPendingUiDelete(x.id));
-  const workTasks = isWork(item) ? activeWorkTasks(item) : [];
+  const workTasks = canHoldWorkTasks(item) ? activeWorkTasks(item) : [];
   const hasExpandableContent = kids.length > 0 || workTasks.length > 0;
   const open = isExpanded(projectIdOf(), item.id);
   const code = stage ? (codes.get(String(item.id)) || '') : '';
@@ -757,7 +596,7 @@ function renderRow(item, codes, view, depth){
     });
   }
   if(open) kids.forEach(child => wrap.appendChild(renderRow(child, codes, view, depth + 1)));
-  if(open && isWork(item) && workTasks.length){
+  if(open && canHoldWorkTasks(item) && workTasks.length){
     const taskGroup = renderWorkTasks({ documentRef:document, projectId:projectIdOf(), work:item, view, onChanged:render });
     if(taskGroup) wrap.appendChild(taskGroup);
   }

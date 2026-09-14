@@ -54,10 +54,8 @@ test('project settings persist and switch the phase add flow without changing ex
   await page.locator('.wbs-row.is-stage', {hasText:'مرحله تست'}).locator('.wbs-add').click();
   await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(2);
   await page.locator('#wbsSheetOverlay .wbs-choice', {hasText:'افزودن کار'}).click();
-  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('جزئیات کار');
-  await expect(page.locator('#wbsSheetOverlay .wbs-primary-action', {hasText:'ویرایش اطلاعات کار'})).toBeVisible();
-  await expect(page.locator('#wbsSheetOverlay .wbs-primary-action', {hasText:'ساخت کار'})).toBeVisible();
-  await expect(page.locator('#wbsSheetOverlay [name="title"]')).toHaveCount(0);
+  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('اضافه کردن کار به:');
+  await expect(page.locator('#wbsSheetOverlay [name="title"]')).toHaveAttribute('placeholder','مثال: خرید سیم و کابل');
 
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await page.locator('#bottomSettingsBtn').click();
@@ -104,7 +102,7 @@ test('base mode creates work directly from the tree header and retains it when s
   await expect(page.locator('.wbs-row.is-work')).toHaveCount(1);
   await expect(page.locator('.wbs-row.is-stage')).toHaveCount(0);
   await page.locator('.wbs-row.is-work .wbs-title').click();
-  await expect(page.locator('#wbsSheetOverlay .wbs-primary-action', {hasText:'ساخت کار'})).toBeVisible();
+  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('مرحله:');
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await page.locator('#bottomSettingsBtn').click();
   await page.getByRole('button',{name:'تنظیمات پروژه',exact:false}).click();
@@ -127,11 +125,10 @@ for(const stageMode of ['base','none','single','multiple']){
     },{stageMode,work});
     await page.goto('/index.html#/projects/info/dashboard');
     await page.locator('.wbs-row.is-work',{hasText:'کار تست'}).locator('.wbs-title').click();
-    await page.locator('#wbsSheetOverlay .wbs-primary-action',{hasText:'ویرایش اطلاعات کار'}).click();
     const sheet=page.locator('#wbsSheetOverlay');
     for(const name of ['scheduleStart','scheduleEnd','progress','priority','assigneeContactId','quantity','unit','unitCost']) await expect(sheet.locator(`[name="${name}"]`)).toHaveCount(0);
     await expect(sheet.locator('.wbs-duration-output,.wbs-live-total,.wbs-predecessor-field')).toHaveCount(0);
-    await sheet.locator('[name="title"]').fill('کار ویرایش‌شده');
+    await sheet.getByRole('textbox',{name:'عنوان مرحله'}).fill('کار ویرایش‌شده');
     await sheet.locator('.wbs-sheet-save').click();
     await expect(page.locator('.wbs-row.is-work',{hasText:'کار ویرایش‌شده'})).toBeVisible();
     const stored=await page.evaluate(()=>window.KarhaAppData.getSnapshot().projects.find(p=>p.id==='info').tasks.find(t=>t.id==='work'));
@@ -150,15 +147,14 @@ for(const stageMode of ['base','none','single','multiple']){
     await page.goto('/index.html#/projects/cost/dashboard');
     const openEdit=async title=>{
       await page.locator('.wbs-row.is-work',{hasText:title}).locator('.wbs-title').click();
-      await page.locator('#wbsSheetOverlay .wbs-primary-action',{hasText:'ویرایش اطلاعات کار'}).click();
-    };
+      };
     await expect(page.locator('.wbs-row.is-work .wbs-type-chip')).toHaveCount(0);
     await openEdit('کار مستقل');
     const sheet=page.locator('#wbsSheetOverlay');
     await expect(sheet.locator('[name="type"],[name="contractorContactId"]')).toHaveCount(0);
     await expect(sheet).not.toContainText('افزودن فعالیت');
-    await expect(sheet.locator('[name="manualCost"]')).toHaveValue('500');
-    await expect(sheet.locator('[name="manualCost"]')).toHaveAttribute('readonly', '');
+    await expect(sheet.locator('[name="manualCost"]')).toHaveAttribute('data-value','500');
+    await expect(sheet.locator('[name="manualCost"] small')).toHaveText('تومان');
     await sheet.locator('[name="manualCost"]').click();
     for(let i=0;i<3;i++) await page.locator('#numpadBackspace').click();
     for(const digit of '750') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
@@ -196,12 +192,12 @@ test('multiple-stage work selection persists the shared final-level title and pl
   for(let i=0;i<4 && !await row.isVisible();i++) await page.locator('.wbs-tree-toggle').click();
   await row.locator('.wbs-add').click();
   await page.locator('#wbsSheetOverlay .wbs-choice', {hasText:'افزودن کار'}).click();
-  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('جزئیات کار');
+  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('اضافه کردن کار به:');
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await expect.poll(() => page.evaluate(() => {
     const data=JSON.parse(localStorage.getItem('ptnext-v1:app-data'));
     return data.projects.find(p=>p.id==='terminal').tasks[0].subtasks[0].subtasks[0].subtasks[0].kind;
-  })).toBe('work');
+  })).toBe('stage');
   // addInitScript also runs on reload: preserve the current saved project first.
   await page.evaluate(() => sessionStorage.setItem('terminal-saved',localStorage.getItem('ptnext-v1:app-data')));
   await page.addInitScript(() => {
@@ -210,15 +206,19 @@ test('multiple-stage work selection persists the shared final-level title and pl
   });
   await page.reload();
   await page.waitForFunction(() => Boolean(window.KarhaApp && window.KarhaLegacy));
-  row=page.locator('.wbs-row.is-work', {hasText:'برق کشی'});
+  row=page.locator('.wbs-row.is-stage', {hasText:'برق کشی'});
   for(let i=0;i<4 && !await row.isVisible();i++) await page.locator('.wbs-tree-toggle').click();
   await expect(row.locator('.wbs-add')).toBeVisible();
-  for(const control of ['.wbs-title','.wbs-add']){
-    await row.locator(control).click();
-    await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('جزئیات کار');
-    await expect(page.locator('#wbsSheetOverlay .wbs-primary-action', {hasText:'ویرایش اطلاعات کار'})).toBeVisible();
-    await page.locator('#wbsSheetOverlay .wbs-primary-action', {hasText:'ساخت کار'}).click();
-    await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('ساخت کار');
-    await page.locator('#wbsSheetOverlay .close-btn').click();
-  }
+  await row.locator('.wbs-title').click();
+  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('مرحله:');
+  await expect(page.getByRole('textbox',{name:'عنوان مرحله'})).toHaveText('برق کشی');
+  await page.locator('#wbsSheetOverlay .close-btn').click();
+  await row.locator('.wbs-add').click();
+  await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('اضافه کردن کار به:');
+  await page.locator('#wbsSheetOverlay [name="title"]').fill('خرید سیم و کابل');
+  await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
+  await expect(page.locator('.wbs-work-task',{hasText:'خرید سیم و کابل'})).toBeVisible();
+  const stage=await page.evaluate(()=>window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0].subtasks[0].subtasks[0]);
+  expect(stage.kind).toBe('stage');
+  expect(stage.workTasks[0].title).toBe('خرید سیم و کابل');
 });

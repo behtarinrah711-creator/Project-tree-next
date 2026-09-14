@@ -1,4 +1,4 @@
-import { isWork, lineTotal, progressOf, progressWeightOf } from './normalize.js';
+import { isWork, canHoldWorkTasks, lineTotal, progressOf, progressWeightOf } from './normalize.js';
 
 export function workItemEstimate(item){
   return lineTotal(item);
@@ -15,7 +15,7 @@ function walkVisible(items, visit){
 export function rollupEstimate(items){
   let total = 0;
   walkVisible(items, item => {
-    if(isWork(item)) total += lineTotal(item);
+    if(canHoldWorkTasks(item)) total += lineTotal(item);
   });
   return total;
 }
@@ -35,7 +35,7 @@ export function projectEstimateTotal(tasks, generalConditions){
 
 export function rollupProgress(items){
   const progressFor = item => {
-    if(isWork(item)) return progressOf(item);
+    if(canHoldWorkTasks(item)) return progressOf(item);
     const children = (item?.subtasks || []).filter(child => child && !child.trashed);
     if(!children.length) return 0;
     const totalWeight = children.reduce((sum, child) => sum + progressWeightOf(child), 0);

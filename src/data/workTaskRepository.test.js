@@ -33,3 +33,22 @@ test('task cannot be persisted under a Stage', () => {
   const tasks = new WorkTaskRepository(repo);
   assert.equal(tasks.save('p1', 's1', { id:'t1', title:'نامعتبر', type:'اجرا' }), null);
 });
+
+test('leaf stage holds tasks without changing its kind and restores manual cost after deletion', async () => {
+  const { lineTotal } = await import('../domain/wbs/normalize.js');
+  const { rollupEstimate } = await import('../domain/wbs/estimate.js');
+  const { collectTodayItems } = await import('../domain/wbs/todayDomain.js');
+  const { project, repo } = fixture();
+  project.tasks[0].subtasks = [{id:'leaf',kind:'stage',text:'برق کشی',manualCost:900,subtasks:[]}];
+  const tasks = new WorkTaskRepository(repo);
+  const leaf = () => project.tasks[0].subtasks[0];
+  assert.equal(lineTotal(leaf()),900);
+  assert.ok(tasks.save('p1','leaf',{id:'t2',title:'خرید کابل',type:'',weight:1,amount:200}));
+  assert.equal(leaf().kind,'stage');
+  assert.equal(lineTotal(leaf()),200);
+  assert.equal(rollupEstimate(project.tasks),200);
+  assert.equal(collectTodayItems(project)[0].entity.title,'خرید کابل');
+  tasks.update('p1','leaf','t2',{...tasks.get('p1','leaf','t2'),trashed:true});
+  assert.equal(lineTotal(leaf()),900);
+  assert.equal(leaf().kind,'stage');
+});

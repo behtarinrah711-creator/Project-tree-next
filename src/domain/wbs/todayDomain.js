@@ -1,6 +1,6 @@
 import { jalaliToGregorian } from '../../ui/jalali.js';
 import { activeWorkTasks } from './workTaskModel.js';
-import { isWork } from './normalize.js';
+import { isWork, canHoldWorkTasks } from './normalize.js';
 
 export const TODAY_MODES = Object.freeze(['overdue','today','future','pending','unscheduled']);
 
@@ -55,7 +55,7 @@ export function collectTodayItems(project, today = tehranTodayJalali()){
   const walk = (nodes, ancestors = []) => (nodes || []).forEach(node => {
     if(!node || node.trashed) return;
     const title = node.text || node.title || '';
-    if(isWork(node)){
+    if(canHoldWorkTasks(node)){
       const tasks = activeWorkTasks(node);
       if(tasks.length){
         tasks.forEach(task => {
@@ -65,7 +65,7 @@ export function collectTodayItems(project, today = tehranTodayJalali()){
             path:[...ancestors, title].filter(Boolean), mode:timeState(task, today),
           });
         });
-      }else if(executionStatus(node) !== 'approved'){
+      }else if(isWork(node) && executionStatus(node) !== 'approved'){
         result.push({
           id:node.id, kind:'work', entity:node, work:node, workId:node.id,
           path:[...ancestors].filter(Boolean), mode:timeState(node, today),

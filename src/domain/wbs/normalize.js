@@ -16,6 +16,10 @@ export function isWork(item){
   return itemKind(item) === KIND_WORK;
 }
 
+export function canHoldWorkTasks(item){
+  return !!item && !item.trashed && (isWork(item) || !(item.subtasks || []).some(child=>child && !child.trashed));
+}
+
 export function activityIdsOf(item){
   const raw = item?.activityIds || item?.activities || [];
   const seen = new Set();
@@ -37,7 +41,7 @@ export function statusOf(item){
 
 export function progressOf(item){
   const tasks = (Array.isArray(item?.workTasks) ? item.workTasks : []).filter(task => task && !task.trashed);
-  if(itemKind(item) === KIND_WORK && tasks.length){
+  if(tasks.length){
     const total = tasks.reduce((sum, task) => {
       const weight = Number(task.weight);
       return sum + (Number.isFinite(weight) && weight > 0 ? weight : 1);
@@ -83,7 +87,7 @@ export function unitCostOf(item){
 }
 
 export function lineTotal(item){
-  if(!isWork(item) || item?.trashed) return 0;
+  if(!canHoldWorkTasks(item)) return 0;
   const tasks = (Array.isArray(item?.workTasks) ? item.workTasks : []).filter(task => task && !task.trashed);
   if(tasks.length) return tasks.reduce((sum, task) => {
     const amount = Number(task.amount ?? task.cost);
@@ -139,7 +143,7 @@ export function normalizeItem(item){
   const kind = itemKind(item);
   const ids = activityIdsOf(item);
   const progress = progressOf(item);
-  const hasTasks = kind === KIND_WORK && (item.workTasks || []).some(task => task && !task.trashed);
+  const hasTasks = (item.workTasks || []).some(task => task && !task.trashed);
   const status = hasTasks ? (progress === 100 ? 'completed' : (progress > 0 ? 'in_progress' : 'not_started')) : statusOf(item);
   const done = hasTasks ? progress === 100 : status === 'completed';
   return {
