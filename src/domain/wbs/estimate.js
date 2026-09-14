@@ -1,3 +1,4 @@
+import { activeWorkTasks, taskProgressOf, taskWeightOf } from './workTaskModel.js';
 import { isWork, canHoldWorkTasks, lineTotal, progressOf, progressWeightOf } from './normalize.js';
 
 export function workItemEstimate(item){
@@ -35,12 +36,13 @@ export function projectEstimateTotal(tasks, generalConditions){
 
 export function rollupProgress(items){
   const progressFor = item => {
-    if(canHoldWorkTasks(item)) return progressOf(item);
     const children = (item?.subtasks || []).filter(child => child && !child.trashed);
+    if(!children.length && canHoldWorkTasks(item)) return progressOf(item);
+    children.push(...activeWorkTasks(item).map(task => ({...task, kind:'workTask'})));
     if(!children.length) return 0;
-    const totalWeight = children.reduce((sum, child) => sum + progressWeightOf(child), 0);
+    const totalWeight = children.reduce((sum, child) => sum + (child.kind === 'workTask' ? taskWeightOf(child) : progressWeightOf(child)), 0);
     const weighted = children.reduce((sum, child) => (
-      sum + progressFor(child) * progressWeightOf(child)
+      sum + (child.kind === 'workTask' ? taskProgressOf(child) : progressFor(child)) * (child.kind === 'workTask' ? taskWeightOf(child) : progressWeightOf(child))
     ), 0);
     return totalWeight ? weighted / totalWeight : 0;
   };

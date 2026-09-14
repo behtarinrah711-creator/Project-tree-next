@@ -194,8 +194,8 @@ test('stage child type is locked by its first active child', () => {
   wbsApi.createStage('p-wbs-child-kind', 'زیرمرحله', stageParent.id, { progressWeight:3 }, t1);
   assert.equal(wbsApi.createWorkItem('p-wbs-child-kind', 'کار نامعتبر', stageParent.id, {}, t1), null);
   const workParent = wbsApi.createStage('p-wbs-child-kind', 'کارها', stageParent.id, { progressWeight:4 }, t1);
-  wbsApi.createWorkItem('p-wbs-child-kind', 'کار', workParent.id, {}, t1);
-  assert.equal(wbsApi.createStage('p-wbs-child-kind', 'زیرمرحله نامعتبر', workParent.id, { progressWeight:1 }, t1), null);
+  assert.equal(wbsApi.createWorkItem('p-wbs-child-kind', 'کار', workParent.id, {}, t1), null);
+  assert.ok(wbsApi.createStage('p-wbs-child-kind', 'مرحله سوم', workParent.id, { progressWeight:1 }, t1));
 });
 
 test('general cost create update soft-delete restore', () => {

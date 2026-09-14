@@ -277,8 +277,8 @@ body:has(.wbs-home-root){background:#fff;}
 /* Mobile keyboard scrolling can leave space below the visual viewport. */
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay)::after{content:"";position:absolute;top:100%;left:0;right:0;height:100vh;background:#fff;pointer-events:none;}
 
-.wbs-work-create-overlay .sheet-caption{display:flex;flex-direction:column;align-items:center;gap:4px;}
-.wbs-work-create-parent{font-size:17px;font-weight:800;}
+:is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-caption{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.wbs-create-parent{font-size:17px;font-weight:800;}
 .wbs-work-create-overlay .wbs-sheet,.wbs-work-create-overlay::after{background:var(--wbs-work-create-background,#fff);}
 .wbs-stage-edit-body .wbs-field{flex-direction:row;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--divider);}
 .wbs-inline-number{display:flex;align-items:baseline;gap:5px;border:0;background:transparent;font:inherit;color:var(--text);cursor:pointer;}
@@ -288,3 +288,5 @@ body:has(.wbs-home-root){background:#fff;}
 
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-caption{flex:1;min-width:0;text-align:center;overflow-wrap:anywhere;}
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-head button{flex-shrink:0;}
+
+.wbs-row .wbs-title{font-weight:700;}

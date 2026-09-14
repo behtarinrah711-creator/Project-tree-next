@@ -48,6 +48,7 @@ import {
   isExpanded,
   seedCollapsed,
   toggleExpanded,
+  revealBranch,
 } from './wbsExpandState.js';
 
 const COSTLINE_ICON = 'M640-160v-280h160v280H640Zm-240 0v-640h160v640H400Zm-240 0v-440h160v440H160Z';
@@ -249,9 +250,10 @@ function infoRow(label, value, { action = false, danger = false, onClick = null 
 }
 
 function openCreateGroupingSheet(parentId, createItem){
-  openWbsSheet({
+  const parent = parentId ? wbsApi.get(projectIdOf(), parentId) : null;
+  const overlay = openWbsSheet({
     presentation: 'stage-create',
-    title: 'ایجاد مرحله جدید',
+    title: parent ? 'ایجاد مرحله جدید برای:' : 'ایجاد مرحله جدید',
     saveLabel: 'ذخیره',
     body(root){
       root.appendChild(fieldRow('نام مرحله', textInput('', {
@@ -260,11 +262,19 @@ function openCreateGroupingSheet(parentId, createItem){
     },
     onSave(root){
       const title = root.querySelector('[name="title"]').value.trim();
-      if(!title || !createItem(projectIdOf(), title, parentId)) return false;
+      const created = title && createItem(projectIdOf(), title, parentId);
+      if(!created) return false;
+      revealBranch(projectIdOf(), projectOf().tasks, created.id);
       render();
       return true;
     },
   });
+  if(parent){
+    const subtitle = document.createElement('strong');
+    subtitle.className = 'wbs-create-parent';
+    subtitle.textContent = parent.text || '';
+    overlay.querySelector('.sheet-caption').appendChild(subtitle);
+  }
 }
 
 function openCreateStageSheet(parentId = null){
@@ -298,7 +308,7 @@ function openAddMenu(stageId){
   const kinds = stageAddKinds(projectOf(), stageId);
   if(kinds.length === 1){
     if(kinds[0] === 'stage') openCreateStageSheet(stageId);
-    else if(stageModeOf(projectOf()) === 'multiple' && !(wbsApi.get(projectIdOf(), stageId)?.subtasks || []).some(child => !child.trashed)) openWorkRegistration(stageId);
+    else if(stageModeOf(projectOf()) === 'multiple') openWorkRegistration(stageId);
     else openCreateWorkSheet(stageId);
     return;
   }
@@ -324,8 +334,6 @@ function openAddMenu(stageId){
         workBtn.textContent = 'افزودن کار';
         workBtn.addEventListener('click', () => {
           closeWbsSheet();
-          wbsApi.updateItem(projectIdOf(),stageId,{registrationLevel:'work'});
-          render();
           openWorkRegistration(stageId);
         });
         root.appendChild(workBtn);
@@ -469,6 +477,7 @@ function renderTimelineRows(rows, names, timeline, min, dayWidth){
 
 function isWorkRegistrationLevel(item){
   if(isWork(item)) return true;
+  if(stageModeOf(projectOf()) === 'multiple') return false;
   const children = (item.subtasks || []).filter(child => !child.trashed);
   return !children.length && (item.registrationLevel === 'work' || stageAddKinds(projectOf(), item.id).length === 0);
 }
@@ -479,7 +488,7 @@ function openItemDetails(item){
 
 function openWorkRegistration(itemId){
   const item=wbsApi.get(projectIdOf(),itemId);
-  if(!item || (item.subtasks || []).some(child=>!child.trashed)) return;
+  if(!item) return;
   openWorkCreationSheet({projectId:projectIdOf(),stage:item,onChanged:render});
 }
 

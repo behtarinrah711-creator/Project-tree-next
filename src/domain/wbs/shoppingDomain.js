@@ -23,7 +23,6 @@ export function collectShoppingItems(project, today = tehranTodayJalali()){
       }else if(isWork(node) && node.type === 'خرید' && executionStatus(node) !== 'approved'){
         result.push({ id:String(node.id), kind:'work', entity:node, work:node, workId:String(node.id), path:[...ancestors].filter(Boolean), mode:timeState(node, today), amount:purchaseAmount(node) });
       }
-      return;
     }
     walk(node.subtasks, [...ancestors, title]);
   });

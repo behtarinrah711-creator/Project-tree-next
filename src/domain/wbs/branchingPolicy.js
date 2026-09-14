@@ -12,15 +12,18 @@ export function stageModeOf(project){
 export function allowsNestedStages(project){ return stageModeOf(project) === 'multiple'; }
 
 export function stageAddKinds(project, stageId){
-  if(stageModeOf(project) === 'base') return [];
+  const mode = stageModeOf(project);
+  if(mode === 'base') return [];
   const found = findInTree(project?.tasks || [], stageId);
   if(!found || !isStage(found.item)) return [];
-  if(found.item.registrationLevel === 'work' || (found.item.workTasks || []).some(task=>task && !task.trashed)) return [];
-  const existing = new Set((found.item.subtasks || []).filter(item => !item.trashed)
-    .map(item => isStage(item) ? 'stage' : 'work'));
-  const mode = stageModeOf(project);
-  // Keep the existing multi-stage behavior for legacy roots already owning works.
-  const kinds = !found.parent ? (mode === 'none' || (mode === 'multiple' && existing.has('work')) ? ['work'] : ['stage'])
-    : mode === 'multiple' ? ['stage', 'work'] : ['work'];
+  let depth = 0;
+  let parent = found.parent;
+  while(parent){
+    depth += 1;
+    parent = findInTree(project.tasks, parent.id)?.parent;
+  }
+  if(mode === 'multiple') return depth < 3 ? ['stage'] : ['stage', 'work'];
+  const kinds = mode === 'single' && depth === 0 ? ['stage'] : ['work'];
+  const existing = new Set((found.item.subtasks || []).filter(item => !item.trashed).map(item => isStage(item) ? 'stage' : 'work'));
   return kinds.filter(kind => !existing.size || (existing.size === 1 && existing.has(kind)));
 }
