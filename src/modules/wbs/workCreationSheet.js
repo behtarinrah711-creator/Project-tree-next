@@ -1,3 +1,4 @@
+import { isExpanded, toggleExpanded } from './wbsExpandState.js';
 import { workTaskApi } from '../../domain/wbs/workTaskApi.js';
 import { fieldRow, openWbsSheet, textInput } from './wbsSheet.js';
 
@@ -14,6 +15,7 @@ export function openWorkCreationSheet({ projectId, stage, onChanged } = {}){
         scheduleStart:'',scheduleEnd:'',assigneeContactId:'',contractorContactId:'',
       });
       if(!result.ok) return false;
+      if(!isExpanded(projectId,stage.id)) toggleExpanded(projectId,stage.id);
       onChanged?.();
       return true;
     },

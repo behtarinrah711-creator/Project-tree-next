@@ -430,7 +430,7 @@ function tNameRow(entry){
   const task = entry.item.kind === 'workTask';
   const milestone = entry.item.kind === 'milestone';
   row.className = 'wbs-gantt-name depth-' + Math.min(entry.depth, 6) + (isStage(entry.item) ? ' is-stage' : (task ? ' is-task' : (milestone ? ' is-milestone' : ' is-work')));
-  const kids = task ? [] : (isWork(entry.item) ? activeWorkTasks(entry.item) : (entry.item.subtasks || []).filter(x => !x.trashed));
+  const kids = task ? [] : (canHoldWorkTasks(entry.item) ? activeWorkTasks(entry.item) : (entry.item.subtasks || []).filter(x => !x.trashed));
   row.innerHTML = `${kids.length ? '<button type="button" class="wbs-gantt-chev">'+(isExpanded(projectIdOf(), entry.item.id)?'▾':'▸')+'</button>' : '<span class="wbs-gantt-chev"></span>'}<span>${escapeHtml(entry.item.text)}</span>`;
   row.querySelector('button')?.addEventListener('click', () => { toggleExpanded(projectIdOf(), String(entry.item.id)); render(); });
   return row;

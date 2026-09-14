@@ -1,5 +1,5 @@
 import { activeWorkTasks } from './workTaskModel.js';
-import { isWork, lineTotal } from './normalize.js';
+import { isWork, canHoldWorkTasks, lineTotal } from './normalize.js';
 import { executionStatus, timeState, tehranTodayJalali } from './todayDomain.js';
 
 export const SHOPPING_MODES = Object.freeze(['overdue','today','future','pending','unscheduled']);
@@ -13,14 +13,14 @@ export function collectShoppingItems(project, today = tehranTodayJalali()){
   const walk = (nodes, ancestors = []) => (nodes || []).forEach(node => {
     if(!node || node.trashed) return;
     const title = node.text || node.title || '';
-    if(isWork(node)){
+    if(canHoldWorkTasks(node)){
       const tasks = activeWorkTasks(node);
       if(tasks.length){
         tasks.filter(task => task.type === 'خرید' && executionStatus(task) !== 'approved').forEach(task => result.push({
           id:String(task.id), kind:'task', entity:task, work:node, workId:String(node.id),
           path:[...ancestors, title].filter(Boolean), mode:timeState(task, today), amount:purchaseAmount(task),
         }));
-      }else if(node.type === 'خرید' && executionStatus(node) !== 'approved'){
+      }else if(isWork(node) && node.type === 'خرید' && executionStatus(node) !== 'approved'){
         result.push({ id:String(node.id), kind:'work', entity:node, work:node, workId:String(node.id), path:[...ancestors].filter(Boolean), mode:timeState(node, today), amount:purchaseAmount(node) });
       }
       return;

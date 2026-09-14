@@ -106,7 +106,7 @@ export function transferredDelay(delay, totalFloat){
 }
 
 export function parentTemporalDelay(item, today = tehranTodayDayNumber()){
-  if(item?.kind === 'workTask' || isWork(item)){
+  if(item?.kind === 'workTask' || canHoldWorkTasks(item)){
     const units = item?.kind === 'workTask' ? [item] : effectiveWorkUnits(item);
     const values = units.map(unit => temporalDelay(unit, today)).filter(Number.isFinite);
     return values.length ? Math.max(...values) : null;

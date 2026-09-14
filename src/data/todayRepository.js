@@ -1,5 +1,5 @@
 import { projectRepository } from './projectRepository.js';
-import { isWork } from '../domain/wbs/normalize.js';
+import { isWork, canHoldWorkTasks } from '../domain/wbs/normalize.js';
 
 function updateTarget(nodes, ref, updater){
   let updated = null;
@@ -9,7 +9,7 @@ function updateTarget(nodes, ref, updater){
       updated = updater(node);
       return updated;
     }
-    if(ref.kind === 'task' && isWork(node) && String(node.id) === String(ref.workId)){
+    if(ref.kind === 'task' && canHoldWorkTasks(node) && String(node.id) === String(ref.workId)){
       const workTasks = (node.workTasks || []).map(task => {
         if(String(task?.id) !== String(ref.id)) return task;
         updated = updater(task);

@@ -1,5 +1,6 @@
+import { activeWorkTasks } from './workTaskModel.js';
 import { gregorianToJalali, jalaliMonthLength, jalaliToGregorian } from '../../ui/jalali.js';
-import { isWork, lineTotal, scheduleEndOf, scheduleStartOf, walkTree } from './normalize.js';
+import { canHoldWorkTasks, lineTotal, scheduleEndOf, scheduleStartOf, walkTree } from './normalize.js';
 
 const MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 const SEASONS = ['بهار','تابستان','پاییز','زمستان'];
@@ -61,23 +62,27 @@ export function workPath(tasks, itemId){
   return found;
 }
 
-export function collectPlannedWorks(tasks){
+export function collectPlannedWorks(tasksRoot){
   const works = [];
-  walkTree(tasks, item => {
-    if(!isWork(item) || item.trashed) return;
-    const start = scheduleStartOf(item);
-    const amount = lineTotal(item);
-    if(!start || !amount) return;
-    works.push({
-      id: item.id,
-      text: item.text || '',
-      type: item.type || '',
-      amount,
-      start,
-      end: scheduleEndOf(item),
-      duration: durationDays(start, scheduleEndOf(item)),
-      path: workPath(tasks, item.id),
-      series: 'planned',
+  walkTree(tasksRoot, item => {
+    if(!canHoldWorkTasks(item)) return;
+    const tasks = activeWorkTasks(item);
+    const units = tasks.length ? tasks : [item];
+    units.forEach(unit => {
+      const start = scheduleStartOf(unit);
+      const amount = tasks.length ? Math.max(0, Number(unit.amount) || 0) : lineTotal(item);
+      if(!start || !amount) return;
+      works.push({
+        id:unit.id,
+        text:unit.title || unit.text || '',
+        type:unit.type || '',
+        amount,
+        start,
+        end:scheduleEndOf(unit),
+        duration:durationDays(start,scheduleEndOf(unit)),
+        path:workPath(tasksRoot,item.id),
+        series:'planned',
+      });
     });
   });
   return works;
