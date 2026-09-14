@@ -8,7 +8,10 @@ function element(){
     append(...nodes){ this.children.push(...nodes); },
     appendChild(node){ this.children.push(node); return node; },
     addEventListener(type, listener){ this[`on${type}`]=listener; },
-    querySelector(){ return element(); },
+    querySelector(selector){
+      if(selector === '.wbs-row-dragging,.wbs-work-task.is-dragging') return null;
+      return element();
+    },
     querySelectorAll(){ return []; },
     setAttribute(){},
   };

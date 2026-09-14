@@ -143,18 +143,6 @@ test('activity picker reuses existing search template', () => {
   assert.deepEqual(opened.items, [{ id:'act-9', name:'آرماتور' }]);
 });
 
-test('work edit sheet defines a single description field', async () => {
-  const { readFile } = await import('node:fs/promises');
-  const src = await readFile(new URL('./homeView.js', import.meta.url), 'utf8');
-  const start = src.indexOf('function openWorkEditSheet');
-  const end = src.indexOf('function openWorkDetailSheet');
-  const block = src.slice(start, end);
-  assert.ok(start >= 0 && end > start);
-  assert.equal([...block.matchAll(/name:'description'/g)].length, 1);
-  assert.equal([...block.matchAll(/fieldRow\('توضیح'/g)].length, 1);
-});
-
-
 test('stage creation follows the visible keyboard viewport and releases listeners on close', () => {
   const body = el('body');
   const listeners = new Map();

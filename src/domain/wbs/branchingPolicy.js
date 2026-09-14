@@ -15,6 +15,7 @@ export function stageAddKinds(project, stageId){
   if(stageModeOf(project) === 'base') return [];
   const found = findInTree(project?.tasks || [], stageId);
   if(!found || !isStage(found.item)) return [];
+  if(found.item.registrationLevel === 'work' || (found.item.workTasks || []).some(task=>task && !task.trashed)) return [];
   const existing = new Set((found.item.subtasks || []).filter(item => !item.trashed)
     .map(item => isStage(item) ? 'stage' : 'work'));
   const mode = stageModeOf(project);

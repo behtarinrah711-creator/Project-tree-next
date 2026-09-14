@@ -270,9 +270,21 @@ body:has(.wbs-home-root){background:#fff;}
 .wbs-depth-6{--wbs-parent-indent:80px;}
 
 /* Base-mode grouping stage creation. Native buttons previously used 13.333px. */
-.wbs-stage-create-overlay .wbs-sheet-save{font-size:calc(13.333px + 3px);font-weight:700;}
-.wbs-stage-create-overlay .sheet-head .close-btn{font-size:calc(13.333px + 9px);font-weight:700;color:var(--danger);}
-.wbs-stage-create-overlay{bottom:auto;}
-.wbs-stage-create-overlay .sheet-caption{font-size:15px;font-weight:700;}
+:is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .wbs-sheet-save{font-size:calc(13.333px + 3px);font-weight:700;}
+:is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-head .close-btn{font-size:calc(13.333px + 9px);font-weight:700;color:var(--danger);}
+:is(.wbs-stage-create-overlay,.wbs-work-create-overlay){bottom:auto;}
+:is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-caption{font-size:15px;font-weight:700;}
 /* Mobile keyboard scrolling can leave space below the visual viewport. */
-.wbs-stage-create-overlay::after{content:"";position:absolute;top:100%;left:0;right:0;height:100vh;background:#fff;pointer-events:none;}
+:is(.wbs-stage-create-overlay,.wbs-work-create-overlay)::after{content:"";position:absolute;top:100%;left:0;right:0;height:100vh;background:#fff;pointer-events:none;}
+
+.wbs-work-create-overlay .sheet-caption{display:flex;flex-direction:column;align-items:center;gap:4px;}
+.wbs-work-create-parent{font-size:17px;font-weight:800;}
+.wbs-work-create-overlay .wbs-sheet,.wbs-work-create-overlay::after{background:var(--wbs-work-create-background,#fff);}
+.wbs-stage-edit-body .wbs-field{flex-direction:row;align-items:center;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--divider);}
+.wbs-inline-number{display:flex;align-items:baseline;gap:5px;border:0;background:transparent;font:inherit;color:var(--text);cursor:pointer;}
+.wbs-inline-number small{font-size:10px;color:var(--text-dim);}
+.wbs-inline-description{flex:1;min-width:0;border:0;background:transparent;resize:vertical;font:inherit;color:var(--text);text-align:left;}
+.wbs-stage-edit-title{font-size:17px;font-weight:800;outline:none;white-space:pre-wrap;overflow-wrap:anywhere;}
+
+:is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-caption{flex:1;min-width:0;text-align:center;overflow-wrap:anywhere;}
+:is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-head button{flex-shrink:0;}

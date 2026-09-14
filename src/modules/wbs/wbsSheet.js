@@ -8,13 +8,13 @@ export function closeWbsSheet(){
   document.getElementById('wbsSheetOverlay')?.remove();
 }
 
-export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', presentation = '' } = {}){
+export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', presentation = '', autoFocus = true } = {}){
   closeWbsSheet();
   const overlay = document.createElement('div');
   overlay.id = 'wbsSheetOverlay';
   overlay.className = 'overlay wbs-sheet-overlay';
-  if(presentation === 'stage-create'){
-    overlay.classList.add('wbs-stage-create-overlay');
+  if(presentation === 'stage-create' || presentation === 'work-create'){
+    overlay.classList.add(presentation === 'work-create' ? 'wbs-work-create-overlay' : 'wbs-stage-create-overlay');
     // Anchor the sheet to the visible area above the mobile keyboard.
     const viewport = document.defaultView?.visualViewport;
     if(viewport){
@@ -54,7 +54,8 @@ export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', pr
     if(ok !== false) closeWbsSheet();
   });
   document.body.appendChild(overlay);
-  bodyEl.querySelector('input,textarea,select')?.focus();
+  if(autoFocus) bodyEl.querySelector('input,textarea,select')?.focus();
+  else overlay.querySelector('.close-btn')?.focus?.();
   return overlay;
 }
 

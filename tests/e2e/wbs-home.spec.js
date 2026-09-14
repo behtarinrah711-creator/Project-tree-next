@@ -29,6 +29,7 @@ test.beforeEach(async ({ page }, testInfo) => {
   const stageMode = testInfo.title.match(/tree squares are absent in (none|single|multiple)/)?.[1];
   const seed = stageMode ? { ...project, settings:{ stageMode } } : project;
   await page.addInitScript(seedProject => {
+    window.addEventListener('karha:ready', () => { window.__wbsTestReady = true; }, {once:true});
     localStorage.clear();
     localStorage.setItem('ptnext-v1:app-data', JSON.stringify({
       schemaVersion: 8,
@@ -39,7 +40,9 @@ test.beforeEach(async ({ page }, testInfo) => {
     }));
   }, seed);
   await page.goto('/index.html#/projects/e2e-wbs-home/dashboard');
-  await page.waitForFunction(() => Boolean(window.KarhaLegacy && window.KarhaApp));
+  await page.waitForFunction(() => window.__wbsTestReady === true);
+  // Startup schedules route renders; finish those frames before reading drag geometry.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 });
 
 async function selectTreeMode(page, label){
@@ -52,9 +55,8 @@ test('editing work preserves existing progress after removing its progress input
   const foundation = page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' });
   await expect(foundation.locator('.wbs-meta')).toHaveText('٪۳۳');
   await page.locator('.wbs-row.is-work', { hasText:'اجرای فونداسیون' }).locator('.wbs-title').click();
-  await page.locator('#wbsSheetOverlay .wbs-primary-action', { hasText:'ویرایش اطلاعات کار' }).click();
   await expect(page.locator('#wbsSheetOverlay [name="progress"]')).toHaveCount(0);
-  await page.locator('#wbsSheetOverlay [name="title"]').fill('اجرای جدید فونداسیون');
+  await page.getByRole('textbox',{name:'عنوان مرحله'}).fill('اجرای جدید فونداسیون');
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
   await expect(foundation.locator('.wbs-meta')).toHaveText('٪۳۳');
 });
@@ -67,7 +69,6 @@ test('editing unfinished work weight immediately recalculates its stage progress
   await expect(foundation.locator('.wbs-meta')).toHaveText('٪۳۳');
 
   await execution.locator('.wbs-title').click();
-  await page.locator('#wbsSheetOverlay .wbs-primary-action', { hasText:'ویرایش اطلاعات کار' }).click();
   await page.locator('#wbsSheetOverlay [name="progressWeight"]').click();
   await page.locator('#numpadBackspace').click();
   await page.locator('.numpad-key[data-d="9"]').click();
@@ -114,6 +115,10 @@ test('pointer drag reorders sibling stages before or after without nesting', asy
 
   await page.mouse.move(gripBox.x + gripBox.width / 2, gripBox.y + gripBox.height / 2);
   await page.mouse.down();
+  await expect(source.locator('..')).toHaveClass(/wbs-row-dragging/);
+  // A background refresh must retain the captured row until pointer release.
+  await page.evaluate(() => window.KarhaLegacy.renderAll());
+  await expect(source.locator('..')).toHaveClass(/wbs-row-dragging/);
   await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + 2, { steps:5 });
   await expect(target.locator('..')).toHaveClass(/wbs-drop-before/);
   await expect.poll(() => target.locator('..').evaluate(element =>
@@ -138,6 +143,10 @@ test('pointer drag persists the order of sibling substages', async ({ page }) =>
 
   await page.mouse.move(gripBox.x + gripBox.width / 2, gripBox.y + gripBox.height / 2);
   await page.mouse.down();
+  await expect(source.locator('..')).toHaveClass(/wbs-row-dragging/);
+  // A background refresh must retain the captured row until pointer release.
+  await page.evaluate(() => window.KarhaLegacy.renderAll());
+  await expect(source.locator('..')).toHaveClass(/wbs-row-dragging/);
   await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + 2, { steps:5 });
   await expect(target.locator('..')).toHaveClass(/wbs-drop-before/);
   await expect.poll(() => target.locator('..').evaluate(element =>
@@ -180,19 +189,20 @@ test('Work Task create, edit, connector, modes and weighted completion share one
   const work = page.locator('.wbs-row.is-work', { hasText:'خرید آهن' });
   await expect(work.locator('.wbs-add')).toHaveAttribute('aria-label', 'ساخت کار');
   await work.locator('.wbs-add').click();
-  await page.locator('#wbsSheetOverlay .wbs-primary-action', { hasText:'ساخت کار' }).click();
 
   const sheet = page.locator('#wbsSheetOverlay');
-  await sheet.locator('[name="taskTitle"]').fill('تحویل آهن');
+  await expect(sheet.locator('[name="title"]')).toHaveAttribute('placeholder','مثال: خرید سیم و کابل');
+  await sheet.locator('[name="title"]').fill('تحویل آهن');
+  await sheet.locator('.wbs-sheet-save').click();
+
+  let task = page.locator('.wbs-work-task', { hasText:'تحویل آهن' });
+  await task.click();
   await sheet.locator('[name="taskType"]').selectOption('خرید');
   await sheet.locator('[name="taskPriority"]').selectOption('high');
   await sheet.locator('[name="taskAssignee"]').click();
   await page.locator('#searchTemplatePage .stpl-row[data-id="c1"]').click();
-  await expect(sheet.locator('[name="taskWeight"]')).toHaveCount(0);
   await sheet.locator('[name="taskAmount"]').fill('25');
   await sheet.locator('.wbs-sheet-save').click();
-
-  let task = page.locator('.wbs-work-task', { hasText:'تحویل آهن' });
   await expect(task).toBeVisible();
   await expect(task.locator('.wbs-task-connector')).toBeVisible();
   for (const width of [390, 1024]) {

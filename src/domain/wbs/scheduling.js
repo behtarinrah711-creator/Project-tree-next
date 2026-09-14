@@ -1,5 +1,5 @@
 import { jalaliToGregorian } from '../../ui/jalali.js';
-import { isStage, isWork, progressOf, progressWeightOf, scheduleEndOf, scheduleStartOf } from './normalize.js';
+import { isStage, isWork, canHoldWorkTasks, progressOf, progressWeightOf, scheduleEndOf, scheduleStartOf } from './normalize.js';
 import { activeWorkTasks, taskProgressOf, taskWeightOf } from './workTaskModel.js';
 
 export function jalaliDayNumber(value){
@@ -38,7 +38,7 @@ function weighted(items, valueOf, weightOf){
 
 export function actualProgress(item){
   if(item?.kind === 'workTask') return taskProgressOf(item);
-  if(isWork(item)){
+  if(canHoldWorkTasks(item)){
     const tasks = activeWorkTasks(item);
     return tasks.length ? weighted(tasks, taskProgressOf, taskWeightOf) : progressOf(item);
   }
@@ -48,7 +48,7 @@ export function actualProgress(item){
 
 export function plannedProgressOf(item, today = tehranTodayDayNumber()){
   if(item?.kind === 'workTask') return plannedProgress(item.scheduleStart, item.scheduleEnd, today);
-  if(isWork(item)){
+  if(canHoldWorkTasks(item)){
     const units = effectiveWorkUnits(item);
     return weighted(units, unit => plannedProgress(unit.scheduleStart, unit.scheduleEnd, today), unit => unit.kind === 'workTask' ? taskWeightOf(unit) : 1);
   }
@@ -66,7 +66,7 @@ export function scheduleRangeOf(item){
     const start = jalaliDayNumber(item.scheduleStart); const end = jalaliDayNumber(item.scheduleEnd);
     return start !== null && end !== null && end >= start ? { start, end, startDate:item.scheduleStart, endDate:item.scheduleEnd } : null;
   }
-  if(isWork(item)){
+  if(canHoldWorkTasks(item)){
     const tasks = activeWorkTasks(item);
     if(!tasks.length){
       const startDate = scheduleStartOf(item); const endDate = scheduleEndOf(item);
@@ -106,7 +106,7 @@ export function transferredDelay(delay, totalFloat){
 }
 
 export function parentTemporalDelay(item, today = tehranTodayDayNumber()){
-  if(item?.kind === 'workTask' || isWork(item)){
+  if(item?.kind === 'workTask' || canHoldWorkTasks(item)){
     const units = item?.kind === 'workTask' ? [item] : effectiveWorkUnits(item);
     const values = units.map(unit => temporalDelay(unit, today)).filter(Number.isFinite);
     return values.length ? Math.max(...values) : null;
@@ -131,7 +131,7 @@ export function flattenDependencyCandidates(items){
   const out = [];
   const visit = nodes => (nodes || []).filter(node => node && !node.trashed).forEach(node => {
     out.push({ id:String(node.id), kind:isStage(node) ? 'stage' : 'work', title:node.text || '', item:node });
-    if(isWork(node)) activeWorkTasks(node).forEach(task => out.push({ id:String(task.id), kind:'workTask', title:task.title || '', workId:String(node.id), item:task }));
+    if(canHoldWorkTasks(node)) activeWorkTasks(node).forEach(task => out.push({ id:String(task.id), kind:'workTask', title:task.title || '', workId:String(node.id), item:task }));
     visit(node.subtasks);
   });
   visit(items); return out;
@@ -245,8 +245,8 @@ export function validatePredecessors(items, consumerId, selectedIds){
   const collect = node => {
     const ids = new Set();
     const walk = current => {
-      (current?.subtasks || []).forEach(child => { ids.add(String(child.id)); if(isWork(child)) activeWorkTasks(child).forEach(task => ids.add(String(task.id))); walk(child); });
-      if(isWork(current)) activeWorkTasks(current).forEach(task => ids.add(String(task.id)));
+      (current?.subtasks || []).forEach(child => { ids.add(String(child.id)); if(canHoldWorkTasks(child)) activeWorkTasks(child).forEach(task => ids.add(String(task.id))); walk(child); });
+      if(canHoldWorkTasks(current)) activeWorkTasks(current).forEach(task => ids.add(String(task.id)));
     };
     walk(node); return ids;
   };

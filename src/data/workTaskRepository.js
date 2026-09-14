@@ -1,11 +1,11 @@
 import { projectRepository } from './projectRepository.js';
-import { findInTree, isWork } from '../domain/wbs/normalize.js';
+import { findInTree, canHoldWorkTasks } from '../domain/wbs/normalize.js';
 import { normalizeWorkTask } from '../domain/wbs/workTaskModel.js';
 
 function updateWork(nodes, workId, updater){
   let changed = false;
   const visit = (nodes || []).map(node => {
-    if(String(node?.id) === String(workId) && isWork(node)){
+    if(String(node?.id) === String(workId) && canHoldWorkTasks(node)){
       changed = true;
       return updater(node);
     }
@@ -25,7 +25,7 @@ export class WorkTaskRepository{
   work(projectId, workId){
     const project = this.projectRepository.find(projectId);
     const found = findInTree(project?.tasks || [], workId);
-    return found && isWork(found.item) ? found.item : null;
+    return found && canHoldWorkTasks(found.item) ? found.item : null;
   }
 
   list(projectId, workId){
