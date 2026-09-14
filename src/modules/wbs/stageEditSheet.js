@@ -34,7 +34,7 @@ function numericRow(root, name, label, value, money=false){
 export function openStageEditSheet({projectId,stage,onChanged,onDelete}={}){
   let titleEditor;
   const overlay=openWbsSheet({
-    title:'مرحله:',presentation:'stage-create',
+    title:'مرحله:',presentation:'stage-create',autoFocus:false,
     body(root){
       if(!activeWorkTasks(stage).length) numericRow(root,'manualCost','هزینه',lineTotal(stage),true);
       numericRow(root,'progressWeight','وزن مرحله',progressWeightOf(stage));

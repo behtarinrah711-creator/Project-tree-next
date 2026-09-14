@@ -171,7 +171,7 @@ export function normalizeItem(item){
     executionReports:kind === KIND_WORK && Array.isArray(item.executionReports) ? item.executionReports.map(report => ({ ...report })) : [],
     executionComments:kind === KIND_WORK && Array.isArray(item.executionComments) ? item.executionComments.map(comment => ({ ...comment })) : [],
     executionHistory:kind === KIND_WORK && Array.isArray(item.executionHistory) ? item.executionHistory.map(entry => ({ ...entry })) : [],
-    workTasks:kind === KIND_WORK && Array.isArray(item.workTasks) ? item.workTasks.map(task => ({ ...task })) : [],
+    workTasks:Array.isArray(item.workTasks) ? item.workTasks.map(task => ({ ...task })) : [],
     predecessorIds:kind === KIND_WORK && Array.isArray(item.predecessorIds) ? [...new Set(item.predecessorIds.map(String).filter(Boolean))] : [],
     dependencies:kind === KIND_WORK ? normalizeDependencies(item.dependencies) : [],
     subtasks: Array.isArray(item.subtasks) ? item.subtasks.map(normalizeItem) : [],

@@ -8,7 +8,7 @@ export function closeWbsSheet(){
   document.getElementById('wbsSheetOverlay')?.remove();
 }
 
-export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', presentation = '' } = {}){
+export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', presentation = '', autoFocus = true } = {}){
   closeWbsSheet();
   const overlay = document.createElement('div');
   overlay.id = 'wbsSheetOverlay';
@@ -54,7 +54,8 @@ export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', pr
     if(ok !== false) closeWbsSheet();
   });
   document.body.appendChild(overlay);
-  bodyEl.querySelector('input,textarea,select')?.focus();
+  if(autoFocus) bodyEl.querySelector('input,textarea,select')?.focus();
+  else overlay.querySelector('.close-btn')?.focus?.();
   return overlay;
 }
 

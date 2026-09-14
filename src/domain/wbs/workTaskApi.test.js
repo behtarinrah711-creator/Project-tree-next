@@ -120,6 +120,11 @@ test('title-only creation under a leaf stage preserves stage identity through ex
   const project=()=>store.getSnapshot().projects[0];
   const stage=()=>project().tasks[0].subtasks[0];
   assert.equal(stage().kind,'stage');
+  const { normalizeItem } = await import('./normalize.js');
+  assert.equal(normalizeItem(stage()).workTasks[0].id,created.task.id);
+  const { wbsApi } = await import('./wbsApi.js');
+  assert.ok(wbsApi.updateItem('p1','w1',{text:'مرحله ویرایش‌شده',progressWeight:2}));
+  assert.equal(stage().workTasks[0].id,created.task.id);
   assert.equal(lineTotal(stage()),1500);
   assert.equal(collectPlannedWorks(project().tasks)[0].amount,1500);
   assert.equal(collectShoppingItems(project())[0].entity.id,created.task.id);
