@@ -605,6 +605,10 @@ function renderRow(item, codes, view, depth){
 
 export function renderWbsHome(target = document.getElementById('content'), projectId = null){
   if(!target) return;
+  if(target.querySelector('.wbs-row-dragging,.wbs-work-task.is-dragging')){
+    scheduleTabRender(target, projectId);
+    return;
+  }
   explicitProjectId = projectId || explicitProjectId;
   const project = projectOf();
   target.innerHTML = '';

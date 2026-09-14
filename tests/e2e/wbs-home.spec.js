@@ -115,6 +115,10 @@ test('pointer drag reorders sibling stages before or after without nesting', asy
 
   await page.mouse.move(gripBox.x + gripBox.width / 2, gripBox.y + gripBox.height / 2);
   await page.mouse.down();
+  await expect(source.locator('..')).toHaveClass(/wbs-row-dragging/);
+  // A background refresh must retain the captured row until pointer release.
+  await page.evaluate(() => window.KarhaLegacy.renderAll());
+  await expect(source.locator('..')).toHaveClass(/wbs-row-dragging/);
   await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + 2, { steps:5 });
   await expect(target.locator('..')).toHaveClass(/wbs-drop-before/);
   await expect.poll(() => target.locator('..').evaluate(element =>
@@ -139,6 +143,10 @@ test('pointer drag persists the order of sibling substages', async ({ page }) =>
 
   await page.mouse.move(gripBox.x + gripBox.width / 2, gripBox.y + gripBox.height / 2);
   await page.mouse.down();
+  await expect(source.locator('..')).toHaveClass(/wbs-row-dragging/);
+  // A background refresh must retain the captured row until pointer release.
+  await page.evaluate(() => window.KarhaLegacy.renderAll());
+  await expect(source.locator('..')).toHaveClass(/wbs-row-dragging/);
   await page.mouse.move(targetBox.x + targetBox.width / 2, targetBox.y + 2, { steps:5 });
   await expect(target.locator('..')).toHaveClass(/wbs-drop-before/);
   await expect.poll(() => target.locator('..').evaluate(element =>

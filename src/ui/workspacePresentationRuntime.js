@@ -1,4 +1,5 @@
 let lastCenteredTab = null;
+let deferredWorkspaceRenderFrame = 0;
 let workspaceSubpage = null;
 
 /* ---------- root menu pages history ----------
@@ -62,11 +63,19 @@ function enterProjectsSurface(){
 }
 
 function renderAll(){
+  const content = document.getElementById('content');
+  // Replacing a captured drag element cancels the user's pointer gesture.
+  if(content?.querySelector('.wbs-row-dragging,.wbs-work-task.is-dragging')){
+    if(!deferredWorkspaceRenderFrame) deferredWorkspaceRenderFrame = requestAnimationFrame(() => {
+      deferredWorkspaceRenderFrame = 0;
+      renderAll();
+    });
+    return;
+  }
   setBottomNavActive('Projects');
   renderTabs();
   setBottomNavActive(document.querySelector('.bottom-nav-item.active')?.id?.replace(/^bottom/,'').replace(/Btn$/,'') || 'Projects');
   renderModeToggle();
-  const content = document.getElementById('content');
   content.innerHTML = '';
   if(getActiveTab() === 'starred'){
     // Global Starred removed: normalize to project home / empty workspace
