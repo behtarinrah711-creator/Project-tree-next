@@ -137,7 +137,7 @@ for(const stageMode of ['base','none','single','multiple']){
     await page.locator('.wbs-row',{hasText:'کار ویرایش‌شده'}).locator('.wbs-add').click();
     await expect(sheet).toHaveClass(/wbs-work-create-overlay/);
     await expect(sheet.locator('.sheet-caption')).toContainText('اضافه کردن کار به:');
-    await expect(sheet.locator('.wbs-work-create-parent')).toHaveText('کار ویرایش‌شده');
+    await expect(sheet.locator('.wbs-create-parent')).toHaveText('کار ویرایش‌شده');
     await expect(sheet.locator('.wbs-field-label')).toHaveText('عنوان کار');
     await expect(sheet.locator('[name="title"]')).toHaveAttribute('placeholder','مثال: خرید سیم و کابل');
     await sheet.locator('[name="title"]').fill('خرید سیم و کابل');
