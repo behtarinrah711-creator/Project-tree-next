@@ -29,6 +29,7 @@ test.beforeEach(async ({ page }, testInfo) => {
   const stageMode = testInfo.title.match(/tree squares are absent in (none|single|multiple)/)?.[1];
   const seed = stageMode ? { ...project, settings:{ stageMode } } : project;
   await page.addInitScript(seedProject => {
+    window.addEventListener('karha:ready', () => { window.__wbsTestReady = true; }, {once:true});
     localStorage.clear();
     localStorage.setItem('ptnext-v1:app-data', JSON.stringify({
       schemaVersion: 8,
@@ -39,7 +40,9 @@ test.beforeEach(async ({ page }, testInfo) => {
     }));
   }, seed);
   await page.goto('/index.html#/projects/e2e-wbs-home/dashboard');
-  await page.waitForFunction(() => Boolean(window.KarhaLegacy && window.KarhaApp));
+  await page.waitForFunction(() => window.__wbsTestReady === true);
+  // Startup schedules route renders; finish those frames before reading drag geometry.
+  await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
 });
 
 async function selectTreeMode(page, label){
