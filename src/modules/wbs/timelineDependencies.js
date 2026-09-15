@@ -31,17 +31,10 @@ function roundedOrthogonalPath(sourceX, sourceY, targetX, targetY, radius = RADI
   ].join(' ');
 }
 
-function connectorLane(source, target, geometries, width, sourceX = source.finish, targetX = target.start, forceFinishExit = false){
+function connectorLane(source, target, geometries, width, sourceX = source.finish, targetX = target.start){
   const between = geometries.filter(row => row !== source && row !== target &&
     row.centerY > Math.min(source.centerY, target.centerY) && row.centerY < Math.max(source.centerY, target.centerY));
   const clear = x => x >= 4 && x <= width - 4 && !between.some(row => x >= row.start - 6 && x <= row.finish + 6);
-  if(forceFinishExit){
-    const outsideFinish = Math.max(source.finish, target.finish) + 12;
-    const candidates = [outsideFinish, outsideFinish + 8, width - 4];
-    return candidates.find(x => x > source.finish && x > targetX && clear(x))
-      ?? candidates.find(x => x > source.finish && x > targetX)
-      ?? outsideFinish;
-  }
   const gap = targetX - sourceX;
   const direction = Math.sign(gap) || 1;
 
@@ -72,9 +65,41 @@ export function dependencyGeometry(source, target, relationType, geometries, wid
   const type = ['FS','SS','FF'].includes(relationType) ? relationType : 'FS';
   const sourceX = type === 'SS' ? source.start : source.finish;
   const targetX = type === 'FF' ? target.finish : target.start;
-  const invalid = type === 'FS' && source.endDay >= target.startDay;
-  const laneX = connectorLane(source, target, geometries, width, sourceX, targetX, invalid);
-  return { type, sourceX, targetX, laneX, invalid };
+  if(type === 'SS') return { type, sourceX, targetX, sourceAnchor:'start', targetAnchor:'start', laneX:Math.min(source.start, target.start) - 12, routeKind:'single-lane' };
+  if(type === 'FF') return { type, sourceX, targetX, sourceAnchor:'finish', targetAnchor:'finish', laneX:Math.max(source.finish, target.finish) + 12, routeKind:'single-lane' };
+  if(targetX < sourceX) return {
+    type, sourceX, targetX, sourceAnchor:'finish', targetAnchor:'start',
+    sourceStubX:sourceX + 12, targetStubX:targetX - 12, routeKind:'reverse-fs',
+  };
+  return {
+    type, sourceX, targetX, sourceAnchor:'finish', targetAnchor:'start',
+    laneX:targetX === sourceX ? sourceX : connectorLane(source, target, geometries, width, sourceX, targetX),
+    routeKind:'single-lane',
+  };
+}
+
+function roundedPointPath(points, radius = RADIUS){
+  const commands = [`M ${points[0].x} ${points[0].y}`];
+  for(let index = 1; index < points.length - 1; index += 1){
+    const previous = points[index - 1]; const current = points[index]; const next = points[index + 1];
+    const incoming = Math.hypot(current.x - previous.x, current.y - previous.y);
+    const outgoing = Math.hypot(next.x - current.x, next.y - current.y);
+    const cornerRadius = Math.min(radius, incoming / 2, outgoing / 2);
+    const before = { x:current.x - ((current.x - previous.x) / incoming) * cornerRadius, y:current.y - ((current.y - previous.y) / incoming) * cornerRadius };
+    const after = { x:current.x + ((next.x - current.x) / outgoing) * cornerRadius, y:current.y + ((next.y - current.y) / outgoing) * cornerRadius };
+    commands.push(`L ${before.x} ${before.y}`, `Q ${current.x} ${current.y} ${after.x} ${after.y}`);
+  }
+  const last = points.at(-1); commands.push(`L ${last.x} ${last.y}`);
+  return commands.join(' ');
+}
+
+export function dependencyPath(route, sourceY, targetY, radius = RADIUS){
+  if(route.routeKind !== 'reverse-fs') return roundedOrthogonalPath(route.sourceX, sourceY, route.targetX, targetY, radius, route.laneX);
+  const middleY = sourceY + ((targetY - sourceY) / 2);
+  return roundedPointPath([
+    {x:route.sourceX,y:sourceY}, {x:route.sourceStubX,y:sourceY}, {x:route.sourceStubX,y:middleY},
+    {x:route.targetStubX,y:middleY}, {x:route.targetStubX,y:targetY}, {x:route.targetX,y:targetY},
+  ], radius);
 }
 
 function timelineDomainFromSignature(signature){
@@ -167,42 +192,36 @@ export function applyTimelineDependencies(gantt, entries, projectOrItems, docume
     markerWidth:6, markerHeight:6, orient:'auto', markerUnits:'strokeWidth',
   });
   criticalMarker.appendChild(svgElement(documentRef, 'path', { d:'M 0 0 L 6 3 L 0 6 z', class:'wbs-gantt-dependency-arrow is-critical' }));
-  const invalidMarker = svgElement(documentRef, 'marker', {
-    id:'wbs-gantt-invalid-arrow', viewBox:'0 0 6 6', refX:5.5, refY:3,
-    markerWidth:6, markerHeight:6, orient:'auto', markerUnits:'strokeWidth',
-  });
-  invalidMarker.appendChild(svgElement(documentRef, 'path', { d:'M 0 0 L 6 3 L 0 6 z', class:'wbs-gantt-dependency-arrow is-invalid' }));
-  defs.append(marker, criticalMarker, invalidMarker); arrowLayer.appendChild(defs);
+  defs.append(marker, criticalMarker); arrowLayer.appendChild(defs);
   const geometries = [...byId.values()];
   links.forEach(link => {
     const source = byId.get(link.sourceId); const target = byId.get(link.targetId);
     const route = dependencyGeometry(source, target, link.type, geometries, width);
-    const {type:relationType, sourceX, targetX, laneX} = route;
-    const d = roundedOrthogonalPath(sourceX, source.centerY, targetX, target.centerY, RADIUS, laneX);
+    const {type:relationType, targetX} = route;
+    const d = dependencyPath(route, source.centerY, target.centerY);
     layer.appendChild(svgElement(documentRef, 'path', {
-      class:`wbs-gantt-dependency-halo${route.invalid ? ' is-invalid' : ''}`, d,
+      class:'wbs-gantt-dependency-halo', d,
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
       'data-relation-type':relationType, 'data-lag-days':link.lagDays || 0,
     }));
     layer.appendChild(svgElement(documentRef, 'path', {
-      class:`wbs-gantt-dependency-link${route.invalid ? ' is-invalid' : ''}`, d,
+      class:'wbs-gantt-dependency-link', d,
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
       'data-relation-type':relationType, 'data-lag-days':link.lagDays || 0,
     }));
-    const approachDirection = Math.sign(targetX - sourceX) || 1;
     // Persist the resolved endpoint pair in the DOM so FS/SS/FF are inspectable
     // and testable independently of RTL layout.
-    layer.lastElementChild?.setAttribute('data-source-anchor', relationType === 'SS' ? 'start' : 'finish');
-    layer.lastElementChild?.setAttribute('data-target-anchor', relationType === 'FF' ? 'finish' : 'start');
+    layer.lastElementChild?.setAttribute('data-source-anchor', route.sourceAnchor);
+    layer.lastElementChild?.setAttribute('data-target-anchor', route.targetAnchor);
     // Keep the connector itself behind the task bar. Only a tiny terminal
     // segment is promoted above the bars so the marker remains readable.
     // Starting the foreground segment at the target edge (instead of 8px
     // inside the bar) prevents the visible connector from crossing the bar.
-    const arrowTailX = targetX - (approachDirection * 0.75);
+    const arrowTailX = targetX + (route.targetAnchor === 'finish' ? 0.75 : -0.75);
     arrowLayer.appendChild(svgElement(documentRef, 'path', {
-      class:`wbs-gantt-dependency-arrow-segment${route.invalid ? ' is-invalid' : ''}`,
+      class:'wbs-gantt-dependency-arrow-segment',
       d:`M ${arrowTailX} ${target.centerY} H ${targetX}`,
-      'marker-end':route.invalid ? 'url(#wbs-gantt-invalid-arrow)' : 'url(#wbs-gantt-fs-arrow)',
+      'marker-end':'url(#wbs-gantt-fs-arrow)',
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
       'data-relation-type':relationType, 'data-lag-days':link.lagDays || 0,
     }));
