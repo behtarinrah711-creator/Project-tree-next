@@ -2,13 +2,33 @@ import { isStage } from '../../domain/wbs/normalize.js';
 import { scheduleRangeOf } from '../../domain/wbs/scheduling.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { isExpanded } from './wbsExpandState.js';
-import { isGanttLevelVisible } from './timelineViewOptions.js';
+import { ganttOrderMode, isGanttLevelVisible } from './timelineViewOptions.js';
+
+export function sortTimelineRows(rows, orderMode = 'date'){
+  if(orderMode === 'wbs') return rows;
+  return rows
+    .map((row, index) => ({row, index}))
+    .sort((a, b) => {
+      const aStart = a.row.range?.start;
+      const bStart = b.row.range?.start;
+      const aScheduled = Number.isFinite(aStart);
+      const bScheduled = Number.isFinite(bStart);
+      if(aScheduled !== bScheduled) return aScheduled ? -1 : 1;
+      if(!aScheduled) return a.index - b.index;
+      if(aStart !== bStart) return aStart - bStart;
+      const aEnd = Number.isFinite(a.row.range?.end) ? a.row.range.end : aStart;
+      const bEnd = Number.isFinite(b.row.range?.end) ? b.row.range.end : bStart;
+      return (aEnd - bEnd) || (a.index - b.index);
+    })
+    .map(entry => entry.row);
+}
 
 // Both the base DOM and its SVG details must consume the same ordered rows.
 // Legacy work nodes remain grouping stages without rewriting stored data.
 export function buildTimelineRows(items, projectId, {
   visible = isGanttLevelVisible,
   expanded = itemId => isExpanded(projectId, itemId),
+  orderMode = ganttOrderMode(),
 } = {}){
   let maxDepth = 0;
   const measure = (nodes, depth = 0) => (nodes || []).filter(node => node && !node.trashed).forEach(node => {
@@ -34,5 +54,5 @@ export function buildTimelineRows(items, projectId, {
     });
   });
   visit(items);
-  return rows;
+  return sortTimelineRows(rows, orderMode);
 }
