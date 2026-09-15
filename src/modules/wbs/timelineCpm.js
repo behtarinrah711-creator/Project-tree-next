@@ -78,9 +78,10 @@ export function applyTimelineCpm(gantt, entries, project, config, documentRef = 
     const critical = isDrivingCriticalLink(analysis, path.dataset.sourceId, path.dataset.targetId);
     path.classList.toggle('is-critical', Boolean(config.criticalPath) && critical);
     if(path.classList.contains('wbs-gantt-dependency-arrow-segment')){
-      path.setAttribute('marker-end', Boolean(config.criticalPath) && critical
-        ? 'url(#wbs-gantt-critical-arrow)'
-        : 'url(#wbs-gantt-fs-arrow)');
+      const marker = path.classList.contains('is-invalid')
+        ? 'url(#wbs-gantt-invalid-arrow)'
+        : (Boolean(config.criticalPath) && critical ? 'url(#wbs-gantt-critical-arrow)' : 'url(#wbs-gantt-fs-arrow)');
+      path.setAttribute('marker-end', marker);
     }
   });
 }

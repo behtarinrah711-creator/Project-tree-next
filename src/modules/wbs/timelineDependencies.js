@@ -31,10 +31,17 @@ function roundedOrthogonalPath(sourceX, sourceY, targetX, targetY, radius = RADI
   ].join(' ');
 }
 
-function connectorLane(source, target, geometries, width, sourceX = source.finish, targetX = target.start){
+function connectorLane(source, target, geometries, width, sourceX = source.finish, targetX = target.start, forceFinishExit = false){
   const between = geometries.filter(row => row !== source && row !== target &&
     row.centerY > Math.min(source.centerY, target.centerY) && row.centerY < Math.max(source.centerY, target.centerY));
   const clear = x => x >= 4 && x <= width - 4 && !between.some(row => x >= row.start - 6 && x <= row.finish + 6);
+  if(forceFinishExit){
+    const outsideFinish = Math.max(source.finish, target.finish) + 12;
+    const candidates = [outsideFinish, outsideFinish + 8, width - 4];
+    return candidates.find(x => x > source.finish && x > targetX && clear(x))
+      ?? candidates.find(x => x > source.finish && x > targetX)
+      ?? outsideFinish;
+  }
   const gap = targetX - sourceX;
   const direction = Math.sign(gap) || 1;
 
@@ -61,6 +68,15 @@ function connectorLane(source, target, geometries, width, sourceX = source.finis
     ?? Math.max(4, Math.min(width - 4, targetX - (direction * 12)));
 }
 
+export function dependencyGeometry(source, target, relationType, geometries, width){
+  const type = ['FS','SS','FF'].includes(relationType) ? relationType : 'FS';
+  const sourceX = type === 'SS' ? source.start : source.finish;
+  const targetX = type === 'FF' ? target.finish : target.start;
+  const invalid = type === 'FS' && source.endDay >= target.startDay;
+  const laneX = connectorLane(source, target, geometries, width, sourceX, targetX, invalid);
+  return { type, sourceX, targetX, laneX, invalid };
+}
+
 function timelineDomainFromSignature(signature){
   const parts = String(signature || '').split(':');
   const start = Number(parts[1]);
@@ -82,6 +98,8 @@ function rowGeometry(line, top, entry, domain, canvasWidth){
   return {
     start,
     finish,
+    startDay:entry.range.start,
+    endDay:entry.range.end,
     centerY:top + ((height - BAR_HEIGHT) / 2) + (BAR_HEIGHT / 2),
     height,
   };
@@ -149,22 +167,25 @@ export function applyTimelineDependencies(gantt, entries, projectOrItems, docume
     markerWidth:6, markerHeight:6, orient:'auto', markerUnits:'strokeWidth',
   });
   criticalMarker.appendChild(svgElement(documentRef, 'path', { d:'M 0 0 L 6 3 L 0 6 z', class:'wbs-gantt-dependency-arrow is-critical' }));
-  defs.append(marker, criticalMarker); arrowLayer.appendChild(defs);
+  const invalidMarker = svgElement(documentRef, 'marker', {
+    id:'wbs-gantt-invalid-arrow', viewBox:'0 0 6 6', refX:5.5, refY:3,
+    markerWidth:6, markerHeight:6, orient:'auto', markerUnits:'strokeWidth',
+  });
+  invalidMarker.appendChild(svgElement(documentRef, 'path', { d:'M 0 0 L 6 3 L 0 6 z', class:'wbs-gantt-dependency-arrow is-invalid' }));
+  defs.append(marker, criticalMarker, invalidMarker); arrowLayer.appendChild(defs);
   const geometries = [...byId.values()];
   links.forEach(link => {
     const source = byId.get(link.sourceId); const target = byId.get(link.targetId);
-    const relationType = ['FS','SS','FF'].includes(link.type) ? link.type : 'FS';
-    const sourceX = relationType === 'SS' ? source.start : source.finish;
-    const targetX = relationType === 'FF' ? target.finish : target.start;
-    const laneX = connectorLane(source, target, geometries, width, sourceX, targetX);
+    const route = dependencyGeometry(source, target, link.type, geometries, width);
+    const {type:relationType, sourceX, targetX, laneX} = route;
     const d = roundedOrthogonalPath(sourceX, source.centerY, targetX, target.centerY, RADIUS, laneX);
     layer.appendChild(svgElement(documentRef, 'path', {
-      class:'wbs-gantt-dependency-halo', d,
+      class:`wbs-gantt-dependency-halo${route.invalid ? ' is-invalid' : ''}`, d,
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
       'data-relation-type':relationType, 'data-lag-days':link.lagDays || 0,
     }));
     layer.appendChild(svgElement(documentRef, 'path', {
-      class:'wbs-gantt-dependency-link', d,
+      class:`wbs-gantt-dependency-link${route.invalid ? ' is-invalid' : ''}`, d,
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
       'data-relation-type':relationType, 'data-lag-days':link.lagDays || 0,
     }));
@@ -179,9 +200,9 @@ export function applyTimelineDependencies(gantt, entries, projectOrItems, docume
     // inside the bar) prevents the visible connector from crossing the bar.
     const arrowTailX = targetX - (approachDirection * 0.75);
     arrowLayer.appendChild(svgElement(documentRef, 'path', {
-      class:'wbs-gantt-dependency-arrow-segment',
+      class:`wbs-gantt-dependency-arrow-segment${route.invalid ? ' is-invalid' : ''}`,
       d:`M ${arrowTailX} ${target.centerY} H ${targetX}`,
-      'marker-end':'url(#wbs-gantt-fs-arrow)',
+      'marker-end':route.invalid ? 'url(#wbs-gantt-invalid-arrow)' : 'url(#wbs-gantt-fs-arrow)',
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
       'data-relation-type':relationType, 'data-lag-days':link.lagDays || 0,
     }));
