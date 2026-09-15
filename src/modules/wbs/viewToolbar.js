@@ -10,13 +10,17 @@ import {
   ganttConfig,
   ganttLevelOptions,
   ganttLevelState,
+  ganttOrderMode,
   setGanttConfig,
   setGanttLevelVisible,
+  setGanttOrderMode,
 } from './timelineViewOptions.js';
 import { expandIconMarkup, materialIconMarkup } from '../../ui/materialIcons.js';
 
 const CONFIG_ICON = 'M120-840h320v320H120v-320Zm400 0h320v320H520v-320ZM120-440h320v320H120v-320Zm520 0h80v120h120v80H720v120h-80v-120H520v-80h120v-120Zm-40-320v160h160v-160H600Zm-400 0v160h160v-160H200Zm0 400v160h160v-160H200Z';
 const LEVEL_ICON = 'M80-200v-80h240v-240h240v-240h320v80H640v240H400v240H80Z';
+const DATE_ORDER_ICON = 'M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v560q0 33-23.5 56.5T760-80H200Zm0-80h560v-400H200v400Zm0-480h560v-80H200v80Z';
+const WBS_ORDER_ICON = 'M600-120v-120H440v-400H320v120H80v-320h240v120h280v-120h240v320H600v-120h-80v320h80v-120h240v320H600ZM160-760v160-160Zm520 0v160-160Zm0 520v80-160 80Z';
 
 const CONFIG_ITEMS = [
   ['dates','تاریخ'],
@@ -156,6 +160,31 @@ function createExpandButton(documentRef, project){
   return button;
 }
 
+function createOrderButton(documentRef){
+  const button = documentRef.createElement('button');
+  button.type = 'button';
+  button.className = 'wbs-gantt-header-tool wbs-gantt-order-toggle';
+
+  const paint = () => {
+    const mode = ganttOrderMode();
+    const isDate = mode === 'date';
+    const label = isDate ? 'ترتیب زمانی' : 'ترتیب WBS';
+    button.classList.toggle('is-active', isDate);
+    button.setAttribute('aria-label', label);
+    button.setAttribute('title', label);
+    button.setAttribute('aria-pressed', isDate ? 'true' : 'false');
+    button.dataset.orderMode = mode;
+    button.innerHTML = `${materialIconMarkup(isDate ? DATE_ORDER_ICON : WBS_ORDER_ICON)}<span>${isDate ? 'زمانی' : 'WBS'}</span>`;
+  };
+
+  paint();
+  button.addEventListener('click', () => {
+    setGanttOrderMode(ganttOrderMode() === 'date' ? 'wbs' : 'date');
+    refreshWbs();
+  });
+  return button;
+}
+
 export function ensureViewToolbar(root, viewId){
   if(viewId !== 'timeline') return;
   const project = activeProject();
@@ -189,6 +218,9 @@ export function ensureViewToolbar(root, viewId){
   let expand = root.querySelector('.wbs-tree-toggle');
   if(!expand) expand = createExpandButton(root.ownerDocument, project);
 
+  let order = root.querySelector('.wbs-gantt-order-toggle');
+  if(!order) order = createOrderButton(root.ownerDocument);
+
   let levelWrap = root.querySelector('.wbs-gantt-level-toggle')?.closest('.wbs-gantt-header-tool-wrap');
   if(!levelWrap) levelWrap = createLevelTool(root.ownerDocument, root, project);
 
@@ -198,7 +230,7 @@ export function ensureViewToolbar(root, viewId){
   // Keep toolbar setup idempotent. Timeline enhancement is driven by a
   // MutationObserver; replacing/re-appending the same controls on every pass
   // would create a self-sustaining mutation loop and keep the Gantt unstable.
-  [timescale, expand, levelWrap, configWrap].forEach(control => {
+  [timescale, order, expand, levelWrap, configWrap].forEach(control => {
     if(control.parentElement !== actions) actions.appendChild(control);
   });
 

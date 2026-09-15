@@ -9,6 +9,7 @@ const config = {
 };
 
 const levels = new Map();
+let orderMode = 'date';
 
 function levelKey(entry){
   if(entry.kind === 'workTask') return 'workTask';
@@ -49,3 +50,11 @@ export function isGanttLevelVisible(entry){
 export function setGanttLevelVisible(key, value){ levels.set(String(key), Boolean(value)); }
 
 export function ganttLevelState(){ return new Map(levels); }
+
+export function ganttOrderMode(){ return orderMode; }
+
+export function setGanttOrderMode(value){
+  if(value !== 'date' && value !== 'wbs') return false;
+  orderMode = value;
+  return true;
+}
