@@ -212,6 +212,11 @@ export function installWorkspaceChrome({
 
   function closeDrawer(){ get('drawerOverlay')?.classList?.add?.('hidden'); }
   function enterWorkspaceSurface(){ get('content')?.replaceChildren?.(); }
+  function enterGlobalSurface(){
+    clearMenuRoot();
+    clearWorkspaceSubpage();
+    hideAllWorkspacePages();
+  }
   function enterProjectsSurface(){ clearMenuRoot(); closeBottomPages(); renderProjectsSurface(); }
 
   Object.entries(FOOTER_MODULES).forEach(([id, [moduleId]]) => {
@@ -230,7 +235,7 @@ export function installWorkspaceChrome({
   windowRef.addEventListener?.('orientationchange', () => windowRef.setTimeout(syncWorkspacePageTop, 50));
 
   const api = Object.freeze({
-    WORKSPACE_PAGE_IDS, activeFooter, applyRoute, closeBottomPages, closeDrawer, enterProjectsSurface,
+    WORKSPACE_PAGE_IDS, activeFooter, applyRoute, closeBottomPages, closeDrawer, enterGlobalSurface, enterProjectsSurface,
     enterWorkspaceSurface, hideAllWorkspacePages, openDrawer, setBottomNavActive, showOnlyWorkspacePage,
     setProjectFooterMounted, syncWorkspacePageTop, updateWorkspaceContextBar,
   });

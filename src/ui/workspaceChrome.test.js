@@ -58,6 +58,7 @@ function harness(){
     goHomeProjects:()=>calls.push(['home']),
     renderDrawerProjectList:()=>calls.push(['drawer']),
     clearWorkspaceSubpage:()=>{state={...state,workspaceSubpage:null};},
+    clearMenuRoot:()=>{state={...state,menuRootMode:null};},
   });
   return {ids,footers,events,calls,chrome,windowRef,documentRef,body,get state(){return state;},set state(value){state=value;}};
 }
@@ -148,6 +149,16 @@ test('global menu destinations keep one header and do not mount the project foot
   assert.equal(h.body.classList.contains('global-surface'),false);
   assert.equal(h.ids.get('bottomNav').parentNode,h.body);
   assert.equal(h.ids.get('topbarTitle').classList.contains('global-menu-context'),false);
+});
+
+test('enterGlobalSurface clears menu-root ownership before a global route opens',()=>{
+  const h=harness();
+  h.state={...h.state,menuRootMode:'profile',workspaceSubpage:'contracts'};
+  h.ids.get('profilePage').classList.remove('hidden');
+  h.chrome.enterGlobalSurface();
+  assert.equal(h.state.menuRootMode,null);
+  assert.equal(h.state.workspaceSubpage,null);
+  assert.equal(h.ids.get('profilePage').classList.contains('hidden'),true);
 });
 
 test('project switches and repeated route application never leave stale footer or context',()=>{
