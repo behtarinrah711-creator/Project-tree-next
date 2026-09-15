@@ -61,6 +61,47 @@ function connectorLane(source, target, geometries, width, sourceX = source.finis
     ?? Math.max(4, Math.min(width - 4, targetX - (direction * 12)));
 }
 
+export function dependencyGeometry(source, target, relationType, geometries, width){
+  const type = ['FS','SS','FF'].includes(relationType) ? relationType : 'FS';
+  const sourceX = type === 'SS' ? source.start : source.finish;
+  const targetX = type === 'FF' ? target.finish : target.start;
+  if(type === 'SS') return { type, sourceX, targetX, sourceAnchor:'start', targetAnchor:'start', laneX:Math.min(source.start, target.start) - 12, routeKind:'single-lane' };
+  if(type === 'FF') return { type, sourceX, targetX, sourceAnchor:'finish', targetAnchor:'finish', laneX:Math.max(source.finish, target.finish) + 12, routeKind:'single-lane' };
+  if(targetX <= sourceX) return {
+    type, sourceX, targetX, sourceAnchor:'finish', targetAnchor:'start',
+    sourceStubX:sourceX + 12, targetStubX:targetX - 12, routeKind:'reverse-fs',
+  };
+  return {
+    type, sourceX, targetX, sourceAnchor:'finish', targetAnchor:'start',
+    laneX:connectorLane(source, target, geometries, width, sourceX, targetX),
+    routeKind:'single-lane',
+  };
+}
+
+function roundedPointPath(points, radius = RADIUS){
+  const commands = [`M ${points[0].x} ${points[0].y}`];
+  for(let index = 1; index < points.length - 1; index += 1){
+    const previous = points[index - 1]; const current = points[index]; const next = points[index + 1];
+    const incoming = Math.hypot(current.x - previous.x, current.y - previous.y);
+    const outgoing = Math.hypot(next.x - current.x, next.y - current.y);
+    const cornerRadius = Math.min(radius, incoming / 2, outgoing / 2);
+    const before = { x:current.x - ((current.x - previous.x) / incoming) * cornerRadius, y:current.y - ((current.y - previous.y) / incoming) * cornerRadius };
+    const after = { x:current.x + ((next.x - current.x) / outgoing) * cornerRadius, y:current.y + ((next.y - current.y) / outgoing) * cornerRadius };
+    commands.push(`L ${before.x} ${before.y}`, `Q ${current.x} ${current.y} ${after.x} ${after.y}`);
+  }
+  const last = points.at(-1); commands.push(`L ${last.x} ${last.y}`);
+  return commands.join(' ');
+}
+
+export function dependencyPath(route, sourceY, targetY, radius = RADIUS){
+  if(route.routeKind !== 'reverse-fs') return roundedOrthogonalPath(route.sourceX, sourceY, route.targetX, targetY, radius, route.laneX);
+  const middleY = sourceY + ((targetY - sourceY) / 2);
+  return roundedPointPath([
+    {x:route.sourceX,y:sourceY}, {x:route.sourceStubX,y:sourceY}, {x:route.sourceStubX,y:middleY},
+    {x:route.targetStubX,y:middleY}, {x:route.targetStubX,y:targetY}, {x:route.targetX,y:targetY},
+  ], radius);
+}
+
 function timelineDomainFromSignature(signature){
   const parts = String(signature || '').split(':');
   const start = Number(parts[1]);
@@ -82,6 +123,8 @@ function rowGeometry(line, top, entry, domain, canvasWidth){
   return {
     start,
     finish,
+    startDay:entry.range.start,
+    endDay:entry.range.end,
     centerY:top + ((height - BAR_HEIGHT) / 2) + (BAR_HEIGHT / 2),
     height,
   };
@@ -153,11 +196,9 @@ export function applyTimelineDependencies(gantt, entries, projectOrItems, docume
   const geometries = [...byId.values()];
   links.forEach(link => {
     const source = byId.get(link.sourceId); const target = byId.get(link.targetId);
-    const relationType = ['FS','SS','FF'].includes(link.type) ? link.type : 'FS';
-    const sourceX = relationType === 'SS' ? source.start : source.finish;
-    const targetX = relationType === 'FF' ? target.finish : target.start;
-    const laneX = connectorLane(source, target, geometries, width, sourceX, targetX);
-    const d = roundedOrthogonalPath(sourceX, source.centerY, targetX, target.centerY, RADIUS, laneX);
+    const route = dependencyGeometry(source, target, link.type, geometries, width);
+    const {type:relationType, targetX} = route;
+    const d = dependencyPath(route, source.centerY, target.centerY);
     layer.appendChild(svgElement(documentRef, 'path', {
       class:'wbs-gantt-dependency-halo', d,
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
@@ -168,16 +209,15 @@ export function applyTimelineDependencies(gantt, entries, projectOrItems, docume
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
       'data-relation-type':relationType, 'data-lag-days':link.lagDays || 0,
     }));
-    const approachDirection = Math.sign(targetX - sourceX) || 1;
     // Persist the resolved endpoint pair in the DOM so FS/SS/FF are inspectable
     // and testable independently of RTL layout.
-    layer.lastElementChild?.setAttribute('data-source-anchor', relationType === 'SS' ? 'start' : 'finish');
-    layer.lastElementChild?.setAttribute('data-target-anchor', relationType === 'FF' ? 'finish' : 'start');
+    layer.lastElementChild?.setAttribute('data-source-anchor', route.sourceAnchor);
+    layer.lastElementChild?.setAttribute('data-target-anchor', route.targetAnchor);
     // Keep the connector itself behind the task bar. Only a tiny terminal
     // segment is promoted above the bars so the marker remains readable.
     // Starting the foreground segment at the target edge (instead of 8px
     // inside the bar) prevents the visible connector from crossing the bar.
-    const arrowTailX = targetX - (approachDirection * 0.75);
+    const arrowTailX = targetX + (route.targetAnchor === 'finish' ? 0.75 : -0.75);
     arrowLayer.appendChild(svgElement(documentRef, 'path', {
       class:'wbs-gantt-dependency-arrow-segment',
       d:`M ${arrowTailX} ${target.centerY} H ${targetX}`,
