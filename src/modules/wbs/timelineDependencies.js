@@ -67,13 +67,13 @@ export function dependencyGeometry(source, target, relationType, geometries, wid
   const targetX = type === 'FF' ? target.finish : target.start;
   if(type === 'SS') return { type, sourceX, targetX, sourceAnchor:'start', targetAnchor:'start', laneX:Math.min(source.start, target.start) - 12, routeKind:'single-lane' };
   if(type === 'FF') return { type, sourceX, targetX, sourceAnchor:'finish', targetAnchor:'finish', laneX:Math.max(source.finish, target.finish) + 12, routeKind:'single-lane' };
-  if(targetX < sourceX) return {
+  if(targetX <= sourceX) return {
     type, sourceX, targetX, sourceAnchor:'finish', targetAnchor:'start',
     sourceStubX:sourceX + 12, targetStubX:targetX - 12, routeKind:'reverse-fs',
   };
   return {
     type, sourceX, targetX, sourceAnchor:'finish', targetAnchor:'start',
-    laneX:targetX === sourceX ? sourceX : connectorLane(source, target, geometries, width, sourceX, targetX),
+    laneX:connectorLane(source, target, geometries, width, sourceX, targetX),
     routeKind:'single-lane',
   };
 }

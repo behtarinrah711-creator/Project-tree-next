@@ -18,6 +18,9 @@ test('valid FS leaves Finish and enters successor Start directly', () => {
   assert.equal(route.sourceX,source.finish);
   assert.equal(route.targetX,target.start);
   assert.deepEqual([route.sourceAnchor,route.targetAnchor],['finish','start']);
+  assert.equal(route.routeKind,'reverse-fs');
+  assert.ok(route.sourceStubX>source.finish);
+  assert.ok(route.targetStubX<target.start);
 });
 
 test('overlapping FS exits Finish and approaches Start from outside both bars', () => {
