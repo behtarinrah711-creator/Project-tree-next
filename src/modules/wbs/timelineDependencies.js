@@ -31,75 +31,52 @@ function roundedOrthogonalPath(sourceX, sourceY, targetX, targetY, radius = RADI
   ].join(' ');
 }
 
-function connectorLane(source, target, geometries, width, sourceX = source.finish, targetX = target.start){
-  const between = geometries.filter(row => row !== source && row !== target &&
-    row.centerY > Math.min(source.centerY, target.centerY) && row.centerY < Math.max(source.centerY, target.centerY));
-  const clear = x => x >= 4 && x <= width - 4 && !between.some(row => x >= row.start - 6 && x <= row.finish + 6);
-  const gap = targetX - sourceX;
-  const direction = Math.sign(gap) || 1;
-
-  // Keep the final lane on the predecessor side of the successor Start.
-  // This prevents tight gaps from forcing the last horizontal segment to
-  // approach the target from the wrong side and flipping the arrow visually.
-  const sameSide = x => direction > 0 ? x < targetX : x > targetX;
-  const candidates = Math.abs(gap) >= 20
-    ? [
-        sourceX + gap / 2,
-        targetX - (direction * 8),
-        sourceX + (direction * 8),
-      ]
-    : [
-        targetX - (direction * 12),
-        sourceX - (direction * 12),
-        direction > 0
-          ? Math.min(source.start, target.start) - 12
-          : Math.max(source.finish, target.finish) + 12,
-      ];
-
-  return candidates.find(x => sameSide(x) && clear(x))
-    ?? candidates.find(x => sameSide(x) && x >= 4 && x <= width - 4)
-    ?? Math.max(4, Math.min(width - 4, targetX - (direction * 12)));
-}
-
-export function dependencyGeometry(source, target, relationType, geometries, width){
+export function dependencyGeometry(source, target, relationType, _geometries, width){
   const type = ['FS','SS','FF'].includes(relationType) ? relationType : 'FS';
-  const sourceX = type === 'SS' ? source.start : source.finish;
-  const targetX = type === 'FF' ? target.finish : target.start;
-  if(type === 'SS') return { type, sourceX, targetX, sourceAnchor:'start', targetAnchor:'start', laneX:Math.min(source.start, target.start) - 12, routeKind:'single-lane' };
-  if(type === 'FF') return { type, sourceX, targetX, sourceAnchor:'finish', targetAnchor:'finish', laneX:Math.max(source.finish, target.finish) + 12, routeKind:'single-lane' };
-  if(targetX <= sourceX) return {
-    type, sourceX, targetX, sourceAnchor:'finish', targetAnchor:'start',
-    sourceStubX:sourceX + 12, targetStubX:targetX - 12, routeKind:'reverse-fs',
-  };
+  const sourceX = source.start;
+  const targetX = target.start;
+  // Every relation uses the same calm visual grammar: Start -> Start. Keep the
+  // trunk just inside the timeline so a bar on the boundary cannot push it
+  // into the sticky WBS/name column.
+  const laneX = Math.max(0.75, Math.min(width - 0.75, sourceX + 0.75));
   return {
-    type, sourceX, targetX, sourceAnchor:'finish', targetAnchor:'start',
-    laneX:connectorLane(source, target, geometries, width, sourceX, targetX),
-    routeKind:'single-lane',
+    type, sourceX, targetX, sourceAnchor:'start', targetAnchor:'start',
+    laneX, routeKind:'start-trunk',
   };
-}
-
-function roundedPointPath(points, radius = RADIUS){
-  const commands = [`M ${points[0].x} ${points[0].y}`];
-  for(let index = 1; index < points.length - 1; index += 1){
-    const previous = points[index - 1]; const current = points[index]; const next = points[index + 1];
-    const incoming = Math.hypot(current.x - previous.x, current.y - previous.y);
-    const outgoing = Math.hypot(next.x - current.x, next.y - current.y);
-    const cornerRadius = Math.min(radius, incoming / 2, outgoing / 2);
-    const before = { x:current.x - ((current.x - previous.x) / incoming) * cornerRadius, y:current.y - ((current.y - previous.y) / incoming) * cornerRadius };
-    const after = { x:current.x + ((next.x - current.x) / outgoing) * cornerRadius, y:current.y + ((next.y - current.y) / outgoing) * cornerRadius };
-    commands.push(`L ${before.x} ${before.y}`, `Q ${current.x} ${current.y} ${after.x} ${after.y}`);
-  }
-  const last = points.at(-1); commands.push(`L ${last.x} ${last.y}`);
-  return commands.join(' ');
 }
 
 export function dependencyPath(route, sourceY, targetY, radius = RADIUS){
-  if(route.routeKind !== 'reverse-fs') return roundedOrthogonalPath(route.sourceX, sourceY, route.targetX, targetY, radius, route.laneX);
-  const middleY = sourceY + ((targetY - sourceY) / 2);
-  return roundedPointPath([
-    {x:route.sourceX,y:sourceY}, {x:route.sourceStubX,y:sourceY}, {x:route.sourceStubX,y:middleY},
-    {x:route.targetStubX,y:middleY}, {x:route.targetStubX,y:targetY}, {x:route.targetX,y:targetY},
-  ], radius);
+  return roundedOrthogonalPath(route.sourceX, sourceY, route.targetX, targetY, radius, route.laneX);
+}
+
+export function dependencyRelationClass(relationType){
+  return `is-relation-${String(relationType || 'FS').toLowerCase()}`;
+}
+
+export function dependencyMarkerId(relationType){
+  return `wbs-gantt-${String(relationType || 'FS').toLowerCase()}-arrow`;
+}
+
+function syncMobileDependencyVisibility(gantt, documentRef){
+  const mobile = documentRef.defaultView?.matchMedia?.('(max-width: 719px)').matches;
+  const activeId = gantt.dataset.activeDependencyEntryId || '';
+  gantt.querySelectorAll('.wbs-gantt-dependency-halo,.wbs-gantt-dependency-link,.wbs-gantt-dependency-arrow-segment').forEach(path => {
+    const connected = activeId && (path.dataset.sourceId === activeId || path.dataset.targetId === activeId);
+    path.classList.toggle('is-mobile-filtered-out', Boolean(mobile && !connected));
+  });
+}
+
+function installMobileDependencySelection(gantt, rows, documentRef){
+  rows.forEach(row => {
+    if(row.dataset.dependencySelectionInstalled) return;
+    row.dataset.dependencySelectionInstalled = 'true';
+    row.addEventListener('click', () => {
+      if(!documentRef.defaultView?.matchMedia?.('(max-width: 719px)').matches) return;
+      const id = row.dataset.dependencyEntryId || '';
+      gantt.dataset.activeDependencyEntryId = gantt.dataset.activeDependencyEntryId === id ? '' : id;
+      syncMobileDependencyVisibility(gantt, documentRef);
+    });
+  });
 }
 
 function timelineDomainFromSignature(signature){
@@ -164,6 +141,7 @@ export function applyTimelineDependencies(gantt, entries, projectOrItems, docume
     if(geometry && id) byId.set(id, geometry);
     top += Number(line.querySelector('.wbs-gantt-scale-canvas')?.getAttribute('height')) || 36;
   });
+  installMobileDependencySelection(gantt, [...lines, ...names], documentRef);
   if(top <= 0) return;
 
   const project = Array.isArray(projectOrItems) ? { tasks:projectOrItems } : projectOrItems;
@@ -182,22 +160,29 @@ export function applyTimelineDependencies(gantt, entries, projectOrItems, docume
     preserveAspectRatio:'none', 'aria-hidden':'true',
   });
   const defs = svgElement(documentRef, 'defs');
-  const marker = svgElement(documentRef, 'marker', {
-    id:'wbs-gantt-fs-arrow', viewBox:'0 0 6 6', refX:5.5, refY:3,
-    markerWidth:6, markerHeight:6, orient:'auto', markerUnits:'strokeWidth',
+  const markers = ['FS','SS','FF'].map(type => {
+    const marker = svgElement(documentRef, 'marker', {
+      id:dependencyMarkerId(type), viewBox:'0 0 6 6', refX:5.5, refY:3,
+      markerWidth:6, markerHeight:6, orient:'auto', markerUnits:'strokeWidth',
+    });
+    marker.appendChild(svgElement(documentRef, 'path', {
+      d:'M 0 0 L 6 3 L 0 6 z',
+      class:`wbs-gantt-dependency-arrow ${dependencyRelationClass(type)}`,
+    }));
+    return marker;
   });
-  marker.appendChild(svgElement(documentRef, 'path', { d:'M 0 0 L 6 3 L 0 6 z', class:'wbs-gantt-dependency-arrow' }));
   const criticalMarker = svgElement(documentRef, 'marker', {
     id:'wbs-gantt-critical-arrow', viewBox:'0 0 6 6', refX:5.5, refY:3,
     markerWidth:6, markerHeight:6, orient:'auto', markerUnits:'strokeWidth',
   });
   criticalMarker.appendChild(svgElement(documentRef, 'path', { d:'M 0 0 L 6 3 L 0 6 z', class:'wbs-gantt-dependency-arrow is-critical' }));
-  defs.append(marker, criticalMarker); arrowLayer.appendChild(defs);
+  defs.append(...markers, criticalMarker); arrowLayer.appendChild(defs);
   const geometries = [...byId.values()];
   links.forEach(link => {
     const source = byId.get(link.sourceId); const target = byId.get(link.targetId);
     const route = dependencyGeometry(source, target, link.type, geometries, width);
     const {type:relationType, targetX} = route;
+    const relationClass = dependencyRelationClass(relationType);
     const d = dependencyPath(route, source.centerY, target.centerY);
     layer.appendChild(svgElement(documentRef, 'path', {
       class:'wbs-gantt-dependency-halo', d,
@@ -205,7 +190,7 @@ export function applyTimelineDependencies(gantt, entries, projectOrItems, docume
       'data-relation-type':relationType, 'data-lag-days':link.lagDays || 0,
     }));
     layer.appendChild(svgElement(documentRef, 'path', {
-      class:'wbs-gantt-dependency-link', d,
+      class:`wbs-gantt-dependency-link ${relationClass}`, d,
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
       'data-relation-type':relationType, 'data-lag-days':link.lagDays || 0,
     }));
@@ -217,16 +202,17 @@ export function applyTimelineDependencies(gantt, entries, projectOrItems, docume
     // segment is promoted above the bars so the marker remains readable.
     // Starting the foreground segment at the target edge (instead of 8px
     // inside the bar) prevents the visible connector from crossing the bar.
-    const arrowTailX = targetX + (route.targetAnchor === 'finish' ? 0.75 : -0.75);
+    const arrowTailX = targetX - 0.75;
     arrowLayer.appendChild(svgElement(documentRef, 'path', {
-      class:'wbs-gantt-dependency-arrow-segment',
+      class:`wbs-gantt-dependency-arrow-segment ${relationClass}`,
       d:`M ${arrowTailX} ${target.centerY} H ${targetX}`,
-      'marker-end':'url(#wbs-gantt-fs-arrow)',
+      'marker-end':`url(#${dependencyMarkerId(relationType)})`,
       'data-source-id':link.sourceId, 'data-target-id':link.targetId,
       'data-relation-type':relationType, 'data-lag-days':link.lagDays || 0,
     }));
   });
   timeline.append(layer, arrowLayer);
+  syncMobileDependencyVisibility(gantt, documentRef);
 }
 
 export { roundedOrthogonalPath };
