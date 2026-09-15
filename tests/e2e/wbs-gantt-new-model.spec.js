@@ -12,6 +12,28 @@ for(const [mode,depth] of [['base',1],['none',2],['single',3],['multiple',4]]){
     },{mode,depth});
     await page.goto('/index.html#/projects/gantt-new/dashboard');
     await page.locator('.wbs-tab[aria-label="تایم‌لاین"]').click();
+    if(mode==='base'){
+      const controls=[
+        page.locator('.wbs-timescale-toggle'),
+        page.getByRole('button',{name:'لول‌های WBS'}),
+        page.getByRole('button',{name:'کانفیگور نمودار گانت'}),
+        page.locator('.wbs-gantt-order-toggle'),
+        page.locator('.wbs-tree-toggle'),
+      ];
+      const x=[];
+      for(const control of controls) x.push((await control.boundingBox()).x);
+      expect(x).toEqual([...x].sort((a,b)=>a-b));
+      for(const [control, menu] of [
+        [controls[1], page.locator('#wbsGanttLevelMenu')],
+        [controls[2], page.locator('#wbsGanttConfigMenu')],
+      ]){
+        await control.click();
+        const box=await menu.boundingBox();
+        expect(box.x).toBeGreaterThanOrEqual(0);
+        expect(box.x+box.width).toBeLessThanOrEqual((await page.evaluate(()=>window.innerWidth))+.5);
+        await control.click();
+      }
+    }
     for(let i=0;i<depth;i++) await page.locator('.wbs-tree-toggle').click();
     const target=page.locator('.wbs-gantt-line[data-dependency-entry-id="target"]');
     await expect(target.locator('.wbs-gantt-bar')).toBeVisible();

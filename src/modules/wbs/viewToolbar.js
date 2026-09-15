@@ -16,6 +16,7 @@ import {
   setGanttOrderMode,
 } from './timelineViewOptions.js';
 import { expandIconMarkup, materialIconMarkup } from '../../ui/materialIcons.js';
+import { ganttMenuPosition } from './ganttMenuGeometry.js';
 
 const CONFIG_ICON = 'M120-840h320v320H120v-320Zm400 0h320v320H520v-320ZM120-440h320v320H120v-320Zm520 0h80v120h120v80H720v120h-80v-120H520v-80h120v-120Zm-40-320v160h160v-160H600Zm-400 0v160h160v-160H200Zm0 400v160h160v-160H200Z';
 const LEVEL_ICON = 'M80-200v-80h240v-240h240v-240h320v80H640v240H400v240H80Z';
@@ -48,6 +49,19 @@ function closeMenus(root, except = null){
   root.querySelectorAll('.wbs-gantt-header-tool[aria-expanded="true"]').forEach(button => {
     if(!except || button.getAttribute('aria-controls') !== except.id) button.setAttribute('aria-expanded','false');
   });
+}
+
+function positionMenu(button, menu){
+  const windowRef = button.ownerDocument.defaultView;
+  if(!windowRef) return;
+  const rect = button.getBoundingClientRect();
+  const {left, top} = ganttMenuPosition(
+    rect,
+    {width:menu.offsetWidth, height:menu.offsetHeight},
+    {width:windowRef.innerWidth, height:windowRef.innerHeight},
+  );
+  menu.dataset.menuLeft = String(left);
+  menu.dataset.menuTop = String(top);
 }
 
 function checkboxRow(documentRef, labelText, checked, onChange, { disabled = false } = {}){
@@ -89,6 +103,7 @@ function createMenuTool(documentRef, { className, ariaLabel, iconPath, menuId, b
     closeMenus(root, next ? menu : null);
     menu.classList.toggle('is-open', next);
     button.setAttribute('aria-expanded', next ? 'true' : 'false');
+    if(next) positionMenu(button, menu);
   });
 
   wrap.append(button, menu);
@@ -230,7 +245,7 @@ export function ensureViewToolbar(root, viewId){
   // Keep toolbar setup idempotent. Timeline enhancement is driven by a
   // MutationObserver; replacing/re-appending the same controls on every pass
   // would create a self-sustaining mutation loop and keep the Gantt unstable.
-  [timescale, order, expand, levelWrap, configWrap].forEach(control => {
+  [timescale, levelWrap, configWrap, order, expand].forEach(control => {
     if(control.parentElement !== actions) actions.appendChild(control);
   });
 
