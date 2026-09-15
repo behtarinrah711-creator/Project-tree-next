@@ -37,11 +37,17 @@
 .wbs-gantt-scale-canvas{position:relative;z-index:2;}
 .wbs-gantt-dependency-layer{position:absolute;z-index:1;top:0;left:0;display:block;overflow:visible;pointer-events:none;}
 .wbs-gantt-dependency-arrow-layer{position:absolute;z-index:3;top:0;left:0;display:none;overflow:visible;pointer-events:none;}
-.wbs-gantt-dependency-arrow-segment{fill:none;stroke:#625b52;stroke-width:1.35;stroke-linecap:round;vector-effect:non-scaling-stroke;visibility:visible;}
+.wbs-gantt-dependency-arrow-segment{fill:none;stroke-width:1.35;stroke-linecap:round;vector-effect:non-scaling-stroke;visibility:visible;}
 .wbs-gantt-dependency-halo,.wbs-gantt-dependency-link{fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke;visibility:hidden;}
 .wbs-gantt-dependency-halo{stroke:rgba(255,255,255,.9);stroke-width:4;}
-.wbs-gantt-dependency-link{stroke:#625b52;stroke-width:1.35;}
-.wbs-gantt-dependency-arrow{fill:#625b52;stroke:none;}
+.wbs-gantt-dependency-link{stroke-width:1.35;}
+.wbs-gantt-dependency-link.is-relation-fs,.wbs-gantt-dependency-arrow-segment.is-relation-fs{stroke:#625b52;}
+.wbs-gantt-dependency-link.is-relation-ss,.wbs-gantt-dependency-arrow-segment.is-relation-ss{stroke:#2563eb;}
+.wbs-gantt-dependency-link.is-relation-ff,.wbs-gantt-dependency-arrow-segment.is-relation-ff{stroke:#d97706;}
+.wbs-gantt-dependency-arrow{stroke:none;}
+.wbs-gantt-dependency-arrow.is-relation-fs{fill:#625b52;}
+.wbs-gantt-dependency-arrow.is-relation-ss{fill:#2563eb;}
+.wbs-gantt-dependency-arrow.is-relation-ff{fill:#d97706;}
 .wbs-gantt-dependency-arrow.is-critical{fill:#c62828;}
 .wbs-gantt.show-dependencies .wbs-gantt-dependency-halo,.wbs-gantt.show-dependencies .wbs-gantt-dependency-link{visibility:visible;}
 .wbs-gantt.show-dependencies .wbs-gantt-dependency-arrow-layer{display:block;}
@@ -53,3 +59,8 @@
 .wbs-gantt-float-label{overflow:visible;pointer-events:none;}
 .wbs-gantt-float-label>span{display:block;color:#555;font-family:inherit;font-size:9px;font-weight:700;text-align:center;direction:rtl;white-space:nowrap;transform:scaleX(-1);}
 .wbs-gantt-dependency-link.is-critical,.wbs-gantt-dependency-arrow-segment.is-critical{stroke:#c62828;stroke-width:1.8;}
+@media (max-width:719px){
+  .wbs-gantt.show-dependencies .wbs-gantt-dependency-halo.is-mobile-filtered-out,
+  .wbs-gantt.show-dependencies .wbs-gantt-dependency-link.is-mobile-filtered-out,
+  .wbs-gantt.show-dependencies .wbs-gantt-dependency-arrow-segment.is-mobile-filtered-out{visibility:hidden;}
+}

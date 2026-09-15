@@ -46,7 +46,13 @@ for(const [mode,depth] of [['base',1],['none',2],['single',3],['multiple',4]]){
     const configure=page.getByRole('button',{name:'کانفیگور نمودار گانت'});
     await configure.click();
     await page.locator('.wbs-gantt-menu-row',{hasText:'خطوط پیش‌نیاز'}).locator('input').check();
-    await expect(page.locator('.wbs-gantt-dependency-link[data-source-id="source"][data-target-id="target"]')).toBeVisible();
+    const dependency=page.locator('.wbs-gantt-dependency-link[data-source-id="source"][data-target-id="target"]');
+    const isMobile=await page.evaluate(()=>matchMedia('(max-width: 719px)').matches);
+    if(isMobile){
+      await expect(dependency).toBeHidden();
+      await page.locator('.wbs-gantt-name[data-dependency-entry-id="target"]').click();
+    }
+    await expect(dependency).toBeVisible();
     await configure.click();
     await page.locator('.wbs-gantt-menu-row',{hasText:'عنوان'}).locator('input').uncheck();
     await expect(target.locator('.wbs-gantt-detail-title')).toBeHidden();
