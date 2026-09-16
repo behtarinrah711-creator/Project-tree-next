@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { dependencyGeometry, dependencyMarkerId, dependencyPath, dependencyRelationClass, roundedOrthogonalPath } from './timelineDependencies.js';
+import { allocateDependencyLane, dependencyGeometry, dependencyMarkerId, dependencyPath, dependencyRelationClass, roundedOrthogonalPath } from './timelineDependencies.js';
 
 test('FS connector path uses rounded orthogonal segments and ends at target Start', () => {
   const path = roundedOrthogonalPath(40, 20, 100, 80, 4);
@@ -37,6 +37,28 @@ test('start trunk uses an 8px lead-in when there is room', () => {
   const route=dependencyGeometry(source,target,'FS',[source,target],200);
   assert.equal(route.laneX,32);
   assert.match(dependencyPath(route,20,80),/^M 40 20 H /);
+});
+
+test('overlapping vertical ranges receive parallel 8px lanes', () => {
+  const occupied=[];
+  const route={sourceX:40};
+  assert.equal(allocateDependencyLane(route,20,100,occupied,200),32);
+  assert.equal(allocateDependencyLane(route,40,120,occupied,200),24);
+  assert.equal(allocateDependencyLane(route,60,140,occupied,200),16);
+});
+
+test('a free lane is reused when vertical ranges do not overlap', () => {
+  const occupied=[];
+  const route={sourceX:40};
+  assert.equal(allocateDependencyLane(route,20,40,occupied,200),32);
+  assert.equal(allocateDependencyLane(route,60,80,occupied,200),32);
+});
+
+test('parallel lanes remain inside the WBS boundary', () => {
+  const occupied=[];
+  const route={sourceX:10};
+  assert.equal(allocateDependencyLane(route,20,100,occupied,200),2);
+  assert.equal(allocateDependencyLane(route,40,120,occupied,200),0.75);
 });
 
 test('logical relation types retain distinct style classes and markers', () => {
