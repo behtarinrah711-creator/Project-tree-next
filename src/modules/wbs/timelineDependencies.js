@@ -49,6 +49,28 @@ export function dependencyPath(route, sourceY, targetY, radius = RADIUS){
   return roundedOrthogonalPath(route.sourceX, sourceY, route.targetX, targetY, radius, route.laneX);
 }
 
+export function allocateDependencyLane(route, sourceY, targetY, occupiedLanes, width, spacing = 8){
+  const minY = Math.min(sourceY, targetY);
+  const maxY = Math.max(sourceY, targetY);
+  const maxCandidates = Math.max(1, Math.ceil(width / spacing));
+
+  for(let index = 1; index <= maxCandidates; index += 1){
+    const candidateX = Math.max(0.75, Math.min(width - 0.75, route.sourceX - (spacing * index)));
+    const blocked = occupiedLanes.some(lane => Math.abs(lane.x - candidateX) < spacing / 2 &&
+      lane.minY <= maxY && lane.maxY >= minY);
+    if(!blocked){
+      occupiedLanes.push({ x:candidateX, minY, maxY });
+      return candidateX;
+    }
+    // Once every farther candidate is clamped to the boundary there is no
+    // additional lane behind the bars to test.
+    if(candidateX === 0.75) break;
+  }
+
+  occupiedLanes.push({ x:0.75, minY, maxY });
+  return 0.75;
+}
+
 export function dependencyRelationClass(relationType){
   return `is-relation-${String(relationType || 'FS').toLowerCase()}`;
 }
@@ -155,9 +177,11 @@ export function applyTimelineDependencies(gantt, entries, projectOrItems, docume
   criticalMarker.appendChild(svgElement(documentRef, 'path', { d:'M 0 0 L 6 3 L 0 6 z', class:'wbs-gantt-dependency-arrow is-critical' }));
   defs.append(...markers, criticalMarker); arrowLayer.appendChild(defs);
   const geometries = [...byId.values()];
+  const occupiedLanes = [];
   links.forEach(link => {
     const source = byId.get(link.sourceId); const target = byId.get(link.targetId);
     const route = dependencyGeometry(source, target, link.type, geometries, width);
+    route.laneX = allocateDependencyLane(route, source.centerY, target.centerY, occupiedLanes, width);
     const {type:relationType, targetX} = route;
     const relationClass = dependencyRelationClass(relationType);
     const d = dependencyPath(route, source.centerY, target.centerY);
