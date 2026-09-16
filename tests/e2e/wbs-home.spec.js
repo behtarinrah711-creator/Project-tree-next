@@ -391,11 +391,6 @@ test('Timeline details survive initial render, timescale changes, and tree reren
   const dependencyOption = page.locator('.wbs-gantt-menu-row', { hasText:'خطوط پیش‌نیاز' }).locator('input');
   await expect(dependencyOption).not.toBeChecked();
   await dependencyOption.check();
-  const isMobile = await page.evaluate(() => matchMedia('(max-width: 719px)').matches);
-  if(isMobile){
-    await expect(dependency).toBeHidden();
-    await page.locator('.wbs-gantt-name[data-dependency-entry-id="w2"]').click();
-  }
   await expect(dependency).toBeVisible();
   const dependencyArrow = page.locator('.wbs-gantt-dependency-arrow-segment[data-source-id="w1"][data-target-id="w2"]');
   const dependencyArrowLayer = page.locator('.wbs-gantt-dependency-arrow-layer');

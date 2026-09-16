@@ -32,6 +32,13 @@ test('start trunk stays inside the timeline at the WBS boundary', () => {
   assert.match(dependencyPath(route,20,80),/ H 40$/);
 });
 
+test('start trunk uses an 8px lead-in when there is room', () => {
+  const source=row(40,80,10,14,20); const target=row(70,100,15,18,80);
+  const route=dependencyGeometry(source,target,'FS',[source,target],200);
+  assert.equal(route.laneX,32);
+  assert.match(dependencyPath(route,20,80),/^M 40 20 H /);
+});
+
 test('logical relation types retain distinct style classes and markers', () => {
   assert.equal(dependencyRelationClass('FS'),'is-relation-fs');
   assert.equal(dependencyRelationClass('SS'),'is-relation-ss');

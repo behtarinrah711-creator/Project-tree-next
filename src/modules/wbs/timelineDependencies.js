@@ -35,10 +35,10 @@ export function dependencyGeometry(source, target, relationType, _geometries, wi
   const type = ['FS','SS','FF'].includes(relationType) ? relationType : 'FS';
   const sourceX = source.start;
   const targetX = target.start;
-  // Every relation uses the same calm visual grammar: Start -> Start. Keep the
-  // trunk just inside the timeline so a bar on the boundary cannot push it
-  // into the sticky WBS/name column.
-  const laneX = Math.max(0.75, Math.min(width - 0.75, sourceX + 0.75));
+  // Every relation uses the same calm visual grammar: Start -> Start. Put the
+  // vertical trunk 8px before the bar when room exists. At the timeline edge,
+  // clamp it inside the chart so it never enters the sticky WBS/name column.
+  const laneX = Math.max(0.75, Math.min(width - 0.75, sourceX - 8));
   return {
     type, sourceX, targetX, sourceAnchor:'start', targetAnchor:'start',
     laneX, routeKind:'start-trunk',
@@ -55,28 +55,6 @@ export function dependencyRelationClass(relationType){
 
 export function dependencyMarkerId(relationType){
   return `wbs-gantt-${String(relationType || 'FS').toLowerCase()}-arrow`;
-}
-
-function syncMobileDependencyVisibility(gantt, documentRef){
-  const mobile = documentRef.defaultView?.matchMedia?.('(max-width: 719px)').matches;
-  const activeId = gantt.dataset.activeDependencyEntryId || '';
-  gantt.querySelectorAll('.wbs-gantt-dependency-halo,.wbs-gantt-dependency-link,.wbs-gantt-dependency-arrow-segment').forEach(path => {
-    const connected = activeId && (path.dataset.sourceId === activeId || path.dataset.targetId === activeId);
-    path.classList.toggle('is-mobile-filtered-out', Boolean(mobile && !connected));
-  });
-}
-
-function installMobileDependencySelection(gantt, rows, documentRef){
-  rows.forEach(row => {
-    if(row.dataset.dependencySelectionInstalled) return;
-    row.dataset.dependencySelectionInstalled = 'true';
-    row.addEventListener('click', () => {
-      if(!documentRef.defaultView?.matchMedia?.('(max-width: 719px)').matches) return;
-      const id = row.dataset.dependencyEntryId || '';
-      gantt.dataset.activeDependencyEntryId = gantt.dataset.activeDependencyEntryId === id ? '' : id;
-      syncMobileDependencyVisibility(gantt, documentRef);
-    });
-  });
 }
 
 function timelineDomainFromSignature(signature){
@@ -141,7 +119,6 @@ export function applyTimelineDependencies(gantt, entries, projectOrItems, docume
     if(geometry && id) byId.set(id, geometry);
     top += Number(line.querySelector('.wbs-gantt-scale-canvas')?.getAttribute('height')) || 36;
   });
-  installMobileDependencySelection(gantt, [...lines, ...names], documentRef);
   if(top <= 0) return;
 
   const project = Array.isArray(projectOrItems) ? { tasks:projectOrItems } : projectOrItems;
@@ -212,7 +189,6 @@ export function applyTimelineDependencies(gantt, entries, projectOrItems, docume
     }));
   });
   timeline.append(layer, arrowLayer);
-  syncMobileDependencyVisibility(gantt, documentRef);
 }
 
 export { roundedOrthogonalPath };
