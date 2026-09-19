@@ -32,18 +32,18 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
   function rows(items,{depth=0,source=null,showCost=true}={}){
     return(items||[]).filter(item=>!item.trashed&&!item.done).map(item=>{
       const kids=(item.children||[]).filter(child=>!child.trashed&&!child.done);
-      return `<div class="nb-node" data-id="${esc(item.id)}"><div class="nb-row" style="--nb-depth:${depth}">
-        <span class="nb-grip">${grip}</span><button type="button" data-act="expand" aria-label="باز و بسته کردن" class="nb-expand ${kids.length?'':'empty'} ${item.expanded===false?'collapsed':''}">${chev}</button>
+      return `<div class="nb-node" data-id="${esc(item.id)}"><div class="nb-row" data-depth="${depth}" style="--nb-depth:${depth}">
+        <button type="button" data-act="expand" aria-label="باز و بسته کردن" class="nb-expand ${kids.length?'':'empty'} ${item.expanded===false?'collapsed':''}">${chev}</button>
         <button type="button" data-act="done" aria-label="انجام شد" class="nb-check"></button><button type="button" data-act="edit" class="nb-title">${esc(item.text||'بدون عنوان')}${source?`<small>${esc(source)}</small>`:''}</button>
         ${showCost&&item.cost!=null&&item.cost!==''?`<span class="nb-cost">${formatCost(item.cost)} تومان</span>`:''}
-        <button type="button" data-act="star" aria-label="ستاره" class="nb-star ${item.starred?'active':''}">${star}</button><button type="button" data-act="child" aria-label="افزودن زیردسته" class="nb-child">＋</button>
-      </div>${editor?.mode==='item'&&editor.parentId===item.id?editorHtml():''}${source||item.expanded===false?'':`<div class="nb-children">${rows(item.children,{depth:depth+1,showCost})}</div>`}</div>`;
+        <button type="button" data-act="star" aria-label="ستاره" class="nb-star ${item.starred?'active':''}">${star}</button><button type="button" data-act="child" aria-label="افزودن زیردسته" class="nb-child">＋</button><span class="nb-grip">${grip}</span>
+      </div>${source||item.expanded===false?'':`<div class="nb-children">${rows(item.children,{depth:depth+1,showCost})}</div>`}${editor?.mode==='item'&&editor.parentId===item.id?editorHtml():''}</div>`;
     }).join('');
   }
   function editorHtml(){
     if(!editor)return'';
     const title=editor.mode==='list'?'افزودن دفتر':editor.mode==='rename'?'ویرایش نام دفتر':'افزودن مورد';
-    return `<form class="nb-editor" data-editor-form><strong>${title}</strong><input id="nbInput" value="${esc(editor.value||'')}" enterkeyhint="done" autocomplete="off" placeholder="عنوان را بنویسید…"><div><button type="button" data-editor="cancel">لغو</button><button type="submit" class="primary" data-editor="save">ثبت</button></div></form>`;
+    return `<form class="nb-editor ${editor.parentId?'is-child':''}" style="--nb-entry-depth:${editor.depth||0}" data-editor-form><strong>${title}</strong><input id="nbInput" value="${esc(editor.value||'')}" enterkeyhint="done" autocomplete="off" placeholder="عنوان را بنویسید…"><div><button type="button" data-editor="cancel">لغو</button><button type="submit" class="primary" data-editor="save">ثبت</button></div></form>`;
   }
   function actionButton(action,label,icon,danger=false){return `<button type="button" class="nb-action-icon ${danger?'danger':''}" data-project-action="${action}" title="${label}" aria-label="${label}">${icon}</button>`;}
   function actionsHtml(list,starredMode){
@@ -88,7 +88,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     if(current.mode==='list')repository.mutate(nb=>{const list={id:uid('nbl'),title:value,items:[],createdAt:Date.now(),updatedAt:Date.now(),archived:false,trashed:false,showCost:true};nb.lists.push(list);nb.activeListId=list.id;});
     else if(current.mode==='rename')repository.mutate(nb=>{const list=nb.lists.find(item=>item.id===current.listId);if(list){list.title=value;list.updatedAt=Date.now();}});
     else repository.mutate(nb=>{const item=createNotebookItem(value);current.parentId?locate(nb,current.parentId)?.item.children.push(item):active(nb)?.items.push(item);});
-    editor=continueEntry&&current.mode==='item'?{mode:'item',parentId:current.parentId||null}:null;render();
+    editor=continueEntry&&current.mode==='item'?{mode:'item',parentId:current.parentId||null,depth:current.depth||0}:null;render();
   }
   function saveSheet(body){
     const name=body.querySelector('#nbSheetName')?.value.trim();if(!name)return;
@@ -101,11 +101,11 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     body.querySelectorAll('[data-list]').forEach(button=>button.onclick=()=>{repository.mutate(nb=>{nb.activeListId=button.dataset.list;});editor=null;sheetItemId=null;render();});
     body.querySelector('[data-starred]')?.addEventListener('click',()=>{repository.mutate(nb=>{nb.activeListId='__starred__';});editor=null;sheetItemId=null;render();});
     body.querySelector('[data-add-list]')?.addEventListener('click',()=>{editor={mode:'list'};render();});
-    body.querySelector('[data-add-root]')?.addEventListener('click',()=>{editor={mode:'item',parentId:null};render();});
+    body.querySelector('[data-add-root]')?.addEventListener('click',()=>{editor={mode:'item',parentId:null,depth:0};render();});
     body.querySelectorAll('[data-restore]').forEach(button=>button.onclick=()=>{change(button.dataset.restore,item=>{item.done=false;item.completedAt=null;});render();});
     body.querySelectorAll('.nb-row').forEach(row=>row.onclick=event=>{const action=event.target.closest('[data-act]')?.dataset.act;if(!action)return;const id=row.closest('.nb-node').dataset.id;
       if(action==='star')change(id,item=>{item.starred=!item.starred;});else if(action==='done')change(id,item=>{item.done=true;item.completedAt=Date.now();});else if(action==='expand')change(id,item=>{item.expanded=item.expanded===false;});
-      else if(action==='child')editor={mode:'item',parentId:id};else if(action==='edit')sheetItemId=id;render();});
+      else if(action==='child'){change(id,item=>{item.expanded=true;});editor={mode:'item',parentId:id,depth:Number(row.dataset.depth||0)+1};}else if(action==='edit')sheetItemId=id;render();});
     body.querySelector('[data-editor-form]')?.addEventListener('submit',event=>{event.preventDefault();saveInline(body,{continueEntry:editor?.mode==='item'});});
     body.querySelector('[data-editor="cancel"]')?.addEventListener('click',()=>{editor=null;render();});
     body.querySelector('#nbInput')?.addEventListener('keydown',event=>{if(event.key==='Escape'){editor=null;render();}});
@@ -119,7 +119,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     });
     body.querySelectorAll('[data-sheet-close]').forEach(element=>element.onclick=event=>{if(event.target.closest('[data-sheet-panel]')&&!event.target.matches('[data-sheet-close]'))return;sheetItemId=null;render();});
     body.querySelector('[data-sheet-save]')?.addEventListener('click',()=>saveSheet(body));
-    body.querySelector('[data-sheet-child]')?.addEventListener('click',()=>{const parentId=sheetItemId;sheetItemId=null;editor={mode:'item',parentId};render();});
+    body.querySelector('[data-sheet-child]')?.addEventListener('click',()=>{const parentId=sheetItemId,depth=(locate(repository.get(),parentId)?.parents.length||0)+1;change(parentId,item=>{item.expanded=true;});sheetItemId=null;editor={mode:'item',parentId,depth};render();});
     body.querySelector('[data-sheet-delete]')?.addEventListener('click',()=>confirmAction('آیا این دسته حذف شود؟',()=>{change(sheetItemId,item=>{item.trashed=true;item.deletedAt=Date.now();});sheetItemId=null;render();}));
   }
   function trash(){
