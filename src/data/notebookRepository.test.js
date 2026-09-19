@@ -59,3 +59,13 @@ test('trashed notebook items stay out of global project trash collections', () =
   walkNotebookItems(nb.lists[0].items, node => { if(!node.trashed) live++; });
   assert.equal(live, 0);
 });
+
+test('legacy notebook lists gain non-destructive project controls', () => {
+  const storage=memory();
+  storage.setItem('legacy-notebook',JSON.stringify({version:1,activeListId:'l1',lists:[{id:'l1',title:'قدیمی',items:[]}]}));
+  const repo=createNotebookRepository({storage,storageKey:'legacy-notebook'});
+  const list=repo.load().lists[0];
+  assert.equal(list.archived,false);
+  assert.equal(list.trashed,false);
+  assert.equal(list.showCost,true);
+});

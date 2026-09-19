@@ -11,7 +11,7 @@ export function createEmptyNotebook(){
   return {
     version: 1,
     activeListId: listId,
-    lists: [{ id: listId, title: 'کارهای شخصی', createdAt: now(), updatedAt: now(), items: [] }],
+    lists: [{ id: listId, title: 'کارهای شخصی', createdAt: now(), updatedAt: now(), items: [], archived:false, trashed:false, showCost:true }],
   };
 }
 
@@ -112,6 +112,13 @@ export function createNotebookRepository({ storage = localStorageAdapter, storag
         snapshot = createEmptyNotebook();
         return snapshot;
       }
+      parsed.lists = parsed.lists.map(list => ({
+        ...list,
+        archived: !!list.archived,
+        trashed: !!list.trashed,
+        showCost: list.showCost !== false,
+        items: Array.isArray(list.items) ? list.items : [],
+      }));
       snapshot = parsed;
       return snapshot;
     }catch{
