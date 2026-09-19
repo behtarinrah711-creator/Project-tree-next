@@ -56,9 +56,11 @@ test('notebook restores centered tabs, rapid entry, item sheet, cost mode and fu
   await page.locator('[data-sheet-save]').click();
   await expect(page.locator('.nb-row', {hasText:'ریشه'}).locator('.nb-cost')).toContainText('۲۵۰٬۰۰۰');
 
-  await page.locator('[data-cost-toggle]').uncheck();
+  await page.locator('.nb-cost-toggle').click();
+  await expect(page.locator('[data-cost-toggle]')).not.toBeChecked();
   await expect(page.locator('.nb-cost')).toHaveCount(0);
-  await page.locator('[data-cost-toggle]').check();
+  await page.locator('.nb-cost-toggle').click();
+  await expect(page.locator('[data-cost-toggle]')).toBeChecked();
   await expect(page.locator('.nb-cost')).toHaveCount(1);
 
   await page.locator('[data-add-root]').click();
