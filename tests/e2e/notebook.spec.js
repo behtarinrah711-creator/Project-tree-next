@@ -44,3 +44,42 @@ test('notebook owns horizontal lists, unlimited hierarchy, and global starred vi
   await expect(page.locator('.nb-row', { hasText:'ستاره دوم' })).toBeVisible();
   await expect(page.locator('.nb-row', { hasText:'سطح چهار' }).locator('.nb-title small')).toContainText('دفتر اول');
 });
+
+test('notebook restores centered tabs, rapid entry, item sheet, cost mode and full export', async ({ page }) => {
+  await page.locator('.nb-tab[data-list="l2"]').click();
+  await expect(page.locator('.nb-tab[data-list="l2"]')).toHaveClass(/active/);
+
+  await page.locator('.nb-tab[data-list="l1"]').click();
+  await page.locator('.nb-row', {hasText:'ریشه'}).locator('[data-act="edit"]').click();
+  await expect(page.locator('.nb-item-sheet')).toBeVisible();
+  await page.locator('#nbSheetCost').fill('250000');
+  await page.locator('[data-sheet-save]').click();
+  await expect(page.locator('.nb-row', {hasText:'ریشه'}).locator('.nb-cost')).toContainText('۲۵۰٬۰۰۰');
+
+  await page.locator('.nb-cost-toggle').click();
+  await expect(page.locator('[data-cost-toggle]')).not.toBeChecked();
+  await expect(page.locator('.nb-cost')).toHaveCount(0);
+  await page.locator('.nb-cost-toggle').click();
+  await expect(page.locator('[data-cost-toggle]')).toBeChecked();
+  await expect(page.locator('.nb-cost')).toHaveCount(1);
+
+  await page.locator('[data-add-root]').click();
+  await page.locator('#nbInput').fill('مورد سریع یک');
+  await page.locator('#nbInput').press('Enter');
+  await expect(page.locator('#nbInput')).toBeFocused();
+  await page.locator('#nbInput').fill('مورد سریع دو');
+  await page.locator('[data-editor="save"]').click();
+  await expect(page.locator('#nbInput')).toBeFocused();
+  await expect(page.locator('.nb-row', {hasText:'مورد سریع یک'})).toBeVisible();
+  await expect(page.locator('.nb-row', {hasText:'مورد سریع دو'})).toBeVisible();
+
+  await page.locator('[data-editor="cancel"]').click();
+  await page.locator('[data-project-action="export"]').click();
+  await expect(page.locator('#notebookExportPage')).toBeVisible();
+  await expect(page.locator('#notebookExportNumbered')).toBeVisible();
+  await expect(page.locator('#notebookExportCost')).toBeVisible();
+  await expect(page.locator('#notebookExportSignature')).toBeVisible();
+  await expect(page.locator('.export-pdf-btn')).toHaveText('PDF');
+  await expect(page.locator('.export-jpg-btn')).toHaveText('JPEG');
+  await expect(page.locator('#notebookExportBody .export-row')).toHaveCount(3);
+});

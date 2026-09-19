@@ -163,10 +163,22 @@
   </div>
   <div class="page-body" id="notebookPageBody"></div>
 </div>
-<div class="page-overlay workspace-page hidden" id="notebookExportPage">
+<div class="page-overlay hidden" id="notebookExportPage">
   <div class="page-head">
-    <button type="button" id="closeNotebookExportPage">بازگشت</button>
-    <h1>خروجی دفترچه</h1>
+    <button class="icon-btn" type="button" id="closeNotebookExportPage" aria-label="بازگشت"><svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <h1 id="notebookExportTitle">خروجی دفترچه</h1>
+    <span class="page-head-spacer"></span>
+  </div>
+  <div class="export-toolbar" id="notebookExportToolbar"></div>
+  <div class="export-options">
+    <label><input type="checkbox" id="notebookExportNumbered"> حالت شماره‌دار</label>
+    <label><input type="checkbox" id="notebookExportCost"> نمایش هزینه</label>
+    <label><input type="checkbox" id="notebookExportSignature"> درج امضا</label>
+    <span class="hint" id="notebookExportSignatureHint"></span>
+  </div>
+  <div class="export-note-wrap">
+    <label for="notebookExportNote">توضیحات کلی (پایین خروجی)</label>
+    <textarea id="notebookExportNote" placeholder="توضیحات اختیاری برای این خروجی…"></textarea>
   </div>
   <div class="page-body" id="notebookExportBody"></div>
 </div>
