@@ -1,4 +1,4 @@
-import { canCompleteNotebookItem, collectCompleted, collectStarred, collectTrashed, createNotebookItem, createNotebookRepository, findNotebookItem, notebookItemCost, notebookItemCostLocked, sumCost } from '../../data/notebookRepository.js';
+import { canCompleteNotebookItem, collectCompletedFamilies, collectStarredFamilies, collectTrashed, createNotebookItem, createNotebookRepository, findNotebookItem, notebookItemCost, notebookItemCostLocked, restoreNotebookFamily, sumCost, toggleNotebookStar } from '../../data/notebookRepository.js';
 import { notebookIcons } from './notebookIcons.js';
 import { installNotebookExportView } from './notebookExportView.js';
 import { openConfirm } from '../../ui/confirm.js';
@@ -48,7 +48,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
         <button type="button" data-act="done" aria-label="انجام شد" class="nb-check"></button><button type="button" data-act="expand" aria-label="باز و بسته کردن" class="nb-expand ${kids.length?'':'empty'} ${item.expanded===false?'collapsed':''}">${chev}</button>
         <button type="button" data-act="edit" class="nb-title">${esc(item.text||'بدون عنوان')}${source?`<small>${esc(source)}</small>`:''}</button>
         ${showCost?`<span class="nb-cost">${formatCost(amount)} <small>تومان</small></span>`:`${source?'':`<button type="button" data-act="child" aria-label="افزودن زیردسته" class="nb-child">＋</button>`}<button type="button" data-act="star" aria-label="ستاره" class="nb-star ${item.starred?'active':''}">${star}</button>`}<span class="nb-grip">${grip}</span>
-      </div>${source||item.expanded===false?'':`<div class="nb-children">${rows(item.children,{depth:depth+1,showCost,includeDone})}</div>`}${editor?.mode==='item'&&editor.parentId===item.id?editorHtml():''}</div>`;
+      </div>${item.expanded===false?'':`<div class="nb-children">${rows(item.children,{depth:depth+1,source,showCost,includeDone})}</div>`}${editor?.mode==='item'&&editor.parentId===item.id?editorHtml():''}</div>`;
     }).join('');
   }
   function editorHtml(){
@@ -82,9 +82,12 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
   function render(){
     const nb=repository.get(),list=active(nb),body=page.querySelector('#notebookPageBody');if(!body)return;
     if(!list){repository.mutate(ensureActive);return render();}
-    const starredMode=nb.activeListId==='__starred__',starred=collectStarred(nb),completed=starredMode?starred.filter(entry=>entry.item.done):collectCompleted(list.items);
-    const content=starredMode?starred.filter(entry=>!entry.item.done).map(entry=>rows([entry.item],{source:entry.listTitle,showCost:false})).join(''):rows(list.items,{showCost:!!list.showCost});
-    const completedRows=completed.map(entry=>{const item=entry.item||entry;const source=entry.listTitle;return `<div class="nb-done-row"><span>${esc(item.text)}${source?`<small>${esc(source)}</small>`:''}</span><button type="button" data-restore="${esc(item.id)}">بازگردانی</button></div>`;}).join('');
+    const starredMode=nb.activeListId==='__starred__';
+    const activeFamilies=starredMode?collectStarredFamilies(nb,{done:false}):[];
+    const completed=starredMode?collectStarredFamilies(nb,{done:true}):collectCompletedFamilies(list.items).map(item=>({item,listTitle:null}));
+    const content=starredMode?activeFamilies.map(entry=>rows([entry.item],{source:entry.listTitle,showCost:false})).join(''):rows(list.items,{showCost:!!list.showCost});
+    const doneTree=(item,depth=0)=>`<div class="nb-done-node" style="--nb-depth:${depth}"><span>${esc(item.text)}</span>${(item.children||[]).filter(child=>child.done&&!child.trashed).map(child=>doneTree(child,depth+1)).join('')}</div>`;
+    const completedRows=completed.map(entry=>`<div class="nb-done-row"><div>${doneTree(entry.item)}${entry.listTitle?`<small>${esc(entry.listTitle)}</small>`:''}</div><button type="button" data-restore="${esc(entry.item.id)}">بازگردانی</button></div>`).join('');
     body.innerHTML=`<div class="nb-workspace"><nav class="nb-tabs" aria-label="دفترها"><button type="button" data-starred class="nb-tab nb-star-tab ${starredMode?'active':''}">${star}</button>
       ${available(nb).map(item=>`<button type="button" data-list="${esc(item.id)}" class="nb-tab ${!starredMode&&item.id===list.id?'active':''}"><span>${esc(item.title)}</span><small>${(item.items||[]).filter(entry=>!entry.done&&!entry.trashed).length.toLocaleString('fa-IR')}</small></button>`).join('')}
       <button type="button" data-add-list class="nb-tab nb-add-tab" aria-label="افزودن دفتر">＋</button></nav>
@@ -112,9 +115,9 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     body.querySelector('[data-starred]')?.addEventListener('click',()=>{repository.mutate(nb=>{nb.activeListId='__starred__';});editor=null;sheetItemId=null;render();});
     body.querySelector('[data-add-list]')?.addEventListener('click',()=>openListPrompt({title:'اضافه کردن مورد جدید',placeholder:'',onSave:value=>{repository.mutate(nb=>{const list={id:uid('nbl'),title:value,items:[],createdAt:Date.now(),updatedAt:Date.now(),archived:false,trashed:false,showCost:false};nb.lists.push(list);nb.activeListId=list.id;});render();}}));
     body.querySelector('[data-add-root]')?.addEventListener('click',()=>{editor={mode:'item',parentId:null,depth:0};render();});
-    body.querySelectorAll('[data-restore]').forEach(button=>button.onclick=()=>{change(button.dataset.restore,item=>{item.done=false;item.completedAt=null;});render();});
+    body.querySelectorAll('[data-restore]').forEach(button=>button.onclick=()=>{change(button.dataset.restore,item=>restoreNotebookFamily(item));render();});
     body.querySelectorAll('.nb-row').forEach(row=>row.onclick=event=>{const action=event.target.closest('[data-act]')?.dataset.act;if(!action)return;const id=row.closest('.nb-node').dataset.id;
-      if(action==='star')change(id,item=>{item.starred=!item.starred;});else if(action==='done'){const hit=locate(repository.get(),id);if(hit&&canCompleteNotebookItem(hit.item))change(id,item=>{item.done=true;item.completedAt=Date.now();});}else if(action==='expand')change(id,item=>{item.expanded=item.expanded===false;});
+      if(action==='star')change(id,(item,hit)=>toggleNotebookStar(item,hit.parents));else if(action==='done'){const hit=locate(repository.get(),id);if(hit&&canCompleteNotebookItem(hit.item))change(id,item=>{item.done=true;item.completedAt=Date.now();});}else if(action==='expand')change(id,item=>{item.expanded=item.expanded===false;});
       else if(action==='child'){change(id,item=>{item.expanded=true;});editor={mode:'item',parentId:id,depth:Number(row.dataset.depth||0)+1};}else if(action==='edit')sheetItemId=id;render();});
     body.querySelector('[data-editor-form]')?.addEventListener('submit',event=>{event.preventDefault();saveInline(body,{continueEntry:editor?.mode==='item'});});
     body.querySelector('[data-editor="cancel"]')?.addEventListener('click',()=>{editor=null;render();});
@@ -135,7 +138,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     body.querySelector('#nbSheetCost:not(:disabled)')?.addEventListener('click',event=>{const control=event.currentTarget;openNumpadGeneric(control.dataset.value,raw=>{control.dataset.value=raw;control.innerHTML=`${formatCost(raw)} <small>تومان</small>`;},{group:true,suffix:' تومان',maxLen:16},{documentRef,windowRef});});
     body.querySelector('[data-sheet-child]')?.addEventListener('click',()=>{const parentId=sheetItemId,depth=(locate(repository.get(),parentId)?.parents.length||0)+1;change(parentId,item=>{item.expanded=true;});sheetItemId=null;editor={mode:'item',parentId,depth};render();});
     body.querySelector('[data-sheet-delete]')?.addEventListener('click',()=>confirmAction('آیا این دسته حذف شود؟',()=>{change(sheetItemId,item=>{item.trashed=true;item.deletedAt=Date.now();});sheetItemId=null;render();}));
-    body.querySelector('[data-clear-completed]')?.addEventListener('click',event=>{event.preventDefault();confirmAction('همه موارد انجام‌شده حذف شوند؟',()=>{repository.mutate(nb=>{if(starredMode){for(const entry of collectStarred(nb).filter(row=>row.item.done)){entry.item.trashed=true;entry.item.deletedAt=Date.now();}}else{for(const item of collectCompleted(active(nb)?.items||[])){item.trashed=true;item.deletedAt=Date.now();}}});render();});});
+    body.querySelector('[data-clear-completed]')?.addEventListener('click',event=>{event.preventDefault();confirmAction('همه موارد انجام‌شده حذف شوند؟',()=>{repository.mutate(nb=>{const families=starredMode?collectStarredFamilies(nb,{done:true}).map(entry=>locate(nb,entry.item.id)?.item).filter(Boolean):collectCompletedFamilies(active(nb)?.items||[]);for(const item of families){item.trashed=true;item.deletedAt=Date.now();}});render();});});
     body.querySelector('[data-prompt-form]')?.addEventListener('submit',event=>{event.preventDefault();const value=body.querySelector('#nbPromptInput')?.value.trim();if(!value)return body.querySelector('#nbPromptInput')?.focus();const save=listPrompt?.onSave;listPrompt=null;save?.(value);});
     body.querySelectorAll('[data-prompt-close]').forEach(element=>element.addEventListener('click',event=>{if(event.target.closest('[data-prompt-form]')&&!event.target.matches('[data-prompt-close]'))return;listPrompt=null;render();}));
   }
@@ -145,9 +148,10 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
   function openTrash(){trashOpen=true;windowRef.KarhaChildHistory?.open?.('notebook-trash');trash();}
   function trash(){
     const body=page.querySelector('#notebookPageBody'),nb=repository.get(),deleted=collectTrashed(nb);
-    const content=deleted.length?deleted.map((row,index)=>`<div class="nb-trash-row"><div>${row.kind==='list'?`<strong>${esc(row.list.title)}</strong>${(row.list.items||[]).map(item=>deletedTree(item,1)).join('')}`:`${deletedTree(row.item)}<small>${esc(row.listTitle)}</small>`}</div><button type="button" data-trash-restore="${index}">بازگردانی</button></div>`).join(''):'<p>موردی وجود ندارد.</p>';
+    const content=deleted.length?deleted.map((row,index)=>`<div class="nb-trash-row"><div>${row.kind==='list'?`<strong>${esc(row.list.title)}</strong>${(row.list.items||[]).map(item=>deletedTree(item,1)).join('')}`:`${deletedTree(row.item)}<small>${esc(row.listTitle)}</small>`}</div><div class="nb-trash-actions"><button type="button" data-trash-restore="${index}">بازگردانی</button><button type="button" class="danger" data-trash-delete="${index}">حذف</button></div></div>`).join(''):'<p>موردی وجود ندارد.</p>';
     body.innerHTML=`<div class="nb-trash"><header class="nb-subpage-title"><h1>حذف‌شده‌ها</h1></header><section class="nb-trash-section">${content}</section></div>`;
     body.querySelectorAll('[data-trash-restore]').forEach(button=>button.onclick=()=>{const row=deleted[+button.dataset.trashRestore];repository.mutate(data=>{const target=row.kind==='list'?data.lists.find(list=>list.id===row.list.id):locate(data,row.item.id)?.item;if(target){target.trashed=false;target.deletedAt=null;}});trash();});
+    body.querySelectorAll('[data-trash-delete]').forEach(button=>button.onclick=()=>{const row=deleted[+button.dataset.trashDelete];confirmAction('این مورد برای همیشه حذف شود؟',()=>{repository.mutate(data=>{if(row.kind==='list'){const index=data.lists.findIndex(list=>list.id===row.list.id);if(index>=0)data.lists.splice(index,1);ensureActive(data);}else{const hit=locate(data,row.item.id);if(hit){const index=hit.siblings.findIndex(item=>item.id===row.item.id);if(index>=0)hit.siblings.splice(index,1);}}});trash();});});
   }
   function applySurface(){
     const notebookRoute=onRoute(),exportRoute=/\/notebook\/export/i.test(windowRef.location.hash||''),on=notebookRoute&&!exportRoute;

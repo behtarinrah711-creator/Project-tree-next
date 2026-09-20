@@ -22,6 +22,7 @@ export function createNotebookItem(text = ''){
     text: String(text || ''),
     done: false,
     starred: false,
+    starredSelf: false,
     cost: null,
     children: [],
     createdAt: t,
@@ -69,6 +70,60 @@ export function collectStarred(notebook){
   return out;
 }
 
+function setStarredSelf(item,value){
+  item.starredSelf=!!value;
+  item.starred=!!value;
+  for(const child of item.children||[]) setStarredSelf(child,value);
+}
+
+export function refreshNotebookStars(items){
+  const refresh=item=>{
+    const childStarred=(item.children||[]).map(refresh).some(Boolean);
+    const self=item.starredSelf===true||(item.starredSelf===undefined&&item.starred===true);
+    item.starred=!!(self||childStarred);
+    return item.starred;
+  };
+  (items||[]).forEach(refresh);
+  return items;
+}
+
+function migrateNotebookStars(items){
+  const migrate=item=>{
+    if(item.starredSelf===undefined&&item.starred===true)setStarredSelf(item,true);
+    else for(const child of item.children||[])migrate(child);
+  };
+  (items||[]).forEach(migrate);
+  return refreshNotebookStars(items);
+}
+
+export function toggleNotebookStar(item,parents=[]){
+  const next=item.starredSelf!==true;
+  setStarredSelf(item,next);
+  const root=parents[0]||item;
+  refreshNotebookStars([root]);
+  return next;
+}
+
+function projectStarredItem(item,{done=null}={}){
+  if(item.trashed)return null;
+  const children=(item.children||[]).map(child=>projectStarredItem(child,{done})).filter(Boolean);
+  const matches=item.starred&&(done===null||item.done===done);
+  if(!matches&&!children.length)return null;
+  return {...item,children};
+}
+
+export function collectStarredFamilies(notebook,{done=false}={}){
+  const out=[];
+  for(const list of notebook.lists||[]){
+    const roots=done?collectCompletedFamilies(list.items||[]):list.items||[];
+    for(const item of roots){
+      const projected=projectStarredItem(item,{done});
+      if(projected)out.push({item:projected,listId:list.id,listTitle:list.title});
+    }
+  }
+  return out;
+}
+
 export function activeNotebookChildren(item){
   return (item?.children || []).filter(child => !child.trashed);
 }
@@ -97,6 +152,22 @@ export function collectCompleted(items){
     if(item.done && !item.trashed) out.push(item);
   });
   return out;
+}
+
+export function collectCompletedFamilies(items){
+  const out=[];
+  const visit=(item,parentDone=false)=>{
+    if(item.trashed)return;
+    if(item.done&&!parentDone)out.push(item);
+    for(const child of item.children||[])visit(child,parentDone||item.done);
+  };
+  for(const item of items||[])visit(item);
+  return out;
+}
+
+export function restoreNotebookFamily(item){
+  walkNotebookItems([item],node=>{node.done=false;node.completedAt=null;});
+  return item;
 }
 
 export function collectTrashed(notebook){
@@ -139,6 +210,7 @@ export function createNotebookRepository({ storage = localStorageAdapter, storag
         showCost: list.showCost === true,
         items: Array.isArray(list.items) ? list.items : [],
       }));
+      for(const list of parsed.lists) migrateNotebookStars(list.items);
       snapshot = parsed;
       return snapshot;
     }catch{
