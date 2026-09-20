@@ -1,5 +1,6 @@
-import { canCompleteNotebookItem, collectCompletedFamilies, collectStarredFamilies, collectTrashed, createNotebookItem, createNotebookRepository, findNotebookItem, notebookItemCost, notebookItemCostLocked, restoreNotebookFamily, sumCost, toggleNotebookStar, trashCompletedItems } from '../../data/notebookRepository.js';
+import { canCompleteNotebookItem, collectCompletedFamilies, collectStarredFamilies, collectTrashed, createNotebookItem, createNotebookRepository, findNotebookItem, notebookItemCost, notebookItemCostLocked, reorderNotebookSiblings, restoreNotebookFamily, sumCost, toggleNotebookStar, trashCompletedItems } from '../../data/notebookRepository.js';
 import { notebookIcons } from './notebookIcons.js';
+import { bindSiblingRowDrag } from '../wbs/wbsDrag.js';
 import { installNotebookExportView } from './notebookExportView.js';
 import { openConfirm } from '../../ui/confirm.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
@@ -122,6 +123,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     body.querySelectorAll('.nb-row').forEach(row=>row.onclick=event=>{const action=event.target.closest('[data-act]')?.dataset.act;if(!action)return;const id=row.closest('.nb-node').dataset.id;
       if(action==='star')change(id,(item,hit)=>toggleNotebookStar(item,hit.parents));else if(action==='done'){const hit=locate(repository.get(),id);if(hit&&canCompleteNotebookItem(hit.item))change(id,item=>{item.done=true;item.completedAt=Date.now();});}else if(action==='expand')change(id,item=>{item.expanded=item.expanded===false;});
       else if(action==='child'){change(id,item=>{item.expanded=true;});editor={mode:'item',parentId:id,depth:Number(row.dataset.depth||0)+1};}else if(action==='edit')sheetItemId=id;render();});
+    if(!starredMode)body.querySelectorAll('.nb-row').forEach(row=>{const id=row.closest('.nb-node')?.dataset.id;if(!id)return;bindSiblingRowDrag(row,{id,rowClass:'nb-row',gripSelector:'.nb-grip',draggingClass:'nb-row-dragging',dropBeforeClass:'nb-drop-before',dropAfterClass:'nb-drop-after',onReorder:orderedIds=>{repository.mutate(nb=>{const hit=locate(nb,id);if(hit)hit.siblings.splice(0,hit.siblings.length,...reorderNotebookSiblings(hit.siblings,orderedIds));});render();}});});
     body.querySelector('[data-editor-form]')?.addEventListener('submit',event=>{event.preventDefault();saveInline(body,{continueEntry:editor?.mode==='item'});});
     body.querySelector('[data-editor="cancel"]')?.addEventListener('click',()=>{editor=null;render();});
     body.querySelector('#nbInput')?.addEventListener('keydown',event=>{if(event.key==='Escape'){editor=null;render();}});

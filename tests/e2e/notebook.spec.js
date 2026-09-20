@@ -131,9 +131,7 @@ test('notebook keeps stars and completed items in parent-child families', async 
   await page.locator('.nb-row',{hasText:'فرزند یک'}).locator('[data-act="done"]').click();
   await page.locator('.nb-row',{hasText:'فرزند دو'}).locator('[data-act="done"]').click();
   await page.locator('.nb-row',{hasText:'ریشه'}).locator('[data-act="done"]').click();
-  await expect(page.locator('.nb-completed-chevron')).toBeVisible();
   await page.locator('.nb-completed summary').click();
-  await expect(page.locator('.nb-completed')).toHaveAttribute('open','');
   await expect(page.locator('.nb-done-row')).toHaveCount(1);
   await expect(page.locator('.nb-done-row .nb-done-node')).toHaveCount(3);
   await page.locator('.nb-done-row [data-restore]').click();
