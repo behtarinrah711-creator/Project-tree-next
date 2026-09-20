@@ -158,6 +158,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
   const openNotebook=()=>windowRef.location.hash='#/notebook';
   windowRef.KarhaChildHistory?.register?.('notebook-trash',{onPop:()=>{trashOpen=false;render();}});
   windowRef.addEventListener('karha:open-notebook',()=>{windowRef.KarhaWorkspaceChrome?.closeBottomPages?.();const route='#/notebook';windowRef.KarhaBrowserHistory?.push?.(windowRef.KarhaBrowserHistory.stateForRoute?.({projectId:null,moduleId:'notebook',hash:route})||{hash:route},route)||(windowRef.location.hash=route);applySurface();});
+  repository.subscribe?.(()=>{if(onRoute())render();});
   windowRef.addEventListener('karha:close-notebook',()=>{windowRef.KarhaBrowserHistory?.back?.();applySurface();});windowRef.addEventListener('hashchange',applySurface);windowRef.addEventListener('karha:workspace-route-synced',applySurface);applySurface();
   return{openNotebook,applySurface,repository,render,centerActiveTab,exportView};
 }
