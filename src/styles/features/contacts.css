@@ -74,7 +74,7 @@
   .contact-invalid>label,.contact-invalid>.repeat-head .repeat-title,.contact-invalid>.contact-section-title{color:var(--danger) !important;}
   .contact-invalid .contact-input,.contact-invalid .contact-custom-select-trigger{border-color:var(--danger) !important;box-shadow:0 0 0 1px rgba(198,40,40,.08);}
   .contact-invalid{border-color:var(--danger) !important;}
-  .confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:95;display:flex;align-items:center;justify-content:center;padding:24px;}
+  .confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:1400;display:flex;align-items:center;justify-content:center;padding:24px;}
   .confirm-overlay.hidden{display:none;}
   .confirm-box{background:var(--surface);border-radius:14px;padding:20px;width:100%;max-width:320px;}
   .confirm-box p{margin:0 0 16px;font-size:15px;line-height:1.6;text-align:right;}

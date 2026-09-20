@@ -106,3 +106,36 @@ test('notebook project prompts use concise titles, no placeholder, and autofocus
   await expect(page.locator('#nbPromptInput')).toHaveAttribute('placeholder', '');
   await expect(page.locator('#nbPromptInput')).toBeFocused();
 });
+
+test('notebook keeps stars and completed items in parent-child families', async ({ page }) => {
+  const root=page.locator('.nb-row',{hasText:'ریشه'});
+  for(const title of ['فرزند یک','فرزند دو']){
+    await root.locator('[data-act="child"]').click();
+    await page.locator('#nbInput').fill(title);
+    await page.locator('[data-editor="save"]').click();
+  }
+  await page.locator('[data-editor="cancel"]').click();
+
+  await page.locator('.nb-row',{hasText:'فرزند یک'}).locator('[data-act="star"]').click();
+  await page.locator('[data-starred]').click();
+  await expect(page.locator('.nb-row',{hasText:'ریشه'})).toBeVisible();
+  await expect(page.locator('.nb-row',{hasText:'فرزند یک'})).toBeVisible();
+  await expect(page.locator('.nb-row',{hasText:'فرزند دو'})).toHaveCount(0);
+
+  await page.locator('.nb-tab[data-list="l1"]').click();
+  await page.locator('.nb-row',{hasText:'ریشه'}).locator('[data-act="star"]').click();
+  await page.locator('[data-starred]').click();
+  await expect(page.locator('.nb-row',{hasText:'فرزند دو'})).toBeVisible();
+
+  await page.locator('.nb-tab[data-list="l1"]').click();
+  await page.locator('.nb-row',{hasText:'فرزند یک'}).locator('[data-act="done"]').click();
+  await page.locator('.nb-row',{hasText:'فرزند دو'}).locator('[data-act="done"]').click();
+  await page.locator('.nb-row',{hasText:'ریشه'}).locator('[data-act="done"]').click();
+  await page.locator('.nb-completed summary').click();
+  await expect(page.locator('.nb-done-row')).toHaveCount(1);
+  await expect(page.locator('.nb-done-row .nb-done-node')).toHaveCount(3);
+  await page.locator('.nb-done-row [data-restore]').click();
+  await expect(page.locator('.nb-row',{hasText:'ریشه'})).toBeVisible();
+  await expect(page.locator('.nb-row',{hasText:'فرزند یک'})).toBeVisible();
+  await expect(page.locator('.nb-row',{hasText:'فرزند دو'})).toBeVisible();
+});

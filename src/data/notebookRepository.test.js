@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  collectCompleted, collectStarred, collectTrashed, createEmptyNotebook, createNotebookItem,
+  collectCompleted, collectCompletedFamilies, collectStarred, collectStarredFamilies, collectTrashed, createEmptyNotebook, createNotebookItem,
   canCompleteNotebookItem, createNotebookRepository, findNotebookItem, notebookItemCost,
-  notebookItemCostLocked, sumCost, walkNotebookItems,
+  notebookItemCostLocked, restoreNotebookFamily, sumCost, toggleNotebookStar, walkNotebookItems,
 } from './notebookRepository.js';
 
 function memory(){
@@ -82,6 +82,15 @@ test('legacy notebook lists gain non-destructive project controls', () => {
   assert.equal(list.showCost,false);
 });
 
+test('legacy parent stars migrate to the whole family',()=>{
+  const storage=memory();
+  storage.setItem('legacy-stars',JSON.stringify({version:1,activeListId:'l1',lists:[{id:'l1',title:'قدیمی',items:[{id:'p',text:'والد',starred:true,children:[{id:'c',text:'فرزند',starred:false,children:[]}]}]}]}));
+  const repo=createNotebookRepository({storage,storageKey:'legacy-stars'});
+  const parent=repo.load().lists[0].items[0];
+  assert.equal(parent.starred,true);
+  assert.equal(parent.children[0].starred,true);
+});
+
 test('parent cost rolls up descendants without double counting manual parent cost',()=>{
   const parent=createNotebookItem('parent');parent.cost=900;
   const first=createNotebookItem('first');first.cost=200;
@@ -103,4 +112,53 @@ test('a parent can complete only after every active child is complete',()=>{
   assert.equal(canCompleteNotebookItem(parent),true);
   child.trashed=true;
   assert.equal(canCompleteNotebookItem(parent),true);
+});
+
+test('starring a parent stars its whole family',()=>{
+  const parent=createNotebookItem('parent');
+  const first=createNotebookItem('first'),second=createNotebookItem('second');
+  parent.children.push(first,second);
+  toggleNotebookStar(parent);
+  assert.equal(parent.starred,true);
+  assert.equal(first.starred,true);
+  assert.equal(second.starred,true);
+});
+
+test('starring a child includes its ancestors but not its siblings',()=>{
+  const parent=createNotebookItem('parent');
+  const first=createNotebookItem('first'),second=createNotebookItem('second');
+  parent.children.push(first,second);
+  toggleNotebookStar(first,[parent]);
+  assert.equal(parent.starred,true);
+  assert.equal(first.starred,true);
+  assert.equal(second.starred,false);
+  const notebook={lists:[{id:'l1',title:'دفتر',items:[parent]}]};
+  const [family]=collectStarredFamilies(notebook);
+  assert.equal(family.item.text,'parent');
+  assert.deepEqual(family.item.children.map(item=>item.text),['first']);
+});
+
+test('completed parent and children are one restorable family',()=>{
+  const parent=createNotebookItem('parent');
+  const first=createNotebookItem('first'),second=createNotebookItem('second');
+  parent.children.push(first,second);
+  first.done=true;second.done=true;
+  assert.deepEqual(collectCompletedFamilies([parent]).map(item=>item.text),['first','second']);
+  parent.done=true;
+  assert.deepEqual(collectCompletedFamilies([parent]).map(item=>item.text),['parent']);
+  restoreNotebookFamily(parent);
+  assert.equal(parent.done,false);
+  assert.equal(first.done,false);
+  assert.equal(second.done,false);
+});
+
+test('completed starred families retain hierarchy',()=>{
+  const parent=createNotebookItem('parent'),child=createNotebookItem('child');
+  parent.children.push(child);
+  toggleNotebookStar(parent);
+  parent.done=true;child.done=true;
+  const notebook={lists:[{id:'l1',title:'دفتر',items:[parent]}]};
+  const [family]=collectStarredFamilies(notebook,{done:true});
+  assert.equal(family.item.text,'parent');
+  assert.deepEqual(family.item.children.map(item=>item.text),['child']);
 });
