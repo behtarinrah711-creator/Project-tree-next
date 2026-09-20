@@ -10,6 +10,7 @@ const chev='<svg viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>';
 const grip='<svg viewBox="0 0 12 20"><circle cx="3" cy="4" r="1.2"/><circle cx="9" cy="4" r="1.2"/><circle cx="3" cy="10" r="1.2"/><circle cx="9" cy="10" r="1.2"/><circle cx="3" cy="16" r="1.2"/><circle cx="9" cy="16" r="1.2"/></svg>';
 const dollar='<svg viewBox="0 0 24 24"><path d="M12 2v20M17 6.5c-1-1.2-2.5-1.8-4.5-1.8-2.7 0-4.5 1.3-4.5 3.3 0 5 9 2.5 9 7.5 0 2.2-2 3.8-5 3.8-2.2 0-4-.7-5.2-2"/></svg>';
 const more='<svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>';
+const closeMenu='<svg viewBox="0 0 24 24"><path d="M5 5l14 14M19 5 5 19"/></svg>';
 const uid=prefix=>`${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2,8)}`;
 const formatCost=value=>new Intl.NumberFormat('fa-IR').format(Number(value)||0);
 
@@ -59,7 +60,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
   function actionsHtml(list,starredMode){
     if(starredMode)return'<div class="nb-actions"><strong>ستاره‌دارها</strong></div>';
     const total=sumCost(list.items);
-    return `<div class="nb-actions"><div class="nb-project-menu-wrap"><button type="button" class="nb-more" data-menu-toggle aria-label="عملیات بیشتر" aria-expanded="${menuOpen}">${more}</button>${menuOpen?`<div class="nb-project-menu">
+    return `<div class="nb-actions">${menuOpen?'<button type="button" class="nb-menu-dismiss" data-menu-dismiss aria-label="بستن منو"></button>':''}<div class="nb-project-menu-wrap"><button type="button" class="nb-more" data-menu-toggle aria-label="${menuOpen?'بستن منو':'عملیات بیشتر'}" aria-expanded="${menuOpen}">${menuOpen?closeMenu:more}</button>${menuOpen?`<div class="nb-project-menu">
       ${actionButton('rename','ویرایش نام',notebookIcons.edit)}${actionButton('export','خروجی',notebookIcons.export)}${actionButton('trash','حذف‌شده‌ها',notebookIcons.deleted)}${actionButton('delete','حذف',notebookIcons.trash,true)}
     </div>`:''}</div><strong>${esc(list.title)}</strong><label class="nb-cost-mode ${list.showCost?'active':''}" title="نمایش هزینه"><input type="checkbox" data-cost-toggle ${list.showCost?'checked':''}><span>${dollar}</span>${list.showCost?`<b>${formatCost(total)} <small>تومان</small></b>`:''}</label></div>`;
   }
@@ -109,7 +110,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
   function bind(body){
     body.querySelectorAll('[data-list]').forEach(button=>button.onclick=()=>{repository.mutate(nb=>{nb.activeListId=button.dataset.list;});editor=null;sheetItemId=null;render();});
     body.querySelector('[data-starred]')?.addEventListener('click',()=>{repository.mutate(nb=>{nb.activeListId='__starred__';});editor=null;sheetItemId=null;render();});
-    body.querySelector('[data-add-list]')?.addEventListener('click',()=>openListPrompt({title:'افزودن پروژه جدید',placeholder:'نام پروژه',onSave:value=>{repository.mutate(nb=>{const list={id:uid('nbl'),title:value,items:[],createdAt:Date.now(),updatedAt:Date.now(),archived:false,trashed:false,showCost:false};nb.lists.push(list);nb.activeListId=list.id;});render();}}));
+    body.querySelector('[data-add-list]')?.addEventListener('click',()=>openListPrompt({title:'اضافه کردن مورد جدید',placeholder:'',onSave:value=>{repository.mutate(nb=>{const list={id:uid('nbl'),title:value,items:[],createdAt:Date.now(),updatedAt:Date.now(),archived:false,trashed:false,showCost:false};nb.lists.push(list);nb.activeListId=list.id;});render();}}));
     body.querySelector('[data-add-root]')?.addEventListener('click',()=>{editor={mode:'item',parentId:null,depth:0};render();});
     body.querySelectorAll('[data-restore]').forEach(button=>button.onclick=()=>{change(button.dataset.restore,item=>{item.done=false;item.completedAt=null;});render();});
     body.querySelectorAll('.nb-row').forEach(row=>row.onclick=event=>{const action=event.target.closest('[data-act]')?.dataset.act;if(!action)return;const id=row.closest('.nb-node').dataset.id;
@@ -120,9 +121,10 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     body.querySelector('#nbInput')?.addEventListener('keydown',event=>{if(event.key==='Escape'){editor=null;render();}});
     body.querySelector('[data-cost-toggle]')?.addEventListener('change',event=>{repository.mutate(nb=>{const list=active(nb);if(list)list.showCost=event.target.checked;});render();});
     body.querySelector('[data-menu-toggle]')?.addEventListener('click',()=>{menuOpen=!menuOpen;render();});
+    body.querySelector('[data-menu-dismiss]')?.addEventListener('click',()=>{menuOpen=false;render();});
     body.querySelectorAll('[data-project-action]').forEach(button=>button.onclick=()=>{const list=active(repository.get());if(!list)return;const action=button.dataset.projectAction;
       menuOpen=false;
-      if(action==='rename')openListPrompt({title:'ویرایش نام پروژه',placeholder:'نام پروژه',initial:list.title,onSave:value=>{repository.mutate(nb=>{const target=nb.lists.find(item=>item.id===list.id);if(target){target.title=value;target.updatedAt=Date.now();}});render();}});
+      if(action==='rename')openListPrompt({title:'ویرایش عنوان',placeholder:'',initial:list.title,onSave:value=>{repository.mutate(nb=>{const target=nb.lists.find(item=>item.id===list.id);if(target){target.title=value;target.updatedAt=Date.now();}});render();}});
       else if(action==='export')exportView.open(list,{trigger:button});
       else if(action==='delete')confirmAction('آیا این دفتر حذف شود؟',()=>deleteList(list.id));
       else if(action==='trash')openTrash();
