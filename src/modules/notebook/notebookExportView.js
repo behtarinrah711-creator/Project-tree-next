@@ -1,5 +1,6 @@
 import { loadProfile } from '../profile/profileStore.js';
 import { showToast } from '../../ui/toast.js';
+import { notebookItemCost } from '../../data/notebookRepository.js';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const money = value => new Intl.NumberFormat('fa-IR').format(Number(value) || 0);
@@ -33,13 +34,13 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
     body:documentRef.getElementById('notebookExportBody'), numbered:documentRef.getElementById('notebookExportNumbered'),
     cost:documentRef.getElementById('notebookExportCost'), signature:documentRef.getElementById('notebookExportSignature'),
     signatureHint:documentRef.getElementById('notebookExportSignatureHint'), note:documentRef.getElementById('notebookExportNote'),
-    close:documentRef.getElementById('closeNotebookExportPage'),
   });
   const rows=()=>flattenNotebookItems(list?.items || []);
-  const close=()=>{
+  const close=(fromPopState=false)=>{
     page.classList.add('hidden');
     if(/^#\/notebook\/export/i.test(String(windowRef.location?.hash||''))) windowRef.location.hash='#/notebook';
     else returnFocus?.focus?.();
+    windowRef.KarhaChildHistory?.consume?.('notebook-export',{fromPopState});
   };
   const notify=message=>showToast(message,{documentRef});
 
@@ -48,7 +49,7 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
     const e=els(), chosen=selectedRows(), nums=numbering(chosen), showCost=!!e.cost?.checked;
     let total=0;
     const body=chosen.map(row=>{
-      const amount=Number(row.item.cost)||0; total+=showCost?amount:0;
+      const amount=notebookItemCost(row.item); total+=showCost?amount:0;
       const mark=e.numbered?.checked?esc(nums.get(row.key)):'□';
       return `<tr><td class="mark">${mark}</td><td class="title" style="padding-right:${row.depth*18+6}px">${esc(row.item.text)}</td>${showCost?`<td class="cost">${money(amount)} <small>تومان</small></td>`:''}</tr>`;
     }).join('');
@@ -88,13 +89,14 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
     const pdf=documentRef.createElement('button');pdf.className='export-pdf-btn';pdf.textContent='PDF';pdf.onclick=printPdf;
     const jpeg=documentRef.createElement('button');jpeg.className='export-jpg-btn';jpeg.textContent='JPEG';jpeg.onclick=saveJpeg;
     actions.append(pdf,jpeg);e.toolbar.append(selectAll,actions);
-    e.body.innerHTML=all.length?all.map(row=>`<label class="export-row ${row.depth?'sub':''}" style="--export-depth:${row.depth}"><input type="checkbox" data-export-key="${esc(row.key)}" ${selected.has(row.key)?'checked':''}><span>${esc(row.item.text)}</span>${e.cost.checked&&row.item.cost!=null?`<span class="row-cost">${money(row.item.cost)} <small>تومان</small></span>`:''}</label>`).join(''):'<div class="mgmt-empty">مورد بازی برای خروجی وجود ندارد.</div>';
+    e.body.innerHTML=all.length?all.map(row=>`<label class="export-row ${row.depth?'sub':''}" style="--export-depth:${row.depth}"><input type="checkbox" data-export-key="${esc(row.key)}" ${selected.has(row.key)?'checked':''}><span>${esc(row.item.text)}</span>${e.cost.checked?`<span class="row-cost">${money(notebookItemCost(row.item))} <small>تومان</small></span>`:''}</label>`).join(''):'<div class="mgmt-empty">مورد بازی برای خروجی وجود ندارد.</div>';
     e.body.querySelectorAll('[data-export-key]').forEach(input=>input.onchange=()=>{input.checked?selected.add(input.dataset.exportKey):selected.delete(input.dataset.exportKey);render();});
   }
   function open(nextList,{trigger=null}={}){
     if(!nextList)return false; list=nextList;returnFocus=trigger;selected=new Set(rows().map(row=>row.key));
     const e=els(), profile=loadProfile();e.title.textContent=`خروجی: ${list.title}`;e.numbered.checked=false;e.cost.checked=false;e.signature.checked=false;e.signature.disabled=!(profile.name&&profile.signature);e.signatureHint.textContent=e.signature.disabled?'برای امضا: منو ← ثبت مشخصات':'';e.note.value='';
-    e.numbered.onchange=render;e.cost.onchange=render;e.close.onclick=close;page.classList.remove('hidden');render();return true;
+    e.numbered.onchange=render;e.cost.onchange=render;page.classList.remove('hidden');windowRef.KarhaChildHistory?.open?.('notebook-export');render();return true;
   }
+  windowRef.KarhaChildHistory?.register?.('notebook-export',{onPop:()=>close(true)});
   return {open,close,render,printPdf,saveJpeg};
 }
