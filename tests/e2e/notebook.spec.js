@@ -52,16 +52,18 @@ test('notebook restores centered tabs, rapid entry, item sheet, cost mode and fu
   await page.locator('.nb-tab[data-list="l1"]').click();
   await page.locator('.nb-row', {hasText:'ریشه'}).locator('[data-act="edit"]').click();
   await expect(page.locator('.nb-item-sheet')).toBeVisible();
-  await page.locator('#nbSheetCost').fill('250000');
+  await page.locator('#nbSheetCost').click();
+  for(const digit of '250000') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
+  await page.locator('#numpadDoneBtn').click();
   await page.locator('[data-sheet-save]').click();
-  await expect(page.locator('.nb-row', {hasText:'ریشه'}).locator('.nb-cost')).toContainText('۲۵۰٬۰۰۰');
 
-  await page.locator('.nb-cost-toggle').click();
-  await expect(page.locator('[data-cost-toggle]')).not.toBeChecked();
-  await expect(page.locator('.nb-cost')).toHaveCount(0);
-  await page.locator('.nb-cost-toggle').click();
+  await page.locator('.nb-cost-mode').click();
   await expect(page.locator('[data-cost-toggle]')).toBeChecked();
   await expect(page.locator('.nb-cost')).toHaveCount(1);
+  await expect(page.locator('.nb-row', {hasText:'ریشه'}).locator('.nb-cost')).toContainText('۲۵۰٬۰۰۰');
+  await page.locator('.nb-cost-mode').click();
+  await expect(page.locator('[data-cost-toggle]')).not.toBeChecked();
+  await expect(page.locator('.nb-cost')).toHaveCount(0);
 
   await page.locator('[data-add-root]').click();
   await page.locator('#nbInput').fill('مورد سریع یک');
@@ -74,6 +76,7 @@ test('notebook restores centered tabs, rapid entry, item sheet, cost mode and fu
   await expect(page.locator('.nb-row', {hasText:'مورد سریع دو'})).toBeVisible();
 
   await page.locator('[data-editor="cancel"]').click();
+  await page.locator('[data-menu-toggle]').click();
   await page.locator('[data-project-action="export"]').click();
   await expect(page.locator('#notebookExportPage')).toBeVisible();
   await expect(page.locator('#notebookExportNumbered')).toBeVisible();
