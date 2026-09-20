@@ -27,6 +27,17 @@ test('notebook repository never uses Project.tasks and survives empty overwrite'
   assert.equal(kept.lists[0].items[0].text, 'root');
 });
 
+test('notebook repository notifies subscribers after replace and mutate',()=>{
+  const repo=createNotebookRepository({storage:memory(),storageKey:'notify'});
+  repo.load();let calls=0;
+  const unsubscribe=repo.subscribe(()=>calls++);
+  repo.mutate(notebook=>{notebook.lists[0].title='تغییر';});
+  repo.replace(repo.get());
+  unsubscribe();
+  repo.mutate(notebook=>{notebook.lists[0].title='بعدی';});
+  assert.equal(calls,2);
+});
+
 test('recursive tree operations work at 4+ depth', () => {
   const root = createNotebookItem('p');
   let cursor = root;
