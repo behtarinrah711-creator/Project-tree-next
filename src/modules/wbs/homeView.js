@@ -95,11 +95,11 @@ function ensureTreeState(project){
   if(!key) return;
   seedCollapsed(project.id);
 }
-function scheduleTabRender(target, projectId){
+function scheduleTabRender(target, projectId, options){
   if(tabRenderFrame) cancelAnimationFrame(tabRenderFrame);
   tabRenderFrame = requestAnimationFrame(() => {
     tabRenderFrame = 0;
-    renderWbsHome(target, projectId);
+    renderWbsHome(target, projectId, options);
   });
 }
 
@@ -285,7 +285,7 @@ function openCreateWorkSheet(parentId = null){
   openCreateGroupingSheet(parentId, (...args) => wbsApi.createWorkItem(...args));
 }
 
-function openProjectFinishSheet(){
+export function openProjectFinishSheet(){
   const project = projectOf();
   if(!project) return;
   openWbsSheet({
@@ -587,10 +587,10 @@ function renderRow(item, codes, view, depth){
   return wrap;
 }
 
-export function renderWbsHome(target = document.getElementById('content'), projectId = null){
+export function renderWbsHome(target = document.getElementById('content'), projectId = null, options = {}){
   if(!target) return;
   if(target.querySelector('.wbs-row-dragging,.wbs-work-task.is-dragging')){
-    scheduleTabRender(target, projectId);
+    scheduleTabRender(target, projectId, options);
     return;
   }
   explicitProjectId = projectId || explicitProjectId;
@@ -601,6 +601,12 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     return;
   }
   ensureTreeState(project);
+  const allowedIds = Array.isArray(options.views) && options.views.length
+    ? options.views.filter(id => VIEWS.some(view => view.id === id))
+    : VIEWS.map(view => view.id);
+  const allowedViews = VIEWS.filter(view => allowedIds.includes(view.id));
+  if(!allowedIds.includes(currentView)) currentView = allowedIds.includes(options.defaultView) ? options.defaultView : allowedIds[0];
+  const rerender = () => renderWbsHome(target, project.id, options);
 
   const root = document.createElement('div');
   root.className = 'wbs-home-root'
@@ -617,7 +623,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   const tabs = document.createElement('div');
   tabs.className = 'wbs-tabs';
   tabs.setAttribute('role', 'tablist');
-  VIEWS.forEach(view => {
+  allowedViews.forEach(view => {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'wbs-tab' + (currentView === view.id ? ' active' : '');
@@ -631,19 +637,19 @@ export function renderWbsHome(target = document.getElementById('content'), proje
       if(currentView === view.id) return;
       currentView = view.id;
       if(view.id === 'tree') currentTreeMode = DEFAULT_TREE_MODE;
-      scheduleTabRender(target, project.id);
+      scheduleTabRender(target, project.id, options);
     });
     tabs.appendChild(btn);
   });
   root.appendChild(tabs);
 
   if(currentView === 'today'){
-    root.appendChild(renderTodayView(project, document, render));
+    root.appendChild(renderTodayView(project, document, rerender));
     return;
   }
 
   if(currentView === 'shopping'){
-    root.appendChild(renderShoppingView(project, document, render));
+    root.appendChild(renderShoppingView(project, document, rerender));
     return;
   }
 
@@ -674,7 +680,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   treeToggle.innerHTML = `<svg class="wbs-expand-shade" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect width="1" height="1" fill="currentColor" opacity="${expansionProgress.ratio}"/></svg>${materialIcon(EXPAND_ICON)}`;
   treeToggle.addEventListener('click', () => {
     advanceExpansionLevel(project.id, project.tasks || []);
-    renderWbsHome(target, project.id);
+    renderWbsHome(target, project.id, options);
   });
   toolbar.append(addRoot, treeToggle);
   if(currentView !== 'timeline' && currentView !== 'costline') root.appendChild(toolbar);
@@ -682,7 +688,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   if(currentView === 'tree'){
     root.appendChild(createTreeModeTabs(document, currentTreeMode, mode => {
       currentTreeMode = mode;
-      scheduleTabRender(target, project.id);
+      scheduleTabRender(target, project.id, options);
     }));
   }
 

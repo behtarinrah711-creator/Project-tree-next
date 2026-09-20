@@ -30,15 +30,15 @@ test.beforeEach(async ({ page }) => {
   await page.waitForFunction(() => Boolean(window.KarhaLegacy && window.KarhaApp));
 });
 
-test('Projects remains active and its drawer list survives every footer round trip', async ({ page }) => {
-  const projects = page.locator('#bottomProjectsBtn');
+test('Home remains active and its drawer list survives every footer round trip', async ({ page }) => {
+  const home = page.locator('#bottomHomeBtn');
   const drawer = page.locator('#drawerOverlay');
   const projectRow = page.locator(
     '#drawerProjectList .drawer-project-row[data-project-id="e2e-footer-project"]'
   );
 
   const assertProjectsHome = async () => {
-    await expect(projects).toHaveClass(/\bactive\b/);
+    await expect(home).toHaveClass(/\bactive\b/);
     await page.locator('#topbarTitle').click();
     await expect(drawer).not.toHaveClass(/\bhidden\b/);
     await expect(projectRow).toBeVisible();
@@ -53,11 +53,11 @@ test('Projects remains active and its drawer list survives every footer round tr
 
   await assertProjectsHome();
 
-  for (const destination of ['Reports', 'Accounting', 'Settings']) {
+  for (const destination of ['Planning', 'Execution', 'Reports', 'Financial']) {
     const destinationButton = page.locator(`#bottom${destination}Btn`);
     await destinationButton.click();
     await expect(destinationButton).toHaveClass(/\bactive\b/);
-    await projects.click();
+    await home.click();
     await assertProjectsHome();
   }
 });

@@ -80,7 +80,7 @@ function openProjectTrashPage(){
 
 function refreshCurrentFooterPage(){
   const active=document.querySelector('.bottom-nav-item.active');
-  if(!active || active.id==='bottomProjectsBtn'){
+  if(!active || active.id==='bottomHomeBtn' || active.id==='bottomPlanningBtn' || active.id==='bottomExecutionBtn'){
     if(!document.querySelector('.page-overlay:not(.hidden)')) renderAll();
     return;
   }
@@ -88,16 +88,8 @@ function refreshCurrentFooterPage(){
   if(active.id==='bottomReportsBtn'){
     workspaceSubpage=null; showOnlyWorkspacePage('reportsPage'); renderReportsWorkspace(); updateWorkspaceContextBar(); return;
   }
-  if(active.id==='bottomAccountingBtn'){
+  if(active.id==='bottomFinancialBtn'){
     workspaceSubpage=null; showOnlyWorkspacePage('accountingPage'); renderAccountingWorkspace(); updateWorkspaceContextBar(); return;
-  }
-  if(active.id==='bottomSettingsBtn'){
-    if(workspaceSubpage==='projectTrash'){
-      showOnlyWorkspacePage('projectTrashPage'); renderProjectTrashPage();
-    } else {
-      workspaceSubpage=null; showOnlyWorkspacePage('settingsPage'); renderSettingsWorkspace();
-    }
-    updateWorkspaceContextBar(); return;
   }
   renderAll();
 }
@@ -172,7 +164,7 @@ const projectManagementView=window.KarhaApp.createProjectManagementView({
 function renderManagementPage(){ return projectManagementView.render(); }
 function openProjectsPage(){
   menuRootMode='projects'; projectManagementView.reset();
-  closeBottomPages(); enterWorkspaceSurface(); ensureHomeSelection(); setBottomNavActive('Projects');
+  closeBottomPages(); enterWorkspaceSurface(); ensureHomeSelection(); setBottomNavActive('Home');
   pushMenuRootHistory('projects'); showOnlyWorkspacePage('projectsPage'); updateWorkspaceContextBar(); renderManagementPage();
 }
 

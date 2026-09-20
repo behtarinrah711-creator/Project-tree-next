@@ -18,7 +18,7 @@ const project={id:'e2e-today',name:'پروژه امروز',location:'تهران'
 
 test.beforeEach(async({page})=>{
   await page.addInitScript(seed=>{localStorage.clear();localStorage.setItem('ptnext-v1:app-data',JSON.stringify({schemaVersion:8,projects:[seed],activeTab:seed.id,viewMode:'simple',starredOrder:[]}));},project);
-  await page.goto('/index.html#/projects/e2e-today/dashboard');
+  await page.goto('/index.html#/projects/e2e-today/execution');
   await page.waitForFunction(()=>Boolean(window.KarhaLegacy&&window.KarhaApp));
   await page.locator('.wbs-tab[aria-label="کارهای امروز"]').click();
 });

@@ -16,12 +16,11 @@ test('route Back/Forward and footer navigation share browser session history',as
   await page.locator('#bottomReportsBtn').click();
   await expect(page).toHaveURL(/\/reports$/);
   await expect(page.locator('#topbarTitle .app-title-main')).toHaveText('History matrix');
-  await expect(page.locator('#workspaceProjectContext')).toBeVisible();
-  await expect(page.locator('#workspaceProjectName')).toHaveText('گزارش');
+  await expect(page.locator('#workspaceProjectContext')).toBeHidden();
   await expect(page.locator('#reportsPage > .wbs-view-header')).toHaveCount(0);
-  await page.locator('#bottomSettingsBtn').click();
+  await page.locator('#projectSettingsTrigger').click();
   await expect(page).toHaveURL(/\/people$/);
-  await expect(page.locator('#workspaceProjectName')).toHaveText('تنظیمات');
+  await expect(page.locator('#workspaceProjectContext')).toBeHidden();
   await expect(page.locator('#settingsPage > .wbs-view-header')).toHaveCount(0);
 
   await page.goBack();
@@ -41,7 +40,7 @@ test('route Back/Forward and footer navigation share browser session history',as
 test('rapid legitimate Back Forward Back dispatches one logical route each time',async({page})=>{
   const errors=[];page.on('pageerror',error=>errors.push(error.message));
   await page.locator('#bottomReportsBtn').click();
-  await page.locator('#bottomAccountingBtn').click();
+  await page.locator('#bottomFinancialBtn').click();
   await page.goBack();
   await page.goForward();
   await page.goBack();

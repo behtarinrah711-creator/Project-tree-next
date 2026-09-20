@@ -33,7 +33,7 @@ test.beforeEach(async ({ page }) => {
       starredOrder: [],
     }));
   }, project);
-  await page.goto('/index.html#/projects/e2e-wbs-shopping/dashboard');
+  await page.goto('/index.html#/projects/e2e-wbs-shopping/execution');
   await page.waitForFunction(() => Boolean(window.KarhaLegacy && window.KarhaApp));
 });
 

@@ -31,17 +31,17 @@ test('contract list resolves the current project when render has no explicit id'
   assert.match(body.children[0].innerHTML,/قراردادهای واقعی پیمانکاران/);
 });
 
-test('dashboard renders hydrated tasks from the canonical AppDataStore snapshot', async () => {
+test('planning renders hydrated tasks from the canonical AppDataStore snapshot', async () => {
   const content=element();
   const liveProject={id:'p-live',tasks:[{id:'task-live',text:'live',done:false,subtasks:[]}]};
-  window.location.hash='#/projects/p-live/dashboard';
+  window.location.hash='#/projects/p-live/planning';
   window.localStorage={getItem:()=>JSON.stringify({projects:[{id:'p-live',tasks:[]}]})};
   window.KarhaAppData=createAppDataStore({storage:window.localStorage});
   window.KarhaAppData.replaceSnapshot({projects:[liveProject]});
   window.KarhaLegacy={ getViewMode:()=> 'simple' };
   document.getElementById=id=>id==='content'?content:null;
-  const { dashboardModule }=await import(`./dashboard/dashboardModule.js?regression=${Date.now()}`);
+  const { default: planningModule }=await import(`./planning/index.js?regression=${Date.now()}`);
 
-  dashboardModule.render('p-live');
+  planningModule.mount({projectId:'p-live'});
   assert.match(JSON.stringify(content.children), /ثبت|live|wbs/);
 });

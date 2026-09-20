@@ -5,15 +5,16 @@ const WORKSPACE_PAGE_IDS = Object.freeze([
 ]);
 
 const FOOTER_MODULES = Object.freeze({
-  bottomProjectsBtn: ['dashboard', null],
+  bottomHomeBtn: ['dashboard', null],
+  bottomPlanningBtn: ['planning', null],
+  bottomExecutionBtn: ['execution', null],
   bottomReportsBtn: ['reports', 'reports-root'],
-  bottomAccountingBtn: ['accounting', 'accounting'],
-  bottomSettingsBtn: ['people', 'settings-root'],
+  bottomFinancialBtn: ['accounting', 'accounting'],
 });
 
 const SECTION_TITLES = Object.freeze({
   Reports: 'گزارش',
-  Accounting: 'حسابداری',
+  Financial: 'مالی',
   Settings: 'تنظیمات',
 });
 
@@ -79,7 +80,7 @@ export function installWorkspaceChrome({
 
   function activeFooter(){
     const active = documentRef.querySelector?.('.bottom-nav-item.active');
-    return active?.id?.replace(/^bottom/,'').replace(/Btn$/,'') || 'Projects';
+    return active?.id?.replace(/^bottom/,'').replace(/Btn$/,'') || 'Home';
   }
 
   function syncWorkspacePageTop(){
@@ -101,6 +102,7 @@ export function installWorkspaceChrome({
     const topbar = get('topbar');
     const topbarMain = get('topbarTitle')?.querySelector?.('.app-title-main');
     const topbarProject = get('topbarProjectName');
+    const settingsTrigger = get('projectSettingsTrigger');
     if(!context || !contextName) return;
 
     const key = activeFooter();
@@ -116,6 +118,7 @@ export function installWorkspaceChrome({
     documentRef.body?.classList?.toggle?.('global-surface', !!rootTitle);
     setProjectFooterMounted(!rootTitle);
     if(rootTitle){
+      if(settingsTrigger) settingsTrigger.hidden = true;
       topbar?.classList?.remove?.('workspace-context');
       topbar?.classList?.remove?.('root-workspace-context');
       get('topbarTitle')?.classList?.add?.('global-menu-context');
@@ -133,13 +136,15 @@ export function installWorkspaceChrome({
       return;
     }
 
-    const isWorkspace = key !== 'Projects';
+    if(settingsTrigger) settingsTrigger.hidden = !state.project;
+
+    const isWorkspace = !['Home','Planning','Execution'].includes(key);
     topbar?.classList?.remove?.('workspace-context');
     topbar?.classList?.remove?.('root-workspace-context');
     get('topbarTitle')?.classList?.remove?.('global-menu-context');
     get('topbarTitle')?.classList?.remove?.('notebook-context');
     const subpage = state.workspaceSubpage || null;
-    const sectionTitle = SECTION_TITLES[key] || (key === 'Projects' && subpage === 'archive' ? 'آرشیو شده ها' : '');
+    const sectionTitle = SECTION_TITLES[key] || (key === 'Home' && subpage === 'archive' ? 'آرشیو شده ها' : '');
     if(topbarMain) topbarMain.textContent = state.project?.name || 'پروژه‌ها';
     if(topbarProject) topbarProject.textContent = '';
     get('topbarTitle')?.classList?.toggle?.('has-active-project', !!state.project?.name);
@@ -158,10 +163,10 @@ export function installWorkspaceChrome({
 
     let subTitle = INNER_SECTION_SUBPAGES.has(subpage) ? '' : sectionTitle;
     if(!INNER_SECTION_SUBPAGES.has(subpage)){
-      if(key === 'Accounting' && (subpage === 'statusList' || subpage === 'statusForm')) subTitle = 'صورت وضعیت';
+      if(key === 'Financial' && (subpage === 'statusList' || subpage === 'statusForm')) subTitle = 'صورت وضعیت';
       else if(key === 'Settings' && subpage === 'collab') subTitle = 'همکاران پروژه';
     }
-    const showSubpageBar = !!subTitle;
+    const showSubpageBar = !!subpage && !!subTitle;
     context.hidden = !showSubpageBar;
     context.classList.toggle('subpage-context', showSubpageBar);
     context.setAttribute('aria-hidden', showSubpageBar ? 'false' : 'true');
@@ -182,13 +187,13 @@ export function installWorkspaceChrome({
 
   function setBottomNavActive(requestedKey){
     const state = getPresentationState() || {};
-    const key = state.menuRootMode ? 'Projects' : requestedKey;
+    const key = state.menuRootMode ? 'Home' : requestedKey;
     // Re-mount first so project footer controls participate in this update.
     // Global destinations are detached again by updateWorkspaceContextBar().
     setProjectFooterMounted(true);
     documentRef.querySelectorAll?.('.bottom-nav-item')?.forEach?.(item => item.classList?.remove?.('active'));
     get(`bottom${key}Btn`)?.classList?.add?.('active');
-    const isWorkspace = key !== 'Projects';
+    const isWorkspace = !['Home','Planning','Execution'].includes(key);
     get('topbar')?.classList?.remove?.('workspace-context');
     get('tabbar')?.setAttribute?.('aria-hidden', isWorkspace ? 'true' : 'false');
     get('bottomNav')?.classList?.remove?.('starred-disabled');
@@ -198,7 +203,7 @@ export function installWorkspaceChrome({
   function applyRoute(moduleId, surface){
     if(surface?.pageId) showOnlyWorkspacePage(surface.pageId);
     else hideAllWorkspacePages();
-    setBottomNavActive(surface?.footer || 'Projects');
+    setBottomNavActive(surface?.footer || 'Home');
     renderDrawerProjectList();
     updateWorkspaceContextBar();
     return surface;

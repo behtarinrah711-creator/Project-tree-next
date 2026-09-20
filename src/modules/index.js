@@ -1,5 +1,7 @@
 import './export/recursiveProjectExport.js';
 import dashboard from './dashboard/index.js';
+import planning from './planning/index.js';
+import execution from './execution/index.js';
 import contracts from './contracts/index.js';
 import accounting from './accounting/index.js';
 import reports from './reports/index.js';
@@ -12,6 +14,6 @@ import { CONDEMNED_MODULE_IDS, isCondemnedModuleId } from './condemned/index.js'
  * Phase 5: condemned modules are not registered.
  * letters | minutes | purchases | statuses remain on disk only.
  */
-export const projectModules = [dashboard, contracts, accounting, reports, people, activities, projectSettings];
+export const projectModules = [dashboard, planning, execution, contracts, accounting, reports, people, activities, projectSettings];
 
 export { CONDEMNED_MODULE_IDS, isCondemnedModuleId };

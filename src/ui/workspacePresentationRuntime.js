@@ -72,9 +72,9 @@ function renderAll(){
     });
     return;
   }
-  setBottomNavActive('Projects');
+  setBottomNavActive('Home');
   renderTabs();
-  setBottomNavActive(document.querySelector('.bottom-nav-item.active')?.id?.replace(/^bottom/,'').replace(/Btn$/,'') || 'Projects');
+  setBottomNavActive(document.querySelector('.bottom-nav-item.active')?.id?.replace(/^bottom/,'').replace(/Btn$/,'') || 'Home');
   renderModeToggle();
   content.innerHTML = '';
   if(getActiveTab() === 'starred'){
@@ -155,7 +155,7 @@ function goHomeProjects(){
   ensureHomeSelection();
   menuRootMode = null;
   menuRootPage = null;
-  setBottomNavActive('Projects');
+  setBottomNavActive('Home');
   enterProjectsSurface();
 }
 
