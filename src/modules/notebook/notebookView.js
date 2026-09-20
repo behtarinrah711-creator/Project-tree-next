@@ -97,7 +97,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
       ${actionsHtml(list,starredMode)}<main class="nb-list">${empty&&!starredMode?addRootButton:''}${content||`<div class="nb-empty">${starredMode?'هنوز چیزی ستاره‌دار نشده است.':'هنوز موردی در این دفتر نیست.'}</div>`}${editor?.mode==='item'&&!editor.parentId?editorHtml():''}</main>
       ${!starredMode&&!empty?addRootButton:''}<details class="nb-completed"><summary><span>انجام‌شده‌ها (${completed.length.toLocaleString('fa-IR')})</span></summary>${completed.length?'<button type="button" class="nb-clear-completed" data-clear-completed>حذف همه</button>':''}${completedRows}</details>
       ${editor?.mode!=='item'?editorHtml():''}${sheetHtml()}${listPromptHtml()}</div>`;
-    bind(body);queueMicrotask(()=>{if(editor)body.querySelector('#nbInput')?.focus();if(listPrompt)body.querySelector('#nbPromptInput')?.focus();centerActiveTab({smooth:false});});
+    bind(body,{starredMode});queueMicrotask(()=>{if(editor)body.querySelector('#nbInput')?.focus();if(listPrompt)body.querySelector('#nbPromptInput')?.focus();centerActiveTab({smooth:false});});
   }
   function saveInline(body,{continueEntry=false}={}){
     const value=body.querySelector('#nbInput')?.value.trim();if(!value)return;
@@ -113,7 +113,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     change(sheetItemId,item=>{item.text=name;item.cost=raw===''?null:Number(raw);});sheetItemId=null;render();
   }
   function deleteList(listId){repository.mutate(nb=>{const list=nb.lists.find(item=>item.id===listId);if(list){list.trashed=true;list.deletedAt=Date.now();list.updatedAt=Date.now();}ensureActive(nb);});editor=null;sheetItemId=null;render();}
-  function bind(body){
+  function bind(body,{starredMode=false}={}){
     body.querySelectorAll('[data-list]').forEach(button=>button.onclick=()=>{repository.mutate(nb=>{nb.activeListId=button.dataset.list;});editor=null;sheetItemId=null;render();});
     body.querySelector('[data-starred]')?.addEventListener('click',()=>{repository.mutate(nb=>{nb.activeListId='__starred__';});editor=null;sheetItemId=null;render();});
     body.querySelector('[data-add-list]')?.addEventListener('click',()=>openListPrompt({title:'اضافه کردن مورد جدید',placeholder:'',onSave:value=>{repository.mutate(nb=>{const list={id:uid('nbl'),title:value,items:[],createdAt:Date.now(),updatedAt:Date.now(),archived:false,trashed:false,showCost:false};nb.lists.push(list);nb.activeListId=list.id;});render();}}));
