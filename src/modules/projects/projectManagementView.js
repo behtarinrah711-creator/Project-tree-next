@@ -5,7 +5,7 @@ const {document,getData,projectsVisibleForAuth,isPendingDeleted,svgGrip,svgTrash
   setActiveTab,getActiveTab,cloudSyncProjectStatus,refreshWorkspace,showToast,
   openExportPage,openConfirm,softDelete,undoPendingDelete,persist,
   permanentlyDeleteProject}=deps;
-let managementProjectTab='all';
+let managementProjectTab='active';
 function render(){
   const body = document.getElementById('projectsPageBody');
   if(!body) return;
@@ -16,11 +16,10 @@ function render(){
   const active = visible.filter(p => !p.trashed && !p.archived && !isPendingDeleted('project',p.id));
   const archived = visible.filter(p => p.archived && !p.trashed && !isPendingDeleted('project',p.id));
   const deleted = visible.filter(p => p.trashed || isPendingDeleted('project',p.id));
-  const allCount = active.length + archived.length + deleted.length;
 
   const tabs=document.createElement('div');
   tabs.className='mgmt-project-tabs';
-  const tabDefs=[['all','نمایش همه',allCount],['archived','آرشیو شده ها',archived.length],['deleted','حذف شده ها',deleted.length]];
+  const tabDefs=[['active','فعال',active.length],['archived','آرشیو شده ها',archived.length],['deleted','حذف شده ها',deleted.length]];
   tabDefs.forEach(([key,label,count])=>{
     const b=document.createElement('button');
     b.type='button';
@@ -119,11 +118,8 @@ function render(){
     const wrap=document.createElement('div'); wrap.className='mgmt-list-wrap'; items.forEach(p=>wrap.appendChild(makeRow(p,mode))); body.appendChild(wrap);
   }
 
-  if(managementProjectTab==='all'){
-    appendSection('پروژه‌های فعال',active,'active');
-    appendSection('آرشیو شده ها',archived,'archived');
-    appendSection('حذف شده ها',deleted,'deleted');
-  }else if(managementProjectTab==='archived') appendSection('آرشیو شده ها',archived,'archived');
+  if(managementProjectTab==='active') appendSection('پروژه‌های فعال',active,'active');
+  else if(managementProjectTab==='archived') appendSection('آرشیو شده ها',archived,'archived');
   else appendSection('حذف شده ها',deleted,'deleted');
 }
 
@@ -194,6 +190,6 @@ function onProjDragEnd(){
 }
 
 
-return { render, reset(){ managementProjectTab='all'; }, setTab(value){ managementProjectTab=value; }, getTab(){ return managementProjectTab; } };
+return { render, reset(){ managementProjectTab='active'; }, setTab(value){ managementProjectTab=value; }, getTab(){ return managementProjectTab; } };
 }
 export default createProjectManagementView;

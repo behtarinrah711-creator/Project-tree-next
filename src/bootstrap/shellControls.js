@@ -135,6 +135,7 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     const drawerAvatarDefault = byId(documentRef, 'drawerAvatarDefaultIcon');
     const drawerAccountName = byId(documentRef, 'drawerAccountName');
     const drawerAccountSub = byId(documentRef, 'drawerAccountSub');
+    const drawerAuthHint = byId(documentRef, 'drawerAuthHint');
     const photo = user?.photoURL || '';
     [avatarImg, drawerAvatarImg].forEach(img => {
       if(!img) return;
@@ -148,6 +149,7 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
       signin.textContent = user ? 'خروج از حساب' : 'ورود با گوگل';
       signin.dataset.authAction = user ? 'signout' : 'signin';
     }
+    drawerAuthHint?.classList?.toggle?.('hidden', !!user);
     avatar?.classList.toggle('is-guest', !user);
     avatar?.setAttribute('aria-label', user ? 'حساب کاربری' : 'ورود');
   };
@@ -217,6 +219,7 @@ export function bindShellControls({ windowRef = window, documentRef = document }
   });
   byId(documentRef, 'globalNotebookBtn')?.addEventListener?.('click', () => {
     closeProjectMenu();
+    windowRef.KarhaWorkspaceChrome?.closeBottomPages?.();
     windowRef.dispatchEvent(new windowRef.CustomEvent('karha:open-notebook'));
   });
   byId(documentRef, 'drawerProfileBtn')?.addEventListener?.('click', closeProjectMenu);

@@ -52,12 +52,12 @@ test('project drawer keeps management below the project list', () => {
   const list = html.indexOf('id="drawerProjectList"');
   const management = html.indexOf('id="drawerProjectsBtn"');
   const notebook = html.indexOf('id="globalNotebookBtn"');
-  assert.ok(account < add && add < title && title < list && list < management && management < profile && profile < notebook && notebook < signin);
+  assert.ok(account < signin && signin < add && add < title && title < list && list < management && management < profile && profile < notebook);
   const drawerCss = read('src/styles/index.css');
   assert.match(drawerCss, /#drawerOverlay #drawerProjectsBtn\s*\{[^}]*order:4;/s);
   assert.match(drawerCss, /#drawerOverlay #drawerProfileBtn\{order:5;\}/);
   assert.match(drawerCss, /#drawerOverlay #globalNotebookBtn\{order:6;\}/);
-  assert.match(drawerCss, /#drawerOverlay #drawerSigninBtn\{order:7;/);
+  assert.match(drawerCss, /#drawerOverlay #drawerSigninBtn\{margin:0;color:#4285f4;border-color:#4285f4;\}/);
   assert.match(drawerCss, /#drawerOverlay #drawerProfileBtn,[\s\S]*#drawerOverlay #globalNotebookBtn\{[\s\S]*margin:0;/);
   assert.match(drawerCss, /#drawerOverlay #globalNotebookBtn\{margin-bottom:12px;\}/);
   assert.doesNotMatch(drawerCss, /#drawerOverlay > \.drawer > \.drawer-section-title\{[^}]*border-top:/s);

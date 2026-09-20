@@ -12,8 +12,11 @@
   }
   .drawer-account{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
   .avatar-circle.big{width:44px;height:44px;}
+  .drawer-account-info{flex:1;min-width:0;}
   .drawer-account-name{font-size:15px;font-weight:600;}
   .drawer-account-sub{font-size:12.5px;color:var(--text-dim);}
+  .drawer-account-access{display:flex;align-items:center;gap:8px;margin-top:3px;}
+  .drawer-auth-hint{margin-top:6px;color:var(--danger);font-size:10.5px;line-height:1.5;}
   .drawer-signin-btn{
     width:100%;padding:11px;border-radius:8px;border:1px solid var(--divider);
     background:var(--surface);color:var(--green);font-family:inherit;font-size:14px;font-weight:600;
@@ -92,15 +95,19 @@
   }
 
 
-  /* Account action is the final drawer item; no card border/background. */
+  /* Account action lives beside the guest status for immediate sign-in. */
   .drawer-account-action{
-    margin-top:auto;
-    margin-bottom:0;
-    border:0;
-    border-radius:0;
+    width:auto;
+    min-height:30px;
+    margin:0;
+    padding:4px 9px;
+    border:1px solid #4285f4;
+    border-radius:999px;
     background:transparent;
-    justify-content:flex-start;
-    padding-inline:4px;
+    color:#4285f4;
+    justify-content:center;
+    font-size:11px;
+    white-space:nowrap;
   }
-  .drawer-account-action:active{background:transparent;}
-  .drawer-account-action[data-auth-action="signout"]{color:var(--danger);}
+  .drawer-account-action:active{background:#4285f414;}
+  .drawer-account-action[data-auth-action="signout"]{color:var(--danger);border-color:var(--danger);}

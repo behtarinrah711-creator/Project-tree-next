@@ -57,6 +57,7 @@ function harness({user=null,popupErrors=[],redirectErrors=[]}={}){
     dispatchEvent:event=>events.push(event),
     setTimeout:fn=>{ fn(); return 1; },
     location:{hostname:'behtarinrah711-creator.github.io'},
+    KarhaWorkspaceChrome:{closeBottomPages(){ events.push({type:'close-bottom-pages'}); }},
   };
   return {elements,auth,events,windowRef,documentRef:{getElementById:id=>elements[id]}};
 }
@@ -126,4 +127,11 @@ test('project title opens the one unified right drawer without a redundant avata
   await h.elements.topbarTitle.click();
   assert.equal(h.elements.drawerOverlay.classList.contains('hidden'),false);
   assert.equal(h.documentRef.getElementById('avatarBtn'),undefined);
+});
+
+test('opening notebook closes a previously visible workspace page first',async()=>{
+  const h=harness();
+  bindShellControls(h);
+  await h.elements.globalNotebookBtn.click();
+  assert.deepEqual(h.events.map(event=>event.type),['close-bottom-pages','karha:open-notebook']);
 });

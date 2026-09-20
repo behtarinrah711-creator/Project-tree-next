@@ -8,7 +8,11 @@ test('management renders canonical projects and delegates archive/restore/delete
   const view=createProjectManagementView({document:{createElement:node,addEventListener(){},removeEventListener(){},getElementById:id=>id==='projectsPageBody'?body:null},getData:()=>({projects}),projectsVisibleForAuth:x=>x,isPendingDeleted:()=>false,svgGrip:()=>'',svgTrash:()=>'',
     openMiniPrompt(){},renameProject(){return {ok:true};},cloudRenameProject(){},findProject:id=>projects.find(p=>p.id===id),archiveProject:(id,v)=>calls.push(['archive',id,v]),setActiveTab(){},getActiveTab:()=>null,
     cloudSyncProjectStatus(){},refreshWorkspace(){},showToast(){},openExportPage(){},openConfirm(_t,cb){cb();},softDelete:(...x)=>calls.push(['softDelete',...x]),undoPendingDelete(){},persist(){},permanentlyDeleteProject:async p=>{calls.push(['permanent',p.id]);return true;}});
-  view.render(); assert.match(flatten(body).map(x=>x.textContent).join('|'),/Active.*Archived.*Deleted/);
+  view.render();
+  const initial=flatten(body).map(x=>x.textContent).join('|');
+  assert.match(initial,/فعال.*Active/);
+  assert.doesNotMatch(initial,/Archived|Deleted/);
+  assert.equal(view.getTab(),'active');
   flatten(body).find(x=>x.title==='آرشیو').onclick();
   assert.deepEqual(calls[0],['archive','A',true]);
   view.setTab('deleted'); view.render(); const restore=flatten(body).find(x=>x.textContent==='بازگردانی'); restore.onclick(); assert.equal(projects[2].trashed,false);
