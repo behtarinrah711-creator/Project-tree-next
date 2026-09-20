@@ -58,6 +58,7 @@ test('project drawer keeps management below the project list', () => {
   assert.match(drawerCss, /#drawerOverlay #drawerProfileBtn\{order:5;\}/);
   assert.match(drawerCss, /#drawerOverlay #globalNotebookBtn\{order:6;\}/);
   assert.match(drawerCss, /#drawerOverlay #drawerSigninBtn\{margin:0;color:#4285f4;border-color:#4285f4;\}/);
+  assert.match(drawerCss, /#drawerOverlay > \.drawer > #drawerSigninBtn\[data-auth-action="signout"\]\{order:7;align-self:flex-start;margin:0;\}/);
   assert.match(drawerCss, /#drawerOverlay #drawerProfileBtn,[\s\S]*#drawerOverlay #globalNotebookBtn\{[\s\S]*margin:0;/);
   assert.match(drawerCss, /#drawerOverlay #globalNotebookBtn\{margin-bottom:12px;\}/);
   assert.doesNotMatch(drawerCss, /#drawerOverlay > \.drawer > \.drawer-section-title\{[^}]*border-top:/s);
