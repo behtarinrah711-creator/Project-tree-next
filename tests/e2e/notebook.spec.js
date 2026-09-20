@@ -153,7 +153,6 @@ test('clear completed removes completed families in notebook and starred views',
   await page.locator('.nb-row',{hasText:'ریشه'}).locator('[data-act="done"]').click();
   await page.locator('.nb-completed summary').click();
   await page.locator('[data-clear-completed]').click();
-  await page.locator('#confirmOkBtn').click();
   await expect(page.locator('.nb-done-row')).toHaveCount(0);
 
   await page.locator('[data-starred]').click();
