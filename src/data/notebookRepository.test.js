@@ -2,7 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   collectCompleted, collectStarred, collectTrashed, createEmptyNotebook, createNotebookItem,
-  createNotebookRepository, findNotebookItem, sumCost, walkNotebookItems,
+  canCompleteNotebookItem, createNotebookRepository, findNotebookItem, notebookItemCost,
+  notebookItemCostLocked, sumCost, walkNotebookItems,
 } from './notebookRepository.js';
 
 function memory(){
@@ -67,5 +68,28 @@ test('legacy notebook lists gain non-destructive project controls', () => {
   const list=repo.load().lists[0];
   assert.equal(list.archived,false);
   assert.equal(list.trashed,false);
-  assert.equal(list.showCost,true);
+  assert.equal(list.showCost,false);
+});
+
+test('parent cost rolls up descendants without double counting manual parent cost',()=>{
+  const parent=createNotebookItem('parent');parent.cost=900;
+  const first=createNotebookItem('first');first.cost=200;
+  const second=createNotebookItem('second');second.cost=300;
+  parent.children.push(first,second);
+  assert.equal(notebookItemCost(parent),500);
+  assert.equal(sumCost([parent]),500);
+  assert.equal(notebookItemCostLocked(parent),true);
+  first.cost=0;second.cost=null;
+  assert.equal(notebookItemCost(parent),900);
+  assert.equal(notebookItemCostLocked(parent),false);
+});
+
+test('a parent can complete only after every active child is complete',()=>{
+  const parent=createNotebookItem('parent');
+  const child=createNotebookItem('child');parent.children.push(child);
+  assert.equal(canCompleteNotebookItem(parent),false);
+  child.done=true;
+  assert.equal(canCompleteNotebookItem(parent),true);
+  child.trashed=true;
+  assert.equal(canCompleteNotebookItem(parent),true);
 });
