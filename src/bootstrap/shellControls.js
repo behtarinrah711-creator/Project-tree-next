@@ -136,6 +136,8 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     const drawerAccountName = byId(documentRef, 'drawerAccountName');
     const drawerAccountSub = byId(documentRef, 'drawerAccountSub');
     const drawerAuthHint = byId(documentRef, 'drawerAuthHint');
+    const drawer = documentRef?.querySelector?.('#drawerOverlay > .drawer');
+    const accountAccess = documentRef?.querySelector?.('.drawer-account-access');
     const photo = user?.photoURL || '';
     [avatarImg, drawerAvatarImg].forEach(img => {
       if(!img) return;
@@ -148,6 +150,8 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     if(signin){
       signin.textContent = user ? 'خروج از حساب' : 'ورود با گوگل';
       signin.dataset.authAction = user ? 'signout' : 'signin';
+      if(user) drawer?.appendChild?.(signin);
+      else accountAccess?.appendChild?.(signin);
     }
     drawerAuthHint?.classList?.toggle?.('hidden', !!user);
     avatar?.classList.toggle('is-guest', !user);
