@@ -139,3 +139,30 @@ test('notebook keeps stars and completed items in parent-child families', async 
   await expect(page.locator('.nb-row',{hasText:'فرزند یک'})).toBeVisible();
   await expect(page.locator('.nb-row',{hasText:'فرزند دو'})).toBeVisible();
 });
+
+test('empty notebook puts add action directly below its title bar',async({page})=>{
+  await page.evaluate(()=>{
+    const notebook=JSON.parse(localStorage.getItem('ptnext-v1:notebook'));
+    notebook.lists[0].items=[];
+    localStorage.setItem('ptnext-v1:notebook',JSON.stringify(notebook));
+  });
+  await page.reload();
+  await page.waitForFunction(()=>Boolean(window.KarhaLegacy&&window.KarhaApp));
+  await page.locator('#topbarTitle').click();
+  await page.locator('#globalNotebookBtn').click();
+  await expect(page.locator('.nb-actions + .nb-list > [data-add-root]')).toBeVisible();
+  await expect(page.locator('.nb-list > [data-add-root]')).toHaveText(/افزودن مورد جدید/);
+});
+
+test('clear completed removes completed families in notebook and starred views',async({page})=>{
+  await page.locator('.nb-row',{hasText:'ریشه'}).locator('[data-act="star"]').click();
+  await page.locator('.nb-row',{hasText:'ریشه'}).locator('[data-act="done"]').click();
+  await page.locator('.nb-completed summary').click();
+  await page.locator('[data-clear-completed]').click();
+  await page.locator('#confirmOkBtn').click();
+  await expect(page.locator('.nb-done-row')).toHaveCount(0);
+
+  await page.locator('[data-starred]').click();
+  await expect(page.locator('.nb-completed summary')).toContainText('۰');
+  await expect(page.locator('.nb-done-row')).toHaveCount(0);
+});
