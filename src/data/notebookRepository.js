@@ -170,6 +170,21 @@ export function restoreNotebookFamily(item){
   return item;
 }
 
+export function trashCompletedItems(items,{starredOnly=false,timestamp=now()}={}){
+  let count=0;
+  const visit=item=>{
+    if(item.trashed)return;
+    if(item.done&&(!starredOnly||item.starred)){
+      walkNotebookItems([item],node=>{node.trashed=true;node.deletedAt=timestamp;});
+      count++;
+      return;
+    }
+    for(const child of item.children||[])visit(child);
+  };
+  for(const item of items||[])visit(item);
+  return count;
+}
+
 export function collectTrashed(notebook){
   const out = [];
   for(const list of notebook.lists || []){

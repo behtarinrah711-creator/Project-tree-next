@@ -141,15 +141,9 @@ test('notebook keeps stars and completed items in parent-child families', async 
 });
 
 test('empty notebook puts add action directly below its title bar',async({page})=>{
-  await page.evaluate(()=>{
-    const notebook=JSON.parse(localStorage.getItem('ptnext-v1:notebook'));
-    notebook.lists[0].items=[];
-    localStorage.setItem('ptnext-v1:notebook',JSON.stringify(notebook));
-  });
-  await page.reload();
-  await page.waitForFunction(()=>Boolean(window.KarhaLegacy&&window.KarhaApp));
-  await page.locator('#topbarTitle').click();
-  await page.locator('#globalNotebookBtn').click();
+  await page.locator('[data-add-list]').click();
+  await page.locator('#nbPromptInput').fill('دفتر خالی');
+  await page.locator('[data-prompt-form]').press('Enter');
   await expect(page.locator('.nb-actions + .nb-list > [data-add-root]')).toBeVisible();
   await expect(page.locator('.nb-list > [data-add-root]')).toHaveText(/افزودن مورد جدید/);
 });
