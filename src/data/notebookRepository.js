@@ -116,6 +116,8 @@ export function sumCost(items){
 
 export function createNotebookRepository({ storage = localStorageAdapter, storageKey = NOTEBOOK_STORAGE_KEY } = {}){
   let snapshot = null;
+  const listeners = new Set();
+  const notify = () => listeners.forEach(listener => listener(snapshot));
 
   function load(){
     try{
@@ -160,6 +162,7 @@ export function createNotebookRepository({ storage = localStorageAdapter, storag
     if(snapshot?.lists?.length && next.lists.length === 0) return snapshot;
     snapshot = next;
     persist();
+    notify();
     return snapshot;
   }
 
@@ -169,8 +172,14 @@ export function createNotebookRepository({ storage = localStorageAdapter, storag
     current.updatedAt = now();
     snapshot = current;
     persist();
+    notify();
     return snapshot;
   }
 
-  return { load, persist, get, replace, mutate, storageKey };
+  function subscribe(listener){
+    listeners.add(listener);
+    return () => listeners.delete(listener);
+  }
+
+  return { load, persist, get, replace, mutate, subscribe, storageKey };
 }
