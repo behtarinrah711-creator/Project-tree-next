@@ -12,14 +12,14 @@ export function reorderedIds(ids, draggedId, targetId, position){
   return order;
 }
 
-function rowOf(wrapper,rowClass='wbs-row'){
+function rowOf(wrapper){
   const row = wrapper?.firstElementChild;
-  return row?.classList?.contains(rowClass) ? row : null;
+  return row?.classList?.contains('wbs-row') ? row : null;
 }
 
 function clearIndicators(state){
-  state?.wrapper?.classList.remove(state.draggingClass);
-  state?.siblings?.forEach(wrapper => wrapper.classList.remove(state.dropBeforeClass,state.dropAfterClass));
+  state?.wrapper?.classList.remove('wbs-row-dragging');
+  state?.siblings?.forEach(wrapper => wrapper.classList.remove('wbs-drop-before', 'wbs-drop-after'));
 }
 
 function onPointerMove(event){
@@ -28,7 +28,7 @@ function onPointerMove(event){
   let target = null;
   let position = null;
   for(const wrapper of others){
-    const rect = rowOf(wrapper,dragState.rowClass).getBoundingClientRect();
+    const rect = rowOf(wrapper).getBoundingClientRect();
     if(event.clientY < rect.top + rect.height / 2){
       target = wrapper;
       position = 'before';
@@ -39,8 +39,8 @@ function onPointerMove(event){
     target = others[others.length - 1];
     position = 'after';
   }
-  dragState.siblings.forEach(wrapper=>wrapper.classList.remove(dragState.dropBeforeClass,dragState.dropAfterClass));
-  target?.classList.add(position === 'before' ? dragState.dropBeforeClass : dragState.dropAfterClass);
+  clearIndicators({ siblings:dragState.siblings });
+  target?.classList.add(position === 'before' ? 'wbs-drop-before' : 'wbs-drop-after');
   dragState.target = target;
   dragState.position = position;
 }
@@ -54,16 +54,16 @@ function onPointerEnd(){
   dragState = null;
   clearIndicators(state);
   if(!state.target) return;
-  const targetId = rowOf(state.target,state.rowClass)?.dataset.dragId;
-  const ids = state.siblings.map(wrapper => rowOf(wrapper,state.rowClass)?.dataset.dragId).filter(Boolean);
+  const targetId = rowOf(state.target)?.dataset.wbsId;
+  const ids = state.siblings.map(wrapper => rowOf(wrapper)?.dataset.wbsId).filter(Boolean);
   const orderedIds = reorderedIds(ids, state.id, targetId, state.position);
   if(orderedIds) state.onReorder?.(orderedIds);
 }
 
-export function bindSiblingRowDrag(row,{id,onReorder,rowClass='wbs-row',gripSelector='.wbs-grip',draggingClass='wbs-row-dragging',dropBeforeClass='wbs-drop-before',dropAfterClass='wbs-drop-after'}={}){
+export function bindRowDrag(row, { id, onReorder }){
   if(!row) return;
-  row.dataset.dragId=id;
-  const grip=row.querySelector(gripSelector);
+  row.dataset.wbsId = id;
+  const grip = row.querySelector('.wbs-grip');
   if(!grip) return;
   grip.addEventListener('pointerdown', event => {
     if(event.button === 2) return;
@@ -71,17 +71,13 @@ export function bindSiblingRowDrag(row,{id,onReorder,rowClass='wbs-row',gripSele
     event.stopPropagation();
     const wrapper = row.parentElement;
     const container = wrapper?.parentElement;
-    const siblings=Array.from(container?.children||[]).filter(child=>rowOf(child,rowClass));
+    const siblings = Array.from(container?.children || []).filter(child => rowOf(child));
     if(!wrapper || siblings.length < 2) return;
-    dragState={id:String(id),wrapper,siblings,target:null,position:null,onReorder,rowClass,draggingClass,dropBeforeClass,dropAfterClass};
-    wrapper.classList.add(draggingClass);
+    dragState = { id:String(id), wrapper, siblings, target:null, position:null, onReorder };
+    wrapper.classList.add('wbs-row-dragging');
     try{ grip.setPointerCapture(event.pointerId); }catch(_error){}
     document.addEventListener('pointermove', onPointerMove);
     document.addEventListener('pointerup', onPointerEnd, { once:true });
     document.addEventListener('pointercancel', onPointerEnd, { once:true });
   });
-}
-
-export function bindRowDrag(row,{id,onReorder}){
-  bindSiblingRowDrag(row,{id,onReorder});
 }
