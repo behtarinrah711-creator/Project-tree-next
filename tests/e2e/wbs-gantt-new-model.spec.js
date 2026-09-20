@@ -21,7 +21,12 @@ for(const [mode,depth] of [['base',1],['none',2],['single',3],['multiple',4]]){
         page.locator('.wbs-tree-toggle'),
       ];
       const x=[];
-      for(const control of controls) x.push((await control.boundingBox()).x);
+      for(const control of controls){
+        await expect(control).toBeVisible();
+        const box=await control.boundingBox();
+        expect(box).not.toBeNull();
+        x.push(box.x);
+      }
       expect(x).toEqual([...x].sort((a,b)=>a-b));
       for(const [control, menu] of [
         [controls[1], page.locator('#wbsGanttLevelMenu')],
