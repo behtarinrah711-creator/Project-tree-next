@@ -95,7 +95,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
       ${available(nb).map(item=>`<button type="button" data-list="${esc(item.id)}" class="nb-tab ${!starredMode&&item.id===list.id?'active':''}"><span>${esc(item.title)}</span><small>${(item.items||[]).filter(entry=>!entry.done&&!entry.trashed).length.toLocaleString('fa-IR')}</small></button>`).join('')}
       <button type="button" data-add-list class="nb-tab nb-add-tab" aria-label="افزودن دفتر">＋</button></nav>
       ${actionsHtml(list,starredMode)}<main class="nb-list">${empty&&!starredMode?addRootButton:''}${content||`<div class="nb-empty">${starredMode?'هنوز چیزی ستاره‌دار نشده است.':'هنوز موردی در این دفتر نیست.'}</div>`}${editor?.mode==='item'&&!editor.parentId?editorHtml():''}</main>
-      ${!starredMode&&!empty?addRootButton:''}<details class="nb-completed"><summary><span>انجام‌شده‌ها (${completed.length.toLocaleString('fa-IR')})</span></summary>${completed.length?'<button type="button" class="nb-clear-completed" data-clear-completed>حذف همه</button>':''}${completedRows}</details>
+      ${!starredMode&&!empty?addRootButton:''}<details class="nb-completed"><summary><span>انجام‌شده‌ها (${completed.length.toLocaleString('fa-IR')})</span><span class="nb-completed-chevron" aria-hidden="true">${chev}</span></summary>${completed.length?'<button type="button" class="nb-clear-completed" data-clear-completed>حذف همه</button>':''}${completedRows}</details>
       ${editor?.mode!=='item'?editorHtml():''}${sheetHtml()}${listPromptHtml()}</div>`;
     bind(body,{starredMode});queueMicrotask(()=>{if(editor)body.querySelector('#nbInput')?.focus();if(listPrompt)body.querySelector('#nbPromptInput')?.focus();centerActiveTab({smooth:false});});
   }
