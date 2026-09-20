@@ -138,6 +138,7 @@ body:not(.global-surface){background:#f2f3f5;}
 #drawerOverlay #drawerProfileBtn{order:5;}
 #drawerOverlay #drawerSigninBtn{margin:0;color:#4285f4;border-color:#4285f4;}
 #drawerOverlay #drawerSigninBtn[data-auth-action="signout"]{color:var(--danger);}
+#drawerOverlay > .drawer > #drawerSigninBtn[data-auth-action="signout"]{order:7;align-self:flex-start;margin:0;}
 #drawerOverlay #drawerProjectsBtn{
   order:4;
   width:100%;
