@@ -77,6 +77,11 @@ test('notebook restores centered tabs, rapid entry, item sheet, cost mode and fu
 
   await page.locator('[data-editor="cancel"]').click();
   await page.locator('[data-menu-toggle]').click();
+  await expect(page.locator('[data-menu-toggle]')).toHaveAttribute('aria-label', 'بستن منو');
+  await page.locator('[data-menu-dismiss]').click({position:{x:5,y:5}});
+  await expect(page.locator('.nb-project-menu')).toHaveCount(0);
+  await expect(page.locator('[data-menu-toggle]')).toHaveAttribute('aria-label', 'عملیات بیشتر');
+  await page.locator('[data-menu-toggle]').click();
   await page.locator('[data-project-action="export"]').click();
   await expect(page.locator('#notebookExportPage')).toBeVisible();
   await expect(page.locator('#notebookExportNumbered')).toBeVisible();
@@ -85,4 +90,19 @@ test('notebook restores centered tabs, rapid entry, item sheet, cost mode and fu
   await expect(page.locator('.export-pdf-btn')).toHaveText('PDF');
   await expect(page.locator('.export-jpg-btn')).toHaveText('JPEG');
   await expect(page.locator('#notebookExportBody .export-row')).toHaveCount(3);
+});
+
+test('notebook project prompts use concise titles, no placeholder, and autofocus', async ({ page }) => {
+  await page.locator('[data-add-list]').click();
+  await expect(page.locator('.nb-prompt h2')).toHaveText('اضافه کردن مورد جدید');
+  await expect(page.locator('#nbPromptInput')).toHaveAttribute('placeholder', '');
+  await expect(page.locator('#nbPromptInput')).toBeFocused();
+  await page.locator('[data-prompt-close]').last().click();
+
+  await page.locator('[data-menu-toggle]').click();
+  await page.locator('[data-project-action="rename"]').click();
+  await expect(page.locator('.nb-prompt h2')).toHaveText('ویرایش عنوان');
+  await expect(page.locator('#nbPromptInput')).toHaveValue('دفتر اول');
+  await expect(page.locator('#nbPromptInput')).toHaveAttribute('placeholder', '');
+  await expect(page.locator('#nbPromptInput')).toBeFocused();
 });
