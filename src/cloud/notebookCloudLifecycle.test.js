@@ -8,19 +8,20 @@ function storage(){
   const values = new Map();
   return {getItem:key=>values.get(key)??null,setItem:(key,value)=>values.set(key,String(value)),removeItem:key=>values.delete(key)};
 }
-function harness(cloudByUid={}){
+function harness(cloudByUid={},options={}){
   let authCallback;
   const writes=[];
   const listeners=new Map();
+  const accountStorage=options.accountStorage||storage();
   const auth={onAuthStateChanged(callback){authCallback=callback;return()=>{};}};
   const db={collection(name){assert.equal(name,'notebooks');return{doc(uid){return{
     async get(){const data=cloudByUid[uid];return{exists:!!data,data:()=>data};},
-    async set(value){cloudByUid[uid]={...(cloudByUid[uid]||{}),...value};writes.push({uid,value});listeners.get(uid)?.({exists:true,data:()=>cloudByUid[uid]});},
+    async set(value){if(options.failWrites)throw new Error('offline');cloudByUid[uid]={...(cloudByUid[uid]||{}),...value};writes.push({uid,value});listeners.get(uid)?.({exists:true,data:()=>cloudByUid[uid]});},
     onSnapshot(next){listeners.set(uid,next);return()=>listeners.delete(uid);},
   };}};}};
   const guestRepository=createNotebookRepository({storage:storage(),storageKey:'guest'});
-  const lifecycle=createNotebookCloudLifecycle({auth,db,guestRepository,consoleRef:{warn(){}}});
-  return{auth:user=>authCallback(user),writes,cloudByUid,guestRepository,lifecycle};
+  const lifecycle=createNotebookCloudLifecycle({auth,db,guestRepository,accountStorage,consoleRef:{warn(){}}});
+  return{auth:user=>authCallback(user),writes,cloudByUid,guestRepository,lifecycle,accountStorage};
 }
 
 test('first login migrates the guest notebook once and clears only the guest workspace after server success',async()=>{
@@ -62,4 +63,19 @@ test('authenticated mutations are written only to the active uid document',async
   await tick();
   assert.deepEqual(h.writes.map(write=>write.uid),['u1']);
   assert.equal(h.cloudByUid.u1.notebook.lists[0].items[0].text,'حساب یک');
+});
+
+test('authenticated notebook survives reload when the cloud write is unavailable',async()=>{
+  const accountStorage=storage();
+  const first=harness({}, {accountStorage,failWrites:true});
+  first.auth({uid:'u1'});await tick();await tick();
+  first.lifecycle.mutate(notebook=>notebook.lists[0].items.push(createNotebookItem('نسخه محلی امن')));
+  await tick();
+  first.lifecycle.destroy();
+
+  const second=harness({}, {accountStorage,failWrites:true});
+  second.auth({uid:'u1'});
+  assert.equal(second.lifecycle.get().lists[0].items[0].text,'نسخه محلی امن');
+  await tick();await tick();
+  assert.equal(second.lifecycle.get().lists[0].items[0].text,'نسخه محلی امن');
 });

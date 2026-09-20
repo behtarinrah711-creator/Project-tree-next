@@ -1,4 +1,4 @@
-import { canCompleteNotebookItem, collectCompletedFamilies, collectStarredFamilies, collectTrashed, createNotebookItem, createNotebookRepository, findNotebookItem, notebookItemCost, notebookItemCostLocked, restoreNotebookFamily, sumCost, toggleNotebookStar } from '../../data/notebookRepository.js';
+import { canCompleteNotebookItem, collectCompletedFamilies, collectStarredFamilies, collectTrashed, createNotebookItem, createNotebookRepository, findNotebookItem, notebookItemCost, notebookItemCostLocked, restoreNotebookFamily, sumCost, toggleNotebookStar, trashCompletedItems } from '../../data/notebookRepository.js';
 import { notebookIcons } from './notebookIcons.js';
 import { installNotebookExportView } from './notebookExportView.js';
 import { openConfirm } from '../../ui/confirm.js';
@@ -77,7 +77,8 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
   function centerActiveTab({smooth=true}={}){
     const tab=page.querySelector('.nb-tab[data-list].active'),strip=page.querySelector('.nb-tabs');
     if(!tab||!strip)return;
-    tab.scrollIntoView?.({behavior:smooth?'smooth':'auto',block:'nearest',inline:'center'});
+    const left=tab.offsetLeft-(strip.clientWidth-tab.offsetWidth)/2;
+    strip.scrollTo?.({left,behavior:smooth?'smooth':'auto'});
   }
   function render(){
     const nb=repository.get(),list=active(nb),body=page.querySelector('#notebookPageBody');if(!body)return;
@@ -86,15 +87,17 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     const activeFamilies=starredMode?collectStarredFamilies(nb,{done:false}):[];
     const completed=starredMode?collectStarredFamilies(nb,{done:true}):collectCompletedFamilies(list.items).map(item=>({item,listTitle:null}));
     const content=starredMode?activeFamilies.map(entry=>rows([entry.item],{source:entry.listTitle,showCost:false})).join(''):rows(list.items,{showCost:!!list.showCost});
+    const empty=!content;
+    const addRootButton='<button type="button" data-add-root class="nb-add-root">＋ افزودن مورد جدید</button>';
     const doneTree=(item,depth=0)=>`<div class="nb-done-node" style="--nb-depth:${depth}"><span>${esc(item.text)}</span>${(item.children||[]).filter(child=>child.done&&!child.trashed).map(child=>doneTree(child,depth+1)).join('')}</div>`;
     const completedRows=completed.map(entry=>`<div class="nb-done-row"><div>${doneTree(entry.item)}${entry.listTitle?`<small>${esc(entry.listTitle)}</small>`:''}</div><button type="button" data-restore="${esc(entry.item.id)}">بازگردانی</button></div>`).join('');
     body.innerHTML=`<div class="nb-workspace"><nav class="nb-tabs" aria-label="دفترها"><button type="button" data-starred class="nb-tab nb-star-tab ${starredMode?'active':''}">${star}</button>
       ${available(nb).map(item=>`<button type="button" data-list="${esc(item.id)}" class="nb-tab ${!starredMode&&item.id===list.id?'active':''}"><span>${esc(item.title)}</span><small>${(item.items||[]).filter(entry=>!entry.done&&!entry.trashed).length.toLocaleString('fa-IR')}</small></button>`).join('')}
       <button type="button" data-add-list class="nb-tab nb-add-tab" aria-label="افزودن دفتر">＋</button></nav>
-      ${actionsHtml(list,starredMode)}<main class="nb-list">${content||`<div class="nb-empty">${starredMode?'هنوز چیزی ستاره‌دار نشده است.':'هنوز موردی در این دفتر نیست.'}</div>`}${editor?.mode==='item'&&!editor.parentId?editorHtml():''}</main>
-      ${starredMode?'':`<button type="button" data-add-root class="nb-add-root">＋ افزودن مورد</button>`}<details class="nb-completed"><summary><span>انجام‌شده‌ها (${completed.length.toLocaleString('fa-IR')})</span>${completed.length?'<button type="button" data-clear-completed>حذف همه</button>':''}</summary>${completedRows}</details>
+      ${actionsHtml(list,starredMode)}<main class="nb-list">${empty&&!starredMode?addRootButton:''}${content||`<div class="nb-empty">${starredMode?'هنوز چیزی ستاره‌دار نشده است.':'هنوز موردی در این دفتر نیست.'}</div>`}${editor?.mode==='item'&&!editor.parentId?editorHtml():''}</main>
+      ${!starredMode&&!empty?addRootButton:''}<details class="nb-completed"><summary><span>انجام‌شده‌ها (${completed.length.toLocaleString('fa-IR')})</span></summary>${completed.length?'<button type="button" class="nb-clear-completed" data-clear-completed>حذف همه</button>':''}${completedRows}</details>
       ${editor?.mode!=='item'?editorHtml():''}${sheetHtml()}${listPromptHtml()}</div>`;
-    bind(body);queueMicrotask(()=>{if(editor)body.querySelector('#nbInput')?.focus();if(listPrompt)body.querySelector('#nbPromptInput')?.focus();centerActiveTab({smooth:false});});
+    bind(body,{starredMode});queueMicrotask(()=>{if(editor)body.querySelector('#nbInput')?.focus();if(listPrompt)body.querySelector('#nbPromptInput')?.focus();centerActiveTab({smooth:false});});
   }
   function saveInline(body,{continueEntry=false}={}){
     const value=body.querySelector('#nbInput')?.value.trim();if(!value)return;
@@ -110,7 +113,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     change(sheetItemId,item=>{item.text=name;item.cost=raw===''?null:Number(raw);});sheetItemId=null;render();
   }
   function deleteList(listId){repository.mutate(nb=>{const list=nb.lists.find(item=>item.id===listId);if(list){list.trashed=true;list.deletedAt=Date.now();list.updatedAt=Date.now();}ensureActive(nb);});editor=null;sheetItemId=null;render();}
-  function bind(body){
+  function bind(body,{starredMode=false}={}){
     body.querySelectorAll('[data-list]').forEach(button=>button.onclick=()=>{repository.mutate(nb=>{nb.activeListId=button.dataset.list;});editor=null;sheetItemId=null;render();});
     body.querySelector('[data-starred]')?.addEventListener('click',()=>{repository.mutate(nb=>{nb.activeListId='__starred__';});editor=null;sheetItemId=null;render();});
     body.querySelector('[data-add-list]')?.addEventListener('click',()=>openListPrompt({title:'اضافه کردن مورد جدید',placeholder:'',onSave:value=>{repository.mutate(nb=>{const list={id:uid('nbl'),title:value,items:[],createdAt:Date.now(),updatedAt:Date.now(),archived:false,trashed:false,showCost:false};nb.lists.push(list);nb.activeListId=list.id;});render();}}));
@@ -138,7 +141,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     body.querySelector('#nbSheetCost:not(:disabled)')?.addEventListener('click',event=>{const control=event.currentTarget;openNumpadGeneric(control.dataset.value,raw=>{control.dataset.value=raw;control.innerHTML=`${formatCost(raw)} <small>تومان</small>`;},{group:true,suffix:' تومان',maxLen:16},{documentRef,windowRef});});
     body.querySelector('[data-sheet-child]')?.addEventListener('click',()=>{const parentId=sheetItemId,depth=(locate(repository.get(),parentId)?.parents.length||0)+1;change(parentId,item=>{item.expanded=true;});sheetItemId=null;editor={mode:'item',parentId,depth};render();});
     body.querySelector('[data-sheet-delete]')?.addEventListener('click',()=>confirmAction('آیا این دسته حذف شود؟',()=>{change(sheetItemId,item=>{item.trashed=true;item.deletedAt=Date.now();});sheetItemId=null;render();}));
-    body.querySelector('[data-clear-completed]')?.addEventListener('click',event=>{event.preventDefault();confirmAction('همه موارد انجام‌شده حذف شوند؟',()=>{repository.mutate(nb=>{const families=starredMode?collectStarredFamilies(nb,{done:true}).map(entry=>locate(nb,entry.item.id)?.item).filter(Boolean):collectCompletedFamilies(active(nb)?.items||[]);for(const item of families){item.trashed=true;item.deletedAt=Date.now();}});render();});});
+    body.querySelector('[data-clear-completed]')?.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();repository.mutate(nb=>{if(starredMode){for(const notebookList of nb.lists||[])trashCompletedItems(notebookList.items,{starredOnly:true});}else trashCompletedItems(active(nb)?.items);});render();});
     body.querySelector('[data-prompt-form]')?.addEventListener('submit',event=>{event.preventDefault();const value=body.querySelector('#nbPromptInput')?.value.trim();if(!value)return body.querySelector('#nbPromptInput')?.focus();const save=listPrompt?.onSave;listPrompt=null;save?.(value);});
     body.querySelectorAll('[data-prompt-close]').forEach(element=>element.addEventListener('click',event=>{if(event.target.closest('[data-prompt-form]')&&!event.target.matches('[data-prompt-close]'))return;listPrompt=null;render();}));
   }

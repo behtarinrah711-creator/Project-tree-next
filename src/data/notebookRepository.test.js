@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {
   collectCompleted, collectCompletedFamilies, collectStarred, collectStarredFamilies, collectTrashed, createEmptyNotebook, createNotebookItem,
   canCompleteNotebookItem, createNotebookRepository, findNotebookItem, notebookItemCost,
-  notebookItemCostLocked, restoreNotebookFamily, sumCost, toggleNotebookStar, walkNotebookItems,
+  notebookItemCostLocked, restoreNotebookFamily, sumCost, toggleNotebookStar, trashCompletedItems, walkNotebookItems,
 } from './notebookRepository.js';
 
 function memory(){
@@ -165,4 +165,19 @@ test('completed starred families retain hierarchy',()=>{
   const [family]=collectStarredFamilies(notebook,{done:true});
   assert.equal(family.item.text,'parent');
   assert.deepEqual(family.item.children.map(item=>item.text),['child']);
+});
+
+test('completed cleanup trashes whole families and can be limited to starred items',()=>{
+  const parent=createNotebookItem('parent'),child=createNotebookItem('child');
+  const other=createNotebookItem('other');
+  parent.children.push(child);
+  parent.done=true;child.done=true;other.done=true;
+  toggleNotebookStar(parent);
+  assert.equal(trashCompletedItems([parent,other],{starredOnly:true,timestamp:123}),1);
+  assert.equal(parent.trashed,true);
+  assert.equal(child.trashed,true);
+  assert.equal(other.trashed,false);
+  assert.equal(trashCompletedItems([parent,other],{timestamp:456}),1);
+  assert.equal(other.trashed,true);
+  assert.equal(other.deletedAt,456);
 });

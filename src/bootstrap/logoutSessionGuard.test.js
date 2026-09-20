@@ -18,12 +18,14 @@ test('clearAppSessionCache removes only Project-tree app keys', ()=>{
     'ptnext-v1:task-recovery':'tasks',
     'ptnext-v1:user-profile':'profile',
     'ptnext-v1:notebook':'personal notes',
+    'ptnext-v1:notebook:user:u1':'account notes',
     'other-app-key':'keep',
   });
   assert.equal(clearAppSessionCache(storage),3);
   assert.equal(storage.getItem('ptnext-v1:app-data'),null);
   assert.equal(storage.getItem('ptnext-v1:user-profile'),null);
   assert.equal(storage.getItem('ptnext-v1:notebook'),'personal notes');
+  assert.equal(storage.getItem('ptnext-v1:notebook:user:u1'),'account notes');
   assert.equal(storage.getItem('other-app-key'),'keep');
 });
 
@@ -52,6 +54,7 @@ test('guard clears app cache and reloads on authenticated logout', ()=>{
     'ptnext-v1:task-recovery':'account-tasks',
     'ptnext-v1:status-reports':'reports',
     'ptnext-v1:notebook':'must survive logout',
+    'ptnext-v1:notebook:user:u1':'account cache must survive logout',
     'other-app-key':'keep',
   });
   const auth={currentUser:{uid:'u1'},onAuthStateChanged(fn){callback=fn;}};
@@ -67,6 +70,7 @@ test('guard clears app cache and reloads on authenticated logout', ()=>{
   assert.equal(storage.getItem('ptnext-v1:task-recovery'),null);
   assert.equal(storage.getItem('ptnext-v1:status-reports'),null);
   assert.equal(storage.getItem('ptnext-v1:notebook'),'must survive logout');
+  assert.equal(storage.getItem('ptnext-v1:notebook:user:u1'),'account cache must survive logout');
   assert.equal(storage.getItem('other-app-key'),'keep');
   assert.equal(sessionStorage.getItem('ptnext-v1:session'),null);
   assert.equal(sessionStorage.getItem('other-session'),'keep');
