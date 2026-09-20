@@ -1,5 +1,6 @@
-import { canCompleteNotebookItem, collectCompletedFamilies, collectStarredFamilies, collectTrashed, createNotebookItem, createNotebookRepository, findNotebookItem, notebookItemCost, notebookItemCostLocked, restoreNotebookFamily, sumCost, toggleNotebookStar, trashCompletedItems } from '../../data/notebookRepository.js';
+import { canCompleteNotebookItem, collectCompletedFamilies, collectStarredFamilies, collectTrashed, createNotebookItem, createNotebookRepository, findNotebookItem, notebookItemCost, notebookItemCostLocked, reorderNotebookSiblings, restoreNotebookFamily, sumCost, toggleNotebookStar, trashCompletedItems } from '../../data/notebookRepository.js';
 import { notebookIcons } from './notebookIcons.js';
+import { bindSiblingRowDrag } from '../wbs/wbsDrag.js';
 import { installNotebookExportView } from './notebookExportView.js';
 import { openConfirm } from '../../ui/confirm.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
@@ -95,7 +96,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
       ${available(nb).map(item=>`<button type="button" data-list="${esc(item.id)}" class="nb-tab ${!starredMode&&item.id===list.id?'active':''}"><span>${esc(item.title)}</span><small>${(item.items||[]).filter(entry=>!entry.done&&!entry.trashed).length.toLocaleString('fa-IR')}</small></button>`).join('')}
       <button type="button" data-add-list class="nb-tab nb-add-tab" aria-label="افزودن دفتر">＋</button></nav>
       ${actionsHtml(list,starredMode)}<main class="nb-list">${empty&&!starredMode?addRootButton:''}${content||`<div class="nb-empty">${starredMode?'هنوز چیزی ستاره‌دار نشده است.':'هنوز موردی در این دفتر نیست.'}</div>`}${editor?.mode==='item'&&!editor.parentId?editorHtml():''}</main>
-      ${!starredMode&&!empty?addRootButton:''}<details class="nb-completed"><summary><span>انجام‌شده‌ها (${completed.length.toLocaleString('fa-IR')})</span></summary>${completed.length?'<button type="button" class="nb-clear-completed" data-clear-completed>حذف همه</button>':''}${completedRows}</details>
+      ${!starredMode&&!empty?addRootButton:''}<details class="nb-completed"><summary><span>انجام‌شده‌ها (${completed.length.toLocaleString('fa-IR')})</span><span class="nb-completed-chevron" aria-hidden="true">${chev}</span></summary>${completed.length?'<button type="button" class="nb-clear-completed" data-clear-completed>حذف همه</button>':''}${completedRows}</details>
       ${editor?.mode!=='item'?editorHtml():''}${sheetHtml()}${listPromptHtml()}</div>`;
     bind(body,{starredMode});queueMicrotask(()=>{if(editor)body.querySelector('#nbInput')?.focus();if(listPrompt)body.querySelector('#nbPromptInput')?.focus();centerActiveTab({smooth:false});});
   }
@@ -122,6 +123,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     body.querySelectorAll('.nb-row').forEach(row=>row.onclick=event=>{const action=event.target.closest('[data-act]')?.dataset.act;if(!action)return;const id=row.closest('.nb-node').dataset.id;
       if(action==='star')change(id,(item,hit)=>toggleNotebookStar(item,hit.parents));else if(action==='done'){const hit=locate(repository.get(),id);if(hit&&canCompleteNotebookItem(hit.item))change(id,item=>{item.done=true;item.completedAt=Date.now();});}else if(action==='expand')change(id,item=>{item.expanded=item.expanded===false;});
       else if(action==='child'){change(id,item=>{item.expanded=true;});editor={mode:'item',parentId:id,depth:Number(row.dataset.depth||0)+1};}else if(action==='edit')sheetItemId=id;render();});
+    if(!starredMode)body.querySelectorAll('.nb-row').forEach(row=>{const id=row.closest('.nb-node')?.dataset.id;if(!id)return;bindSiblingRowDrag(row,{id,rowClass:'nb-row',gripSelector:'.nb-grip',draggingClass:'nb-row-dragging',dropBeforeClass:'nb-drop-before',dropAfterClass:'nb-drop-after',onReorder:orderedIds=>{repository.mutate(nb=>{const hit=locate(nb,id);if(hit)hit.siblings.splice(0,hit.siblings.length,...reorderNotebookSiblings(hit.siblings,orderedIds));});render();}});});
     body.querySelector('[data-editor-form]')?.addEventListener('submit',event=>{event.preventDefault();saveInline(body,{continueEntry:editor?.mode==='item'});});
     body.querySelector('[data-editor="cancel"]')?.addEventListener('click',()=>{editor=null;render();});
     body.querySelector('#nbInput')?.addEventListener('keydown',event=>{if(event.key==='Escape'){editor=null;render();}});

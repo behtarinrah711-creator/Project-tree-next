@@ -146,6 +146,13 @@ export function canCompleteNotebookItem(item){
   return children.length === 0 || children.every(child => child.done);
 }
 
+export function reorderNotebookSiblings(items,orderedIds){
+  const order=new Map((orderedIds||[]).map((id,index)=>[String(id),index]));
+  const visible=(items||[]).filter(item=>order.has(String(item.id))).sort((a,b)=>order.get(String(a.id))-order.get(String(b.id)));
+  let cursor=0;
+  return (items||[]).map(item=>order.has(String(item.id))?visible[cursor++]:item);
+}
+
 export function collectCompleted(items){
   const out = [];
   walkNotebookItems(items || [], (item) => {
