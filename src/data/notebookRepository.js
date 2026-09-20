@@ -97,7 +97,7 @@ function migrateNotebookStars(items){
 }
 
 export function toggleNotebookStar(item,parents=[]){
-  const next=!item.starred;
+  const next=item.starredSelf!==true;
   setStarredSelf(item,next);
   const root=parents[0]||item;
   refreshNotebookStars([root]);

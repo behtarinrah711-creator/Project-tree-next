@@ -136,6 +136,10 @@ test('starring a child includes its ancestors but not its siblings',()=>{
   const [family]=collectStarredFamilies(notebook);
   assert.equal(family.item.text,'parent');
   assert.deepEqual(family.item.children.map(item=>item.text),['first']);
+  toggleNotebookStar(parent);
+  assert.equal(parent.starredSelf,true);
+  assert.equal(first.starred,true);
+  assert.equal(second.starred,true);
 });
 
 test('completed parent and children are one restorable family',()=>{

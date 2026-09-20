@@ -48,7 +48,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
         <button type="button" data-act="done" aria-label="انجام شد" class="nb-check"></button><button type="button" data-act="expand" aria-label="باز و بسته کردن" class="nb-expand ${kids.length?'':'empty'} ${item.expanded===false?'collapsed':''}">${chev}</button>
         <button type="button" data-act="edit" class="nb-title">${esc(item.text||'بدون عنوان')}${source?`<small>${esc(source)}</small>`:''}</button>
         ${showCost?`<span class="nb-cost">${formatCost(amount)} <small>تومان</small></span>`:`${source?'':`<button type="button" data-act="child" aria-label="افزودن زیردسته" class="nb-child">＋</button>`}<button type="button" data-act="star" aria-label="ستاره" class="nb-star ${item.starred?'active':''}">${star}</button>`}<span class="nb-grip">${grip}</span>
-      </div>${item.expanded===false?'':`<div class="nb-children">${rows(item.children,{depth:depth+1,showCost,includeDone})}</div>`}${editor?.mode==='item'&&editor.parentId===item.id?editorHtml():''}</div>`;
+      </div>${item.expanded===false?'':`<div class="nb-children">${rows(item.children,{depth:depth+1,source,showCost,includeDone})}</div>`}${editor?.mode==='item'&&editor.parentId===item.id?editorHtml():''}</div>`;
     }).join('');
   }
   function editorHtml(){
