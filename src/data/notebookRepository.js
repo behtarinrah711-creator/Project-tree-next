@@ -11,7 +11,7 @@ export function createEmptyNotebook(){
   return {
     version: 1,
     activeListId: listId,
-    lists: [{ id: listId, title: 'کارهای شخصی', createdAt: now(), updatedAt: now(), items: [], archived:false, trashed:false, showCost:true }],
+    lists: [{ id: listId, title: 'کارهای شخصی', createdAt: now(), updatedAt: now(), items: [], archived:false, trashed:false, showCost:false }],
   };
 }
 
@@ -69,6 +69,28 @@ export function collectStarred(notebook){
   return out;
 }
 
+export function activeNotebookChildren(item){
+  return (item?.children || []).filter(child => !child.trashed);
+}
+
+export function notebookItemCost(item){
+  if(!item || item.trashed) return 0;
+  const children = activeNotebookChildren(item);
+  if(children.some(child => notebookItemCost(child) > 0)){
+    return children.reduce((total, child) => total + notebookItemCost(child), 0);
+  }
+  return Number(item.cost) || 0;
+}
+
+export function notebookItemCostLocked(item){
+  return activeNotebookChildren(item).some(child => notebookItemCost(child) > 0);
+}
+
+export function canCompleteNotebookItem(item){
+  const children = activeNotebookChildren(item);
+  return children.length === 0 || children.every(child => child.done);
+}
+
 export function collectCompleted(items){
   const out = [];
   walkNotebookItems(items || [], (item) => {
@@ -82,18 +104,14 @@ export function collectTrashed(notebook){
   for(const list of notebook.lists || []){
     if(list.trashed) out.push({ kind: 'list', list });
     walkNotebookItems(list.items || [], (item, parents) => {
-      if(item.trashed) out.push({ kind: 'item', item, listId: list.id, listTitle: list.title, parent: parents.at(-1) || null });
+      if(item.trashed && !parents.some(parent => parent.trashed)) out.push({ kind: 'item', item, listId: list.id, listTitle: list.title, parent: parents.at(-1) || null });
     });
   }
   return out;
 }
 
 export function sumCost(items){
-  let total = 0;
-  walkNotebookItems(items || [], item => {
-    if(!item.trashed && item.cost != null && item.cost !== '') total += Number(item.cost) || 0;
-  });
-  return total;
+  return (items || []).reduce((total, item) => total + notebookItemCost(item), 0);
 }
 
 export function createNotebookRepository({ storage = localStorageAdapter, storageKey = NOTEBOOK_STORAGE_KEY } = {}){
@@ -114,9 +132,9 @@ export function createNotebookRepository({ storage = localStorageAdapter, storag
       }
       parsed.lists = parsed.lists.map(list => ({
         ...list,
-        archived: !!list.archived,
+        archived: false,
         trashed: !!list.trashed,
-        showCost: list.showCost !== false,
+        showCost: list.showCost === true,
         items: Array.isArray(list.items) ? list.items : [],
       }));
       snapshot = parsed;
