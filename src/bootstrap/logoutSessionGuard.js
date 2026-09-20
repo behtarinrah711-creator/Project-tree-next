@@ -1,12 +1,13 @@
-import { DEPLOYMENT_CONFIG } from '../config/deploymentConfig.js';
+import { DEPLOYMENT_CONFIG, STORAGE_KEYS } from '../config/deploymentConfig.js';
 const APP_STORAGE_PREFIXES = [`${DEPLOYMENT_CONFIG.storageNamespace}:`];
+const DEVICE_PERSISTENT_KEYS = new Set([STORAGE_KEYS.notebook]);
 
 export function clearAppSessionCache(storage){
   if(!storage) return 0;
   const keys=[];
   for(let i=0;i<storage.length;i++){
     const key=storage.key(i);
-    if(key && APP_STORAGE_PREFIXES.some(prefix=>key.startsWith(prefix))) keys.push(key);
+    if(key && !DEVICE_PERSISTENT_KEYS.has(key) && APP_STORAGE_PREFIXES.some(prefix=>key.startsWith(prefix))) keys.push(key);
   }
   keys.forEach(key=>storage.removeItem(key));
   return keys.length;
