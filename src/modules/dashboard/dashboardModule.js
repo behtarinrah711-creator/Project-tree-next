@@ -1,6 +1,5 @@
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
-import { renderWbsHome } from '../wbs/homeView.js';
 
 function getProjectId(explicitProjectId=null){
   return explicitProjectId || projectContext.getProjectId?.()
@@ -30,7 +29,7 @@ export const dashboardModule={
       content.innerHTML='<div class="workspace-no-project">برای ورود به Workspace، از منوی سه‌خطی بالای صفحه یک پروژه را انتخاب کنید. تب «پروژه‌ها» فقط محتوای کاری پروژه فعال را نمایش می‌دهد.</div>';
       return;
     }
-    renderWbsHome(content, p.id);
+    content.innerHTML = '<section class="project-home-placeholder" aria-label="خانه پروژه"></section>';
   },
 };
 

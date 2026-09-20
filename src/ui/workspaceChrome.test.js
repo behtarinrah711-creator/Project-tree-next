@@ -23,13 +23,13 @@ function element(id, initial=[]){
 function harness(){
   const ids=new Map();
   const make=(id,classes=[])=>{const value=element(id,classes);ids.set(id,value);return value;};
-  const footers=['Projects','Reports','Accounting','Settings'].map(key=>make(`bottom${key}Btn`,['bottom-nav-item']));
+  const footers=['Home','Planning','Execution','Reports','Financial'].map(key=>make(`bottom${key}Btn`,['bottom-nav-item']));
   const pages=['projectsPage','profilePage','reportsPage','accountingPage','settingsPage','contractsPage','content'];
   pages.forEach(id=>make(id,['hidden']));
   const topbar=make('topbar');
   const title=make('topbarTitle'); title.main=element('main');
   ['topbarProjectName','tabbar','bottomNav','workspaceProjectContext','workspaceProjectName','workspaceContextBack',
-    'workspaceContextAction','drawerOverlay','closeReportsPage','closeAccountingPage','closeSettingsPage'].forEach(id=>make(id));
+    'workspaceContextAction','projectSettingsTrigger','drawerOverlay','closeReportsPage','closeAccountingPage','closeSettingsPage'].forEach(id=>make(id));
   ids.get('drawerOverlay').classList.add('hidden');
   const events=new Map();
   const body=element('body');
@@ -74,7 +74,7 @@ test('route presentation preserves mounted dashboard content while switching pag
   syncRoute('dashboard');
   assert.deepEqual(content.childNodes,[mountedDashboard]);
   assert.equal(content.cleared,false);
-  assert.equal(h.ids.get('bottomProjectsBtn').classList.contains('active'),true);
+  assert.equal(h.ids.get('bottomHomeBtn').classList.contains('active'),true);
   assert.equal(h.ids.get('topbarTitle').main.textContent,'Alpha');
 
   syncRoute('reports');
@@ -90,7 +90,7 @@ test('route presentation preserves mounted dashboard content while switching pag
   assert.deepEqual(content.childNodes,[remountedDashboard]);
   assert.equal(content.cleared,false);
   assert.equal(h.ids.get('settingsPage').classList.contains('hidden'),true);
-  assert.equal(h.ids.get('bottomProjectsBtn').classList.contains('active'),true);
+  assert.equal(h.ids.get('bottomHomeBtn').classList.contains('active'),true);
 });
 
 test('footer binding delegates navigation and routed surfaces own active state and visibility',()=>{
@@ -102,11 +102,11 @@ test('footer binding delegates navigation and routed surfaces own active state a
   assert.equal(h.ids.get('reportsPage').classList.contains('hidden'),false);
   assert.equal(h.ids.get('accountingPage').classList.contains('hidden'),true);
   h.chrome.applyRoute('accounting',getProjectRouteSurface('accounting'));
-  assert.equal(h.ids.get('bottomAccountingBtn').classList.contains('active'),true);
+  assert.equal(h.ids.get('bottomFinancialBtn').classList.contains('active'),true);
   h.chrome.applyRoute('people',getProjectRouteSurface('people'));
   assert.equal(h.ids.get('settingsPage').classList.contains('hidden'),false);
   h.chrome.applyRoute('dashboard',getProjectRouteSurface('dashboard'));
-  assert.equal(h.ids.get('bottomProjectsBtn').classList.contains('active'),true);
+  assert.equal(h.ids.get('bottomHomeBtn').classList.contains('active'),true);
   assert.equal(h.ids.get('settingsPage').classList.contains('hidden'),true);
 });
 
@@ -131,16 +131,18 @@ test('global menu destinations keep one header and do not mount the project foot
   assert.equal(h.ids.get('bottomNav').parentNode,null);
   assert.equal(h.ids.get('topbar').classList.contains('workspace-context'),false);
   assert.equal(h.ids.get('topbarTitle').classList.contains('global-menu-context'),true);
+  assert.equal(h.ids.get('projectSettingsTrigger').hidden,true);
 
   // The just-clicked menu item must supersede a route value that has not synced yet.
   h.state={...h.state,menuRootMode:'profile'};
-  h.chrome.setBottomNavActive('Projects');
+  h.chrome.setBottomNavActive('Home');
   assert.equal(h.ids.get('topbarTitle').main.textContent,'ثبت مشخصات');
   assert.equal(h.body.classList.contains('global-surface'),true);
 
   h.state={...h.state,menuRootMode:'projects'};
-  h.chrome.setBottomNavActive('Projects');
+  h.chrome.setBottomNavActive('Home');
   assert.equal(h.ids.get('topbarTitle').main.textContent,'مدیریت پروژه‌ها');
+  assert.equal(h.ids.get('projectSettingsTrigger').hidden,true);
 
   h.state={...h.state,menuRootMode:null};
   h.windowRef.KarhaRoute={moduleId:'dashboard'};
@@ -148,6 +150,7 @@ test('global menu destinations keep one header and do not mount the project foot
   assert.equal(h.body.classList.contains('global-surface'),false);
   assert.equal(h.ids.get('bottomNav').parentNode,h.body);
   assert.equal(h.ids.get('topbarTitle').classList.contains('global-menu-context'),false);
+  assert.equal(h.ids.get('projectSettingsTrigger').hidden,false);
 });
 
 test('project switches and repeated route application never leave stale footer or context',()=>{
@@ -155,13 +158,13 @@ test('project switches and repeated route application never leave stale footer o
   h.chrome.applyRoute('reports',getProjectRouteSurface('reports'));
   assert.equal(h.ids.get('topbarTitle').main.textContent,'Alpha');
   assert.equal(h.ids.get('workspaceProjectName').textContent,'گزارش');
-  assert.equal(h.ids.get('workspaceProjectContext').hidden,false);
+  assert.equal(h.ids.get('workspaceProjectContext').hidden,true);
   h.state={...h.state,project:{id:'B',name:'Beta'}};
   h.chrome.applyRoute('people',getProjectRouteSurface('people'));
   assert.equal(h.ids.get('topbarTitle').main.textContent,'Beta');
   assert.equal(h.ids.get('topbarProjectName').textContent,'');
   assert.equal(h.ids.get('bottomReportsBtn').classList.contains('active'),false);
-  assert.equal(h.ids.get('bottomSettingsBtn').classList.contains('active'),true);
+  assert.equal(h.footers.some(item=>item.classList.contains('active')),false);
   h.chrome.applyRoute('reports',getProjectRouteSurface('reports'));
   assert.equal(h.ids.get('topbarTitle').main.textContent,'Beta');
   assert.equal(h.ids.get('bottomReportsBtn').classList.contains('active'),true);

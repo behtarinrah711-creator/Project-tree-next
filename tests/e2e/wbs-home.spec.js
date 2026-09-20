@@ -39,7 +39,7 @@ test.beforeEach(async ({ page }, testInfo) => {
       starredOrder: [],
     }));
   }, seed);
-  await page.goto('/index.html#/projects/e2e-wbs-home/dashboard');
+  await page.goto('/index.html#/projects/e2e-wbs-home/planning');
   await page.waitForFunction(() => window.__wbsTestReady === true);
   // Startup schedules route renders; finish those frames before reading drag geometry.
   await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
@@ -343,7 +343,7 @@ test('WBS uses six primary views and three modular tree modes', async ({ page })
   await expect(page.locator('.wbs-root-add')).toHaveText('بسته کار');
   await expect(page.locator('.wbs-root-add svg')).toHaveCount(1);
   await expect(page.locator('#bottomNav')).toBeVisible();
-  await expect(page.locator('#bottomProjectsBtn')).toBeVisible();
+  await expect(page.locator('#bottomPlanningBtn')).toBeVisible();
 });
 
 test('Timeline details survive initial render, timescale changes, and tree rerenders', async ({ page }) => {

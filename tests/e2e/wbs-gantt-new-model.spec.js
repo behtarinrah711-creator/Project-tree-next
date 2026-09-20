@@ -10,7 +10,7 @@ for(const [mode,depth] of [['base',1],['none',2],['single',3],['multiple',4]]){
       for(let i=depth-1;i>0;i--) leaf={id:'stage-'+i,kind:'stage',text:'مرحله '+i,subtasks:[leaf],workTasks:[]};
       localStorage.setItem('ptnext-v1:app-data',JSON.stringify({schemaVersion:8,activeTab:'gantt-new',viewMode:'simple',projects:[{id:'gantt-new',name:'گانت',settings:{stageMode:mode},tasks:[leaf]}]}));
     },{mode,depth});
-    await page.goto('/index.html#/projects/gantt-new/dashboard');
+    await page.goto('/index.html#/projects/gantt-new/planning');
     await page.locator('.wbs-tab[aria-label="تایم‌لاین"]').click();
     if(mode==='base'){
       const controls=[

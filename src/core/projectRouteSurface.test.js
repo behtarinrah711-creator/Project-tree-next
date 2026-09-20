@@ -23,13 +23,13 @@ function createHarness(){
   make('reportsPage',[]);
   make('settingsPage',[]);
   make('contractsPage',['hidden']);
-  make('bottomProjectsBtn',[]);
+  make('bottomHomeBtn',[]);
   const other=make('bottomReportsBtn',['active']);
   const topbar=make('topbar',['workspace-context','root-workspace-context']);
   const tabbar=make('tabbar',[]);
   const documentRef={
     getElementById:id=>ids.get(id)||null,
-    querySelectorAll(selector){return selector==='.bottom-nav-item'?[ids.get('bottomProjectsBtn'),other]:[];},
+    querySelectorAll(selector){return selector==='.bottom-nav-item'?[ids.get('bottomHomeBtn'),other]:[];},
   };
   const windowRef={
     document:documentRef,
@@ -46,7 +46,7 @@ test('dashboard route exposes project surface after navigating from an internal 
 
   assert.equal(h.ids.get('reportsPage').classList.contains('hidden'),true);
   assert.equal(h.ids.get('settingsPage').classList.contains('hidden'),true);
-  assert.equal(h.ids.get('bottomProjectsBtn').classList.contains('active'),true);
+  assert.equal(h.ids.get('bottomHomeBtn').classList.contains('active'),true);
   assert.equal(h.ids.get('bottomReportsBtn').classList.contains('active'),false);
   assert.equal(h.topbar.classList.contains('workspace-context'),false);
   assert.equal(h.tabbar.attrs['aria-hidden'],'false');

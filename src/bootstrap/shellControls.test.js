@@ -6,7 +6,7 @@ function element(id){
   const listeners = {};
   const classes = new Set(id === 'drawerOverlay' ? ['hidden'] : []);
   return {
-    id, dataset: {}, textContent:'',
+    id, dataset: {}, textContent:'', hidden:false,
     setAttribute(){},
     classList: {
       add:value=>classes.add(value),
@@ -27,8 +27,8 @@ function element(id){
   };
 }
 
-function harness({user=null,popupErrors=[],redirectErrors=[]}={}){
-  const elements = Object.fromEntries(['drawerOverlay','topbarTitle','drawerSigninBtn','toast','globalNotebookBtn'].map(id=>[id,element(id)]));
+function harness({user=null,popupErrors=[],redirectErrors=[],route=null,hash=''}={}){
+  const elements = Object.fromEntries(['drawerOverlay','topbarTitle','drawerSigninBtn','toast','globalNotebookBtn','projectSettingsTrigger'].map(id=>[id,element(id)]));
   const events=[];
   class CustomEvent { constructor(type,options={}){ this.type=type; this.detail=options.detail; } }
   const popupQueue=[...popupErrors];
@@ -56,7 +56,8 @@ function harness({user=null,popupErrors=[],redirectErrors=[]}={}){
     CustomEvent,
     dispatchEvent:event=>events.push(event),
     setTimeout:fn=>{ fn(); return 1; },
-    location:{hostname:'behtarinrah711-creator.github.io'},
+    location:{hostname:'behtarinrah711-creator.github.io',hash},
+    KarhaRoute:route,
     KarhaWorkspaceChrome:{closeBottomPages(){ events.push({type:'close-bottom-pages'}); }},
   };
   return {elements,auth,events,windowRef,documentRef:{getElementById:id=>elements[id]}};
@@ -134,4 +135,22 @@ test('opening notebook closes a previously visible workspace page first',async()
   bindShellControls(h);
   await h.elements.globalNotebookBtn.click();
   assert.deepEqual(h.events.map(event=>event.type),['close-bottom-pages','karha:open-notebook']);
+});
+
+test('project settings trigger is visible only on an explicit project route',()=>{
+  const projectWorkspace={getActiveProject:()=>({id:'p-1',name:'Project'})};
+  const project=harness({route:{projectId:'p-1',moduleId:'planning'},hash:'#/projects/p-1/planning'});
+  project.windowRef.KarhaApp={projectWorkspace};
+  bindShellControls(project);
+  assert.equal(project.elements.projectSettingsTrigger.hidden,false);
+
+  const notebook=harness({route:{projectId:null,moduleId:'notebook'},hash:'#/notebook'});
+  notebook.windowRef.KarhaApp={projectWorkspace};
+  bindShellControls(notebook);
+  assert.equal(notebook.elements.projectSettingsTrigger.hidden,true);
+
+  const global=harness({route:{projectId:null,moduleId:'dashboard'},hash:''});
+  global.windowRef.KarhaApp={projectWorkspace};
+  bindShellControls(global);
+  assert.equal(global.elements.projectSettingsTrigger.hidden,true);
 });

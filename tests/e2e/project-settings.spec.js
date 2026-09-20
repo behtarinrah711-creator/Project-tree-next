@@ -11,7 +11,7 @@ test('project settings persist and switch the phase add flow without changing ex
       {id:'other',name:'پروژه دیگر',tasks:[]}
     ]}));
   });
-  await page.goto('/index.html#/projects/branching/dashboard');
+  await page.goto('/index.html#/projects/branching/planning');
   await page.waitForFunction(() => Boolean(window.KarhaApp && window.KarhaLegacy));
   await page.locator('.wbs-row.is-stage', {hasText:'بسته خالی'}).locator('.wbs-add').click();
   await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('ایجاد مرحله جدید برای:');
@@ -24,7 +24,7 @@ test('project settings persist and switch the phase add flow without changing ex
   await expect(page.locator('#wbsSheetOverlay [name="progressWeight"]')).toHaveCount(0);
   await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(0);
   await page.locator('#wbsSheetOverlay .close-btn').click();
-  await page.locator('#bottomSettingsBtn').click();
+  await page.locator('#projectSettingsTrigger').click();
   await page.getByRole('button',{name:'تنظیمات پروژه',exact:false}).click();
   await expect(page.locator('#projectSettingsPage')).toBeVisible();
   const none=page.getByRole('radio',{name:'دو‌مرحله‌ای',exact:true});
@@ -35,12 +35,12 @@ test('project settings persist and switch the phase add flow without changing ex
   await page.reload();
   await expect(single).toBeChecked();
   await expect(none).not.toBeChecked();
-  await page.locator('#bottomProjectsBtn').click();
+  await page.locator('#bottomPlanningBtn').click();
   await page.locator('.wbs-row.is-stage', {hasText:'بسته خالی'}).locator('.wbs-add').click();
   await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('ایجاد مرحله جدید برای:');
   await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(0);
   await page.locator('#wbsSheetOverlay .close-btn').click();
-  await page.locator('#bottomSettingsBtn').click();
+  await page.locator('#projectSettingsTrigger').click();
   await page.getByRole('button',{name:'تنظیمات پروژه',exact:false}).click();
   await multiple.check();
   await page.reload();
@@ -49,7 +49,7 @@ test('project settings persist and switch the phase add flow without changing ex
   await expect(page.locator('#topbar')).toBeVisible();
   await page.locator('#closeProjectSettingsPage').click();
   await expect(page.locator('#settingsPage')).toBeVisible();
-  await page.locator('#bottomProjectsBtn').click();
+  await page.locator('#bottomPlanningBtn').click();
   await page.locator('.wbs-tree-toggle').click();
   await page.locator('.wbs-row.is-stage', {hasText:'مرحله تست'}).locator('.wbs-add').click();
   await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(0);
@@ -57,7 +57,7 @@ test('project settings persist and switch the phase add flow without changing ex
   await expect(page.locator('#wbsSheetOverlay [name="title"]')).toHaveAttribute('placeholder','مثال: تاسیسات الکتریکی');
 
   await page.locator('#wbsSheetOverlay .close-btn').click();
-  await page.locator('#bottomSettingsBtn').click();
+  await page.locator('#projectSettingsTrigger').click();
   await page.getByRole('button',{name:'تنظیمات پروژه',exact:false}).click();
   await none.check();
   await page.reload();
@@ -74,7 +74,7 @@ test('base mode creates work directly from the tree header and retains it when s
       {id:'base-project',name:'پروژه پایه',settings:{stageMode:'base'},tasks:[]}
     ]}));
   });
-  await page.goto('/index.html#/projects/base-project/dashboard');
+  await page.goto('/index.html#/projects/base-project/planning');
   await page.waitForFunction(() => Boolean(window.KarhaApp && window.KarhaLegacy));
   await page.locator('.wbs-root-add').click();
   await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('ایجاد مرحله جدید');
@@ -103,13 +103,13 @@ test('base mode creates work directly from the tree header and retains it when s
   await page.locator('.wbs-row.is-work .wbs-title').click();
   await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('مرحله:');
   await page.locator('#wbsSheetOverlay .close-btn').click();
-  await page.locator('#bottomSettingsBtn').click();
+  await page.locator('#projectSettingsTrigger').click();
   await page.getByRole('button',{name:'تنظیمات پروژه',exact:false}).click();
   await expect(page.getByRole('radio',{name:'تک‌مرحله‌ای',exact:true})).toBeChecked();
   await expect(page.locator('.project-stage-mode')).toHaveCount(4);
   await page.getByRole('radio',{name:'دو‌مرحله‌ای',exact:true}).check();
   await page.locator('#closeProjectSettingsPage').click();
-  await page.locator('#bottomProjectsBtn').click();
+  await page.locator('#bottomPlanningBtn').click();
   await expect(page.locator('.wbs-row.is-work')).toHaveCount(1);
   await page.locator('.wbs-root-add').click();
   await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toHaveText('ایجاد مرحله جدید');
@@ -122,7 +122,7 @@ for(const stageMode of ['base','none','single','multiple']){
     await page.addInitScript(({stageMode,work}) => {
       localStorage.setItem('ptnext-v1:app-data',JSON.stringify({schemaVersion:8,activeTab:'info',viewMode:'simple',starredOrder:[],projects:[{id:'info',name:'اطلاعات کار',settings:{stageMode},tasks:[{id:'previous',kind:'work',text:'پیش‌نیاز',subtasks:[]},work]}]}));
     },{stageMode,work});
-    await page.goto('/index.html#/projects/info/dashboard');
+    await page.goto('/index.html#/projects/info/planning');
     await page.locator('.wbs-row.is-work',{hasText:'کار تست'}).locator('.wbs-title').click();
     const sheet=page.locator('#wbsSheetOverlay');
     for(const name of ['scheduleStart','scheduleEnd','progress','priority','assigneeContactId','quantity','unit','unitCost']) await expect(sheet.locator(`[name="${name}"]`)).toHaveCount(0);
@@ -154,7 +154,7 @@ for(const stageMode of ['base','none','single','multiple']){
         {id:'parent',kind:'work',text:'کار والد',manualCost:900,progressWeight:1,subtasks:[],workTasks:[{id:'child',workId:'parent',title:'خرده‌کار',amount:200,weight:1}]}
       ]}]}));
     },stageMode);
-    await page.goto('/index.html#/projects/cost/dashboard');
+    await page.goto('/index.html#/projects/cost/planning');
     const openEdit=async title=>{
       await page.locator('.wbs-row.is-work',{hasText:title}).locator('.wbs-title').click();
       };
@@ -196,7 +196,7 @@ test('multiple-stage work selection persists the shared final-level title and pl
       ]}
     ]}));
   });
-  await page.goto('/index.html#/projects/terminal/dashboard');
+  await page.goto('/index.html#/projects/terminal/planning');
   await page.waitForFunction(() => Boolean(window.KarhaApp && window.KarhaLegacy));
   let row=page.locator('.wbs-row', {hasText:'برق کشی'});
   for(let i=0;i<4 && !await row.isVisible();i++) await page.locator('.wbs-tree-toggle').click();
@@ -240,7 +240,7 @@ for(const [mode, levels] of [['base',1],['none',2],['single',3],['multiple',4]])
     await page.addInitScript(mode => {
       localStorage.setItem('ptnext-v1:app-data',JSON.stringify({schemaVersion:8,activeTab:'flow',viewMode:'simple',projects:[{id:'flow',name:'flow',settings:{stageMode:mode},tasks:[]}]}));
     },mode);
-    await page.goto('/index.html#/projects/flow/dashboard');
+    await page.goto('/index.html#/projects/flow/planning');
     await page.waitForFunction(() => Boolean(window.KarhaApp && window.KarhaLegacy));
     await page.locator('.wbs-root-add').click();
     for(let level=1;level<=levels;level++){

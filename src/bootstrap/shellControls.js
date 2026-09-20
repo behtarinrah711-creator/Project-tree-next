@@ -87,6 +87,7 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
   const title = byId(documentRef, 'topbarTitle');
   const main = title?.querySelector?.('.app-title-main');
   const projectLabel = byId(documentRef, 'topbarProjectName');
+  const settingsTrigger = byId(documentRef, 'projectSettingsTrigger');
 
   if(title){
     title.classList.add('project-menu-trigger');
@@ -97,12 +98,16 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
   }
 
   const syncProjectHeader = () => {
+    const moduleId = windowRef.KarhaRoute?.moduleId || 'dashboard';
+    const notebook = moduleId === 'notebook' || moduleId === 'notebook-export' || /^#\/notebook/i.test(windowRef.location?.hash || '');
+    const project = windowRef.KarhaApp?.projectWorkspace?.getActiveProject?.();
+    const projectScoped = /^#\/?projects?\//i.test(windowRef.location?.hash || '')
+      && !!windowRef.KarhaRoute?.projectId;
+    if(settingsTrigger) settingsTrigger.hidden = notebook || !projectScoped || !project;
     if(windowRef.KarhaWorkspaceChrome){
       windowRef.KarhaWorkspaceChrome.updateWorkspaceContextBar?.();
       return;
     }
-    const moduleId = windowRef.KarhaRoute?.moduleId || 'dashboard';
-    const notebook = moduleId === 'notebook' || moduleId === 'notebook-export' || /^#\/notebook/i.test(windowRef.location?.hash || '');
     title?.classList.toggle('notebook-context', notebook);
     if(notebook){
       if(main) main.textContent = 'دفترچه یادداشت';
@@ -116,7 +121,6 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     title?.setAttribute('aria-label', 'فهرست پروژه‌ها');
     if(moduleId !== 'dashboard' && moduleId !== 'tasks') return;
 
-    const project = windowRef.KarhaApp?.projectWorkspace?.getActiveProject?.();
     if(project?.name){
       if(main) main.textContent = project.name;
       if(projectLabel) projectLabel.textContent = '';
@@ -127,6 +131,11 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
       title?.classList.remove('has-active-project');
     }
   };
+
+  settingsTrigger?.addEventListener?.('click', () => {
+    const project = windowRef.KarhaApp?.projectWorkspace?.getActiveProject?.();
+    if(project?.id) windowRef.KarhaApp?.projectWorkspace?.selectProject?.(project.id,{moduleId:'people'});
+  });
 
   const syncUser = user => {
     const avatarImg = byId(documentRef, 'avatarImg');

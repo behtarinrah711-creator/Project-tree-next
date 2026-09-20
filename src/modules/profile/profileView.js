@@ -37,7 +37,7 @@ export function installProfileView({ windowRef = globalThis, documentRef = null 
     }
     call('updateWorkspaceContextBar');
     const active = documentRef.querySelector('.bottom-nav-item.active');
-    if(active && active.id === 'bottomProjectsBtn') call('enterProjectsSurface');
+    if(active && active.id === 'bottomHomeBtn') call('enterProjectsSurface');
     else call('refreshCurrentFooterPage');
   }
 
@@ -45,7 +45,7 @@ export function installProfileView({ windowRef = globalThis, documentRef = null 
     call('closeBottomPages');
     call('enterWorkspaceSurface');
     call('ensureHomeSelection');
-    call('setBottomNavActive', 'Projects');
+    call('setBottomNavActive', 'Home');
     call('pushMenuRootHistory', 'profile');
     profileDraft = {...loadProfile()};
     const page = documentRef.getElementById('profilePage');

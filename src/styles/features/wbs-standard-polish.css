@@ -1,4 +1,4 @@
-.wbs-tabs{
+.wbs-home-root .wbs-tabs{
   grid-template-columns:repeat(6,minmax(0,1fr));
 }
 
