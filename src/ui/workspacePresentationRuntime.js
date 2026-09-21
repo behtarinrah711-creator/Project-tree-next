@@ -63,6 +63,9 @@ function enterProjectsSurface(){
 }
 
 function renderAll(){
+  // Global pages own their surfaces. A late project refresh must not replace
+  // the notebook/export DOM while its route is opening.
+  if(window.KarhaRoute?.surface === 'global' || /^#\/notebook(?:\/|$)/.test(window.location.hash)) return;
   const content = document.getElementById('content');
   // Replacing a captured drag element cancels the user's pointer gesture.
   if(content?.querySelector('.wbs-row-dragging,.wbs-work-task.is-dragging')){

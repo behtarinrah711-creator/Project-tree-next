@@ -23,6 +23,7 @@ for(const [mode,depth] of [['base',1],['none',2],['single',3],['multiple',4]]){
       const x=[];
       for(const control of controls){
         await expect(control).toBeVisible();
+        await control.scrollIntoViewIfNeeded();
         const box=await control.boundingBox();
         expect(box).not.toBeNull();
         x.push(box.x);
