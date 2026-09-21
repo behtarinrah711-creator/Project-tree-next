@@ -25,7 +25,7 @@ test('project settings persist and switch the phase add flow without changing ex
   await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(0);
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await page.locator('#projectSettingsTrigger').click();
-  await page.getByRole('button',{name:'تنظیمات پروژه',exact:false}).click();
+  await page.locator('#settingsPageBody').getByRole('button',{name:'تنظیمات پروژه'}).click();
   await expect(page.locator('#projectSettingsPage')).toBeVisible();
   const none=page.getByRole('radio',{name:'دو‌مرحله‌ای',exact:true});
   const single=page.getByRole('radio',{name:'سه‌مرحله‌ای',exact:true});
@@ -41,7 +41,7 @@ test('project settings persist and switch the phase add flow without changing ex
   await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(0);
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await page.locator('#projectSettingsTrigger').click();
-  await page.getByRole('button',{name:'تنظیمات پروژه',exact:false}).click();
+  await page.locator('#settingsPageBody').getByRole('button',{name:'تنظیمات پروژه'}).click();
   await multiple.check();
   await page.reload();
   await expect(multiple).toBeChecked();
@@ -58,7 +58,7 @@ test('project settings persist and switch the phase add flow without changing ex
 
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await page.locator('#projectSettingsTrigger').click();
-  await page.getByRole('button',{name:'تنظیمات پروژه',exact:false}).click();
+  await page.locator('#settingsPageBody').getByRole('button',{name:'تنظیمات پروژه'}).click();
   await none.check();
   await page.reload();
   await expect(none).toBeChecked();
@@ -104,7 +104,7 @@ test('base mode creates work directly from the tree header and retains it when s
   await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('مرحله:');
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await page.locator('#projectSettingsTrigger').click();
-  await page.getByRole('button',{name:'تنظیمات پروژه',exact:false}).click();
+  await page.locator('#settingsPageBody').getByRole('button',{name:'تنظیمات پروژه'}).click();
   await expect(page.getByRole('radio',{name:'تک‌مرحله‌ای',exact:true})).toBeChecked();
   await expect(page.locator('.project-stage-mode')).toHaveCount(4);
   await page.getByRole('radio',{name:'دو‌مرحله‌ای',exact:true}).check();
