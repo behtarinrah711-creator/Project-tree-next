@@ -39,6 +39,7 @@ import { DEFAULT_TREE_MODE, createTreeModeTabs } from './treeModes.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
+import { activeWbsScope, WBS_VIEW_SCOPES } from './viewScopes.js';
 import { openCreateWorkTaskSheet, renderWorkTasks } from './workTaskView.js';
 import { PROJECT_FINISH_MILESTONE_ID, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
 import {
@@ -72,6 +73,7 @@ function materialIcon(path){
 }
 
 let currentView = 'tree';
+const selectedViews = new Map();
 let currentTreeMode = DEFAULT_TREE_MODE;
 let explicitProjectId = null;
 let tabRenderFrame = 0;
@@ -589,8 +591,11 @@ function renderRow(item, codes, view, depth){
 
 export function renderWbsHome(target = document.getElementById('content'), projectId = null, options = {}){
   if(!target) return;
+  const scope = options.scope || activeWbsScope() || 'planning';
+  const scopedOptions = WBS_VIEW_SCOPES[scope] || WBS_VIEW_SCOPES.planning;
+  if(scope && WBS_VIEW_SCOPES[scope] && options.scope && scope !== activeWbsScope()) return;
   if(target.querySelector('.wbs-row-dragging,.wbs-work-task.is-dragging')){
-    scheduleTabRender(target, projectId, options);
+    scheduleTabRender(target, projectId, scopedOptions);
     return;
   }
   explicitProjectId = projectId || explicitProjectId;
@@ -601,12 +606,11 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     return;
   }
   ensureTreeState(project);
-  const allowedIds = Array.isArray(options.views) && options.views.length
-    ? options.views.filter(id => VIEWS.some(view => view.id === id))
-    : VIEWS.map(view => view.id);
+  const allowedIds = scopedOptions.views.filter(id => VIEWS.some(view => view.id === id));
   const allowedViews = VIEWS.filter(view => allowedIds.includes(view.id));
-  if(!allowedIds.includes(currentView)) currentView = allowedIds.includes(options.defaultView) ? options.defaultView : allowedIds[0];
-  const rerender = () => renderWbsHome(target, project.id, options);
+  currentView = selectedViews.get(scope) || scopedOptions.defaultView;
+  if(!allowedIds.includes(currentView)) currentView = scopedOptions.defaultView;
+  const rerender = () => renderWbsHome(target, project.id, scopedOptions);
 
   const root = document.createElement('div');
   root.className = 'wbs-home-root'
@@ -617,11 +621,13 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     + (currentView === 'shopping' ? ' is-shopping-view' : '')
     + (currentView === 'delay' ? ' is-delay-view' : '');
   root.dataset.view = currentView;
+  root.dataset.scope = scope;
   root.dataset.treeMode = currentTreeMode;
   target.appendChild(root);
 
   const tabs = document.createElement('div');
   tabs.className = 'wbs-tabs';
+  tabs.style.setProperty('--wbs-tab-count', String(allowedViews.length));
   tabs.setAttribute('role', 'tablist');
   allowedViews.forEach(view => {
     const btn = document.createElement('button');
@@ -636,8 +642,9 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     btn.addEventListener('click', () => {
       if(currentView === view.id) return;
       currentView = view.id;
+      selectedViews.set(scope, view.id);
       if(view.id === 'tree') currentTreeMode = DEFAULT_TREE_MODE;
-      scheduleTabRender(target, project.id, options);
+      scheduleTabRender(target, project.id, scopedOptions);
     });
     tabs.appendChild(btn);
   });
@@ -680,7 +687,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   treeToggle.innerHTML = `<svg class="wbs-expand-shade" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect width="1" height="1" fill="currentColor" opacity="${expansionProgress.ratio}"/></svg>${materialIcon(EXPAND_ICON)}`;
   treeToggle.addEventListener('click', () => {
     advanceExpansionLevel(project.id, project.tasks || []);
-    renderWbsHome(target, project.id, options);
+    renderWbsHome(target, project.id, scopedOptions);
   });
   toolbar.append(addRoot, treeToggle);
   if(currentView !== 'timeline' && currentView !== 'costline') root.appendChild(toolbar);
@@ -688,7 +695,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   if(currentView === 'tree'){
     root.appendChild(createTreeModeTabs(document, currentTreeMode, mode => {
       currentTreeMode = mode;
-      scheduleTabRender(target, project.id, options);
+      scheduleTabRender(target, project.id, scopedOptions);
     }));
   }
 
@@ -732,8 +739,10 @@ export function renderWbsHome(target = document.getElementById('content'), proje
 }
 
 export function render(){
+  const scope = activeWbsScope();
+  if(!WBS_VIEW_SCOPES[scope]) return;
   const content = document.getElementById('content');
-  renderWbsHome(content, explicitProjectId);
+  renderWbsHome(content, projectContext.getProjectId?.() || explicitProjectId, WBS_VIEW_SCOPES[scope]);
 }
 
 export default { renderWbsHome };

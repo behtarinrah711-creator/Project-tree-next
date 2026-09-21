@@ -4,7 +4,7 @@ import { createAppDataStore } from '../data/appDataStore.js';
 
 function element(){
   return {
-    children: [], dataset: {}, className: '', hidden: false, innerHTML: '',
+    children: [], dataset: {}, style:{setProperty(){}}, className: '', hidden: false, innerHTML: '',
     append(...nodes){ this.children.push(...nodes); },
     appendChild(node){ this.children.push(node); return node; },
     addEventListener(type, listener){ this[`on${type}`]=listener; },

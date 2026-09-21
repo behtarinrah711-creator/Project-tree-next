@@ -1,5 +1,6 @@
 import { projectContext } from '../../core/projectContext.js';
 import { renderWbsHome } from '../wbs/homeView.js';
+import { WBS_VIEW_SCOPES } from '../wbs/viewScopes.js';
 
 function projectIdOf(projectId){
   return projectId || projectContext.getProjectId?.() || projectContext.getActiveProjectId?.() || null;
@@ -11,10 +12,7 @@ export default {
   route:'execution',
   mount({projectId}={}){
     const id=projectIdOf(projectId);
-    renderWbsHome(document.getElementById('content'), id, {
-      views:['today','shopping'],
-      defaultView:'today',
-    });
+    renderWbsHome(document.getElementById('content'), id, WBS_VIEW_SCOPES.execution);
     return {projectId:id,moduleId:'execution'};
   },
 };

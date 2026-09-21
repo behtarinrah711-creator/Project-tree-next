@@ -1,5 +1,5 @@
 .wbs-home-root .wbs-tabs{
-  grid-template-columns:repeat(6,minmax(0,1fr));
+  grid-template-columns:repeat(var(--wbs-tab-count,3),minmax(0,1fr));
 }
 
 .wbs-tab[aria-label="کارهای امروز"]{order:1;}

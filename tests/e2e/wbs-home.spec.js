@@ -256,10 +256,12 @@ test('Work Task create, edit, connector, modes and weighted completion share one
     const task = window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0].workTasks[0];
     return { state:task.completionState, completed:task.completed };
   })).toEqual({ state:'pending_approval', completed:false });
-  await page.locator('.wbs-tab[aria-label="کارهای امروز"]').click();
+  await page.locator('#bottomExecutionBtn').click();
+  await expect(page.locator('.wbs-tab[aria-label="کارهای امروز"]')).toBeVisible();
   await page.locator('.today-mode-tab[data-mode="pending"]').click();
   await page.locator('.today-task-card', { hasText:'تحویل آهن' }).getByRole('button', { name:'تأیید', exact:true }).click();
-  await page.locator('.wbs-tab[aria-label="درخت پروژه"]').click();
+  await page.locator('#bottomPlanningBtn').click();
+  await expect(page.locator('.wbs-tab[aria-label="درخت پروژه"]')).toHaveAttribute('aria-selected','true');
   await selectTreeMode(page, 'درصد پیشرفت');
 
   task = page.locator('.wbs-work-task', { hasText:'تحویل آهن' });
@@ -342,6 +344,34 @@ test('Planning contains tree, timeline and estimate while Execution and Reports 
   await expect(page.locator('.wbs-root-add svg')).toHaveCount(1);
   await expect(page.locator('#bottomNav')).toBeVisible();
   await expect(page.locator('#bottomPlanningBtn')).toBeVisible();
+});
+
+test('Planning and Execution keep separate view controls after background refreshes', async ({ page }) => {
+  const tabs = page.locator('.wbs-home-root > .wbs-tabs > .wbs-tab');
+  await page.locator('.wbs-tab[aria-label="تایم‌لاین"]').click();
+  await expect(page.locator('.wbs-home-root')).toHaveAttribute('data-scope','planning');
+  await page.evaluate(() => window.KarhaApp.modules.get('planning').mount({projectId:'e2e-wbs-home'}));
+  await expect(tabs).toHaveCount(3);
+  await expect(page.locator('.wbs-tab[aria-label="تایم‌لاین"]')).toHaveAttribute('aria-selected','true');
+  await expect(page.locator('.wbs-tab[aria-label="کارهای امروز"]')).toHaveCount(0);
+  await page.locator('.wbs-gantt-order-toggle').click();
+  await expect(tabs).toHaveCount(3);
+  await expect(page.locator('.wbs-tab[aria-label="تایم‌لاین"]')).toHaveAttribute('aria-selected','true');
+
+  await page.locator('#bottomExecutionBtn').click();
+  await expect(page.locator('.wbs-home-root')).toHaveAttribute('data-scope','execution');
+  await expect(tabs).toHaveCount(2);
+  await page.evaluate(() => window.KarhaLegacy.renderAll());
+  await expect(tabs).toHaveCount(2);
+  await page.locator('.wbs-tab[aria-label="لیست خرید"]').click();
+  await expect(page.locator('.wbs-tab[aria-label="لیست خرید"]')).toHaveAttribute('aria-selected','true');
+
+  await page.locator('#bottomPlanningBtn').click();
+  await expect(tabs).toHaveCount(3);
+  await expect(page.locator('.wbs-tab[aria-label="تایم‌لاین"]')).toHaveAttribute('aria-selected','true');
+  await page.evaluate(() => window.KarhaLegacy.renderAll());
+  await expect(tabs).toHaveCount(3);
+  await expect(page.locator('.wbs-tab[aria-label="لیست خرید"]')).toHaveCount(0);
 });
 
 test('Timeline details survive initial render, timescale changes, and tree rerenders', async ({ page }) => {
