@@ -63,6 +63,7 @@ test('shopping is a native WBS view with its own modular surface', async ({ page
   await expect(page.locator('.wbs-toolbar')).toHaveCount(0);
   await expect(page.locator('.wbs-tree')).toHaveCount(0);
 
+  await page.locator('#bottomPlanningBtn').click();
   await page.locator('.wbs-tab[aria-label="تایم‌لاین"]').click();
   await expect(page.locator('.wbs-gantt')).toBeVisible();
   await expect(page.locator('.wbs-shopping-frame')).toHaveCount(0);

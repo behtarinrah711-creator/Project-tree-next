@@ -72,6 +72,12 @@ function renderAll(){
     });
     return;
   }
+  const activeModule = window.KarhaRoute?.moduleId;
+  if(activeModule === 'planning' || activeModule === 'execution'){
+    window.KarhaApp?.modules?.get(activeModule)?.mount?.({projectId:getActiveTab()});
+    renderDrawerProjectList();
+    return;
+  }
   setBottomNavActive('Home');
   renderTabs();
   setBottomNavActive(document.querySelector('.bottom-nav-item.active')?.id?.replace(/^bottom/,'').replace(/Btn$/,'') || 'Home');

@@ -80,8 +80,16 @@ function openProjectTrashPage(){
 
 function refreshCurrentFooterPage(){
   const active=document.querySelector('.bottom-nav-item.active');
-  if(!active || active.id==='bottomHomeBtn' || active.id==='bottomPlanningBtn' || active.id==='bottomExecutionBtn'){
-    if(!document.querySelector('.page-overlay:not(.hidden)')) renderAll();
+  const moduleId=window.KarhaRoute?.moduleId;
+  if(moduleId==='planning' || moduleId==='execution'){
+    if(!document.querySelector('.page-overlay:not(.hidden)')){
+      const projectId=getCurrentProjectScopeId();
+      window.KarhaApp?.modules?.get(moduleId)?.mount?.({projectId});
+    }
+    return;
+  }
+  if(!active || active.id==='bottomHomeBtn'){
+    if(moduleId==='dashboard' && !document.querySelector('.page-overlay:not(.hidden)')) renderAll();
     return;
   }
   renderTabs();

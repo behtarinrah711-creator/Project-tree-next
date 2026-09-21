@@ -130,7 +130,7 @@ test('pointer drag reorders sibling stages before or after without nesting', asy
     const project = window.KarhaAppData?.getSnapshot?.().projects?.find(item => item.id === 'e2e-wbs-home');
     return project?.tasks?.filter(item => !item.trashed).map(item => item.id);
   })).toEqual(['s2', 's1']);
-  await expect(page.locator('.wbs-row.is-stage', { hasText:'ساختمان' }).locator('..').locator(':scope > .wbs-row')).toHaveCount(1);
+  await expect(page.locator('.wbs-row.is-stage', { hasText:'ساختمان' })).toHaveCount(1);
 });
 
 test('pointer drag persists the order of sibling substages', async ({ page }) => {
@@ -288,20 +288,17 @@ test('confirmed WBS delete is immediate and does not show redundant undo feedbac
   })).toBe(true);
 });
 
-test('WBS uses six primary views and three modular tree modes', async ({ page }) => {
+test('Planning contains tree, timeline and estimate while Execution and Reports own their views', async ({ page }) => {
   await expect(page.locator('.wbs-home-root')).toBeVisible();
   await expect(page.locator('#topbar')).toBeVisible();
   await expect(page.locator('#topbarTitle .app-title-main')).toHaveText('پروژه WBS');
   await expect(page.locator('.wbs-home-header')).toHaveCount(0);
 
-  await expect(page.locator('.wbs-tab[aria-label="کارهای امروز"]')).toBeVisible();
   await expect(page.locator('.wbs-tab[aria-label="درخت پروژه"]')).toBeVisible();
   await expect(page.locator('.wbs-tab[aria-label="تایم‌لاین"]')).toBeVisible();
   await expect(page.locator('.wbs-tab[aria-label="Costline"]')).toBeVisible();
-  await expect(page.locator('.wbs-tab[aria-label="لیست خرید"]')).toBeVisible();
-  await expect(page.locator('.wbs-tab[aria-label="دیرکردها"]')).toBeVisible();
-  await expect(page.locator('.wbs-tab')).toHaveCount(6);
-  await expect(page.locator('.wbs-tab svg')).toHaveCount(6);
+  await expect(page.locator('.wbs-tab')).toHaveCount(3);
+  await expect(page.locator('.wbs-tab svg')).toHaveCount(3);
   await expect(page.locator('.wbs-tab[aria-label="ساده"]')).toHaveCount(0);
   await expect(page.locator('.wbs-tab[aria-label="ثبت"]')).toHaveCount(0);
   await expect(page.locator('.wbs-tab[aria-label="برآورد"]')).toHaveCount(0);
@@ -313,10 +310,8 @@ test('WBS uses six primary views and three modular tree modes', async ({ page })
   }));
   expect(Math.max(...tabRects.map(rect => rect.top)) - Math.min(...tabRects.map(rect => rect.top))).toBeLessThan(2);
   expect(Math.max(...tabRects.map(rect => rect.width)) - Math.min(...tabRects.map(rect => rect.width))).toBeLessThan(2);
-  const delayLeft = await page.locator('.wbs-tab[aria-label="دیرکردها"]').evaluate(tab => tab.getBoundingClientRect().left);
-  expect(delayLeft).toBe(Math.min(...tabRects.map(rect => rect.left)));
-
-  await page.locator('.wbs-tab[aria-label="دیرکردها"]').click();
+  await page.locator('#bottomReportsBtn').click();
+  await page.locator('.reports-workspace-tabs .wbs-tab[aria-label="تأخیرات"]').click();
   const delayFrame = page.locator('.wbs-delay-frame');
   await expect(delayFrame).toBeVisible();
   await expect(delayFrame).toHaveAttribute('data-view', 'delay');
@@ -324,7 +319,7 @@ test('WBS uses six primary views and three modular tree modes', async ({ page })
   await expect(delayFrame.locator('.wbs-delay-body')).toBeVisible();
   await expect(page.locator('.wbs-tree')).toHaveCount(0);
 
-  await page.locator('.wbs-tab[aria-label="درخت پروژه"]').click();
+  await page.locator('#bottomPlanningBtn').click();
   const frame = page.locator('.wbs-view-frame.is-standard-view');
   await expect(frame.locator('.wbs-view-title')).toHaveText('درخت پروژه');
   await expect(frame.locator('.wbs-tree-mode-tab')).toHaveCount(3);
