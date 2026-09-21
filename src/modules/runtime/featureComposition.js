@@ -81,6 +81,7 @@ function openProjectTrashPage(){
 function refreshCurrentFooterPage(){
   const active=document.querySelector('.bottom-nav-item.active');
   const moduleId=window.KarhaRoute?.moduleId;
+  if(window.KarhaRoute?.surface==='global' || /^#\/notebook(?:\/|$)/.test(window.location.hash)) return;
   if(moduleId==='planning' || moduleId==='execution'){
     if(!document.querySelector('.page-overlay:not(.hidden)')){
       const projectId=getCurrentProjectScopeId();

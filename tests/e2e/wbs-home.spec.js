@@ -109,6 +109,9 @@ test('pointer drag reorders sibling stages before or after without nesting', asy
   await page.locator('.wbs-tree-toggle').click();
   const source = page.locator('.wbs-row.is-stage', { hasText:'ساختمان' });
   const target = page.locator('.wbs-row.is-stage', { hasText:'فونداسیون' });
+  await expect(source.locator('.wbs-grip')).toBeVisible();
+  await expect(target).toBeVisible();
+  await source.locator('.wbs-grip').scrollIntoViewIfNeeded();
   const gripBox = await source.locator('.wbs-grip').boundingBox();
   const targetBox = await target.boundingBox();
   if(!gripBox || !targetBox) throw new Error('WBS drag geometry is unavailable');
