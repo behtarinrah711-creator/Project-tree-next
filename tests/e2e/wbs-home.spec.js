@@ -256,10 +256,12 @@ test('Work Task create, edit, connector, modes and weighted completion share one
     const task = window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0].workTasks[0];
     return { state:task.completionState, completed:task.completed };
   })).toEqual({ state:'pending_approval', completed:false });
-  await page.locator('.wbs-tab[aria-label="کارهای امروز"]').click();
+  await page.locator('#bottomExecutionBtn').click();
+  await expect(page.locator('.wbs-tab[aria-label="کارهای امروز"]')).toBeVisible();
   await page.locator('.today-mode-tab[data-mode="pending"]').click();
   await page.locator('.today-task-card', { hasText:'تحویل آهن' }).getByRole('button', { name:'تأیید', exact:true }).click();
-  await page.locator('.wbs-tab[aria-label="درخت پروژه"]').click();
+  await page.locator('#bottomPlanningBtn').click();
+  await expect(page.locator('.wbs-tab[aria-label="درخت پروژه"]')).toHaveAttribute('aria-selected','true');
   await selectTreeMode(page, 'درصد پیشرفت');
 
   task = page.locator('.wbs-work-task', { hasText:'تحویل آهن' });
