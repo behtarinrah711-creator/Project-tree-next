@@ -111,4 +111,12 @@ EOF
 systemctl daemon-reload
 systemctl enable --now postgresql saosa-api.service saosa-db-backup.timer
 systemctl restart saosa-api.service
-curl --fail --silent --show-error http://127.0.0.1:3000/api/health
+for attempt in {1..20}; do
+  if curl --fail --silent --show-error http://127.0.0.1:3000/api/health; then
+    exit 0
+  fi
+  sleep 1
+done
+systemctl --no-pager --full status saosa-api.service || true
+journalctl --no-pager -u saosa-api.service -n 100 || true
+exit 1
