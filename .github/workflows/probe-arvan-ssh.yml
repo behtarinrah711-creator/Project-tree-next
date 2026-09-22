@@ -1,0 +1,17 @@
+name: Probe Arvan SSH reachability
+
+on:
+  push:
+    branches: [ops/probe-arvan-ssh]
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Test TCP port 22 without credentials
+        run: |
+          timeout 10 bash -c 'echo > /dev/tcp/37.32.30.98/22'
