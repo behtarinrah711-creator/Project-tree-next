@@ -15,7 +15,7 @@ function actor(){const user=window.firebase?.auth?.()?.currentUser||null;return{
 function esc(value){return String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));}
 function refOf(item){return{kind:item.kind,id:item.id,workId:item.workId};}
 function contactName(contact){return[contact?.type,contact?.firstName,contact?.lastName].filter(Boolean).join(' ').trim()||contact?.name||'';}
-function formatDate(value){return toPersianDigits(String(value||'').replace(/^\d{4}\//,''));}
+function formatDate(value){const parts=String(value||'').split('/');if(parts.length!==3)return toPersianDigits(String(value||''));return`${toPersianDigits(Number(parts[1]))}/${toPersianDigits(Number(parts[2]))}`;}
 function formatMoment(value){return value?new Intl.DateTimeFormat('fa-IR-u-ca-persian',{timeZone:'Asia/Tehran',year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'}).format(new Date(value)):'';}
 function formatMoney(value){return`${new Intl.NumberFormat('fa-IR').format(Math.max(0,Number(value)||0))} تومان`;}
 function reportsOf(entity){return(entity.executionReports||[]).filter(report=>report&&!report.trashed).slice().reverse();}
