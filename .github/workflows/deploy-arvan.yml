@@ -1,0 +1,75 @@
+name: Deploy saosa.ir to Arvan
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: [Deploy isolated site]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: saosa-arvan-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Check out tested revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Configure SSH
+        env:
+          SERVER_KEY: ${{ secrets.ARVAN_SSH_PRIVATE_KEY }}
+        run: |
+          if [ -z "$SERVER_KEY" ]; then
+            echo 'ARVAN_SSH_PRIVATE_KEY is missing' >&2
+            exit 1
+          fi
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SERVER_KEY" > ~/.ssh/id_arvan
+          chmod 600 ~/.ssh/id_arvan
+          ssh-keyscan -T 10 -H 37.32.30.98 > ~/.ssh/known_hosts
+          test -s ~/.ssh/known_hosts
+
+      - name: Publish static site and configure Nginx
+        run: |
+          set -euo pipefail
+          ssh -i ~/.ssh/id_arvan -o BatchMode=yes -o ConnectTimeout=10 root@37.32.30.98 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          if ! command -v nginx >/dev/null 2>&1; then
+            apt-get update
+            apt-get install -y nginx
+          fi
+          install -d -m 755 /srv/saosa/releases /etc/nginx/sites-available /etc/nginx/sites-enabled
+          cat > /etc/nginx/sites-available/saosa <<'NGINX'
+          server {
+              listen 80;
+              server_name saosa.ir www.saosa.ir;
+              root /srv/saosa/current;
+              index index.html;
+              location / { try_files $uri $uri/ /index.html; }
+          }
+          NGINX
+          ln -sfn /etc/nginx/sites-available/saosa /etc/nginx/sites-enabled/saosa
+          rm -f /etc/nginx/sites-enabled/default
+          nginx -t
+          REMOTE
+          release="$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA:0:8}"
+          ssh -i ~/.ssh/id_arvan -o BatchMode=yes root@37.32.30.98 "install -d -m 755 /srv/saosa/releases/$release"
+          tar -czf - --exclude=.git --exclude=.github --exclude=node_modules \
+            --exclude=tests --exclude=playwright-report --exclude=test-results \
+            --exclude='*.test.js' . | \
+            ssh -i ~/.ssh/id_arvan -o BatchMode=yes root@37.32.30.98 \
+              "tar -xzf - -C /srv/saosa/releases/$release"
+          ssh -i ~/.ssh/id_arvan -o BatchMode=yes root@37.32.30.98 \
+            "ln -sfn /srv/saosa/releases/$release /srv/saosa/current && systemctl enable --now nginx && systemctl reload nginx && curl -fsS -o /dev/null http://127.0.0.1/"
