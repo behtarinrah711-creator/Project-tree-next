@@ -22,6 +22,18 @@ CREATE TABLE IF NOT EXISTS sessions (
 CREATE INDEX IF NOT EXISTS sessions_account_id_idx ON sessions(account_id);
 CREATE INDEX IF NOT EXISTS sessions_expires_at_idx ON sessions(expires_at);
 
+CREATE TABLE IF NOT EXISTS otp_challenges (
+  id uuid PRIMARY KEY,
+  phone varchar(16) NOT NULL,
+  code_hash char(64) NOT NULL,
+  attempts_left smallint NOT NULL DEFAULT 5,
+  expires_at timestamptz NOT NULL,
+  consumed_at timestamptz,
+  requester_ip inet,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS otp_challenges_phone_created_idx ON otp_challenges(phone, created_at DESC);
+
 -- Lossless first migration boundary. The current browser/Firestore documents are
 -- stored intact as JSONB so no field is discarded while the final backend model
 -- is being designed. Normalized tables can be populated from these snapshots.
