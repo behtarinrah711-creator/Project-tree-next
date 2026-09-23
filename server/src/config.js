@@ -11,5 +11,7 @@ export function loadConfig(){
     port: Number(process.env.PORT || 3000),
     databaseUrl: required('DATABASE_URL'),
     sessionSecret,
+    kavenegarApiKey: required('KAVENEGAR_API_KEY'),
+    kavenegarTemplate: process.env.KAVENEGAR_TEMPLATE || 'saosalogin',
   });
 }
