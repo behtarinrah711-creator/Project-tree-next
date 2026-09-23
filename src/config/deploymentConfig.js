@@ -1,7 +1,10 @@
+const currentHost = String(globalThis.location?.hostname || '').toLowerCase();
+const isSaosaDeployment = currentHost === 'saosa.ir' || currentHost === 'www.saosa.ir';
+
 export const DEPLOYMENT_CONFIG = Object.freeze({
   instanceId: 'project-tree-next-v1',
   storageNamespace: 'ptnext-v1',
-  cloudEnabled: true,
+  cloudEnabled: !isSaosaDeployment,
   firebase: Object.freeze({
     apiKey: 'AIzaSyD6rBk4nMvSQj986BN-Es85KXA7ZTKKNiQ',
     authDomain: 'project-tree-next.firebaseapp.com',

@@ -7,6 +7,7 @@ ENV_FILE="$ENV_DIR/api.env"
 SERVICE_USER=saosa-api
 DB_NAME=saosa
 DB_USER=saosa_app
+KAVENEGAR_KEY_FILE=/run/saosa-kavenegar-key
 
 export DEBIAN_FRONTEND=noninteractive
 apt-get update
@@ -25,7 +26,7 @@ PORT=3000
 DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5432/${DB_NAME}
 SESSION_SECRET=${SESSION_SECRET}
 KAVENEGAR_API_KEY=
-KAVENEGAR_TEMPLATE=saosa-login
+KAVENEGAR_TEMPLATE=saosalogin
 EOF
   chown root:"$SERVICE_USER" "$ENV_FILE"
   chmod 640 "$ENV_FILE"
@@ -35,6 +36,26 @@ else
     echo "Could not read the existing database password" >&2
     exit 1
   fi
+fi
+
+if [[ -s "$KAVENEGAR_KEY_FILE" ]]; then
+  KAVENEGAR_API_KEY_VALUE="$(<"$KAVENEGAR_KEY_FILE")"
+  rm -f "$KAVENEGAR_KEY_FILE"
+  if [[ -z "$KAVENEGAR_API_KEY_VALUE" || "$KAVENEGAR_API_KEY_VALUE" == *$'\n'* ]]; then
+    echo "The deployed Kavenegar API key is invalid" >&2
+    exit 1
+  fi
+  TEMP_ENV="$(mktemp "$ENV_DIR/api.env.XXXXXX")"
+  grep -vE '^(KAVENEGAR_API_KEY|KAVENEGAR_TEMPLATE)=' "$ENV_FILE" > "$TEMP_ENV"
+  printf 'KAVENEGAR_API_KEY=%s\nKAVENEGAR_TEMPLATE=saosalogin\n' "$KAVENEGAR_API_KEY_VALUE" >> "$TEMP_ENV"
+  chown root:"$SERVICE_USER" "$TEMP_ENV"
+  chmod 640 "$TEMP_ENV"
+  mv -f "$TEMP_ENV" "$ENV_FILE"
+fi
+
+if ! grep -qE '^KAVENEGAR_API_KEY=.+$' "$ENV_FILE"; then
+  echo "Kavenegar API key is missing from $ENV_FILE" >&2
+  exit 1
 fi
 
 if ! runuser -u postgres -- psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='${DB_USER}'" | grep -q 1; then

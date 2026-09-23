@@ -41,8 +41,14 @@ jobs:
           test -s ~/.ssh/known_hosts
 
       - name: Publish static site and configure Nginx
+        env:
+          KAVENEGAR_API_KEY: ${{ secrets.KAVENEGAR_API_KEY }}
         run: |
           set -euo pipefail
+          if [ -z "$KAVENEGAR_API_KEY" ]; then
+            echo 'KAVENEGAR_API_KEY is missing' >&2
+            exit 1
+          fi
           ssh -i ~/.ssh/id_arvan -o BatchMode=yes -o ConnectTimeout=10 root@37.32.30.98 'bash -s' <<'REMOTE'
           set -euo pipefail
           export DEBIAN_FRONTEND=noninteractive
@@ -80,5 +86,7 @@ jobs:
             --exclude='*.test.js' . | \
             ssh -i ~/.ssh/id_arvan -o BatchMode=yes root@37.32.30.98 \
               "tar -xzf - -C /srv/saosa/releases/$release"
+          ssh -i ~/.ssh/id_arvan -o BatchMode=yes root@37.32.30.98 \
+            "umask 077; cat > /run/saosa-kavenegar-key" <<<"$KAVENEGAR_API_KEY"
           ssh -i ~/.ssh/id_arvan -o BatchMode=yes root@37.32.30.98 \
             "ln -sfn /srv/saosa/releases/$release /srv/saosa/current && bash /srv/saosa/current/server/ops/provision.sh /srv/saosa/current/server && nginx -t && systemctl enable --now nginx && systemctl reload nginx && curl -fsS -o /dev/null http://127.0.0.1/ && curl -fsS http://127.0.0.1/api/health"

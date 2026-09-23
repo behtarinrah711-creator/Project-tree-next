@@ -1,4 +1,27 @@
 const byId = (documentRef, id) => documentRef.getElementById(id);
+const SAOSA_SESSION_KEY = 'saosa:v1:sms-session';
+const isSaosaHost = windowRef => ['saosa.ir','www.saosa.ir'].includes(String(windowRef.location?.hostname || '').toLowerCase());
+function readSaosaSession(windowRef){
+  try{
+    const value=JSON.parse(windowRef.localStorage?.getItem(SAOSA_SESSION_KEY)||'null');
+    return value?.token && value?.phone && Number(value.expiresAt)>Date.now() ? value : null;
+  }catch{return null;}
+}
+function clearSaosaSession(windowRef){ windowRef.localStorage?.removeItem(SAOSA_SESSION_KEY); }
+function saosaSessionUser(session){ return session?{uid:`phone:${session.phone}`,phoneNumber:session.phone,displayName:'کاربر سائوسا'}:null; }
+async function smsApi(windowRef,path,body){
+  const response=await windowRef.fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+  const payload=await response.json().catch(()=>({}));
+  if(!response.ok){const error=new Error(payload.error||'request_failed');error.code=payload.error||'request_failed';throw error;}
+  return payload;
+}
+const requestSaosaOtp=(phone,windowRef)=>smsApi(windowRef,'/api/v1/auth/otp/request',{phone});
+async function verifySaosaOtp(phone,code,windowRef){
+  const result=await smsApi(windowRef,'/api/v1/auth/otp/verify',{phone,code});
+  const session={phone,token:result.token,expiresAt:Date.now()+result.expiresIn*1000};
+  windowRef.localStorage?.setItem(SAOSA_SESSION_KEY,JSON.stringify(session));
+  return session;
+}
 
 const AUTH_READY_TIMEOUT_MS = 5000;
 const AUTH_READY_POLL_MS = 50;
@@ -51,6 +74,23 @@ function reportAuthError(error, {windowRef, documentRef}){
       detail: { code: error?.code || '', message }
     }));
   }catch{}
+}
+
+function smsErrorMessage(error){
+  if(error?.code === 'invalid_phone') return 'شماره موبایل معتبر نیست';
+  if(error?.code === 'too_many_requests') return 'تعداد درخواست‌ها زیاد است؛ ۱۵ دقیقه دیگر تلاش کنید';
+  if(error?.code === 'invalid_or_expired_code') return 'کد نادرست یا منقضی شده است';
+  if(error?.code === 'sms_provider_error') return 'ارسال پیامک انجام نشد؛ کمی بعد دوباره تلاش کنید';
+  return 'ارتباط با سرویس ورود برقرار نشد';
+}
+
+async function signInWithSms({windowRef}){
+  const phone = windowRef.prompt?.('شماره موبایل را وارد کنید (مثال: 09123456789)');
+  if(!phone) return null;
+  await requestSaosaOtp(phone, windowRef);
+  const code = windowRef.prompt?.('کد ۶ رقمی ارسال‌شده را وارد کنید');
+  if(!code) return null;
+  return verifySaosaOtp(phone, code, windowRef);
 }
 
 async function signInWithGoogle({firebaseRef, auth, windowRef, documentRef}){
@@ -155,13 +195,14 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     });
     [avatarDefault, drawerAvatarDefault].forEach(icon => icon?.classList?.toggle?.('hidden', !!photo));
     if(drawerAccountName) drawerAccountName.textContent = user?.displayName || (user ? 'کاربر' : 'مهمان');
-    if(drawerAccountSub) drawerAccountSub.textContent = user?.email || 'وارد نشده‌اید';
+    if(drawerAccountSub) drawerAccountSub.textContent = user?.phoneNumber || user?.email || 'وارد نشده‌اید';
     if(signin){
-      signin.textContent = user ? 'خروج از حساب' : 'ورود با گوگل';
+      signin.textContent = user ? 'خروج از حساب' : (isSaosaHost(windowRef) ? 'ورود با شماره موبایل' : 'ورود با گوگل');
       signin.dataset.authAction = user ? 'signout' : 'signin';
       if(user) drawer?.appendChild?.(signin);
       else accountAccess?.appendChild?.(signin);
     }
+    if(drawerAuthHint && isSaosaHost(windowRef)) drawerAuthHint.textContent = 'کد ورود با پیامک ارسال می‌شود';
     drawerAuthHint?.classList?.toggle?.('hidden', !!user);
     avatar?.classList.toggle('is-guest', !user);
     avatar?.setAttribute('aria-label', user ? 'حساب کاربری' : 'ورود');
@@ -177,7 +218,9 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     auth?.onAuthStateChanged?.(syncUser);
   };
 
-  try{
+  if(isSaosaHost(windowRef)){
+    syncUser(saosaSessionUser(readSaosaSession(windowRef)));
+  }else try{
     const auth = windowRef.firebase?.auth?.();
     if(auth) attachAuthState(auth);
     else {
@@ -247,6 +290,24 @@ export function bindShellControls({ windowRef = window, documentRef = document }
     if(signin.dataset.authBusy === 'true') return;
     signin.dataset.authBusy = 'true';
     try{
+      if(isSaosaHost(windowRef)){
+        const current = readSaosaSession(windowRef);
+        if(current){
+          clearSaosaSession(windowRef);
+          windowRef.location?.reload?.();
+          return;
+        }
+        try{
+          const session = await signInWithSms({windowRef});
+          if(session){
+            windowRef.location?.reload?.();
+            closeProjectMenu();
+          }
+        }catch(error){
+          reportAuthError({code:error.code, message:smsErrorMessage(error)}, {windowRef, documentRef});
+        }
+        return;
+      }
       const ready = await waitForFirebaseAuth(windowRef);
       if(!ready){
         reportAuthError(
