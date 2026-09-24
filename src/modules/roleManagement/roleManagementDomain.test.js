@@ -25,16 +25,20 @@ test('roles and access levels expose the complete product vocabulary',()=>{
 });
 
 test('permission list comes from registry and never delegates role management',()=>{
-  assert.deepEqual(permissionModules(registry()),[
-    {id:'dashboard',label:'خانه'},
-    {id:'planning',label:'برنامه'},
-    {id:'people',label:'مخاطبین'},
-    {id:'activities',label:'فعالیت‌ها'},
-    {id:'contracts',label:'قراردادها'},
+  assert.deepEqual(permissionModules(registry()).map(module=>module.id),[
+    'dashboard',
+    'planning:tree','planning:timeline','planning:costline',
+    'execution:today','execution:shopping',
+    'reports:reports','reports:delay',
+    'accounting',
+    'people','activities','contracts',
   ]);
   assert.deepEqual(permissionGroups(registry()).map(group=>[group.label,group.modules.map(module=>module.label)]),[
     ['خانه',['خانه']],
-    ['برنامه',['برنامه']],
+    ['برنامه',['درخت پروژه','تایم‌لاین','برآورد هزینه']],
+    ['اجرا',['کارهای امروز','خریدهای امروز']],
+    ['گزارش',['گزارش‌ها','تأخیرات']],
+    ['مالی',['حسابداری']],
     ['تنظیمات',['مخاطبین','فعالیت‌ها','قراردادها']],
   ]);
 });
@@ -51,6 +55,12 @@ test('member creation normalizes mobile and fills every registered permission',(
   assert.equal(normalizeMobile('+98 912 345 6789'),'09123456789');
   assert.equal(member.mobile,'09123456789');
   assert.equal(member.status,'invited');
-  assert.deepEqual(member.permissions,{dashboard:'view',planning:'none',people:'none',activities:'none',contracts:'none'});
+  assert.deepEqual(member.permissions,{
+    dashboard:'view',
+    'planning:tree':'none','planning:timeline':'none','planning:costline':'none',
+    'execution:today':'none','execution:shopping':'none',
+    'reports:reports':'none','reports:delay':'none',
+    accounting:'none',people:'none',activities:'none',contracts:'none',
+  });
   assert.throws(()=>createMember({mobile:'123'},{registry:registry()}),/معتبر/);
 });
