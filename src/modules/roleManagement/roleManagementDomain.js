@@ -31,19 +31,16 @@ const PERMISSION_GROUPS = Object.freeze([
   Object.freeze({ id:'home', label:'خانه', modules:[Object.freeze({id:'dashboard',label:'خانه'})] }),
   Object.freeze({ id:'planning', label:'برنامه', modules:[
     Object.freeze({id:'planning:tree',label:'درخت پروژه'}),
-    Object.freeze({id:'planning:timeline',label:'تایم‌لاین'}),
+    Object.freeze({id:'planning:timeline',label:'نمودار گانت'}),
     Object.freeze({id:'planning:costline',label:'برآورد هزینه'}),
   ] }),
   Object.freeze({ id:'execution', label:'اجرا', modules:[
-    Object.freeze({id:'execution:today',label:'کارهای امروز'}),
-    Object.freeze({id:'execution:shopping',label:'خریدهای امروز'}),
+    Object.freeze({id:'execution:today',label:'کارها'}),
+    Object.freeze({id:'execution:shopping',label:'خریدها'}),
   ] }),
   Object.freeze({ id:'reports', label:'گزارش', modules:[
     Object.freeze({id:'reports:reports',label:'گزارش‌ها'}),
-    Object.freeze({id:'reports:delay',label:'تأخیرات'}),
-  ] }),
-  Object.freeze({ id:'financial', label:'مالی', modules:[
-    Object.freeze({id:'accounting',label:'حسابداری'}),
+    Object.freeze({id:'reports:delay',label:'دیرکردها'}),
   ] }),
   Object.freeze({ id:'settings', label:'تنظیمات', registryModules:['project-settings','people','activities','contracts'] }),
 ]);
