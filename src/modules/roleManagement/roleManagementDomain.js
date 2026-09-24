@@ -13,6 +13,10 @@ export const MEMBER_STATUSES = Object.freeze([
   Object.freeze({ id:'inactive', label:'غیرفعال' }),
 ]);
 
+export const EDITABLE_MEMBER_STATUSES = Object.freeze(
+  MEMBER_STATUSES.filter(item=>item.id !== 'invited')
+);
+
 export const ACCESS_LEVELS = Object.freeze([
   Object.freeze({ id:'none', label:'بدون دسترسی' }),
   Object.freeze({ id:'view', label:'مشاهده' }),
@@ -22,6 +26,15 @@ export const ACCESS_LEVELS = Object.freeze([
 ]);
 
 export const ROLE_MANAGEMENT_MODULE_ID = 'role-management';
+
+const PERMISSION_GROUPS = Object.freeze([
+  Object.freeze({ id:'home', label:'خانه', modules:['dashboard'] }),
+  Object.freeze({ id:'planning', label:'برنامه', modules:['planning'] }),
+  Object.freeze({ id:'execution', label:'اجرا', modules:['execution'] }),
+  Object.freeze({ id:'reports', label:'گزارش', modules:['reports'] }),
+  Object.freeze({ id:'financial', label:'مالی', modules:['accounting'] }),
+  Object.freeze({ id:'settings', label:'تنظیمات', modules:['project-settings','people','activities','contracts'] }),
+]);
 
 export function normalizeMobile(value){
   const digits=String(value || '').replace(/[۰-۹]/g,char=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(char))).replace(/\D/g,'');
@@ -35,7 +48,6 @@ export function isValidIranianMobile(value){ return /^09\d{9}$/.test(normalizeMo
 export function canManageProjectRoles(project, session){
   if(!project) return false;
   const ownerId=project.ownerUid || project.creatorUid || null;
-  // Projects created locally before authentication belong to this local creator.
   return ownerId ? !!session?.uid && String(ownerId)===String(session.uid) : true;
 }
 
@@ -43,6 +55,20 @@ export function permissionModules(registry){
   return (registry?.list?.() || [])
     .filter(module=>module.id !== ROLE_MANAGEMENT_MODULE_ID && module.assignablePermission !== false)
     .map(module=>Object.freeze({ id:module.id, label:module.title || module.label || module.id }));
+}
+
+export function permissionGroups(registry){
+  const modules=permissionModules(registry);
+  const byId=new Map(modules.map(module=>[module.id,module]));
+  const used=new Set();
+  const groups=PERMISSION_GROUPS.map(group=>{
+    const items=group.modules.map(id=>byId.get(id)).filter(Boolean);
+    items.forEach(item=>used.add(item.id));
+    return Object.freeze({id:group.id,label:group.label,modules:Object.freeze(items)});
+  }).filter(group=>group.modules.length);
+  const remaining=modules.filter(module=>!used.has(module.id));
+  if(remaining.length) groups.push(Object.freeze({id:'other',label:'سایر',modules:Object.freeze(remaining)}));
+  return groups;
 }
 
 export function normalizePermissions(permissions, registry){
@@ -59,14 +85,13 @@ export function createMember(input, { registry, now=Date.now, random=Math.random
   const mobile=normalizeMobile(input?.mobile);
   if(!isValidIranianMobile(mobile)) throw new TypeError('شماره موبایل معتبر نیست.');
   const role=PROJECT_ROLES.some(item=>item.id===input?.role) ? input.role : PROJECT_ROLES[0].id;
-  const status=MEMBER_STATUSES.some(item=>item.id===input?.status) ? input.status : 'invited';
   return {
     id:`member-${now()}-${random().toString(36).slice(2,8)}`,
     mobile,
     firstName:String(input?.firstName || '').trim(),
     lastName:String(input?.lastName || '').trim(),
     role,
-    status,
+    status:'invited',
     permissions:normalizePermissions(input?.permissions, registry),
     invitedAt:now(),
   };
