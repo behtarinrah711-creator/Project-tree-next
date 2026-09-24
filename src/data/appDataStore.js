@@ -41,6 +41,7 @@ export function createAppDataStore({
   schemaVersion = 8,
 } = {}){
   let snapshot = createEmptySnapshot(schemaVersion);
+  const persistListeners = new Set();
   const syncStateKey = `${storageKey}:sync-state`;
 
   function readSyncState(){
@@ -133,10 +134,19 @@ export function createAppDataStore({
     if(!storage) return false;
     try{
       storage.setItem(storageKey, JSON.stringify(snapshot));
+      persistListeners.forEach(listener => {
+        try{ listener(snapshot); }catch(e){}
+      });
       return true;
     }catch(e){
       return false;
     }
+  }
+
+  function subscribePersist(listener){
+    if(typeof listener !== 'function') throw new TypeError('persist listener must be a function');
+    persistListeners.add(listener);
+    return () => persistListeners.delete(listener);
   }
 
   function getProjects(){ return snapshot.projects; }
@@ -214,6 +224,7 @@ export function createAppDataStore({
     loadFromStorage,
     hasStoredSnapshot,
     persistLocal,
+    subscribePersist,
     getProjects,
     setProjects,
     getActiveTab,
