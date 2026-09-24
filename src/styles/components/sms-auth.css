@@ -1,0 +1,18 @@
+.sms-auth-screen[hidden]{display:none!important;}
+.sms-auth-screen{position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;min-height:100dvh;background:#fff;color:var(--text,#151515);font-family:'IRANYekan',IRANYekan,Tahoma,sans-serif;}
+.sms-auth-header{min-height:58px;padding:env(safe-area-inset-top) 16px 0;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;border-bottom:1px solid #ececec;text-align:center;box-sizing:content-box;}
+.sms-auth-header strong{font-size:16px;font-weight:700;}
+.sms-auth-back{border:0;background:transparent;font:inherit;font-size:26px;width:44px;height:44px;color:inherit;cursor:pointer;}
+.sms-auth-form{width:min(100% - 40px,420px);margin:auto;display:flex;flex-direction:column;padding:32px 0 calc(36px + env(safe-area-inset-bottom));}
+.sms-auth-brand{align-self:center;margin-bottom:30px;color:#00075d;font-size:27px;font-weight:800;letter-spacing:.2px;direction:ltr;}
+.sms-auth-form h1{font-size:23px;line-height:1.5;margin:0 0 10px;text-align:center;}
+.sms-auth-form>p:not(.sms-auth-error){margin:0 0 30px;color:#686868;font-size:14px;line-height:1.9;text-align:center;}
+.sms-auth-label{margin-bottom:9px;font-size:13px;font-weight:700;}
+.sms-auth-input{width:100%;height:54px;border:1px solid #cfcfcf;border-radius:12px;padding:0 16px;box-sizing:border-box;background:#fff;color:#161616;font:inherit;font-size:18px;text-align:center;outline:none;}
+.sms-auth-input:focus{border-color:#00075d;box-shadow:0 0 0 3px rgba(0,7,93,.08);}
+.sms-auth-input.sms-code{font-size:25px;letter-spacing:7px;}
+.sms-auth-error{min-height:24px!important;margin:8px 2px 6px!important;color:#c62828!important;font-size:12px!important;text-align:right!important;}
+.sms-auth-submit{height:54px;border:0;border-radius:12px;background:#00075d;color:#fff;font:inherit;font-weight:700;font-size:15px;cursor:pointer;}
+.sms-auth-submit:disabled,.sms-auth-resend:disabled{opacity:.55;cursor:default;}
+.sms-auth-resend{align-self:center;margin-top:18px;border:0;background:transparent;color:#00075d;font:inherit;font-size:13px;font-weight:700;cursor:pointer;}
+body.sms-auth-open{overflow:hidden;}
