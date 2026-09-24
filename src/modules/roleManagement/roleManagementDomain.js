@@ -28,12 +28,24 @@ export const ACCESS_LEVELS = Object.freeze([
 export const ROLE_MANAGEMENT_MODULE_ID = 'role-management';
 
 const PERMISSION_GROUPS = Object.freeze([
-  Object.freeze({ id:'home', label:'خانه', modules:['dashboard'] }),
-  Object.freeze({ id:'planning', label:'برنامه', modules:['planning'] }),
-  Object.freeze({ id:'execution', label:'اجرا', modules:['execution'] }),
-  Object.freeze({ id:'reports', label:'گزارش', modules:['reports'] }),
-  Object.freeze({ id:'financial', label:'مالی', modules:['accounting'] }),
-  Object.freeze({ id:'settings', label:'تنظیمات', modules:['project-settings','people','activities','contracts'] }),
+  Object.freeze({ id:'home', label:'خانه', modules:[Object.freeze({id:'dashboard',label:'خانه'})] }),
+  Object.freeze({ id:'planning', label:'برنامه', modules:[
+    Object.freeze({id:'planning:tree',label:'درخت پروژه'}),
+    Object.freeze({id:'planning:timeline',label:'تایم‌لاین'}),
+    Object.freeze({id:'planning:costline',label:'برآورد هزینه'}),
+  ] }),
+  Object.freeze({ id:'execution', label:'اجرا', modules:[
+    Object.freeze({id:'execution:today',label:'کارهای امروز'}),
+    Object.freeze({id:'execution:shopping',label:'خریدهای امروز'}),
+  ] }),
+  Object.freeze({ id:'reports', label:'گزارش', modules:[
+    Object.freeze({id:'reports:reports',label:'گزارش‌ها'}),
+    Object.freeze({id:'reports:delay',label:'تأخیرات'}),
+  ] }),
+  Object.freeze({ id:'financial', label:'مالی', modules:[
+    Object.freeze({id:'accounting',label:'حسابداری'}),
+  ] }),
+  Object.freeze({ id:'settings', label:'تنظیمات', registryModules:['project-settings','people','activities','contracts'] }),
 ]);
 
 export function normalizeMobile(value){
@@ -52,9 +64,24 @@ export function canManageProjectRoles(project, session){
 }
 
 export function permissionModules(registry){
-  return (registry?.list?.() || [])
-    .filter(module=>module.id !== ROLE_MANAGEMENT_MODULE_ID && module.assignablePermission !== false)
-    .map(module=>Object.freeze({ id:module.id, label:module.title || module.label || module.id }));
+  const registryModules=(registry?.list?.() || [])
+    .filter(module=>module.id !== ROLE_MANAGEMENT_MODULE_ID && module.assignablePermission !== false);
+  const byId=new Map(registryModules.map(module=>[module.id,module]));
+  const modules=[];
+  PERMISSION_GROUPS.forEach(group=>{
+    (group.modules || []).forEach(module=>modules.push(Object.freeze({...module})));
+    (group.registryModules || []).forEach(id=>{
+      const module=byId.get(id);
+      if(module) modules.push(Object.freeze({id:module.id,label:module.title || module.label || module.id}));
+    });
+  });
+  const used=new Set(modules.map(module=>module.id));
+  registryModules.forEach(module=>{
+    if(!used.has(module.id) && !['planning','execution','reports'].includes(module.id)){
+      modules.push(Object.freeze({id:module.id,label:module.title || module.label || module.id}));
+    }
+  });
+  return modules;
 }
 
 export function permissionGroups(registry){
@@ -62,7 +89,8 @@ export function permissionGroups(registry){
   const byId=new Map(modules.map(module=>[module.id,module]));
   const used=new Set();
   const groups=PERMISSION_GROUPS.map(group=>{
-    const items=group.modules.map(id=>byId.get(id)).filter(Boolean);
+    const ids=(group.modules || []).map(module=>module.id).concat(group.registryModules || []);
+    const items=ids.map(id=>byId.get(id)).filter(Boolean);
     items.forEach(item=>used.add(item.id));
     return Object.freeze({id:group.id,label:group.label,modules:Object.freeze(items)});
   }).filter(group=>group.modules.length);
