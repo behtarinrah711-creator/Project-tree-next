@@ -30,15 +30,13 @@ test('permission list comes from registry and never delegates role management',(
     'planning:tree','planning:timeline','planning:costline',
     'execution:today','execution:shopping',
     'reports:reports','reports:delay',
-    'accounting',
     'people','activities','contracts',
   ]);
   assert.deepEqual(permissionGroups(registry()).map(group=>[group.label,group.modules.map(module=>module.label)]),[
     ['خانه',['خانه']],
-    ['برنامه',['درخت پروژه','تایم‌لاین','برآورد هزینه']],
-    ['اجرا',['کارهای امروز','خریدهای امروز']],
-    ['گزارش',['گزارش‌ها','تأخیرات']],
-    ['مالی',['حسابداری']],
+    ['برنامه',['درخت پروژه','نمودار گانت','برآورد هزینه']],
+    ['اجرا',['کارها','خریدها']],
+    ['گزارش',['گزارش‌ها','دیرکردها']],
     ['تنظیمات',['مخاطبین','فعالیت‌ها','قراردادها']],
   ]);
 });
@@ -60,7 +58,7 @@ test('member creation normalizes mobile and fills every registered permission',(
     'planning:tree':'none','planning:timeline':'none','planning:costline':'none',
     'execution:today':'none','execution:shopping':'none',
     'reports:reports':'none','reports:delay':'none',
-    accounting:'none',people:'none',activities:'none',contracts:'none',
+    people:'none',activities:'none',contracts:'none',
   });
   assert.throws(()=>createMember({mobile:'123'},{registry:registry()}),/معتبر/);
 });
