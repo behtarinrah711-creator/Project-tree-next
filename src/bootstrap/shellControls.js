@@ -1,13 +1,5 @@
 const byId = (documentRef, id) => documentRef.getElementById(id);
-const SAOSA_SESSION_KEY = 'saosa:v1:sms-session';
-const isSaosaHost = windowRef => ['saosa.ir','www.saosa.ir'].includes(String(windowRef.location?.hostname || '').toLowerCase());
-function readSaosaSession(windowRef){
-  try{
-    const value=JSON.parse(windowRef.localStorage?.getItem(SAOSA_SESSION_KEY)||'null');
-    return value?.token && value?.phone && Number(value.expiresAt)>Date.now() ? value : null;
-  }catch{return null;}
-}
-function clearSaosaSession(windowRef){ windowRef.localStorage?.removeItem(SAOSA_SESSION_KEY); }
+import { SAOSA_SESSION_KEY, clearSaosaWorkspaceSession, isSaosaHost, readSaosaSession } from '../cloud/saosaWorkspaceSync.js';
 function saosaSessionUser(session){ return session?{uid:`phone:${session.phone}`,phoneNumber:session.phone,displayName:'کاربر سائوسا'}:null; }
 async function smsApi(windowRef,path,body){
   const response=await windowRef.fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
@@ -18,7 +10,7 @@ async function smsApi(windowRef,path,body){
 const requestSaosaOtp=(phone,windowRef)=>smsApi(windowRef,'/api/v1/auth/otp/request',{phone});
 async function verifySaosaOtp(phone,code,windowRef){
   const result=await smsApi(windowRef,'/api/v1/auth/otp/verify',{phone,code});
-  const session={phone,token:result.token,expiresAt:Date.now()+result.expiresIn*1000};
+  const session={phone,token:result.token,accountId:result.accountId,expiresAt:Date.now()+result.expiresIn*1000};
   windowRef.localStorage?.setItem(SAOSA_SESSION_KEY,JSON.stringify(session));
   return session;
 }
@@ -293,7 +285,7 @@ export function bindShellControls({ windowRef = window, documentRef = document }
       if(isSaosaHost(windowRef)){
         const current = readSaosaSession(windowRef);
         if(current){
-          clearSaosaSession(windowRef);
+          clearSaosaWorkspaceSession(windowRef);
           windowRef.location?.reload?.();
           return;
         }

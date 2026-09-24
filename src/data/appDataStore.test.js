@@ -49,6 +49,18 @@ describe('appDataStore D1', () => {
     assert.equal(again.getActiveTab(), 'x');
   });
 
+  it('notifies persistence subscribers after a successful local write', () => {
+    const storage = memoryStorage();
+    const s = createAppDataStore({storage});
+    const seen = [];
+    const unsubscribe = s.subscribePersist(snapshot => seen.push(snapshot.projects.length));
+    s.setProjects([{id:'p1'}]);
+    s.persistLocal();
+    unsubscribe();
+    s.persistLocal();
+    assert.deepEqual(seen, [1]);
+  });
+
   it('reports storage presence without exposing storage to runtime callers', () => {
     const s = createAppDataStore({ storage: memoryStorage(), schemaVersion: 8 });
     assert.equal(s.hasStoredSnapshot(), false);

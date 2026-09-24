@@ -62,6 +62,7 @@ import { taskIcons } from '../ui/taskIcons.js';
 import * as projectRecordReferences from '../domain/projectRecordReferences.js';
 import { installApplicationTheme } from '../core/applicationTheme.js';
 import { createFoundationCloudRuntime } from '../cloud/foundationCloudComposition.js';
+import { prepareSaosaWorkspace } from '../cloud/saosaWorkspaceSync.js';
 
 /** Start the modular API, then the classic application runtime, then routing. */
 export async function startApplication({
@@ -133,11 +134,13 @@ export async function startApplication({
   windowRef.KarhaApp = application;
 
   // D1: AppDataStore must exist before classic loadData() runs.
-  installAppDataStore({ windowRef, schemaVersion: 8 });
+  const appDataStore = installAppDataStore({ windowRef, schemaVersion: 8 });
   installFirebaseRuntime({windowRef});
   installHtmlEscape({ windowRef });
   installBrowserHistory({windowRef});
+  const saosaWorkspace = await prepareSaosaWorkspace({windowRef, store:appDataStore});
   await loadRuntime();
+  saosaWorkspace.attach?.();
   // Attach after install so KarhaApp holds the live store reference.
   if(windowRef.KarhaApp && windowRef.KarhaAppData){
     try{
