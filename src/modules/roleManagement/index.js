@@ -43,20 +43,20 @@ export function createRoleManagementModule({
     const popupField=(label,name,items,current)=>{
       const wrap=documentRef.createElement('label');wrap.className='role-popup-field';
       const caption=documentRef.createElement('span');caption.className='role-field-label';caption.textContent=label;wrap.appendChild(caption);
-      const root=documentRef.createElement('div');root.className='contact-custom-select role-custom-select';
+      const root=documentRef.createElement('div');root.className='role-custom-select';
       const input=documentRef.createElement('input');input.type='hidden';input.name=name;input.value=current;
-      const trigger=documentRef.createElement('button');trigger.type='button';trigger.className='contact-custom-select-trigger';
+      const trigger=documentRef.createElement('button');trigger.type='button';trigger.className='role-custom-select-trigger';
       const value=documentRef.createElement('span');value.textContent=items.find(item=>item.id===current)?.label || items[0]?.label || '';
-      const arrow=documentRef.createElement('span');arrow.className='contact-custom-select-arrow';arrow.textContent='⌄';
+      const arrow=documentRef.createElement('span');arrow.className='role-custom-select-arrow';arrow.textContent='⌄';
       trigger.append(value,arrow);
-      const menu=documentRef.createElement('div');menu.className='contact-custom-select-menu';menu.setAttribute('role','listbox');
+      const menu=documentRef.createElement('div');menu.className='role-custom-select-menu';menu.setAttribute('role','listbox');
       const closeMenu=()=>{menu.classList.remove('open');trigger.classList.remove('open');};
       items.forEach(item=>{
-        const option=documentRef.createElement('button');option.type='button';option.className='contact-custom-select-option';option.textContent=item.label;option.dataset.value=item.id;
+        const option=documentRef.createElement('button');option.type='button';option.className='role-custom-select-option';option.textContent=item.label;option.dataset.value=item.id;
         option.onclick=event=>{event.preventDefault();event.stopPropagation();input.value=item.id;value.textContent=item.label;closeMenu();};
         menu.appendChild(option);
       });
-      trigger.onclick=event=>{event.preventDefault();event.stopPropagation();const opening=!menu.classList.contains('open');form.querySelectorAll('.contact-custom-select-menu.open').forEach(open=>open.classList.remove('open'));form.querySelectorAll('.contact-custom-select-trigger.open').forEach(open=>open.classList.remove('open'));if(opening){menu.classList.add('open');trigger.classList.add('open');}};
+      trigger.onclick=event=>{event.preventDefault();event.stopPropagation();const opening=!menu.classList.contains('open');form.querySelectorAll('.role-custom-select-menu.open').forEach(open=>open.classList.remove('open'));form.querySelectorAll('.role-custom-select-trigger.open').forEach(open=>open.classList.remove('open'));if(opening){menu.classList.add('open');trigger.classList.add('open');}};
       root.append(input,trigger,menu);wrap.appendChild(root);fields.appendChild(wrap);
       return input;
     };
@@ -77,7 +77,7 @@ export function createRoleManagementModule({
     form.appendChild(fields);sheet.appendChild(form);overlay.appendChild(sheet);documentRef.body.appendChild(overlay);activeSheet=overlay;
     const close=()=>closeSheet();form.querySelector('[data-close]').onclick=close;
     overlay.addEventListener('click',event=>{if(event.target===overlay)close();});
-    form.addEventListener('click',event=>{if(!event.target.closest?.('.role-custom-select')){form.querySelectorAll('.contact-custom-select-menu.open').forEach(open=>open.classList.remove('open'));form.querySelectorAll('.contact-custom-select-trigger.open').forEach(open=>open.classList.remove('open'));}});
+    form.addEventListener('click',event=>{if(!event.target.closest?.('.role-custom-select')){form.querySelectorAll('.role-custom-select-menu.open').forEach(open=>open.classList.remove('open'));form.querySelectorAll('.role-custom-select-trigger.open').forEach(open=>open.classList.remove('open'));}});
     form.addEventListener('submit',event=>{
       event.preventDefault();
       const data=new FormData(form);if(!isValidIranianMobile(data.get('mobile'))){error.textContent='شماره موبایل معتبر وارد کنید.';return;}
