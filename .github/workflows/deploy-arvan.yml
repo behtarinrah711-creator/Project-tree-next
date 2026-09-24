@@ -45,6 +45,7 @@ jobs:
           KAVENEGAR_API_KEY: ${{ secrets.KAVENEGAR_API_KEY }}
         run: |
           set -euo pipefail
+          sed -i "s/__DEPLOYMENT_VERSION__/${GITHUB_SHA}/g" index.html src/bootstrap/cacheGuard.js
           if [ -z "$KAVENEGAR_API_KEY" ]; then
             echo 'KAVENEGAR_API_KEY is missing' >&2
             exit 1
