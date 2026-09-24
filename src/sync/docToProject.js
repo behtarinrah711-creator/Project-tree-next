@@ -26,6 +26,7 @@ export function docToProjectFromCloud(doc, localExisting, ctx = {}){
   const localActivities = localExisting && Array.isArray(localExisting.activityTemplates) ? localExisting.activityTemplates : [];
   const localContractTemplates = localExisting && Array.isArray(localExisting.contractTemplates) ? localExisting.contractTemplates : [];
   const localContracts = localExisting && Array.isArray(localExisting.contracts) ? localExisting.contracts : [];
+  const localProjectMembers = localExisting && Array.isArray(localExisting.projectMembers) ? localExisting.projectMembers : [];
 
   const projectDirty = !!(isDirty(ctx.appDataStore, doc.id) || isPending(ctx.appDataStore, doc.id));
   const mergeCol = (localArr, cloudArr, fieldPresent) => {
@@ -42,10 +43,12 @@ export function docToProjectFromCloud(doc, localExisting, ctx = {}){
   const hasCloudActivities = Object.prototype.hasOwnProperty.call(d, 'activityTemplates');
   const hasCloudContractTemplates = Object.prototype.hasOwnProperty.call(d, 'contractTemplates');
   const hasCloudContracts = Object.prototype.hasOwnProperty.call(d, 'contracts');
+  const hasCloudProjectMembers = Object.prototype.hasOwnProperty.call(d, 'projectMembers');
   const contacts = mergeCol(localContacts, Array.isArray(d.contacts) ? d.contacts : [], hasCloudContacts);
   const activityTemplates = mergeCol(localActivities, Array.isArray(d.activityTemplates) ? d.activityTemplates : [], hasCloudActivities);
   const contractTemplates = mergeCol(localContractTemplates, Array.isArray(d.contractTemplates) ? d.contractTemplates : [], hasCloudContractTemplates);
   const contracts = mergeCol(localContracts, Array.isArray(d.contracts) ? d.contracts : [], hasCloudContracts);
+  const projectMembers = mergeCol(localProjectMembers, Array.isArray(d.projectMembers) ? d.projectMembers : [], hasCloudProjectMembers);
 
   const meta = policy?.mergeProjectMetadata
     ? policy.mergeProjectMetadata(localExisting, {
@@ -77,6 +80,7 @@ export function docToProjectFromCloud(doc, localExisting, ctx = {}){
     activityTemplates,
     contractTemplates,
     contracts,
+    projectMembers,
     completedOpen: !!meta.completedOpen,
     ownerUid: meta.ownerUid,
     ownerEmail: meta.ownerEmail || normalizeEmail(d.ownerEmail || ''),

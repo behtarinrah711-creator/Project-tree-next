@@ -32,6 +32,7 @@ export function buildProjectCloudPayload(p, store, policy, normalizeEmail, DATA_
     activityTemplates: pickCol('activityTemplates'),
     contractTemplates: pickCol('contractTemplates'),
     contracts: pickCol('contracts'),
+    projectMembers: pickCol('projectMembers'),
     schemaVersion: DATA_SCHEMA_VERSION,
   };
 }

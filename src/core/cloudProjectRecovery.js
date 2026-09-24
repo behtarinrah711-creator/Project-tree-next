@@ -39,6 +39,7 @@ export function projectFromCloudDoc(doc,user,existing=null){
     activityTemplates: pickArray('activityTemplates'),
     contractTemplates: pickArray('contractTemplates'),
     contracts: pickArray('contracts'),
+    projectMembers: pickArray('projectMembers'),
     contractStatusReports: pickArray('contractStatusReports'),
     completedOpen: data.completedOpen===undefined ? !!existing?.completedOpen : !!data.completedOpen,
     ownerUid: inferredOwnerUid,

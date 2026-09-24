@@ -32,7 +32,7 @@ test('the application has one deterministic CSS manifest and no embedded applica
     'components/dialogs.css', 'components/sms-auth.css', 'widgets/numpad.css', 'features/task-details.css',
     'workspace/drawer.css', 'components/feedback.css', 'workspace/workspace.css',
     'features/contacts.css', 'features/accounting-settings.css', 'components/forms.css',
-    'features/contracts-layout.css', 'features/project-management.css', 'components/export.css',
+    'features/contracts-layout.css', 'features/project-management.css', 'features/role-management.css', 'components/export.css',
     'features/contact-exit.css', 'features/contracts.css', 'features/contact-custom-select.css', 'widgets/search-template.css',
     'features/contract-search-trigger.css', 'workspace/back-navigation.css',
     'components/form-template.css', 'features/contact-form-template.css', 'workspace/navigation.css',

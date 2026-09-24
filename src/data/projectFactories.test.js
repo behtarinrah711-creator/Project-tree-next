@@ -9,6 +9,6 @@ test('project/task/subtask factories preserve classic production shapes',()=>{
   assert.deepEqual(makeSub('work','i1'),item);
   assert.deepEqual(makeProject('Project',8,'p1'),{
     id:'p1',name:'Project',type:'project',settings:{stageMode:'base'},tasks:[],contacts:[],activityTemplates:[],contractTemplates:[],
-    contracts:[],contractStatusReports:[],completedOpen:false,archived:false,trashed:false,schemaVersion:8,
+    contracts:[],projectMembers:[],contractStatusReports:[],completedOpen:false,archived:false,trashed:false,schemaVersion:8,
   });
 });
