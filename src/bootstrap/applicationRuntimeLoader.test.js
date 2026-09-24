@@ -69,8 +69,8 @@ test('legacy loader creates one ordered classic script', async () => {
 
 test('HTML has production entries without condemned share controls', async () => {
   const html = await readFile(new URL('../../index.html', import.meta.url), 'utf8');
-  assert.match(html, /<script type="module" src="src\/bootstrap\/shellEntry\.js"><\/script>/);
-  assert.match(html, /<script type="module" src="src\/bootstrap\/app\.js"><\/script>/);
+  assert.match(html, /<script type="module" src="src\/bootstrap\/shellEntry\.js(?:\?[^"]*)?"><\/script>/);
+  assert.match(html, /<script type="module" src="src\/bootstrap\/app\.js(?:\?[^"]*)?"><\/script>/);
   assert.doesNotMatch(html, /<script[^>]+src="src\/legacy\/applicationRuntime\.js"/);
   assert.doesNotMatch(html, /share(?:DialogSub|EmailInput|CancelBtn|ConfirmBtn)/);
   assert.doesNotMatch(html, /آدرس جیمیل فردی که می‌خواهید به این پروژه دسترسی بدهید را وارد کنید/);
