@@ -129,6 +129,7 @@ export async function prepareSaosaWorkspace({windowRef = window, store} = {}){
 
   store?.replaceSnapshot?.(snapshot);
   store?.persistLocal?.();
+  windowRef.KarhaSaosaWorkspaceAccess = remote.access || {};
   windowRef.localStorage?.setItem(ACCOUNT_MARKER_KEY, remote.accountId);
 
   const attach = createPersistAttach(windowRef, session, store);
