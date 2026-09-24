@@ -59,6 +59,24 @@
 </head>
 <body>
 
+<section class="sms-auth-screen" id="smsAuthScreen" aria-labelledby="smsAuthTitle" hidden>
+  <div class="sms-auth-header">
+    <button class="sms-auth-back" id="smsAuthBack" type="button" aria-label="بازگشت">&#x2192;</button>
+    <strong id="smsAuthTitle">ورود به سا اُ سا</strong>
+    <span aria-hidden="true"></span>
+  </div>
+  <form class="sms-auth-form" id="smsAuthForm" novalidate>
+    <div class="sms-auth-brand" aria-hidden="true">Sa O Sa</div>
+    <h1 id="smsAuthHeading">ورود با شماره موبایل</h1>
+    <p id="smsAuthDescription">شماره موبایل خود را وارد کنید تا کد ورود برایتان پیامک شود.</p>
+    <label class="sms-auth-label" id="smsAuthInputLabel" for="smsAuthInput">شماره موبایل</label>
+    <input class="sms-auth-input" id="smsAuthInput" type="tel" inputmode="numeric" autocomplete="tel" maxlength="11" placeholder="مثال: 09123456789" dir="ltr">
+    <p class="sms-auth-error" id="smsAuthError" role="alert" aria-live="polite"></p>
+    <button class="sms-auth-submit" id="smsAuthSubmit" type="submit">دریافت کد ورود</button>
+    <button class="sms-auth-resend" id="smsAuthResend" type="button" hidden>ارسال مجدد کد</button>
+  </form>
+</section>
+
 <div class="topbar" id="topbar">
   <div class="topbar-title" id="topbarTitle"><span class="app-title-lockup"><span class="app-title-main">کارها</span></span><span class="app-title-project" id="topbarProjectName"></span></div>
   <input type="search" class="topbar-search" id="projectSearch" placeholder="جستجوی آیتم‌های پروژه…" autocomplete="off" enterkeyhint="search">
