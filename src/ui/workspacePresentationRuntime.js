@@ -215,9 +215,15 @@ function renderSettingsWorkspace(){
   const projectSettingsRow=document.createElement('button'); projectSettingsRow.type='button'; projectSettingsRow.className='workspace-option';
   projectSettingsRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">تنظیمات پروژه</span></span><span class="workspace-option-arrow">›</span>';
   projectSettingsRow.onclick=()=>window.KarhaApp?.router?.navigate(p.id, 'project-settings'); wrap.appendChild(projectSettingsRow);
-  const rolesRow=document.createElement('button'); rolesRow.type='button'; rolesRow.className='workspace-option';
-  rolesRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">مدیریت نقش‌ها</span><span class="workspace-option-meta">اعضا، نقش‌ها و سطح دسترسی ماژول‌ها</span></span><span class="workspace-option-arrow">›</span>';
-  rolesRow.onclick=()=>window.KarhaApp?.router?.navigate(p.id,'role-management'); wrap.appendChild(rolesRow);
+  const access=window.KarhaSaosaWorkspaceAccess?.[p.id] || null;
+  const session=window.KarhaApp?.getSession?.() || {};
+  const ownerId=p.ownerUid || p.creatorUid || null;
+  const isOwner=access?.role === 'owner' || (!access && (!ownerId || (session.uid && String(ownerId)===String(session.uid))));
+  if(isOwner){
+    const rolesRow=document.createElement('button'); rolesRow.type='button'; rolesRow.className='workspace-option';
+    rolesRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">مدیریت نقش‌ها</span><span class="workspace-option-meta">اعضا، نقش‌ها و سطح دسترسی ماژول‌ها</span></span><span class="workspace-option-arrow">›</span>';
+    rolesRow.onclick=()=>window.KarhaApp?.router?.navigate(p.id,'role-management'); wrap.appendChild(rolesRow);
+  }
   const contactRow=document.createElement('button'); contactRow.type='button'; contactRow.className='workspace-option';
   contactRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">مخاطبین</span></span><span class="workspace-option-arrow">›</span>';
   contactRow.onclick=()=>openContactsPage(); wrap.appendChild(contactRow);
