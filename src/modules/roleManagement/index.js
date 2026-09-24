@@ -3,16 +3,10 @@ import { getSession } from '../../core/session.js';
 import { appRouter } from '../../core/router.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
 import {
-  ACCESS_LEVELS, MEMBER_STATUSES, PROJECT_ROLES, canManageProjectRoles,
-  createMember, isValidIranianMobile, normalizePermissions, permissionModules,
+  ACCESS_LEVELS, EDITABLE_MEMBER_STATUSES, MEMBER_STATUSES, PROJECT_ROLES, canManageProjectRoles,
+  createMember, isValidIranianMobile, normalizePermissions, permissionGroups, permissionModules,
 } from './roleManagementDomain.js';
 import { smsInvitationAdapter } from './smsInvitationAdapter.js';
-
-const option=(documentRef,value,label,selected=false)=>{
-  const element=documentRef.createElement('option');
-  element.value=value;element.textContent=label;element.selected=selected;
-  return element;
-};
 
 export function createRoleManagementModule({
   repository=projectRepository,
@@ -45,29 +39,58 @@ export function createRoleManagementModule({
     const field=(label,name,type='text',required=false)=>{const wrap=documentRef.createElement('label');wrap.textContent=label;const input=documentRef.createElement('input');input.name=name;input.type=type;input.required=required;input.value=existing?.[name] || '';wrap.appendChild(input);fields.appendChild(wrap);return input;};
     const mobile=field('شماره موبایل','mobile','tel',true);mobile.inputMode='numeric';mobile.dir='ltr';mobile.placeholder='09123456789';
     field('نام (اختیاری)','firstName');field('نام خانوادگی (اختیاری)','lastName');
-    const selectField=(label,name,items,current)=>{const wrap=documentRef.createElement('label');wrap.textContent=label;const select=documentRef.createElement('select');select.name=name;items.forEach(item=>select.appendChild(option(documentRef,item.id,item.label,item.id===current)));wrap.appendChild(select);fields.appendChild(wrap);return select;};
-    selectField('نقش','role',PROJECT_ROLES,existing?.role || PROJECT_ROLES[0].id);
-    selectField('وضعیت','status',MEMBER_STATUSES,existing?.status || 'invited');
+
+    const popupField=(label,name,items,current)=>{
+      const wrap=documentRef.createElement('label');wrap.className='role-popup-field';
+      const caption=documentRef.createElement('span');caption.className='role-field-label';caption.textContent=label;wrap.appendChild(caption);
+      const root=documentRef.createElement('div');root.className='contact-custom-select role-custom-select';
+      const input=documentRef.createElement('input');input.type='hidden';input.name=name;input.value=current;
+      const trigger=documentRef.createElement('button');trigger.type='button';trigger.className='contact-custom-select-trigger';
+      const value=documentRef.createElement('span');value.textContent=items.find(item=>item.id===current)?.label || items[0]?.label || '';
+      const arrow=documentRef.createElement('span');arrow.className='contact-custom-select-arrow';arrow.textContent='⌄';
+      trigger.append(value,arrow);
+      const menu=documentRef.createElement('div');menu.className='contact-custom-select-menu';menu.setAttribute('role','listbox');
+      const closeMenu=()=>{menu.classList.remove('open');trigger.classList.remove('open');};
+      items.forEach(item=>{
+        const option=documentRef.createElement('button');option.type='button';option.className='contact-custom-select-option';option.textContent=item.label;option.dataset.value=item.id;
+        option.onclick=event=>{event.preventDefault();event.stopPropagation();input.value=item.id;value.textContent=item.label;closeMenu();};
+        menu.appendChild(option);
+      });
+      trigger.onclick=event=>{event.preventDefault();event.stopPropagation();const opening=!menu.classList.contains('open');form.querySelectorAll('.contact-custom-select-menu.open').forEach(open=>open.classList.remove('open'));form.querySelectorAll('.contact-custom-select-trigger.open').forEach(open=>open.classList.remove('open'));if(opening){menu.classList.add('open');trigger.classList.add('open');}};
+      root.append(input,trigger,menu);wrap.appendChild(root);fields.appendChild(wrap);
+      return input;
+    };
+
+    popupField('نقش','role',PROJECT_ROLES,existing?.role || PROJECT_ROLES[0].id);
+    if(existing && existing.status !== 'invited'){
+      popupField('وضعیت','status',EDITABLE_MEMBER_STATUSES,existing.status === 'inactive' ? 'inactive' : 'active');
+    }
+
     const permissionTitle=documentRef.createElement('h3');permissionTitle.textContent='دسترسی ماژول‌ها';fields.appendChild(permissionTitle);
     const permissions=normalizePermissions(existing?.permissions,registry);
-    permissionModules(registry).forEach(module=>selectField(module.label,`permission:${module.id}`,ACCESS_LEVELS,permissions[module.id]));
+    permissionGroups(registry).forEach(group=>{
+      const groupTitle=documentRef.createElement('h4');groupTitle.className='role-permission-group-title';groupTitle.textContent=group.label;fields.appendChild(groupTitle);
+      group.modules.forEach(module=>popupField(module.label,`permission:${module.id}`,ACCESS_LEVELS,permissions[module.id]));
+    });
     const hint=documentRef.createElement('p');hint.className='role-form-hint';hint.textContent='حذف اطلاعات هر ماژول فقط با «دسترسی کامل» مجاز است. مدیریت نقش‌ها قابل واگذاری نیست.';fields.appendChild(hint);
     const error=documentRef.createElement('p');error.className='role-form-error';error.setAttribute('role','alert');fields.appendChild(error);
     form.appendChild(fields);sheet.appendChild(form);overlay.appendChild(sheet);documentRef.body.appendChild(overlay);activeSheet=overlay;
     const close=()=>closeSheet();form.querySelector('[data-close]').onclick=close;
     overlay.addEventListener('click',event=>{if(event.target===overlay)close();});
+    documentRef.addEventListener('click',event=>{if(activeSheet===overlay && !event.target.closest?.('.role-custom-select'))form.querySelectorAll('.contact-custom-select-menu.open').forEach(open=>open.classList.remove('open'));},{once:true});
     form.addEventListener('submit',event=>{
       event.preventDefault();
       const data=new FormData(form);if(!isValidIranianMobile(data.get('mobile'))){error.textContent='شماره موبایل معتبر وارد کنید.';return;}
       const permissionValues=Object.fromEntries(permissionModules(registry).map(module=>[module.id,data.get(`permission:${module.id}`)]));
-      const values={mobile:data.get('mobile'),firstName:data.get('firstName'),lastName:data.get('lastName'),role:data.get('role'),status:data.get('status'),permissions:permissionValues};
+      const values={mobile:data.get('mobile'),firstName:data.get('firstName'),lastName:data.get('lastName'),role:data.get('role'),permissions:permissionValues};
       let member;
-      if(existing){ member={...existing,...values,permissions:normalizePermissions(permissionValues,registry)}; }
-      else member=createMember(values,{registry});
+      if(existing){
+        const status=existing.status === 'invited' ? 'invited' : (data.get('status') || existing.status);
+        member={...existing,...values,status,permissions:normalizePermissions(permissionValues,registry)};
+      }else member=createMember(values,{registry});
       save(projectId,project=>({...project,projectMembers:existing
         ? project.projectMembers.map(item=>item.id===existing.id?member:item)
         : [...project.projectMembers,member]}));
-      // No fake SMS is sent. The unconfigured adapter is only the provider boundary.
       if(!existing && smsAdapter.configured) void smsAdapter.sendInvitation({projectId,member});
       close();render(projectId,registry);
     });
@@ -92,9 +115,7 @@ export function createRoleManagementModule({
       const project=repository.find(projectId);
       if(!canManageProjectRoles(project,sessionProvider())){router.navigate(projectId,'people',{replace:true});return {projectId,moduleId:'people',denied:true};}
       if(!routeCloseBound && windowRef?.addEventListener){
-        windowRef.addEventListener('karha:workspace-route-synced',event=>{
-          if(event?.detail?.moduleId!=='role-management')closeSheet();
-        });
+        windowRef.addEventListener('karha:workspace-route-synced',event=>{if(event?.detail?.moduleId!=='role-management')closeSheet();});
         routeCloseBound=true;
       }
       const back=documentRef.getElementById('closeRoleManagementPage');if(back)back.onclick=()=>windowRef?.KarhaBrowserHistory?.back?.();
