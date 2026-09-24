@@ -76,13 +76,71 @@ function smsErrorMessage(error){
   return 'ارتباط با سرویس ورود برقرار نشد';
 }
 
-async function signInWithSms({windowRef}){
-  const phone = windowRef.prompt?.('شماره موبایل را وارد کنید (مثال: 09123456789)');
-  if(!phone) return null;
-  await requestSaosaOtp(phone, windowRef);
-  const code = windowRef.prompt?.('کد ۶ رقمی ارسال‌شده را وارد کنید');
-  if(!code) return null;
-  return verifySaosaOtp(phone, code, windowRef);
+function signInWithSms({windowRef,documentRef}){
+  const screen=byId(documentRef,'smsAuthScreen');
+  const form=byId(documentRef,'smsAuthForm');
+  const back=byId(documentRef,'smsAuthBack');
+  const heading=byId(documentRef,'smsAuthHeading');
+  const description=byId(documentRef,'smsAuthDescription');
+  const label=byId(documentRef,'smsAuthInputLabel');
+  const input=byId(documentRef,'smsAuthInput');
+  const error=byId(documentRef,'smsAuthError');
+  const submit=byId(documentRef,'smsAuthSubmit');
+  const resend=byId(documentRef,'smsAuthResend');
+  if(!screen||!form||!input||!submit) return Promise.reject(new Error('sms_auth_screen_missing'));
+
+  return new Promise(resolve=>{
+    let step='phone';
+    let phone='';
+    let busy=false;
+    const setBusy=value=>{busy=value;submit.disabled=value;if(resend)resend.disabled=value;};
+    const setError=value=>{if(error)error.textContent=value||'';};
+    const showPhone=()=>{
+      step='phone';
+      heading.textContent='ورود با شماره موبایل';
+      description.textContent='شماره موبایل خود را وارد کنید تا کد ورود برایتان پیامک شود.';
+      label.textContent='شماره موبایل';
+      input.type='tel';input.inputMode='numeric';input.autocomplete='tel';input.maxLength=11;
+      input.placeholder='مثال: 09123456789';input.value=phone;input.classList.remove('sms-code');
+      submit.textContent='دریافت کد ورود';if(resend)resend.hidden=true;setError('');input.focus();
+    };
+    const showCode=()=>{
+      step='code';
+      heading.textContent='تأیید شماره موبایل';
+      description.textContent=`کد ۶ رقمی ارسال‌شده به ${phone} را وارد کنید.`;
+      label.textContent='کد تأیید';
+      input.type='text';input.inputMode='numeric';input.autocomplete='one-time-code';input.maxLength=6;
+      input.placeholder='------';input.value='';input.classList.add('sms-code');
+      submit.textContent='ورود';if(resend)resend.hidden=false;setError('');input.focus();
+    };
+    const close=value=>{
+      screen.hidden=true;documentRef.body?.classList?.remove('sms-auth-open');
+      form.removeEventListener('submit',onSubmit);back?.removeEventListener('click',onBack);resend?.removeEventListener('click',onResend);
+      resolve(value);
+    };
+    const send=async()=>{
+      setBusy(true);setError('');
+      try{await requestSaosaOtp(phone,windowRef);showCode();}
+      catch(requestError){setError(smsErrorMessage(requestError));}
+      finally{setBusy(false);}
+    };
+    const onSubmit=async event=>{
+      event.preventDefault();if(busy)return;
+      const value=String(input.value||'').replace(/\D/g,'');
+      if(step==='phone'){
+        if(!/^09\d{9}$/.test(value)){setError('شماره موبایل معتبر وارد کنید');return;}
+        phone=value;await send();return;
+      }
+      if(!/^\d{6}$/.test(value)){setError('کد ۶ رقمی را کامل وارد کنید');return;}
+      setBusy(true);setError('');
+      try{close(await verifySaosaOtp(phone,value,windowRef));}
+      catch(verifyError){setError(smsErrorMessage(verifyError));setBusy(false);}
+    };
+    const onBack=()=>step==='code'?showPhone():close(null);
+    const onResend=()=>{if(!busy)send();};
+    form.addEventListener('submit',onSubmit);back?.addEventListener('click',onBack);resend?.addEventListener('click',onResend);
+    screen.hidden=false;documentRef.body?.classList?.add('sms-auth-open');showPhone();
+  });
 }
 
 async function signInWithGoogle({firebaseRef, auth, windowRef, documentRef}){
@@ -290,7 +348,7 @@ export function bindShellControls({ windowRef = window, documentRef = document }
           return;
         }
         try{
-          const session = await signInWithSms({windowRef});
+          const session = await signInWithSms({windowRef,documentRef});
           if(session){
             windowRef.location?.reload?.();
             closeProjectMenu();
