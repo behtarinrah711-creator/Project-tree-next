@@ -6,6 +6,7 @@ import { stageModeOf } from '../../domain/wbs/branchingPolicy.js';
 
 export default {
   id:'project-settings',
+  title:'تنظیمات پروژه',
   mount({ projectId }){
     const body = document.getElementById('projectSettingsPageBody');
     if(!body) return { projectId, moduleId:this.id };

@@ -1,0 +1,73 @@
+export const PROJECT_ROLES = Object.freeze([
+  Object.freeze({ id:'employer', label:'کارفرما' }),
+  Object.freeze({ id:'accountant', label:'حسابدار' }),
+  Object.freeze({ id:'site-supervisor', label:'سرپرست کارگاه' }),
+  Object.freeze({ id:'site-manager', label:'مدیر کارگاه' }),
+  Object.freeze({ id:'site-chief', label:'رئیس کارگاه' }),
+  Object.freeze({ id:'contractor', label:'پیمانکار' }),
+]);
+
+export const MEMBER_STATUSES = Object.freeze([
+  Object.freeze({ id:'invited', label:'دعوت‌شده' }),
+  Object.freeze({ id:'active', label:'فعال' }),
+  Object.freeze({ id:'inactive', label:'غیرفعال' }),
+]);
+
+export const ACCESS_LEVELS = Object.freeze([
+  Object.freeze({ id:'none', label:'بدون دسترسی' }),
+  Object.freeze({ id:'view', label:'مشاهده' }),
+  Object.freeze({ id:'edit', label:'مشاهده و ویرایش' }),
+  Object.freeze({ id:'create', label:'مشاهده/ثبت/ویرایش' }),
+  Object.freeze({ id:'full', label:'دسترسی کامل' }),
+]);
+
+export const ROLE_MANAGEMENT_MODULE_ID = 'role-management';
+
+export function normalizeMobile(value){
+  const digits=String(value || '').replace(/[۰-۹]/g,char=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(char))).replace(/\D/g,'');
+  if(/^989\d{9}$/.test(digits)) return `0${digits.slice(2)}`;
+  if(/^9\d{9}$/.test(digits)) return `0${digits}`;
+  return digits;
+}
+
+export function isValidIranianMobile(value){ return /^09\d{9}$/.test(normalizeMobile(value)); }
+
+export function canManageProjectRoles(project, session){
+  if(!project) return false;
+  const ownerId=project.ownerUid || project.creatorUid || null;
+  // Projects created locally before authentication belong to this local creator.
+  return ownerId ? !!session?.uid && String(ownerId)===String(session.uid) : true;
+}
+
+export function permissionModules(registry){
+  return (registry?.list?.() || [])
+    .filter(module=>module.id !== ROLE_MANAGEMENT_MODULE_ID && module.assignablePermission !== false)
+    .map(module=>Object.freeze({ id:module.id, label:module.title || module.label || module.id }));
+}
+
+export function normalizePermissions(permissions, registry){
+  const supplied=permissions && typeof permissions==='object' ? permissions : {};
+  return Object.fromEntries(permissionModules(registry).map(module=>[
+    module.id,
+    ACCESS_LEVELS.some(level=>level.id===supplied[module.id]) ? supplied[module.id] : 'none',
+  ]));
+}
+
+export function canDeleteWithAccess(level){ return level === 'full'; }
+
+export function createMember(input, { registry, now=Date.now, random=Math.random } = {}){
+  const mobile=normalizeMobile(input?.mobile);
+  if(!isValidIranianMobile(mobile)) throw new TypeError('شماره موبایل معتبر نیست.');
+  const role=PROJECT_ROLES.some(item=>item.id===input?.role) ? input.role : PROJECT_ROLES[0].id;
+  const status=MEMBER_STATUSES.some(item=>item.id===input?.status) ? input.status : 'invited';
+  return {
+    id:`member-${now()}-${random().toString(36).slice(2,8)}`,
+    mobile,
+    firstName:String(input?.firstName || '').trim(),
+    lastName:String(input?.lastName || '').trim(),
+    role,
+    status,
+    permissions:normalizePermissions(input?.permissions, registry),
+    invitedAt:now(),
+  };
+}

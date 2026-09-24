@@ -212,6 +212,13 @@ function renderSettingsWorkspace(){
   body.innerHTML='';
   if(!p){ body.innerHTML='<div class="mgmt-empty">برای نمایش تنظیمات، یک پروژه را انتخاب کنید.</div>'; return; }
   const wrap=document.createElement('div'); wrap.className='workspace-option-list';
+  const session=window.KarhaApp?.getSession?.() || {};
+  const ownerId=p.ownerUid || p.creatorUid || null;
+  if(!ownerId || (session.uid && String(ownerId)===String(session.uid))){
+    const rolesRow=document.createElement('button'); rolesRow.type='button'; rolesRow.className='workspace-option';
+    rolesRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">مدیریت نقش‌ها</span><span class="workspace-option-meta">اعضا، نقش‌ها و سطح دسترسی ماژول‌ها</span></span><span class="workspace-option-arrow">›</span>';
+    rolesRow.onclick=()=>window.KarhaApp?.router?.navigate(p.id,'role-management'); wrap.appendChild(rolesRow);
+  }
   const projectSettingsRow=document.createElement('button'); projectSettingsRow.type='button'; projectSettingsRow.className='workspace-option';
   projectSettingsRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">تنظیمات پروژه</span></span><span class="workspace-option-arrow">›</span>';
   projectSettingsRow.onclick=()=>window.KarhaApp?.router?.navigate(p.id, 'project-settings'); wrap.appendChild(projectSettingsRow);

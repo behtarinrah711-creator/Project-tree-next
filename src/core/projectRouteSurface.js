@@ -8,6 +8,7 @@ export const PROJECT_ROUTE_SURFACES = Object.freeze({
   accounting: Object.freeze({ pageId:'accountingPage', footer:'Financial', subpage:null }),
   people: Object.freeze({ pageId:'settingsPage', footer:'Settings', subpage:null }),
   'project-settings': Object.freeze({ pageId:'projectSettingsPage', footer:'Settings', subpage:'projectSettings' }),
+  'role-management': Object.freeze({ pageId:'roleManagementPage', footer:'Settings', subpage:'roleManagement' }),
   activities: Object.freeze({ pageId:'projectActivitiesPage', footer:'Settings', subpage:'activities' }),
 });
 

@@ -11,6 +11,11 @@ test('settings page has its own project workspace route and the Settings footer'
     pageId:'projectSettingsPage',footer:'Settings',subpage:'projectSettings'
   });
 });
+test('role management uses the existing Settings workspace chrome', () => {
+  assert.deepEqual(getProjectRouteSurface('role-management'),{
+    pageId:'roleManagementPage',footer:'Settings',subpage:'roleManagement'
+  });
+});
 test('cloud payload defaults to none and preserves future settings', () => {
   const build=p=>buildProjectCloudPayload(p,{},null,x=>x,8);
   assert.deepEqual(build({}).settings,{stageMode:'none'});
