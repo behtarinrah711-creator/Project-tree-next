@@ -73,3 +73,30 @@ test('logout removes token and all workspace cache', () => {
   assert.equal(local.getItem(APP_DATA_STORAGE_KEY), null);
   assert.equal(local.getItem(`${APP_DATA_STORAGE_KEY}:account-id`), null);
 });
+
+
+test('successful workspace sync refreshes project access without a new login', async () => {
+  const local = storage({[SAOSA_SESSION_KEY]:session});
+  const initial = {schemaVersion:8, projects:[], viewMode:'simple', activeTab:null, starredOrder:[]};
+  const saved = {...initial, projects:[{id:'inew', name:'new'}]};
+  let putResolve;
+  const win = windowWith({localStorage:local, fetch:async (_url, options = {}) => {
+    if(options.method === 'PUT'){
+      return new Promise(resolve => { putResolve = () => resolve(response(200, {
+        accountId:'account-a',
+        snapshot:saved,
+        access:{inew:{role:'owner', permissions:{view:true, edit:true}}},
+      })); });
+    }
+    return response(200, {accountId:'account-a', snapshot:initial, access:{}});
+  }});
+  const store = createAppDataStore({storage:local});
+  const prepared = await prepareSaosaWorkspace({windowRef:win, store});
+  prepared.attach();
+  store.setProjects(saved.projects);
+  store.persistLocal();
+  await new Promise(resolve => setTimeout(resolve, 300));
+  putResolve();
+  await new Promise(resolve => setTimeout(resolve, 0));
+  assert.equal(win.KarhaSaosaWorkspaceAccess.inew.role, 'owner');
+});

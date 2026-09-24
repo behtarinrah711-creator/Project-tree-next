@@ -57,10 +57,11 @@ function createPersistAttach(windowRef, session, store, initialSnapshot = null){
     const next = queuedSnapshot;
     queuedSnapshot = null;
     try{
-      await workspaceRequest(windowRef, session, {
+      const saved = await workspaceRequest(windowRef, session, {
         method:'PUT',
         body:JSON.stringify({snapshot:next}),
       });
+      windowRef.KarhaSaosaWorkspaceAccess = saved.access || windowRef.KarhaSaosaWorkspaceAccess || {};
     }catch(error){
       // Never replace a newer edit with the older failed request.
       if(!queuedSnapshot) queuedSnapshot = next;
