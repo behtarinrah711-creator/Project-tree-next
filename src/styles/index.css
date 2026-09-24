@@ -6,6 +6,7 @@
 @import url("./features/tasks.css");
 @import url("./features/notebook.css");
 @import url("./components/dialogs.css");
+@import url("./components/sms-auth.css");
 @import url("./widgets/numpad.css");
 @import url("./features/task-details.css");
 @import url("./workspace/drawer.css");
