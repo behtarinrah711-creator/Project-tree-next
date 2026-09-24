@@ -77,7 +77,7 @@ export function createRoleManagementModule({
     form.appendChild(fields);sheet.appendChild(form);overlay.appendChild(sheet);documentRef.body.appendChild(overlay);activeSheet=overlay;
     const close=()=>closeSheet();form.querySelector('[data-close]').onclick=close;
     overlay.addEventListener('click',event=>{if(event.target===overlay)close();});
-    documentRef.addEventListener('click',event=>{if(activeSheet===overlay && !event.target.closest?.('.role-custom-select'))form.querySelectorAll('.contact-custom-select-menu.open').forEach(open=>open.classList.remove('open'));},{once:true});
+    form.addEventListener('click',event=>{if(!event.target.closest?.('.role-custom-select')){form.querySelectorAll('.contact-custom-select-menu.open').forEach(open=>open.classList.remove('open'));form.querySelectorAll('.contact-custom-select-trigger.open').forEach(open=>open.classList.remove('open'));}});
     form.addEventListener('submit',event=>{
       event.preventDefault();
       const data=new FormData(form);if(!isValidIranianMobile(data.get('mobile'))){error.textContent='شماره موبایل معتبر وارد کنید.';return;}
