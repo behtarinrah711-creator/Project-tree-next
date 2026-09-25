@@ -109,7 +109,9 @@ try{return decodeURIComponent(m[1]);}catch(e){return m[1];}
 function setActiveProject(projectId,{updateRoute=true,render=true,moduleId='dashboard',closeDrawerOnSelect=false}={}){
 const p=findProject(projectId);
 if(!p || p.trashed || p.archived) return false;
-if(!getCurrentUser() && p.ownerUid) return false;
+const host=String(window.location?.hostname||'').toLowerCase();
+const isSaosa=host==='saosa.ir' || host==='www.saosa.ir';
+if(!isSaosa && !getCurrentUser() && p.ownerUid) return false;
 if(updateRoute){
 return !!window.KarhaApp?.projectWorkspace?.selectProject?.(p.id,{
 moduleId, closeDrawer:closeDrawerOnSelect,
