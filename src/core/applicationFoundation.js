@@ -109,7 +109,9 @@ try{return decodeURIComponent(m[1]);}catch(e){return m[1];}
 function setActiveProject(projectId,{updateRoute=true,render=true,moduleId='dashboard',closeDrawerOnSelect=false}={}){
 const p=findProject(projectId);
 if(!p || p.trashed || p.archived) return false;
-if(!getCurrentUser() && p.ownerUid) return false;
+const host=String(window.location?.hostname||'').toLowerCase();
+const isSaosa=host==='saosa.ir' || host==='www.saosa.ir';
+if(!isSaosa && !getCurrentUser() && p.ownerUid) return false;
 if(updateRoute){
 return !!window.KarhaApp?.projectWorkspace?.selectProject?.(p.id,{
 moduleId, closeDrawer:closeDrawerOnSelect,
@@ -126,6 +128,11 @@ return true;
 }
 function projectsVisibleForAuth(list){
 const all = Array.isArray(list) ? list : [];
+// Saosa workspace snapshots are already scoped and authorized by /api/v1/workspace.
+// Do not apply the legacy Firebase ownerUid filter here: SMS auth is independent
+// from Firebase auth, so getCurrentUser() may be null even for a valid Saosa session.
+const host=String(window.location?.hostname||'').toLowerCase();
+if(host==='saosa.ir' || host==='www.saosa.ir') return all.filter(Boolean);
 if(!getCurrentUser()) return all.filter(p => p && !p.ownerUid);
 return all.filter(p => p && (!p.ownerUid || p.ownerUid === getCurrentUser().uid));
 }
