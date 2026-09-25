@@ -200,3 +200,63 @@ body:not(.global-surface){background:#f2f3f5;}
   line-height:1;
   flex:0 0 auto;
 }
+
+
+/* Saosa public entry state: before SMS authentication there is no project workspace chrome. */
+body.saosa-logged-out #bottomNav,
+body.saosa-logged-out #projectSettingsTrigger,
+body.saosa-logged-out #tabbar,
+body.saosa-logged-out #workspaceProjectContext{display:none !important;}
+body.saosa-logged-out .topbar{
+  min-height:78px;
+  justify-content:center;
+  padding:8px 12px;
+}
+body.saosa-logged-out .topbar > *{display:none !important;}
+body.saosa-logged-out .topbar::before{
+  content:'ساُسا\A مدیریت ساخت و ساز';
+  position:static;
+  transform:none;
+  display:block;
+  white-space:pre;
+  text-align:center;
+  font-family:'IRANSansX',Tahoma,sans-serif;
+  font-size:16px;
+  line-height:1.7;
+  font-weight:700;
+  color:var(--text);
+}
+body.saosa-logged-out .content{padding-bottom:8px;}
+body.saosa-logged-out .saosa-guest-card{
+  min-height:560px;
+  margin:40px 30px 0;
+  padding:28px 22px;
+  box-sizing:border-box;
+  border-radius:18px;
+  background:var(--surface);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:24px;
+  text-align:center;
+}
+body.saosa-logged-out .saosa-guest-card p{
+  margin:0;
+  max-width:420px;
+  font-size:16px;
+  line-height:2;
+  color:var(--text);
+}
+body.saosa-logged-out .saosa-guest-login{
+  min-width:180px;
+  min-height:46px;
+  padding:10px 24px;
+  border:0;
+  border-radius:12px;
+  background:#1687D9;
+  color:#fff;
+  font:inherit;
+  font-weight:700;
+  cursor:pointer;
+}
