@@ -25,7 +25,7 @@
         .filter(url => {
           try{
             const parsed = new URL(url, window.location.href);
-            return parsed.origin === window.location.origin && /\.(?:js|css)(?:$|\?)/.test(parsed.href);
+            return parsed.origin === window.location.origin && /\.(?:js|css|woff2?)(?:$|\?)/.test(parsed.href);
           }catch(_error){
             return false;
           }

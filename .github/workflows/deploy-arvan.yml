@@ -77,7 +77,7 @@ jobs:
                   add_header Cache-Control "no-store, no-cache, must-revalidate" always;
                   expires -1;
               }
-              location ~* \.(?:js|css)$ {
+              location ~* \.(?:js|css|woff|woff2)$ {
                   add_header Cache-Control "no-cache, must-revalidate" always;
                   expires -1;
                   try_files $uri =404;
