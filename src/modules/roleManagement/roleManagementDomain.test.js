@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { ModuleRegistry } from '../../core/moduleRegistry.js';
 import {
   ACCESS_LEVELS, PROJECT_ROLES, canDeleteWithAccess, canManageProjectRoles,
-  createMember, normalizeMobile, permissionGroups, permissionModules,
+  createMember, isValidIranianMobile, normalizeMobile, permissionGroups, permissionModules,
 } from './roleManagementDomain.js';
 
 function registry(){
@@ -48,10 +48,11 @@ test('only owner or local creator can manage roles',()=>{
   assert.equal(canManageProjectRoles({id:'local'},{uid:null}),true);
 });
 
-test('member creation normalizes mobile and fills every registered permission',()=>{
-  const member=createMember({mobile:'+98 912 345 6789',role:'accountant',status:'active',permissions:{dashboard:'view'}},{registry:registry(),now:()=>10,random:()=>0.5});
-  assert.equal(normalizeMobile('+98 912 345 6789'),'09123456789');
+test('member creation accepts only the exact 09xxxxxxxxx mobile format',()=>{
+  const member=createMember({mobile:'09123456789',email:'USER@Example.com ',role:'accountant',status:'active',permissions:{dashboard:'view'}},{registry:registry(),now:()=>10,random:()=>0.5});
+  assert.equal(normalizeMobile('09123456789'),'09123456789');
   assert.equal(member.mobile,'09123456789');
+  assert.equal(member.email,'user@example.com');
   assert.equal(member.status,'invited');
   assert.deepEqual(member.permissions,{
     dashboard:'view',
@@ -61,4 +62,7 @@ test('member creation normalizes mobile and fills every registered permission',(
     people:'none',activities:'none',contracts:'none',
   });
   assert.throws(()=>createMember({mobile:'123'},{registry:registry()}),/معتبر/);
+  assert.equal(isValidIranianMobile('+989123456789'),false);
+  assert.equal(isValidIranianMobile('9123456789'),false);
+  assert.equal(isValidIranianMobile('۰۹۱۲۳۴۵۶۷۸۹'),false);
 });

@@ -13,5 +13,9 @@ export function loadConfig(){
     sessionSecret,
     kavenegarApiKey: required('KAVENEGAR_API_KEY'),
     kavenegarTemplate: process.env.KAVENEGAR_TEMPLATE || 'saosalogin',
+    kavenegarInviteTemplate: process.env.KAVENEGAR_INVITE_TEMPLATE || 'SaosaInvite',
+    resendApiKey:String(process.env.RESEND_API_KEY || '').trim(),
+    invitationFromEmail:String(process.env.INVITATION_FROM_EMAIL || '').trim(),
+    invitationBaseUrl:process.env.INVITATION_BASE_URL || 'https://saosa.ir',
   });
 }

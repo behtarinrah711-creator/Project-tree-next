@@ -94,7 +94,7 @@ function signInWithSms({windowRef,documentRef}){
     let phone='';
     let busy=false;
     const setBusy=value=>{busy=value;submit.disabled=value;if(resend)resend.disabled=value;};
-    const setError=value=>{if(error)error.textContent=value||'';};
+    const setError=value=>{if(error)error.textContent=value||'';input.classList.toggle('invalid',!!value);input.setAttribute('aria-invalid',value?'true':'false');};
     const showPhone=()=>{
       step='phone';
       heading.textContent='ورود با شماره موبایل';
@@ -115,7 +115,7 @@ function signInWithSms({windowRef,documentRef}){
     };
     const close=value=>{
       screen.hidden=true;documentRef.body?.classList?.remove('sms-auth-open');
-      form.removeEventListener('submit',onSubmit);back?.removeEventListener('click',onBack);resend?.removeEventListener('click',onResend);
+      form.removeEventListener('submit',onSubmit);back?.removeEventListener('click',onBack);resend?.removeEventListener('click',onResend);input.removeEventListener('input',onInput);
       resolve(value);
     };
     const send=async()=>{
@@ -126,11 +126,12 @@ function signInWithSms({windowRef,documentRef}){
     };
     const onSubmit=async event=>{
       event.preventDefault();if(busy)return;
-      const value=String(input.value||'').replace(/\D/g,'');
+      const rawValue=String(input.value||'');
       if(step==='phone'){
-        if(!/^09\d{9}$/.test(value)){setError('شماره موبایل معتبر وارد کنید');return;}
-        phone=value;await send();return;
+        if(!/^09\d{9}$/.test(rawValue)){setError('شماره موبایل را به‌صورت ۱۱ رقمی و با 09 وارد کنید.');return;}
+        phone=rawValue;await send();return;
       }
+      const value=rawValue.replace(/\D/g,'');
       if(!/^\d{6}$/.test(value)){setError('کد ۶ رقمی را کامل وارد کنید');return;}
       setBusy(true);setError('');
       try{close(await verifySaosaOtp(phone,value,windowRef));}
@@ -138,6 +139,7 @@ function signInWithSms({windowRef,documentRef}){
     };
     const onBack=()=>step==='code'?showPhone():close(null);
     const onResend=()=>{if(!busy)send();};
+    const onInput=()=>setError('');input.addEventListener('input',onInput);
     form.addEventListener('submit',onSubmit);back?.addEventListener('click',onBack);resend?.addEventListener('click',onResend);
     screen.hidden=false;documentRef.body?.classList?.add('sms-auth-open');showPhone();
   });

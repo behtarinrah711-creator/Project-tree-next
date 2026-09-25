@@ -27,6 +27,10 @@ DATABASE_URL=postgresql://${DB_USER}:${DB_PASSWORD}@127.0.0.1:5432/${DB_NAME}
 SESSION_SECRET=${SESSION_SECRET}
 KAVENEGAR_API_KEY=
 KAVENEGAR_TEMPLATE=saosalogin
+KAVENEGAR_INVITE_TEMPLATE=SaosaInvite
+RESEND_API_KEY=
+INVITATION_FROM_EMAIL=
+INVITATION_BASE_URL=https://saosa.ir
 EOF
   chown root:"$SERVICE_USER" "$ENV_FILE"
   chmod 640 "$ENV_FILE"
@@ -46,8 +50,8 @@ if [[ -s "$KAVENEGAR_KEY_FILE" ]]; then
     exit 1
   fi
   TEMP_ENV="$(mktemp "$ENV_DIR/api.env.XXXXXX")"
-  grep -vE '^(KAVENEGAR_API_KEY|KAVENEGAR_TEMPLATE)=' "$ENV_FILE" > "$TEMP_ENV"
-  printf 'KAVENEGAR_API_KEY=%s\nKAVENEGAR_TEMPLATE=saosalogin\n' "$KAVENEGAR_API_KEY_VALUE" >> "$TEMP_ENV"
+  grep -vE '^(KAVENEGAR_API_KEY|KAVENEGAR_TEMPLATE|KAVENEGAR_INVITE_TEMPLATE)=' "$ENV_FILE" > "$TEMP_ENV"
+  printf 'KAVENEGAR_API_KEY=%s\nKAVENEGAR_TEMPLATE=saosalogin\nKAVENEGAR_INVITE_TEMPLATE=SaosaInvite\n' "$KAVENEGAR_API_KEY_VALUE" >> "$TEMP_ENV"
   chown root:"$SERVICE_USER" "$TEMP_ENV"
   chmod 640 "$TEMP_ENV"
   mv -f "$TEMP_ENV" "$ENV_FILE"
@@ -68,7 +72,9 @@ if ! runuser -u postgres -- psql -tAc "SELECT 1 FROM pg_database WHERE datname='
   runuser -u postgres -- createdb --owner="$DB_USER" "$DB_NAME"
 fi
 
-PGPASSWORD="$DB_PASSWORD" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME" -f "$APP_ROOT/sql/001_initial.sql"
+for migration in "$APP_ROOT"/sql/*.sql; do
+  PGPASSWORD="$DB_PASSWORD" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME" -f "$migration"
+done
 npm --prefix "$APP_ROOT" ci --omit=dev --no-audit --no-fund
 
 cat > /etc/systemd/system/saosa-api.service <<EOF
