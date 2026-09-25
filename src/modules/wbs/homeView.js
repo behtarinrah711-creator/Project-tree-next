@@ -42,6 +42,7 @@ import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { activeWbsScope, WBS_VIEW_SCOPES } from './viewScopes.js';
 import { openCreateWorkTaskSheet, renderWorkTasks } from './workTaskView.js';
 import { PROJECT_FINISH_MILESTONE_ID, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
+import { canDeletePlanning, canViewPlanning, canWritePlanning, planningAccessLevel } from '../roleManagement/planningAccess.js';
 import {
   advanceExpansionLevel,
   getExpansionProgress,
@@ -77,6 +78,7 @@ const selectedViews = new Map();
 let currentTreeMode = DEFAULT_TREE_MODE;
 let explicitProjectId = null;
 let tabRenderFrame = 0;
+let activePlanningLevel = 'full';
 
 function projectIdOf(){
   return explicitProjectId || projectContext.getProjectId?.() || projectContext.getActiveProjectId?.() || null;
@@ -183,6 +185,7 @@ function descendantSummary(stage){
 }
 
 function requestDelete(item){
+  if(!canDeletePlanning(activePlanningLevel)) return;
   const located = locateUiItem(item.id);
   if(!located) return;
   const stage = isStage(item);
@@ -434,14 +437,14 @@ function tBarRow(entry, min, dayWidth){
     bar.style.backgroundColor = timelineColor(entry.item);
     bar.title = `${entry.range.startDate || ''} تا ${entry.range.endDate || ''}`;
     if(entry.item.kind !== 'milestone') bar.addEventListener('click', () => task
-      ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render })
+      ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render, readOnly:!canWritePlanning(activePlanningLevel), canDelete:canDeletePlanning(activePlanningLevel) })
       : openItemDetails(entry.item));
     row.appendChild(bar);
   }else if(isWork(entry.item) || entry.item.kind === 'workTask'){
     const empty = document.createElement('button');
     empty.type = 'button'; empty.className = 'wbs-gantt-unscheduled'; empty.textContent = 'بدون تاریخ';
     empty.addEventListener('click', () => entry.item.kind === 'workTask'
-      ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render })
+      ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render, readOnly:!canWritePlanning(activePlanningLevel), canDelete:canDeletePlanning(activePlanningLevel) })
       : openItemDetails(entry.item));
     row.appendChild(empty);
   }
@@ -460,7 +463,8 @@ function isWorkRegistrationLevel(item){
 }
 
 function openItemDetails(item){
-  openStageEditor({projectId:projectIdOf(),stage:wbsApi.get(projectIdOf(),item.id)||item,onChanged:render,onDelete:()=>requestDelete(item)});
+  const writable=canWritePlanning(activePlanningLevel);
+  openStageEditor({projectId:projectIdOf(),stage:wbsApi.get(projectIdOf(),item.id)||item,onChanged:render,readOnly:!writable,onDelete:canDeletePlanning(activePlanningLevel)?()=>requestDelete(item):null});
 }
 
 function openWorkRegistration(itemId){
@@ -527,7 +531,8 @@ function renderRow(item, codes, view, depth){
   const hasExpandableContent = kids.length > 0 || workTasks.length > 0;
   const open = isExpanded(projectIdOf(), item.id);
   const code = stage ? (codes.get(String(item.id)) || '') : '';
-  const readOnlyView = view === 'estimate' || view === 'progress';
+  const permissionReadOnly = !canWritePlanning(activePlanningLevel);
+  const readOnlyView = view === 'estimate' || view === 'progress' || permissionReadOnly;
   const registrationLevel = isWorkRegistrationLevel(item);
   const mayAdd = registrationLevel || stageAddKinds(projectOf(), item.id).length > 0;
   const meta = [];
@@ -583,7 +588,7 @@ function renderRow(item, codes, view, depth){
   }
   if(open) kids.forEach(child => wrap.appendChild(renderRow(child, codes, view, depth + 1)));
   if(open && canHoldWorkTasks(item) && workTasks.length){
-    const taskGroup = renderWorkTasks({ documentRef:document, projectId:projectIdOf(), work:item, view, onChanged:render });
+    const taskGroup = renderWorkTasks({ documentRef:document, projectId:projectIdOf(), work:item, view, onChanged:render, readOnly:permissionReadOnly, canDelete:canDeletePlanning(activePlanningLevel) });
     if(taskGroup) wrap.appendChild(taskGroup);
   }
   return wrap;
@@ -606,10 +611,16 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     return;
   }
   ensureTreeState(project);
-  const allowedIds = scopedOptions.views.filter(id => VIEWS.some(view => view.id === id));
+  const allowedIds = scopedOptions.views.filter(id => VIEWS.some(view => view.id === id))
+    .filter(id=>scope!=='planning'||canViewPlanning(planningAccessLevel(project.id,id)));
   const allowedViews = VIEWS.filter(view => allowedIds.includes(view.id));
+  if(!allowedViews.length){
+    target.innerHTML='<div class="workspace-no-project">برای بخش برنامه دسترسی فعالی ندارید.</div>';
+    return;
+  }
   currentView = selectedViews.get(scope) || scopedOptions.defaultView;
-  if(!allowedIds.includes(currentView)) currentView = scopedOptions.defaultView;
+  if(!allowedIds.includes(currentView)) currentView = allowedIds[0];
+  activePlanningLevel=scope==='planning'?planningAccessLevel(project.id,currentView):'full';
   const rerender = () => renderWbsHome(target, project.id, scopedOptions);
 
   const root = document.createElement('div');
@@ -648,7 +659,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     });
     tabs.appendChild(btn);
   });
-  root.appendChild(tabs);
+  if(allowedViews.length>1) root.appendChild(tabs);
 
   if(currentView === 'today'){
     root.appendChild(renderTodayView(project, document, rerender));
@@ -689,7 +700,8 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     advanceExpansionLevel(project.id, project.tasks || []);
     renderWbsHome(target, project.id, scopedOptions);
   });
-  toolbar.append(addRoot, treeToggle);
+  if(scope!=='planning'||canWritePlanning(activePlanningLevel)) toolbar.appendChild(addRoot);
+  toolbar.appendChild(treeToggle);
   if(currentView !== 'timeline' && currentView !== 'costline') root.appendChild(toolbar);
 
   if(currentView === 'tree'){

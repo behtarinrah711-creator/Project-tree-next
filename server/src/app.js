@@ -49,6 +49,46 @@ function invitationAccess(permissions){
   return {view:true,edit:values.some(value=>['edit','create','full'].includes(value)),modules:permissions || {}};
 }
 
+function modulePermissions(permissions){
+  const modules=permissions?.modules;
+  return modules && typeof modules==='object' && !Array.isArray(modules) ? modules : null;
+}
+
+export function canWriteProjectTasks(permissions){
+  const modules=modulePermissions(permissions);
+  if(!modules) return permissions?.edit===true;
+  return Object.entries(modules).some(([key,level])=>
+    (key.startsWith('planning:')||key.startsWith('execution:')) && ['edit','create','full'].includes(level));
+}
+
+export function canDeleteProjectTasks(permissions){
+  const modules=modulePermissions(permissions);
+  if(!modules) return permissions?.delete===true;
+  return ['planning:tree','planning:timeline','planning:costline'].some(key=>modules[key]==='full');
+}
+
+function taskIds(tasks){
+  const ids=new Set();
+  const visit=(items=[])=>items.forEach(item=>{
+    if(!item||item.trashed) return;
+    if(item.id!=null) ids.add(String(item.id));
+    visit(item.subtasks||[]);
+    visit(item.workTasks||[]);
+  });
+  visit(Array.isArray(tasks)?tasks:[]);
+  return ids;
+}
+
+export function projectTasksChanged(previous,next){
+  return JSON.stringify(previous?.tasks||[])!==JSON.stringify(next?.tasks||[]);
+}
+
+export function projectTasksDeleted(previous,next){
+  const before=taskIds(previous?.tasks);
+  const after=taskIds(next?.tasks);
+  return [...before].some(id=>!after.has(id));
+}
+
 async function acceptPhoneInvitations(client, accountId, phone){
   const pending=await client.query(
     `SELECT * FROM project_invitations
@@ -153,7 +193,7 @@ async function saveWorkspace(pool, accountId, snapshot){
     await client.query('BEGIN');
     for(const project of snapshot.projects){
       const projectId = String(project.id);
-      const existing = await client.query('SELECT id FROM projects WHERE id = $1 FOR UPDATE', [projectId]);
+      const existing = await client.query('SELECT id,payload FROM projects WHERE id = $1 FOR UPDATE', [projectId]);
       if(!existing.rowCount){
         await client.query(
           `INSERT INTO projects(id, owner_account_id, payload) VALUES ($1, $2, $3::jsonb)`,
@@ -187,6 +227,14 @@ async function saveWorkspace(pool, accountId, snapshot){
           const error = new Error('forbidden_project');
           error.statusCode = 403;
           throw error;
+        }
+        const currentPayload=existing.rows[0]?.payload||{};
+        const permissions=membership.rows[0].permissions||{};
+        if(projectTasksChanged(currentPayload,project) && !canWriteProjectTasks(permissions)){
+          const error=new Error('forbidden_planning_write');error.statusCode=403;throw error;
+        }
+        if(projectTasksDeleted(currentPayload,project) && !canDeleteProjectTasks(permissions)){
+          const error=new Error('forbidden_planning_delete');error.statusCode=403;throw error;
         }
         await client.query(
           `UPDATE projects SET payload = $2::jsonb, revision = revision + 1, updated_at = now()
