@@ -62,7 +62,7 @@ import { taskIcons } from '../ui/taskIcons.js';
 import * as projectRecordReferences from '../domain/projectRecordReferences.js';
 import { installApplicationTheme } from '../core/applicationTheme.js';
 import { createFoundationCloudRuntime } from '../cloud/foundationCloudComposition.js';
-import { prepareSaosaWorkspace } from '../cloud/saosaWorkspaceSync.js';
+import { prepareSaosaWorkspace, isSaosaHost } from '../cloud/saosaWorkspaceSync.js';
 
 /** Start the modular API, then the classic application runtime, then routing. */
 export async function startApplication({
@@ -165,7 +165,7 @@ export async function startApplication({
     persist(options){ windowRef.KarhaLegacy?.persist?.(options); },
   });
   // Observe uid only. Does not own login, logout, or cloud migrate.
-  installSessionObserver({windowRef});
+  if(!isSaosaHost(windowRef)) installSessionObserver({windowRef});
   installSoftDelete({ windowRef, documentRef: windowRef.document });
   installWorkspaceChrome({
     windowRef,
@@ -188,18 +188,18 @@ export async function startApplication({
   // Logout is a session boundary. Clear Project-tree's local user cache only
   // when Firebase actually transitions from an authenticated user to guest,
   // then reload so legacy in-memory recovery state cannot resurrect it.
-  installLogoutSessionGuard({windowRef});
+  if(!isSaosaHost(windowRef)) installLogoutSessionGuard({windowRef});
   // Workspace Chrome owns route presentation; Router remains the route owner.
   installProjectRouteSurfaceSync({windowRef,documentRef:windowRef.document});
   // Preserve the last known-good project set across the migration boundary.
   // A later legacy Firestore snapshot must not erase projects already restored
   // by the authenticated recovery bridge during this same session.
-  installProjectRecoveryRetention({windowRef});
+  if(!isSaosaHost(windowRef)) installProjectRecoveryRetention({windowRef});
   router.start();
   // Recovery runs beside the legacy listeners and only adds readable project
   // records back into the live array. This covers pre-ownerUid cloud documents
   // and protects login from listener-order races without changing cloud data.
-  startCloudProjectRecovery({windowRef,projectContext,router});
+  if(!isSaosaHost(windowRef)) startCloudProjectRecovery({windowRef,projectContext,router});
   windowRef.dispatchEvent(new windowRef.CustomEvent('karha:ready'));
   return application;
 }
