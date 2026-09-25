@@ -75,17 +75,8 @@ body:not(.global-surface){background:#f2f3f5;}
   margin-inline-end:auto;
 }
 .topbar-title.project-menu-trigger:active{background:var(--divider);}
-.topbar:not(.workspace-context) .topbar-title.project-menu-trigger:not(.has-active-project) .app-title-main{
-  font-size:0;
-}
-.topbar:not(.workspace-context) .topbar-title.project-menu-trigger:not(.has-active-project) .app-title-main::before{
-  content:'پروژه‌ها';
-  font-size:15px;
-  font-weight:600;
-  color:var(--text);
-}
-.topbar:not(.workspace-context) .topbar-title.project-menu-trigger:not(.has-active-project) .app-title-main::after,
-.topbar:not(.workspace-context) .topbar-title.project-menu-trigger.has-active-project .app-title-main::after{
+.topbar:not(.workspace-context) .topbar-title.project-menu-trigger.has-active-project .app-title-main::after,
+.topbar:not(.workspace-context) .topbar-title.project-menu-trigger.global-menu-context .app-title-main::after{
   content:'';
   display:inline-block;
   width:12px;
