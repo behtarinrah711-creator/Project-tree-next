@@ -30,6 +30,7 @@
   .topbar .account-trigger{flex-shrink:0;}
   .project-settings-trigger{margin-inline-start:auto;}
   .project-settings-trigger svg{width:22px;height:22px;}
+  .project-settings-trigger.active{background:#2f2a24;color:#fff;}
 
   /* ---------- workspace header ----------
      در صفحات داخلی، هدر همان هدر اصلی پروژه‌هاست؛

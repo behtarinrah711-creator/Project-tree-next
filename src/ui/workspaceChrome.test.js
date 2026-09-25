@@ -105,9 +105,11 @@ test('footer binding delegates navigation and routed surfaces own active state a
   assert.equal(h.ids.get('bottomFinancialBtn').classList.contains('active'),true);
   h.chrome.applyRoute('people',getProjectRouteSurface('people'));
   assert.equal(h.ids.get('settingsPage').classList.contains('hidden'),false);
+  assert.equal(h.ids.get('projectSettingsTrigger').classList.contains('active'),true);
   h.chrome.applyRoute('dashboard',getProjectRouteSurface('dashboard'));
   assert.equal(h.ids.get('bottomHomeBtn').classList.contains('active'),true);
   assert.equal(h.ids.get('settingsPage').classList.contains('hidden'),true);
+  assert.equal(h.ids.get('projectSettingsTrigger').classList.contains('active'),false);
 });
 
 test('drawer event opens chrome and refreshes drawer/context presentation',()=>{

@@ -3,10 +3,10 @@
 }
 
 .wbs-tab[aria-label="کارهای امروز"]{order:1;}
-.wbs-tab[aria-label="لیست خرید"]{order:2;}
+.wbs-tab[aria-label="خریدهای امروز"]{order:2;}
 .wbs-tab[aria-label="درخت پروژه"]{order:3;}
-.wbs-tab[aria-label="تایم‌لاین"]{order:4;}
-.wbs-tab[aria-label="Costline"]{order:5;}
+.wbs-tab[aria-label="نمودار گانت"]{order:4;}
+.wbs-tab[aria-label="برآورد هزینه"]{order:5;}
 .wbs-tab[aria-label="دیرکردها"]{order:6;}
 
 .wbs-view-frame.is-standard-view{

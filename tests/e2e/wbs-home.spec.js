@@ -300,8 +300,8 @@ test('Planning contains tree, timeline and estimate while Execution and Reports 
   await expect(page.locator('.wbs-home-header')).toHaveCount(0);
 
   await expect(page.locator('.wbs-tab[aria-label="درخت پروژه"]')).toBeVisible();
-  await expect(page.locator('.wbs-tab[aria-label="تایم‌لاین"]')).toBeVisible();
-  await expect(page.locator('.wbs-tab[aria-label="Costline"]')).toBeVisible();
+  await expect(page.locator('.wbs-tab[aria-label="نمودار گانت"]')).toBeVisible();
+  await expect(page.locator('.wbs-tab[aria-label="برآورد هزینه"]')).toBeVisible();
   await expect(page.locator('.wbs-tab')).toHaveCount(3);
   await expect(page.locator('.wbs-tab svg')).toHaveCount(3);
   await expect(page.locator('.wbs-tab[aria-label="ساده"]')).toHaveCount(0);
@@ -316,7 +316,7 @@ test('Planning contains tree, timeline and estimate while Execution and Reports 
   expect(Math.max(...tabRects.map(rect => rect.top)) - Math.min(...tabRects.map(rect => rect.top))).toBeLessThan(2);
   expect(Math.max(...tabRects.map(rect => rect.width)) - Math.min(...tabRects.map(rect => rect.width))).toBeLessThan(2);
   await page.locator('#bottomReportsBtn').click();
-  await page.locator('.reports-workspace-tabs .wbs-tab[aria-label="تأخیرات"]').click();
+  await page.locator('.reports-workspace-tabs .wbs-tab[aria-label="دیرکردها"]').click();
   const delayFrame = page.locator('.wbs-delay-frame');
   await expect(delayFrame).toBeVisible();
   await expect(delayFrame).toHaveAttribute('data-view', 'delay');
@@ -335,7 +335,7 @@ test('Planning contains tree, timeline and estimate while Execution and Reports 
   await selectTreeMode(page, 'هزینه‌ها');
   await expect(page.locator('.wbs-general')).toBeVisible();
 
-  await page.locator('.wbs-tab[aria-label="تایم‌لاین"]').click();
+  await page.locator('.wbs-tab[aria-label="نمودار گانت"]').click();
   await page.locator('.wbs-tab[aria-label="درخت پروژه"]').click();
   await expect(page.locator('.wbs-tree-mode-tab[aria-label="ثبت و ویرایش"]')).toHaveAttribute('aria-selected', 'true');
 
@@ -348,34 +348,34 @@ test('Planning contains tree, timeline and estimate while Execution and Reports 
 
 test('Planning and Execution keep separate view controls after background refreshes', async ({ page }) => {
   const tabs = page.locator('.wbs-home-root > .wbs-tabs > .wbs-tab');
-  await page.locator('.wbs-tab[aria-label="تایم‌لاین"]').click();
+  await page.locator('.wbs-tab[aria-label="نمودار گانت"]').click();
   await expect(page.locator('.wbs-home-root')).toHaveAttribute('data-scope','planning');
   await page.evaluate(() => window.KarhaApp.modules.get('planning').mount({projectId:'e2e-wbs-home'}));
   await expect(tabs).toHaveCount(3);
-  await expect(page.locator('.wbs-tab[aria-label="تایم‌لاین"]')).toHaveAttribute('aria-selected','true');
+  await expect(page.locator('.wbs-tab[aria-label="نمودار گانت"]')).toHaveAttribute('aria-selected','true');
   await expect(page.locator('.wbs-tab[aria-label="کارهای امروز"]')).toHaveCount(0);
   await page.locator('.wbs-gantt-order-toggle').click();
   await expect(tabs).toHaveCount(3);
-  await expect(page.locator('.wbs-tab[aria-label="تایم‌لاین"]')).toHaveAttribute('aria-selected','true');
+  await expect(page.locator('.wbs-tab[aria-label="نمودار گانت"]')).toHaveAttribute('aria-selected','true');
 
   await page.locator('#bottomExecutionBtn').click();
   await expect(page.locator('.wbs-home-root')).toHaveAttribute('data-scope','execution');
   await expect(tabs).toHaveCount(2);
   await page.evaluate(() => window.KarhaLegacy.renderAll());
   await expect(tabs).toHaveCount(2);
-  await page.locator('.wbs-tab[aria-label="لیست خرید"]').click();
-  await expect(page.locator('.wbs-tab[aria-label="لیست خرید"]')).toHaveAttribute('aria-selected','true');
+  await page.locator('.wbs-tab[aria-label="خریدهای امروز"]').click();
+  await expect(page.locator('.wbs-tab[aria-label="خریدهای امروز"]')).toHaveAttribute('aria-selected','true');
 
   await page.locator('#bottomPlanningBtn').click();
   await expect(tabs).toHaveCount(3);
-  await expect(page.locator('.wbs-tab[aria-label="تایم‌لاین"]')).toHaveAttribute('aria-selected','true');
+  await expect(page.locator('.wbs-tab[aria-label="نمودار گانت"]')).toHaveAttribute('aria-selected','true');
   await page.evaluate(() => window.KarhaLegacy.renderAll());
   await expect(tabs).toHaveCount(3);
-  await expect(page.locator('.wbs-tab[aria-label="لیست خرید"]')).toHaveCount(0);
+  await expect(page.locator('.wbs-tab[aria-label="خریدهای امروز"]')).toHaveCount(0);
 });
 
 test('Timeline details survive initial render, timescale changes, and tree rerenders', async ({ page }) => {
-  await page.locator('.wbs-tab[aria-label="تایم‌لاین"]').click();
+  await page.locator('.wbs-tab[aria-label="نمودار گانت"]').click();
 
   const assertDetails = async expectedBars => {
     const activityBars = page.locator('.wbs-gantt-scale-foreign .wbs-gantt-bar:not(.is-milestone)');

@@ -33,6 +33,11 @@ export function installContractShellView({ windowRef = globalThis, documentRef =
     call(windowRef, 'renderSettingsWorkspace');
   }
 
+  function requestCloseContractTemplatesPage(){
+    if(windowRef.KarhaChildHistory?.consume?.('contractTemplates')) return;
+    closeContractTemplatesPage();
+  }
+
   function openContractsPage(projectId, opts = {}){
     const { updateRoute = true, pushHistory = true } = opts;
     const pid = projectId || call(windowRef, 'getCurrentProjectScopeId');
@@ -89,6 +94,9 @@ export function installContractShellView({ windowRef = globalThis, documentRef =
     call(windowRef, 'updateWorkspaceContextBar');
     call(windowRef, 'renderContractsPage');
   }
+
+  const closeTemplatesButton = documentRef?.getElementById?.('closeContractTemplatesPage');
+  if(closeTemplatesButton) closeTemplatesButton.onclick = requestCloseContractTemplatesPage;
 
   const api = Object.freeze({
     openContractTemplatesPage,

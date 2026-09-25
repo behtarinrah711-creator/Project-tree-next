@@ -56,3 +56,15 @@ test('refresh preserves a canonical restorable route entry',async({page})=>{
   const state=await page.evaluate(()=>history.state);
   expect(state).toMatchObject({app:'karha',version:1,route:{projectId:project.id,moduleId:'reports'}});
 });
+
+test('Back from project trash returns to the settings list',async({page})=>{
+  await page.locator('#projectSettingsTrigger').click();
+  await page.getByRole('button',{name:'حذف شده ها'}).click();
+  await expect(page.locator('#projectTrashPage')).toBeVisible();
+
+  await page.goBack();
+
+  await expect(page.locator('#settingsPage')).toBeVisible();
+  await expect(page.getByRole('button',{name:'حذف شده ها'})).toBeVisible();
+  await expect(page.locator('#projectTrashPage')).toBeHidden();
+});

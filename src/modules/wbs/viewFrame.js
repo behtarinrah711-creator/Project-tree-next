@@ -4,7 +4,7 @@ export const WBS_VIEW_TITLES = Object.freeze({
   tree: 'درخت پروژه',
   timeline: 'نمودار گانت',
   costline: 'برآورد هزینه',
-  shopping: 'لیست خرید',
+  shopping: 'خریدهای امروز',
 });
 
 const STANDARD_VIEWS = new Set(['tree']);
