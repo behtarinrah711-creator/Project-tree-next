@@ -5,7 +5,7 @@
     padding:10px 10px 8px;flex-shrink:0;background:var(--bg);
   }
   .topbar-title{
-    font-family:'IRANYekan',IRANYekan,Vazirmatn,Tahoma,sans-serif;font-size:18px;font-weight:700;
+    font-family:'IRANSansX',Tahoma,sans-serif;font-size:18px;font-weight:700;
     color:var(--text);padding-inline-start:4px;flex-shrink:0;
   }
   .topbar-title{display:flex;align-items:baseline;gap:5px;line-height:1.2;}

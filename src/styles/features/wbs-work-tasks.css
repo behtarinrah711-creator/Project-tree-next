@@ -20,7 +20,7 @@
 .wbs-task-priority.priority-low{background:var(--surface-2,#f1f3f5);color:var(--text-dim,#77706a);}
 .wbs-task-priority.priority-normal{background:var(--green-soft);color:var(--green);}
 .wbs-task-priority.priority-high{background:color-mix(in srgb,var(--success) 18%,white);color:color-mix(in srgb,var(--success) 70%,black);}
-.wbs-task-progress{margin-inline-start:auto;white-space:nowrap;font-family:'IRANYekan',IRANYekan,Tahoma,sans-serif;}
+.wbs-task-progress{margin-inline-start:auto;white-space:nowrap;font-family:'IRANSansX',Tahoma,sans-serif;}
 .wbs-task-completion-action{margin-top:8px;}
 .wbs-view-frame.is-standard-view[data-view="tree"] .wbs-work-tasks{margin-inline-start:0;}
 

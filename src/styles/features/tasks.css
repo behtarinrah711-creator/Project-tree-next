@@ -1,6 +1,6 @@
 /* C5 owner module: features/tasks.css */
   }
-  .cost-summary .cost-unit{font-family:'IRANYekan',IRANYekan,Vazirmatn,Tahoma,sans-serif;font-size:11px;font-weight:500;color:var(--text-dim);}
+  .cost-summary .cost-unit{font-family:'IRANSansX',Tahoma,sans-serif;font-size:11px;font-weight:500;color:var(--text-dim);}
 
   .task-block{border-bottom:1px solid var(--divider);position:relative;}
   .row{
@@ -36,7 +36,7 @@
     font-family:'JetBrains Mono',monospace;font-size:12.5px;color:var(--text);flex-shrink:0;
     direction:ltr;unicode-bidi:isolate;display:inline-flex;align-items:baseline;gap:4px;
   }
-  .row-cost .cost-unit{font-family:'IRANYekan',IRANYekan,Vazirmatn,Tahoma,sans-serif;font-size:10px;font-weight:500;color:var(--text-dim);}
+  .row-cost .cost-unit{font-family:'IRANSansX',Tahoma,sans-serif;font-size:10px;font-weight:500;color:var(--text-dim);}
   .star-icon{
     width:20px;height:20px;flex-shrink:0;color:#c4c7c5;display:flex;align-items:center;justify-content:center;
   }
