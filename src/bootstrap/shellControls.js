@@ -238,6 +238,8 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
   });
 
   const syncUser = user => {
+    const saosaLoggedOut = isSaosaHost(windowRef) && !user;
+    documentRef.body?.classList?.toggle?.('saosa-logged-out', saosaLoggedOut);
     const avatarImg = byId(documentRef, 'avatarImg');
     const avatarDefault = byId(documentRef, 'avatarDefaultIcon');
     const drawerAvatarImg = byId(documentRef, 'drawerAvatarImg');
