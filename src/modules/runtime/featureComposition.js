@@ -114,9 +114,9 @@ function navigateFooter(moduleId){
 const browserDocument=globalThis.document;
 const closeProjectTrashPage=browserDocument?.getElementById('closeProjectTrashPage');
 if(closeProjectTrashPage) closeProjectTrashPage.onclick=()=>{
-  if(window.KarhaChildHistory?.consume?.('projectTrash')) return;
   workspaceSubpage=null; showOnlyWorkspacePage('settingsPage'); setBottomNavActive('Settings');
   renderTabs(); renderSettingsWorkspace(); updateWorkspaceContextBar();
+  window.KarhaChildHistory?.consume?.('projectTrash');
 };
 
 const taskUI = window.KarhaApp.taskRuntime.createUI({

@@ -34,8 +34,8 @@ export function installContractShellView({ windowRef = globalThis, documentRef =
   }
 
   function requestCloseContractTemplatesPage(){
-    if(windowRef.KarhaChildHistory?.consume?.('contractTemplates')) return;
     closeContractTemplatesPage();
+    windowRef.KarhaChildHistory?.consume?.('contractTemplates');
   }
 
   function openContractsPage(projectId, opts = {}){
