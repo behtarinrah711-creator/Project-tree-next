@@ -46,13 +46,17 @@ const PERMISSION_GROUPS = Object.freeze([
 ]);
 
 export function normalizeMobile(value){
-  const digits=String(value || '').replace(/[۰-۹]/g,char=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(char))).replace(/\D/g,'');
-  if(/^989\d{9}$/.test(digits)) return `0${digits.slice(2)}`;
-  if(/^9\d{9}$/.test(digits)) return `0${digits}`;
-  return digits;
+  return String(value || '');
 }
 
-export function isValidIranianMobile(value){ return /^09\d{9}$/.test(normalizeMobile(value)); }
+export function isValidIranianMobile(value){ return /^09\d{9}$/.test(String(value || '')); }
+
+export function normalizeInvitationEmail(value){ return String(value || '').trim().toLowerCase(); }
+
+export function isValidInvitationEmail(value){
+  const email=normalizeInvitationEmail(value);
+  return !email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
 
 export function canManageProjectRoles(project, session){
   if(!project) return false;
@@ -113,6 +117,7 @@ export function createMember(input, { registry, now=Date.now, random=Math.random
   return {
     id:`member-${now()}-${random().toString(36).slice(2,8)}`,
     mobile,
+    email:normalizeInvitationEmail(input?.email),
     firstName:String(input?.firstName || '').trim(),
     lastName:String(input?.lastName || '').trim(),
     role,

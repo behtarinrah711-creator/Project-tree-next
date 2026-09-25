@@ -4,9 +4,11 @@ import { appRouter } from '../../core/router.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
 import {
   ACCESS_LEVELS, EDITABLE_MEMBER_STATUSES, MEMBER_STATUSES, PROJECT_ROLES, canManageProjectRoles,
-  createMember, isValidIranianMobile, normalizePermissions, permissionGroups, permissionModules,
+  createMember, isValidInvitationEmail, isValidIranianMobile, normalizeInvitationEmail,
+  normalizePermissions, permissionGroups, permissionModules,
 } from './roleManagementDomain.js';
 import { smsInvitationAdapter } from './smsInvitationAdapter.js';
+import { readSaosaSession } from '../../cloud/saosaWorkspaceSync.js';
 
 export function createRoleManagementModule({
   repository=projectRepository,
@@ -36,8 +38,9 @@ export function createRoleManagementModule({
     const form=documentRef.createElement('form');form.className='role-member-form';form.noValidate=true;
     form.innerHTML=`<header><button type="button" data-close aria-label="بستن">×</button><h2 id="roleSheetTitle">${existing?'ویرایش عضو':'افزودن عضو'}</h2><button type="submit">ذخیره</button></header>`;
     const fields=documentRef.createElement('div');fields.className='role-form-fields';
-    const field=(label,name,type='text',required=false)=>{const wrap=documentRef.createElement('label');wrap.textContent=label;const input=documentRef.createElement('input');input.name=name;input.type=type;input.required=required;input.value=existing?.[name] || '';wrap.appendChild(input);fields.appendChild(wrap);return input;};
+    const field=(label,name,type='text',required=false)=>{const wrap=documentRef.createElement('label');wrap.textContent=label;wrap.dataset.field=name;const input=documentRef.createElement('input');input.name=name;input.type=type;input.required=required;input.value=existing?.[name] || '';wrap.appendChild(input);fields.appendChild(wrap);return input;};
     const mobile=field('شماره موبایل','mobile','tel',true);mobile.inputMode='numeric';mobile.dir='ltr';mobile.placeholder='09123456789';
+    const email=field('ایمیل (اختیاری)','email','email');email.inputMode='email';email.dir='ltr';email.placeholder='name@example.com';
     field('نام (اختیاری)','firstName');field('نام خانوادگی (اختیاری)','lastName');
 
     const popupField=(label,name,items,current)=>{
@@ -74,24 +77,43 @@ export function createRoleManagementModule({
     });
     const hint=documentRef.createElement('p');hint.className='role-form-hint';hint.textContent='حذف اطلاعات هر ماژول فقط با «دسترسی کامل» مجاز است. مدیریت نقش‌ها قابل واگذاری نیست.';fields.appendChild(hint);
     const error=documentRef.createElement('p');error.className='role-form-error';error.setAttribute('role','alert');fields.appendChild(error);
+    if(existing?.status==='invited' && existing?.invitationId && smsAdapter.configured){
+      const resend=documentRef.createElement('button');resend.type='button';resend.className='role-resend-invite';resend.textContent='ارسال مجدد دعوت‌نامه';
+      resend.onclick=async()=>{resend.disabled=true;error.textContent='';try{const result=await smsAdapter.resendInvitation({projectId,invitationId:existing.invitationId});const delivered=result.smsSent || result.emailSent;error.className=delivered?'role-form-success':'role-form-error';error.textContent=delivered?'دعوت‌نامه مجدداً ارسال شد.':'دعوت ثبت است، اما ارسال پیامک و ایمیل انجام نشد.';}catch{error.className='role-form-error';error.textContent='ارسال مجدد دعوت‌نامه انجام نشد.';}finally{resend.disabled=false;}};
+      fields.appendChild(resend);
+    }
     form.appendChild(fields);sheet.appendChild(form);overlay.appendChild(sheet);documentRef.body.appendChild(overlay);activeSheet=overlay;
     const close=()=>closeSheet();form.querySelector('[data-close]').onclick=close;
     overlay.addEventListener('click',event=>{if(event.target===overlay)close();});
     form.addEventListener('click',event=>{if(!event.target.closest?.('.role-custom-select')){form.querySelectorAll('.role-custom-select-menu.open').forEach(open=>open.classList.remove('open'));form.querySelectorAll('.role-custom-select-trigger.open').forEach(open=>open.classList.remove('open'));}});
-    form.addEventListener('submit',event=>{
+    const setInvalid=(input,message)=>{input.setAttribute('aria-invalid','true');input.closest('label')?.classList.add('role-field-invalid');error.className='role-form-error';error.textContent=message;input.focus?.();};
+    const clearInvalid=()=>{form.querySelectorAll('[aria-invalid="true"]').forEach(input=>input.removeAttribute('aria-invalid'));form.querySelectorAll('.role-field-invalid').forEach(field=>field.classList.remove('role-field-invalid'));error.className='role-form-error';error.textContent='';};
+    [mobile,email].forEach(input=>input.addEventListener('input',()=>{input.removeAttribute('aria-invalid');input.closest('label')?.classList.remove('role-field-invalid');error.textContent='';}));
+    form.addEventListener('submit',async event=>{
       event.preventDefault();
-      const data=new FormData(form);if(!isValidIranianMobile(data.get('mobile'))){error.textContent='شماره موبایل معتبر وارد کنید.';return;}
+      clearInvalid();
+      const data=new FormData(form);const mobileValue=String(data.get('mobile') || '');const emailValue=normalizeInvitationEmail(data.get('email'));
+      if(!isValidIranianMobile(mobileValue)){setInvalid(mobile,'شماره موبایل را به‌صورت ۱۱ رقمی و با 09 وارد کنید.');return;}
+      if(!isValidInvitationEmail(emailValue)){setInvalid(email,'ایمیل معتبر وارد کنید.');return;}
+      const project=repository.find(projectId);const session=sessionProvider();const saosaSession=readSaosaSession(windowRef);const ownerPhone=String(saosaSession?.phone || session?.phoneNumber || session?.phone || '').trim();
+      if(!existing && ownerPhone===mobileValue){setInvalid(mobile,'این کاربر مالک پروژه است.');return;}
+      const duplicate=(project?.projectMembers || []).find(item=>item.id!==existing?.id && item.mobile===mobileValue);
+      if(duplicate){setInvalid(mobile,duplicate.status==='invited'?'این کاربر قبلاً دعوت شده است.':duplicate.status==='active'?'این کاربر قبلاً عضو پروژه شده است.':'این کاربر قبلاً به پروژه اضافه شده و در حال حاضر غیرفعال است.');return;}
       const permissionValues=Object.fromEntries(permissionModules(registry).map(module=>[module.id,data.get(`permission:${module.id}`)]));
-      const values={mobile:data.get('mobile'),firstName:data.get('firstName'),lastName:data.get('lastName'),role:data.get('role'),permissions:permissionValues};
+      const values={mobile:mobileValue,email:emailValue,firstName:data.get('firstName'),lastName:data.get('lastName'),role:data.get('role'),permissions:permissionValues};
       let member;
       if(existing){
         const status=existing.status === 'invited' ? 'invited' : (data.get('status') || existing.status);
         member={...existing,...values,status,permissions:normalizePermissions(permissionValues,registry)};
       }else member=createMember(values,{registry});
+      if(!existing && smsAdapter.configured){
+        const submit=form.querySelector('[type="submit"]');submit.disabled=true;
+        try{const invitation=await smsAdapter.sendInvitation({projectId,projectName:project?.name || project?.title || 'پروژه',member});member={...member,invitationId:invitation.id || invitation.invitationId || null,invitationExpiresAt:invitation.expiresAt || null,smsSent:!!invitation.smsSent,emailSent:!!invitation.emailSent};}
+        catch(sendError){submit.disabled=false;const messages={project_owner:'این کاربر مالک پروژه است.',already_member:'این کاربر قبلاً عضو پروژه شده است.',inactive_member:'این کاربر قبلاً به پروژه اضافه شده و در حال حاضر غیرفعال است.',already_invited:'این کاربر قبلاً دعوت شده است.',invalid_phone:'شماره موبایل را به‌صورت ۱۱ رقمی و با 09 وارد کنید.',invalid_email:'ایمیل معتبر وارد کنید.'};setInvalid(sendError.code==='invalid_email'?email:mobile,messages[sendError.code] || 'ثبت دعوت‌نامه انجام نشد. دوباره تلاش کنید.');return;}
+      }
       save(projectId,project=>({...project,projectMembers:existing
         ? project.projectMembers.map(item=>item.id===existing.id?member:item)
         : [...project.projectMembers,member]}));
-      if(!existing && smsAdapter.configured) void smsAdapter.sendInvitation({projectId,member});
       close();render(projectId,registry);
     });
     mobile.focus?.();
