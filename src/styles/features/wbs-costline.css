@@ -13,7 +13,7 @@
 .wbs-costline-col{box-sizing:border-box;flex:0 0 88px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;border:0;border-radius:var(--wbs-frame-radius,5px);background:transparent;min-height:278px;padding:0 4px;font-family:inherit;color:#2f2a24;}
 .wbs-costline-bar{display:block;width:28px;height:220px;overflow:visible;}
 .wbs-costline-bar path{fill:#033E8A;}
-.wbs-costline-value{display:flex;align-items:baseline;justify-content:center;gap:2px;direction:rtl;white-space:nowrap;font-family:'IRANYekan',IRANYekan,Tahoma,sans-serif;font-size:12px;line-height:1.2;}
+.wbs-costline-value{display:flex;align-items:baseline;justify-content:center;gap:2px;direction:rtl;white-space:nowrap;font-family:'IRANSansX',Tahoma,sans-serif;font-size:12px;line-height:1.2;}
 .wbs-costline-value small{font-size:7px;font-weight:400;color:#8a8176;}
 .wbs-costline-label{box-sizing:border-box;display:block;width:100%;min-height:30px;font-size:11px;font-weight:500;line-height:15px;color:#6f675d;text-align:center;white-space:normal;direction:rtl;unicode-bidi:plaintext;}
 .wbs-costline-work{border:1px solid #e5ded3;border-radius:var(--wbs-frame-radius,5px);padding:10px;margin-bottom:8px;}

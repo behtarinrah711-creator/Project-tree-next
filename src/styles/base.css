@@ -1,8 +1,22 @@
 /* C5 owner module: base.css */
+  @font-face{
+    font-family:'IRANSansX';
+    src:url('../assets/fonts/IRANSansX-Regular.woff2') format('woff2');
+    font-style:normal;
+    font-weight:400;
+    font-display:swap;
+  }
+  @font-face{
+    font-family:'IRANSansX';
+    src:url('../assets/fonts/IRANSansX-Bold.woff2') format('woff2');
+    font-style:normal;
+    font-weight:700;
+    font-display:swap;
+  }
   html,body{height:100%;}
   body{
     margin:0;background:var(--bg);color:var(--text);
-    font-family:'IRANYekan', IRANYekan, Tahoma, sans-serif;
+    font-family:'IRANSansX',Tahoma,sans-serif;
     display:flex;flex-direction:column;overflow:hidden;
   }
 
@@ -14,4 +28,3 @@
   option{
     font-family:inherit;
   }
-

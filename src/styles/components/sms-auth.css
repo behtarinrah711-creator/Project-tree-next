@@ -1,5 +1,5 @@
 .sms-auth-screen[hidden]{display:none!important;}
-.sms-auth-screen{position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;min-height:100dvh;background:#fff;color:var(--text,#151515);font-family:'IRANYekan',IRANYekan,Tahoma,sans-serif;}
+.sms-auth-screen{position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;min-height:100dvh;background:#fff;color:var(--text,#151515);font-family:'IRANSansX',Tahoma,sans-serif;}
 .sms-auth-header{min-height:58px;padding:env(safe-area-inset-top) 16px 0;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;border-bottom:1px solid #ececec;text-align:center;box-sizing:content-box;}
 .sms-auth-header strong{font-size:16px;font-weight:700;}
 .sms-auth-back{border:0;background:transparent;font:inherit;font-size:26px;width:44px;height:44px;color:inherit;cursor:pointer;}

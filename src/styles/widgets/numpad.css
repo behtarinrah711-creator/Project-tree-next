@@ -21,7 +21,7 @@
     display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
   }
   .numpad-key{
-    font-family:'IRANYekan',IRANYekan,Vazirmatn,Tahoma,sans-serif;font-size:22px;font-weight:600;color:var(--text);
+    font-family:'IRANSansX',Tahoma,sans-serif;font-size:22px;font-weight:600;color:var(--text);
     background:var(--bg);border:none;border-radius:12px;padding:16px 0;cursor:pointer;
     display:flex;align-items:center;justify-content:center;touch-action:manipulation;
   }

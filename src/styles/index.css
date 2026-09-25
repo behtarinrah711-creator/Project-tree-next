@@ -55,7 +55,7 @@ body:not(.global-surface){background:#f2f3f5;}
   left:50%;
   top:50%;
   transform:translate(-50%,-50%);
-  font-family:'IRANYekan',IRANYekan,Tahoma,sans-serif;
+  font-family:'IRANSansX',Tahoma,sans-serif;
   font-size:16px;
   font-weight:700;
   color:var(--text);
