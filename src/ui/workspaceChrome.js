@@ -113,6 +113,7 @@ export function installWorkspaceChrome({
     const profileVisible = !get('profilePage')?.classList?.contains?.('hidden');
     const managementVisible = !get('projectsPage')?.classList?.contains?.('hidden');
     const routeModuleId = routeModuleOverride || windowRef.KarhaRoute?.moduleId;
+    const routeProjectId = windowRef.KarhaRoute?.projectId;
     const planningButton=get('bottomPlanningBtn');
     if(planningButton) planningButton.hidden=!!state.project&&!firstAllowedPlanningView(state.project.id,undefined,windowRef);
     settingsTrigger?.classList?.toggle?.('active',SETTINGS_MODULES.has(routeModuleId));
@@ -153,9 +154,12 @@ export function installWorkspaceChrome({
     get('topbarTitle')?.classList?.remove?.('notebook-context');
     const subpage = state.workspaceSubpage || null;
     const sectionTitle = SECTION_TITLES[key] || (key === 'Home' && subpage === 'archive' ? 'آرشیو شده ها' : '');
-    if(topbarMain) topbarMain.textContent = state.project?.name || 'پروژه‌ها';
+    const routeProject = routeProjectId && String(routeProjectId) === String(state.project?.id)
+      ? state.project
+      : null;
+    if(topbarMain) topbarMain.textContent = routeProject?.name || '';
     if(topbarProject) topbarProject.textContent = '';
-    get('topbarTitle')?.classList?.toggle?.('has-active-project', !!state.project?.name);
+    get('topbarTitle')?.classList?.toggle?.('has-active-project', !!routeProject?.name);
 
     if(!isWorkspace){
       contextName.textContent = '';

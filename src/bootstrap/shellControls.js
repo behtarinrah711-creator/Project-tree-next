@@ -216,12 +216,15 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     title?.setAttribute('aria-label', 'فهرست پروژه‌ها');
     if(moduleId !== 'dashboard' && moduleId !== 'tasks') return;
 
-    if(project?.name){
-      if(main) main.textContent = project.name;
+    const routeProject = projectScoped && String(windowRef.KarhaRoute?.projectId) === String(project?.id)
+      ? project
+      : null;
+    if(routeProject?.name){
+      if(main) main.textContent = routeProject.name;
       if(projectLabel) projectLabel.textContent = '';
       title?.classList.add('has-active-project');
     }else{
-      if(main) main.textContent = 'پروژه‌ها';
+      if(main) main.textContent = '';
       if(projectLabel) projectLabel.textContent = '';
       title?.classList.remove('has-active-project');
     }

@@ -48,7 +48,7 @@ function harness(){
     querySelector(selector){return selector==='.bottom-nav-item.active'?footers.find(x=>x.classList.contains('active'))||null:null;},
     querySelectorAll(selector){return selector==='.bottom-nav-item'?footers:[];},
   };
-  const windowRef={document:documentRef,setTimeout:fn=>fn(),addEventListener(type,fn){events.set(type,fn);}};
+  const windowRef={document:documentRef,KarhaRoute:{projectId:'A',moduleId:'dashboard'},setTimeout:fn=>fn(),addEventListener(type,fn){events.set(type,fn);}};
   const calls=[];
   let state={workspaceSubpage:null,menuRootMode:null,project:{id:'A',name:'Alpha'}};
   const chrome=installWorkspaceChrome({
@@ -124,6 +124,23 @@ test('drawer event opens chrome and refreshes drawer/context presentation',()=>{
   assert.equal(h.ids.get('drawerOverlay').classList.contains('hidden'),true);
 });
 
+test('header stays empty until the route project matches the resolved context',()=>{
+  const h=harness();
+  h.windowRef.KarhaRoute={projectId:null,moduleId:null};
+  h.chrome.updateWorkspaceContextBar();
+  assert.equal(h.ids.get('topbarTitle').main.textContent,'');
+  assert.equal(h.ids.get('topbarTitle').classList.contains('has-active-project'),false);
+
+  h.windowRef.KarhaRoute={projectId:'B',moduleId:'dashboard'};
+  h.chrome.updateWorkspaceContextBar();
+  assert.equal(h.ids.get('topbarTitle').main.textContent,'');
+
+  h.windowRef.KarhaRoute={projectId:'A',moduleId:'dashboard'};
+  h.chrome.updateWorkspaceContextBar();
+  assert.equal(h.ids.get('topbarTitle').main.textContent,'Alpha');
+  assert.equal(h.ids.get('topbarTitle').classList.contains('has-active-project'),true);
+});
+
 test('global menu destinations keep one header and do not mount the project footer',()=>{
   const h=harness();
   h.windowRef.KarhaRoute={moduleId:'notebook'};
@@ -162,6 +179,7 @@ test('project switches and repeated route application never leave stale footer o
   assert.equal(h.ids.get('workspaceProjectName').textContent,'گزارش');
   assert.equal(h.ids.get('workspaceProjectContext').hidden,true);
   h.state={...h.state,project:{id:'B',name:'Beta'}};
+  h.windowRef.KarhaRoute={projectId:'B',moduleId:'people'};
   h.chrome.applyRoute('people',getProjectRouteSurface('people'));
   assert.equal(h.ids.get('topbarTitle').main.textContent,'Beta');
   assert.equal(h.ids.get('topbarProjectName').textContent,'');
