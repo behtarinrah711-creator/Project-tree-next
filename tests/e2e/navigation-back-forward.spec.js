@@ -68,3 +68,19 @@ test('Back from project trash returns to the settings list',async({page})=>{
   await expect(page.getByRole('button',{name:'حذف شده ها'})).toBeVisible();
   await expect(page.locator('#projectTrashPage')).toBeHidden();
 });
+
+test('header arrows return from contracts and project trash with one click',async({page})=>{
+  await page.locator('#projectSettingsTrigger').click();
+
+  await page.getByRole('button',{name:'قراردادها'}).click();
+  await expect(page.locator('#contractTemplatesPage')).toBeVisible();
+  await page.locator('#closeContractTemplatesPage').click();
+  await expect(page.locator('#settingsPage')).toBeVisible();
+  await expect(page.locator('#contractTemplatesPage')).toBeHidden();
+
+  await page.getByRole('button',{name:'حذف شده ها'}).click();
+  await expect(page.locator('#projectTrashPage')).toBeVisible();
+  await page.locator('#closeProjectTrashPage').click();
+  await expect(page.locator('#settingsPage')).toBeVisible();
+  await expect(page.locator('#projectTrashPage')).toBeHidden();
+});

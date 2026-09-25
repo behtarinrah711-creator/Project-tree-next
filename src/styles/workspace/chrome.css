@@ -28,9 +28,11 @@
   }
   .topbar .mode-toggle{flex-shrink:0;margin-inline-start:auto;}
   .topbar .account-trigger{flex-shrink:0;}
-  .project-settings-trigger{margin-inline-start:auto;}
+  .project-settings-trigger,
+  .project-settings-trigger:active{margin-inline-start:auto;background:transparent;color:var(--text);}
   .project-settings-trigger svg{width:22px;height:22px;}
-  .project-settings-trigger.active{background:#2f2a24;color:#fff;}
+  .project-settings-trigger.active,
+  .project-settings-trigger.active:active{background:#2f2a24;color:#fff;}
 
   /* ---------- workspace header ----------
      در صفحات داخلی، هدر همان هدر اصلی پروژه‌هاست؛

@@ -5,8 +5,14 @@ import { installContractShellView } from './contractShellView.js';
 test('contract templates header back consumes its child history entry',()=>{
   const closeButton={onclick:null};
   const consumed=[];
+  const calls=[];
   const windowRef={
     KarhaChildHistory:{consume:key=>{consumed.push(key);return true;}},
+    setBottomNavActive:key=>calls.push(['footer',key]),
+    renderTabs:()=>calls.push(['tabs']),
+    showOnlyWorkspacePage:page=>calls.push(['page',page]),
+    updateWorkspaceContextBar:()=>calls.push(['context']),
+    renderSettingsWorkspace:()=>calls.push(['settings']),
     document:{getElementById:id=>id==='closeContractTemplatesPage'?closeButton:null},
   };
 
@@ -14,6 +20,8 @@ test('contract templates header back consumes its child history entry',()=>{
   closeButton.onclick();
 
   assert.deepEqual(consumed,['contractTemplates']);
+  assert.ok(calls.some(call=>call[0]==='page'&&call[1]==='settingsPage'));
+  assert.ok(calls.some(call=>call[0]==='settings'));
 });
 
 test('contract templates header back falls back to settings without child history',()=>{
