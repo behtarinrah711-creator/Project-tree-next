@@ -81,6 +81,18 @@ test('project routes decode the selected project and module identifiers', async 
   assert.deepEqual(parseRoute(),{projectId:'پروژه ۱',moduleId:'dashboard'});
 });
 
+test('global routes stay projectless and preserve their destination', async () => {
+  const { parseRoute }=await import(`./router.js?global=${Date.now()}`);
+  for(const [hash,moduleId] of [
+    ['#/profile','profile'],
+    ['#/project-management','project-management'],
+    ['#/notebook','notebook'],
+  ]){
+    window.location.hash=hash;
+    assert.deepEqual(parseRoute(),{projectId:null,moduleId,surface:'global'});
+  }
+});
+
 test('programmatic A to B to C navigation keeps router, tasks, history, and contracts synchronized', async () => {
   const projectList=Object.keys(projects).map(id=>({id,...projects[id]}));
   const harness=await createRouterHarness({

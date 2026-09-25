@@ -41,12 +41,18 @@ export function installProfileView({ windowRef = globalThis, documentRef = null 
     else call('refreshCurrentFooterPage');
   }
 
-  function openProfilePage(){
+  function openProfilePage({ routeSynced = false } = {}){
+    const route = '#/profile';
+    if(!routeSynced && windowRef.location?.hash !== route){
+      windowRef.KarhaBrowserHistory?.push?.(
+        windowRef.KarhaBrowserHistory.stateForRoute?.({projectId:null,moduleId:'profile',hash:route}) || {hash:route},
+        route
+      ) || (windowRef.location.hash = route);
+    }
     call('closeBottomPages');
     call('enterWorkspaceSurface');
     call('ensureHomeSelection');
     call('setBottomNavActive', 'Home');
-    call('pushMenuRootHistory', 'profile');
     profileDraft = {...loadProfile()};
     const page = documentRef.getElementById('profilePage');
     if(page) page.classList.remove('hidden');
@@ -180,6 +186,9 @@ export function installProfileView({ windowRef = globalThis, documentRef = null 
 
   const drawerBtn = documentRef.getElementById('drawerProfileBtn');
   if(drawerBtn) drawerBtn.onclick = ()=>{ call('closeDrawer'); openProfilePage(); };
+  windowRef.addEventListener?.('karha:workspace-route-synced', event=>{
+    if(event?.detail?.surface === 'global' && event.detail.moduleId === 'profile') openProfilePage({routeSynced:true});
+  });
   const cancelBtn = documentRef.getElementById('profileCancelBtn');
   if(cancelBtn) cancelBtn.onclick = ()=> closeProfilePage(false);
   const saveBtn = documentRef.getElementById('profileSaveBtn');
