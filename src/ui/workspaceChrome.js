@@ -33,6 +33,7 @@ const INNER_SECTION_SUBPAGES = new Set([
   'statusList','statusForm','collab','projectTrash','contractTemplates','contractTemplateForm',
   'statusTest','contracts','contractForm','projectSettings','roleManagement',
 ]);
+const SETTINGS_MODULES = new Set(['people','project-settings','role-management','activities']);
 
 export function installWorkspaceChrome({
   windowRef = globalThis.window,
@@ -94,7 +95,7 @@ export function installWorkspaceChrome({
     documentRef.documentElement?.style?.setProperty?.('--workspace-page-top', `${topbarHeight + contextHeight}px`);
   }
 
-  function updateWorkspaceContextBar(){
+  function updateWorkspaceContextBar(routeModuleOverride){
     const state = getPresentationState() || {};
     const context = get('workspaceProjectContext');
     const contextName = get('workspaceProjectName');
@@ -109,7 +110,9 @@ export function installWorkspaceChrome({
     const key = activeFooter();
     const profileVisible = !get('profilePage')?.classList?.contains?.('hidden');
     const managementVisible = !get('projectsPage')?.classList?.contains?.('hidden');
-    const routeModuleId = windowRef.KarhaRoute?.moduleId;
+    const routeModuleId = routeModuleOverride || windowRef.KarhaRoute?.moduleId;
+    settingsTrigger?.classList?.toggle?.('active',SETTINGS_MODULES.has(routeModuleId));
+    settingsTrigger?.setAttribute?.('aria-pressed',SETTINGS_MODULES.has(routeModuleId)?'true':'false');
     const globalRouteTitle = GLOBAL_ROUTE_TITLES[routeModuleId] || (/^#\/notebook(?:\/export)?/i.test(windowRef.location?.hash || '')
       ? (/\/export/i.test(windowRef.location?.hash || '') ? GLOBAL_ROUTE_TITLES['notebook-export'] : GLOBAL_ROUTE_TITLES.notebook)
       : '');
@@ -206,7 +209,7 @@ export function installWorkspaceChrome({
     else hideAllWorkspacePages();
     setBottomNavActive(surface?.footer || 'Home');
     renderDrawerProjectList();
-    updateWorkspaceContextBar();
+    updateWorkspaceContextBar(moduleId);
     return surface;
   }
 

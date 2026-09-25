@@ -76,6 +76,7 @@ function renderProjectTrashPage(){ return projectTrashView?.render(); }
 function openProjectTrashPage(){
   closeBottomPages(); enterWorkspaceSurface(); ensureHomeSelection(); workspaceSubpage='projectTrash';
   setBottomNavActive('Settings'); showOnlyWorkspacePage('projectTrashPage'); renderProjectTrashPage(); updateWorkspaceContextBar();
+  pushWorkspaceHistory('projectTrash');
 }
 
 function refreshCurrentFooterPage(){
@@ -113,6 +114,7 @@ function navigateFooter(moduleId){
 const browserDocument=globalThis.document;
 const closeProjectTrashPage=browserDocument?.getElementById('closeProjectTrashPage');
 if(closeProjectTrashPage) closeProjectTrashPage.onclick=()=>{
+  if(window.KarhaChildHistory?.consume?.('projectTrash')) return;
   workspaceSubpage=null; showOnlyWorkspacePage('settingsPage'); setBottomNavActive('Settings');
   renderTabs(); renderSettingsWorkspace(); updateWorkspaceContextBar();
 };

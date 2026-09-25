@@ -180,6 +180,7 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
   const main = title?.querySelector?.('.app-title-main');
   const projectLabel = byId(documentRef, 'topbarProjectName');
   const settingsTrigger = byId(documentRef, 'projectSettingsTrigger');
+  const settingsModules = new Set(['people','project-settings','role-management','activities']);
 
   if(title){
     title.classList.add('project-menu-trigger');
@@ -196,6 +197,8 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     const projectScoped = /^#\/?projects?\//i.test(windowRef.location?.hash || '')
       && !!windowRef.KarhaRoute?.projectId;
     if(settingsTrigger) settingsTrigger.hidden = notebook || !projectScoped || !project;
+    settingsTrigger?.classList?.toggle?.('active',settingsModules.has(moduleId));
+    settingsTrigger?.setAttribute?.('aria-pressed',settingsModules.has(moduleId)?'true':'false');
     if(windowRef.KarhaWorkspaceChrome){
       windowRef.KarhaWorkspaceChrome.updateWorkspaceContextBar?.();
       return;
@@ -226,6 +229,8 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
 
   settingsTrigger?.addEventListener?.('click', () => {
     const project = windowRef.KarhaApp?.projectWorkspace?.getActiveProject?.();
+    const moduleId=windowRef.KarhaRoute?.moduleId;
+    if(settingsModules.has(moduleId)){ windowRef.KarhaBrowserHistory?.back?.(); return; }
     if(project?.id) windowRef.KarhaApp?.projectWorkspace?.selectProject?.(project.id,{moduleId:'people'});
   });
 

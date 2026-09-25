@@ -11,7 +11,7 @@ for(const [mode,depth] of [['base',1],['none',2],['single',3],['multiple',4]]){
       localStorage.setItem('ptnext-v1:app-data',JSON.stringify({schemaVersion:8,activeTab:'gantt-new',viewMode:'simple',projects:[{id:'gantt-new',name:'گانت',settings:{stageMode:mode},tasks:[leaf]}]}));
     },{mode,depth});
     await page.goto('/index.html#/projects/gantt-new/planning');
-    await page.locator('.wbs-tab[aria-label="تایم‌لاین"]').click();
+    await page.locator('.wbs-tab[aria-label="نمودار گانت"]').click();
     if(mode==='base'){
       const controls=[
         page.locator('.wbs-timescale-toggle'),

@@ -154,3 +154,27 @@ test('project settings trigger is visible only on an explicit project route',()=
   bindShellControls(global);
   assert.equal(global.elements.projectSettingsTrigger.hidden,true);
 });
+
+test('project settings trigger opens settings and a second click returns to the previous route',async()=>{
+  const selected=[];
+  const projectWorkspace={
+    getActiveProject:()=>({id:'p-1',name:'Project'}),
+    selectProject:(id,options)=>selected.push([id,options]),
+  };
+  const project=harness({route:{projectId:'p-1',moduleId:'planning'},hash:'#/projects/p-1/planning'});
+  project.windowRef.KarhaApp={projectWorkspace};
+  bindShellControls(project);
+  await project.elements.projectSettingsTrigger.click();
+  assert.deepEqual(selected,[['p-1',{moduleId:'people'}]]);
+  assert.equal(project.elements.projectSettingsTrigger.classList.contains('active'),false);
+
+  let backCalls=0;
+  const settings=harness({route:{projectId:'p-1',moduleId:'people'},hash:'#/projects/p-1/people'});
+  settings.windowRef.KarhaApp={projectWorkspace};
+  settings.windowRef.KarhaBrowserHistory={back(){backCalls++;}};
+  bindShellControls(settings);
+  assert.equal(settings.elements.projectSettingsTrigger.classList.contains('active'),true);
+  await settings.elements.projectSettingsTrigger.click();
+  assert.equal(backCalls,1);
+  assert.equal(selected.length,1);
+});

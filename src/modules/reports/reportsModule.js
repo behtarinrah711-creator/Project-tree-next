@@ -56,8 +56,8 @@ export const reportsModule = {
     tabs.className='wbs-tabs reports-workspace-tabs';
     tabs.setAttribute('role','tablist');
     [
-      {id:'reports',label:'گزارش‌ها',icon:REPORT_ICON},
-      {id:'delay',label:'تأخیرات',icon:DELAY_ICON},
+      {id:'reports',label:'قراردادها',icon:REPORT_ICON},
+      {id:'delay',label:'دیرکردها',icon:DELAY_ICON},
     ].forEach(view=>{
       const button=document.createElement('button');
       button.type='button';
@@ -66,7 +66,7 @@ export const reportsModule = {
       button.setAttribute('aria-selected',activeReportView===view.id?'true':'false');
       button.setAttribute('aria-label',view.label);
       button.title=view.label;
-      button.innerHTML=icon(view.icon);
+      button.innerHTML=`${icon(view.icon)}<span class="wbs-tab-label">${view.label}</span>`;
       button.addEventListener('click',()=>{ activeReportView=view.id; this.render(activeProjectId); });
       tabs.appendChild(button);
     });
