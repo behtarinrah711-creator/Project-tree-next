@@ -56,13 +56,13 @@ function dateField(documentRef, name, label, value){
   return fieldRow(label, button);
 }
 
-function taskForm({ projectId, work, task = null, onChanged }){
+function taskForm({ projectId, work, task = null, onChanged, readOnly=false, canDelete=true }){
   const editing = Boolean(task);
   const documentRef = document;
   const contractor = linkedContractor(projectId, work.id);
   openWbsSheet({
     title:editing ? 'ویرایش کار' : 'ساخت کار',
-    saveLabel:'ذخیره',
+    saveLabel:'ذخیره',readOnly,
     body(root){
       root.appendChild(fieldRow('عنوان', textInput(task?.title || '', { name:'taskTitle', required:true })));
       root.appendChild(fieldRow('نوع کار', selectInput(WORK_TYPES.map(value => ({ value, label:value })), task?.type || work.type || WORK_TYPES[0])));
@@ -102,7 +102,7 @@ function taskForm({ projectId, work, task = null, onChanged }){
       const dependency = predecessorField({ documentRef, project:projectRepository.find(projectId), consumerId:task?.id || `new:${work.id}`, initial:task?.dependencies || task?.predecessorIds || [] });
       root.appendChild(dependency.element); root._taskDependency = dependency;
 
-      if(editing){
+      if(editing && !readOnly){
         const completion = documentRef.createElement('button');
         completion.type = 'button';
         completion.className = 'wbs-primary-action is-secondary wbs-task-completion-action';
@@ -114,14 +114,16 @@ function taskForm({ projectId, work, task = null, onChanged }){
           closeWbsSheet(); onChanged?.();
         });
         root.appendChild(completion);
-        const remove = documentRef.createElement('button');
-        remove.type = 'button'; remove.className = 'wbs-primary-action is-secondary wbs-task-delete'; remove.textContent = 'حذف Task';
-        remove.addEventListener('click', () => {
-          const perform = () => { workTaskApi.remove(projectId, work.id, task.id); closeWbsSheet(); onChanged?.(); };
-          if(typeof documentRef.defaultView?.KarhaUI?.openConfirm === 'function') documentRef.defaultView.KarhaUI.openConfirm('این Task حذف شود؟', perform, 'حذف');
-          else if(documentRef.defaultView?.confirm?.('این Task حذف شود؟')) perform();
-        });
-        root.appendChild(remove);
+        if(canDelete){
+          const remove = documentRef.createElement('button');
+          remove.type = 'button'; remove.className = 'wbs-primary-action is-secondary wbs-task-delete'; remove.textContent = 'حذف Task';
+          remove.addEventListener('click', () => {
+            const perform = () => { workTaskApi.remove(projectId, work.id, task.id); closeWbsSheet(); onChanged?.(); };
+            if(typeof documentRef.defaultView?.KarhaUI?.openConfirm === 'function') documentRef.defaultView.KarhaUI.openConfirm('این Task حذف شود؟', perform, 'حذف');
+            else if(documentRef.defaultView?.confirm?.('این Task حذف شود؟')) perform();
+          });
+          root.appendChild(remove);
+        }
       }
     },
     onSave(root){
@@ -198,7 +200,7 @@ function bindTaskReorder(group, row, { projectId, workId, taskId, onChanged }){
   });
 }
 
-export function renderWorkTasks({ documentRef = document, projectId, work, view, onChanged }){
+export function renderWorkTasks({ documentRef = document, projectId, work, view, onChanged, readOnly=false, canDelete=true }){
   const tasks = workTaskApi.list(projectId, work.id);
   if(!tasks.length) return null;
   const contractor = linkedContractor(projectId, work.id);
@@ -222,10 +224,10 @@ export function renderWorkTasks({ documentRef = document, projectId, work, view,
       </span>`;
     row.addEventListener('click', event => {
       if(event.target.closest('.wbs-grip')) return;
-      taskForm({ projectId, work, task, onChanged });
+      taskForm({ projectId, work, task, onChanged, readOnly, canDelete });
     });
     group.appendChild(row);
-    bindTaskReorder(group, row, { projectId, workId:work.id, taskId:task.id, onChanged });
+    if(!readOnly) bindTaskReorder(group, row, { projectId, workId:work.id, taskId:task.id, onChanged });
   });
   return group;
 }

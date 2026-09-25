@@ -31,10 +31,10 @@ function numericRow(root, name, label, value, money=false){
   return control;
 }
 
-export function openStageEditSheet({projectId,stage,onChanged,onDelete}={}){
+export function openStageEditSheet({projectId,stage,onChanged,onDelete,readOnly=false}={}){
   let titleEditor;
   const overlay=openWbsSheet({
-    title:'مرحله:',presentation:'stage-create',autoFocus:false,
+    title:'مرحله:',presentation:'stage-create',autoFocus:false,readOnly,
     body(root){
       if(!activeWorkTasks(stage).length) numericRow(root,'manualCost','هزینه',lineTotal(stage),true);
       numericRow(root,'progressWeight','وزن مرحله',progressWeightOf(stage));
@@ -45,7 +45,7 @@ export function openStageEditSheet({projectId,stage,onChanged,onDelete}={}){
       description.rows=2;
       root.appendChild(fieldRow('توضیح اختیاری',description));
       root.classList.add('wbs-stage-edit-body');
-      if(onDelete){
+      if(onDelete && !readOnly){
         const remove=document.createElement('button');
         remove.type='button';
         remove.className='wbs-info-row is-danger';
@@ -71,7 +71,7 @@ export function openStageEditSheet({projectId,stage,onChanged,onDelete}={}){
   });
   titleEditor=document.createElement('span');
   titleEditor.className='wbs-stage-edit-title';
-  titleEditor.contentEditable='true';
+  titleEditor.contentEditable=readOnly?'false':'true';
   titleEditor.setAttribute('role','textbox');
   titleEditor.setAttribute('aria-label','عنوان مرحله');
   titleEditor.textContent=stage.text || '';

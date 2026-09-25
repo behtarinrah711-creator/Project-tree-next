@@ -9,6 +9,7 @@ import {
 } from './roleManagementDomain.js';
 import { smsInvitationAdapter } from './smsInvitationAdapter.js';
 import { readSaosaSession } from '../../cloud/saosaWorkspaceSync.js';
+import { PLANNING_ACCESS_LEVELS } from './planningAccess.js';
 
 export function createRoleManagementModule({
   repository=projectRepository,
@@ -73,7 +74,7 @@ export function createRoleManagementModule({
     const permissions=normalizePermissions(existing?.permissions,registry);
     permissionGroups(registry).forEach(group=>{
       const groupTitle=documentRef.createElement('h4');groupTitle.className='role-permission-group-title';groupTitle.textContent=group.label;fields.appendChild(groupTitle);
-      group.modules.forEach(module=>popupField(module.label,`permission:${module.id}`,ACCESS_LEVELS,permissions[module.id]));
+      group.modules.forEach(module=>popupField(module.label,`permission:${module.id}`,module.accessProfile==='planning'?PLANNING_ACCESS_LEVELS:ACCESS_LEVELS,permissions[module.id]==='edit'&&module.accessProfile==='planning'?'create':permissions[module.id]));
     });
     const hint=documentRef.createElement('p');hint.className='role-form-hint';hint.textContent='حذف اطلاعات هر ماژول فقط با «دسترسی کامل» مجاز است. مدیریت نقش‌ها قابل واگذاری نیست.';fields.appendChild(hint);
     const error=documentRef.createElement('p');error.className='role-form-error';error.setAttribute('role','alert');fields.appendChild(error);

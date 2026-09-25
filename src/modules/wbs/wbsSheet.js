@@ -8,7 +8,7 @@ export function closeWbsSheet(){
   document.getElementById('wbsSheetOverlay')?.remove();
 }
 
-export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', presentation = '', autoFocus = true } = {}){
+export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', presentation = '', autoFocus = true, readOnly = false } = {}){
   closeWbsSheet();
   const overlay = document.createElement('div');
   overlay.id = 'wbsSheetOverlay';
@@ -47,6 +47,11 @@ export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', pr
   const bodyEl = overlay.querySelector('.sheet-body');
   if(typeof body === 'function') body(bodyEl);
   else if(body) bodyEl.append(body);
+  if(readOnly){
+    overlay.classList.add('is-read-only');
+    overlay.querySelector('.wbs-sheet-save').hidden=true;
+    bodyEl.querySelectorAll('input,textarea,select,button').forEach(control=>{control.disabled=true;});
+  }
   overlay.querySelector('.close-btn').addEventListener('click', closeWbsSheet);
   overlay.addEventListener('click', ev => { if(ev.target === overlay) closeWbsSheet(); });
   overlay.querySelector('.wbs-sheet-save').addEventListener('click', () => {
@@ -54,7 +59,7 @@ export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', pr
     if(ok !== false) closeWbsSheet();
   });
   document.body.appendChild(overlay);
-  if(autoFocus) bodyEl.querySelector('input,textarea,select')?.focus();
+  if(autoFocus && !readOnly) bodyEl.querySelector('input,textarea,select')?.focus();
   else overlay.querySelector('.close-btn')?.focus?.();
   return overlay;
 }

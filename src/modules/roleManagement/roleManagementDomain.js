@@ -30,9 +30,9 @@ export const ROLE_MANAGEMENT_MODULE_ID = 'role-management';
 const PERMISSION_GROUPS = Object.freeze([
   Object.freeze({ id:'home', label:'خانه', modules:[Object.freeze({id:'dashboard',label:'خانه'})] }),
   Object.freeze({ id:'planning', label:'برنامه', modules:[
-    Object.freeze({id:'planning:tree',label:'درخت پروژه'}),
-    Object.freeze({id:'planning:timeline',label:'نمودار گانت'}),
-    Object.freeze({id:'planning:costline',label:'برآورد هزینه'}),
+    Object.freeze({id:'planning:tree',label:'درخت پروژه',accessProfile:'planning'}),
+    Object.freeze({id:'planning:timeline',label:'نمودار گانت',accessProfile:'planning'}),
+    Object.freeze({id:'planning:costline',label:'برآورد هزینه',accessProfile:'planning'}),
   ] }),
   Object.freeze({ id:'execution', label:'اجرا', modules:[
     Object.freeze({id:'execution:today',label:'کارها'}),

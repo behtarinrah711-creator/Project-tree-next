@@ -1,3 +1,5 @@
+import { firstAllowedPlanningView } from '../modules/roleManagement/planningAccess.js';
+
 const WORKSPACE_PAGE_IDS = Object.freeze([
   'projectsPage','profilePage','calendarPage','createPage','reportsPage','accountingPage','settingsPage',
   'projectSettingsPage','projectActivitiesPage','contactsPage','projectTrashPage','contractsPage','contractFormPage',
@@ -111,6 +113,8 @@ export function installWorkspaceChrome({
     const profileVisible = !get('profilePage')?.classList?.contains?.('hidden');
     const managementVisible = !get('projectsPage')?.classList?.contains?.('hidden');
     const routeModuleId = routeModuleOverride || windowRef.KarhaRoute?.moduleId;
+    const planningButton=get('bottomPlanningBtn');
+    if(planningButton) planningButton.hidden=!!state.project&&!firstAllowedPlanningView(state.project.id,undefined,windowRef);
     settingsTrigger?.classList?.toggle?.('active',SETTINGS_MODULES.has(routeModuleId));
     settingsTrigger?.setAttribute?.('aria-pressed',SETTINGS_MODULES.has(routeModuleId)?'true':'false');
     const globalRouteTitle = GLOBAL_ROUTE_TITLES[routeModuleId] || (/^#\/notebook(?:\/export)?/i.test(windowRef.location?.hash || '')
