@@ -26,8 +26,8 @@ export function createViewToolbar(documentRef, {
   const actions = documentRef.createElement('div');
   actions.className = 'wbs-view-actions';
   actions.setAttribute('aria-label', ariaLabel);
-  controls.forEach(control => control && actions.appendChild(control));
   if(includeExport) actions.appendChild(createExportButton(documentRef));
+  controls.forEach(control => control && actions.appendChild(control));
 
   header.appendChild(actions);
   return header;
