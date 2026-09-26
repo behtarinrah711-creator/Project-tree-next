@@ -13,6 +13,9 @@ export function parseRoute(){
     const leaf = parts[1] === 'export' ? 'notebook-export' : 'notebook';
     return { projectId: null, moduleId: leaf, surface: 'global' };
   }
+  if(parts[0] === 'profile' || parts[0] === 'management'){
+    return { projectId: null, moduleId: parts[0], surface: 'global' };
+  }
   const projectIndex = parts.findIndex(part => part === 'project' || part === 'projects');
   const projectId = projectIndex >= 0 ? decode(parts[projectIndex + 1]) : projectContext.getProjectId();
   const moduleId = projectIndex >= 0 ? decode(parts[projectIndex + 2] || 'dashboard') : decode(parts[0] || 'dashboard');
@@ -87,7 +90,7 @@ export class AppRouter{
     const rawProject = route.projectId
       ? (window.KarhaApp?.projectRepository?.find?.(route.projectId) || null)
       : null;
-    const allowed = !rawProject || isProjectVisibleForSession(rawProject, session);
+    const allowed = !!rawProject && isProjectVisibleForSession(rawProject, session);
     const projectId = allowed ? route.projectId : null;
     projectContext.setProjectId(projectId);
     if(projectId && window.KarhaAppData && window.KarhaAppData.getActiveTab?.() !== projectId){
