@@ -86,18 +86,19 @@ function renderAll(){
   setBottomNavActive(document.querySelector('.bottom-nav-item.active')?.id?.replace(/^bottom/,'').replace(/Btn$/,'') || 'Home');
   renderModeToggle();
   content.innerHTML = '';
+  if(document.body?.classList?.contains('saosa-logged-out')){
+    setActiveTab(null);
+    content.innerHTML = '<div class="workspace-no-project saosa-guest-card"><p>جهت استفاده از امکانات ساُسا ابتدا وارد شوید یا ثبت نام کنید</p><button type="button" class="saosa-guest-login" id="saosaGuestLogin">ورود یا ثبت نام</button></div>';
+    document.getElementById('saosaGuestLogin')?.addEventListener('click', () => document.getElementById('drawerSigninBtn')?.click());
+    return;
+  }
   if(getActiveTab() === 'starred'){
     // Global Starred removed: normalize to project home / empty workspace
     setActiveTab(null);
   }
   const p = findProject(getActiveTab());
   if(!p || p.archived || p.trashed){
-    if(document.body?.classList?.contains('saosa-logged-out')){
-      content.innerHTML = '<div class="workspace-no-project saosa-guest-card"><p>جهت استفاده از امکانات ساُسا ابتدا وارد شوید یا ثبت نام کنید</p><button type="button" class="saosa-guest-login" id="saosaGuestLogin">ورود یا ثبت نام</button></div>';
-      document.getElementById('saosaGuestLogin')?.addEventListener('click', () => document.getElementById('drawerSigninBtn')?.click());
-    }else{
-      content.innerHTML = '<div class="workspace-no-project">برای ورود به Workspace، از منوی سه‌خطی بالای صفحه یک پروژه را انتخاب کنید. تب «پروژه‌ها» فقط محتوای کاری پروژه فعال را نمایش می‌دهد.</div>';
-    }
+    content.innerHTML = '<div class="workspace-no-project">برای ورود به Workspace، از منوی سه‌خطی بالای صفحه یک پروژه را انتخاب کنید. تب «پروژه‌ها» فقط محتوای کاری پروژه فعال را نمایش می‌دهد.</div>';
     return;
   }
   if(window.KarhaApp?.router?.navigate){
