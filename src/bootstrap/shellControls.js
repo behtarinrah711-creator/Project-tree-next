@@ -272,6 +272,10 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
   };
 
   const syncAccountDrawerImmediately = () => {
+    if(isSaosaHost(windowRef)){
+      syncUser(saosaSessionUser(readSaosaSession(windowRef)));
+      return;
+    }
     const auth = windowRef.firebase?.auth?.();
     if(auth?.currentUser) syncUser(auth.currentUser);
   };
@@ -304,6 +308,7 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
   windowRef.addEventListener?.('popstate', () => windowRef.setTimeout(syncProjectHeader, 0));
   windowRef.addEventListener?.('karha:drawer-open', syncProjectHeader);
   windowRef.addEventListener?.('karha:drawer-open', syncAccountDrawerImmediately);
+  windowRef.addEventListener?.('karha:saosa-session-synced', syncAccountDrawerImmediately);
   windowRef.addEventListener?.('karha:projects-recovered', syncProjectHeader);
   windowRef.addEventListener?.('karha:workspace-route-synced', () => windowRef.setTimeout(syncProjectHeader, 0));
   syncProjectHeader();
