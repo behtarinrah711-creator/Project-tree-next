@@ -29,6 +29,8 @@ const MENU_TITLES = Object.freeze({
 const GLOBAL_ROUTE_TITLES = Object.freeze({
   notebook: 'دفترچه یادداشت',
   'notebook-export': 'خروجی دفترچه',
+  profile: 'ثبت مشخصات',
+  'project-management': 'مدیریت پروژه‌ها',
 });
 
 const INNER_SECTION_SUBPAGES = new Set([

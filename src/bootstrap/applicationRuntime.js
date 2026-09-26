@@ -14,7 +14,11 @@ window.KarhaApp?.taskRuntime?.configure({
   }
 });
 const routedProjectId = getProjectIdFromRoute();
-if(routedProjectId && findProject(routedProjectId)){
+const routedGlobalSurface = /^#\/?(?:notebook(?:\/export)?|profile|project-management)(?:\/|$)/i.test(String(location.hash || ''));
+if(routedGlobalSurface){
+  // The browser route owns global destinations. Never replace them with the
+  // last active project while startup data is hydrating.
+}else if(routedProjectId && findProject(routedProjectId)){
   // Router.start() restores this exact project/module after Legacy loads.
 }else if(getActiveTab() && getActiveTab() !== 'starred' && findProject(getActiveTab())){
   window.KarhaApp?.projectWorkspace?.selectProject?.(getActiveTab(),{moduleId:'dashboard',replace:true});

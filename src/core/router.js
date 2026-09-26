@@ -13,6 +13,8 @@ export function parseRoute(){
     const leaf = parts[1] === 'export' ? 'notebook-export' : 'notebook';
     return { projectId: null, moduleId: leaf, surface: 'global' };
   }
+  if(parts[0] === 'profile') return { projectId:null, moduleId:'profile', surface:'global' };
+  if(parts[0] === 'project-management') return { projectId:null, moduleId:'project-management', surface:'global' };
   const projectIndex = parts.findIndex(part => part === 'project' || part === 'projects');
   const projectId = projectIndex >= 0 ? decode(parts[projectIndex + 1]) : projectContext.getProjectId();
   const moduleId = projectIndex >= 0 ? decode(parts[projectIndex + 2] || 'dashboard') : decode(parts[0] || 'dashboard');
@@ -107,10 +109,10 @@ export class AppRouter{
         }
       }
     }
-    const module = moduleRegistry.get(moduleId) || ((route.surface === 'global' || route.moduleId === 'notebook' || route.moduleId === 'notebook-export') ? null : moduleRegistry.get('dashboard'));
+    const module = moduleRegistry.get(moduleId) || (route.surface === 'global' ? null : moduleRegistry.get('dashboard'));
     window.KarhaRoute = { ...route, projectId, moduleId, module };
-    document.body?.classList?.toggle?.('global-surface', (route.surface === 'global' || route.moduleId === 'notebook' || route.moduleId === 'notebook-export'));
-    if((route.surface === 'global' || route.moduleId === 'notebook' || route.moduleId === 'notebook-export')){
+    document.body?.classList?.toggle?.('global-surface', route.surface === 'global');
+    if(route.surface === 'global'){
       this.currentMounted = module?.mount?.({ projectId: null, route: { ...route, projectId: null, moduleId }, registry: moduleRegistry }) || { moduleId, projectId: null };
     } else if(module && projectId){
       this.currentMounted = module.mount({ projectId, route: { ...route, projectId, moduleId }, registry: moduleRegistry });

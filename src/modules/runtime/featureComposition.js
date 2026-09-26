@@ -173,11 +173,21 @@ const projectManagementView=window.KarhaApp.createProjectManagementView({
   openExportPage,openConfirm,softDelete,undoPendingDelete,persist,permanentlyDeleteProject
 });
 function renderManagementPage(){ return projectManagementView.render(); }
-function openProjectsPage(){
+function openProjectsPage({routeSynced=false}={}){
+  const route='#/project-management';
+  if(!routeSynced && window.location.hash!==route){
+    window.KarhaBrowserHistory?.push?.(
+      window.KarhaBrowserHistory.stateForRoute?.({projectId:null,moduleId:'project-management',hash:route})||{hash:route},route
+    )||(window.location.hash=route);
+  }
   menuRootMode='projects'; projectManagementView.reset();
   closeBottomPages(); enterWorkspaceSurface(); ensureHomeSelection(); setBottomNavActive('Home');
-  pushMenuRootHistory('projects'); showOnlyWorkspacePage('projectsPage'); updateWorkspaceContextBar(); renderManagementPage();
+  showOnlyWorkspacePage('projectsPage'); updateWorkspaceContextBar(); renderManagementPage();
 }
+
+window.addEventListener('karha:workspace-route-synced',event=>{
+  if(event?.detail?.surface==='global'&&event.detail.moduleId==='project-management') openProjectsPage({routeSynced:true});
+});
 
 function openExportPage(pid){ if(window.KarhaExportView?.openExportPage) return window.KarhaExportView.openExportPage(pid); }
 
