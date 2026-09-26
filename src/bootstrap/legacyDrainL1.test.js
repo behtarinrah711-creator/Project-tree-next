@@ -35,3 +35,12 @@ test('store, normal project, contract and routed-surface paths remain wired', as
     /installProjectRouteSurfaceSync/, /installContractShellView/, /router\.start\(\)/,
   ]) assert.match(source, contract);
 });
+
+test('startup preserves refreshable global menu routes before restoring the last project', async () => {
+  const source = await read('./applicationRuntime.js');
+  const globalGuard = source.indexOf('const routedGlobalSurface =');
+  const projectRestore = source.indexOf("selectProject?.(getActiveTab(),{moduleId:'dashboard',replace:true})");
+  assert.ok(globalGuard >= 0 && projectRestore > globalGuard);
+  assert.match(source, /notebook\(\?:\\\/\|\$\)\|profile\$\|management\$/);
+  assert.match(source, /if\(routedGlobalSurface\)/);
+});
