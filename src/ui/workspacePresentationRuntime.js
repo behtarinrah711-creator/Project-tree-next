@@ -91,10 +91,13 @@ function renderAll(){
   setBottomNavActive(document.querySelector('.bottom-nav-item.active')?.id?.replace(/^bottom/,'').replace(/Btn$/,'') || 'Home');
   renderModeToggle();
   content.innerHTML = '';
-  if(document.body?.classList?.contains('saosa-logged-out')){
+  const signinButton = document.getElementById('drawerSigninBtn');
+  const isLoggedOut = document.body?.classList?.contains('saosa-logged-out')
+    || signinButton?.dataset?.authAction === 'signin';
+  if(isLoggedOut){
     setActiveTab(null);
     content.innerHTML = '<div class="workspace-no-project saosa-guest-card"><p>جهت استفاده از امکانات ساُسا ابتدا وارد شوید یا ثبت نام کنید</p><button type="button" class="saosa-guest-login" id="saosaGuestLogin">ورود یا ثبت نام</button></div>';
-    document.getElementById('saosaGuestLogin')?.addEventListener('click', () => document.getElementById('drawerSigninBtn')?.click());
+    document.getElementById('saosaGuestLogin')?.addEventListener('click', () => signinButton?.click());
     return;
   }
   if(getActiveTab() === 'starred'){
