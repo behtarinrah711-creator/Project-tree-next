@@ -27,9 +27,11 @@ function element(id){
   };
 }
 
-function harness({user=null,popupErrors=[],redirectErrors=[],route=null,hash='',hostname='behtarinrah711-creator.github.io'}={}){
+function harness({user=null,popupErrors=[],redirectErrors=[],route=null,hash='',hostname='behtarinrah711-creator.github.io',saosaSession=null}={}){
   const elements = Object.fromEntries(['drawerOverlay','topbarTitle','drawerSigninBtn','toast','globalNotebookBtn','projectSettingsTrigger'].map(id=>[id,element(id)]));
   const events=[];
+  const windowListeners=new Map();
+  let storedSaosaSession=saosaSession;
   const body=element('body');
   class CustomEvent { constructor(type,options={}){ this.type=type; this.detail=options.detail; } }
   const popupQueue=[...popupErrors];
@@ -55,10 +57,21 @@ function harness({user=null,popupErrors=[],redirectErrors=[],route=null,hash='',
   const windowRef={
     firebase:firebaseRef,
     CustomEvent,
-    dispatchEvent:event=>events.push(event),
+    dispatchEvent:event=>{
+      events.push(event);
+      for(const listener of (windowListeners.get(event.type) || [])) listener(event);
+    },
+    addEventListener(type,listener){
+      const listeners=windowListeners.get(type) || [];
+      listeners.push(listener);
+      windowListeners.set(type,listeners);
+    },
     setTimeout:fn=>{ fn(); return 1; },
     location:{hostname,hash},
-    localStorage:{getItem(){ return null; }},
+    localStorage:{
+      getItem(key){ return key === 'saosa:v1:sms-session' && storedSaosaSession ? JSON.stringify(storedSaosaSession) : null; },
+      removeItem(key){ if(key === 'saosa:v1:sms-session') storedSaosaSession=null; },
+    },
     KarhaLegacy:{renderAll(){ events.push({type:'render-all'}); }},
     KarhaRoute:route,
     KarhaWorkspaceChrome:{closeBottomPages(){ events.push({type:'close-bottom-pages'}); }},
@@ -73,6 +86,17 @@ test('Saosa guest home follows the same logged-out state used by the drawer', ()
   assert.equal(h.elements.drawerSigninBtn.dataset.authAction,'signin');
   assert.equal(h.elements.drawerSigninBtn.textContent,'ورود با شماره موبایل');
   assert.equal(h.events.some(event=>event.type === 'render-all'),true);
+});
+
+test('Saosa session resolution updates the shell before the workspace renders', () => {
+  const session={phone:'09170000000',token:'token',expiresAt:Date.now()+60_000};
+  const h=harness({hostname:'saosa.ir',saosaSession:session});
+  bindShellControls(h);
+  assert.equal(h.documentRef.body.classList.contains('saosa-logged-out'),false);
+  h.windowRef.localStorage.removeItem('saosa:v1:sms-session');
+  h.windowRef.dispatchEvent(new h.windowRef.CustomEvent('karha:saosa-session-synced'));
+  assert.equal(h.documentRef.body.classList.contains('saosa-logged-out'),true);
+  assert.equal(h.elements.drawerSigninBtn.dataset.authAction,'signin');
 });
 
 test('empty-storage shell opens the drawer before project startup', async () => {
