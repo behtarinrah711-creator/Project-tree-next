@@ -268,6 +268,7 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     drawerAuthHint?.classList?.toggle?.('hidden', !!user);
     avatar?.classList.toggle('is-guest', !user);
     avatar?.setAttribute('aria-label', user ? 'حساب کاربری' : 'ورود');
+    if(isSaosaHost(windowRef)) windowRef.KarhaLegacy?.renderAll?.();
   };
 
   const syncAccountDrawerImmediately = () => {

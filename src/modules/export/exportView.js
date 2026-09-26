@@ -344,10 +344,11 @@ function generateProjectPdf(){
     : '';
 
   const doc = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><title>${escapeHtml(p.name)}</title>
-<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@400;600;700&family=JetBrains+Mono:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
+  @font-face { font-family:'IRANSansX'; src:url('src/assets/fonts/IRANSansX-Regular.woff2') format('woff2'); font-weight:400; font-display:swap; }
+  @font-face { font-family:'IRANSansX'; src:url('src/assets/fonts/IRANSansX-Bold.woff2') format('woff2'); font-weight:700; font-display:swap; }
   @page { margin: 14mm; }
-  body { font-family: 'IRANYekan', IRANYekan, Vazirmatn, Tahoma, sans-serif; color: #202124; margin: 0; padding: 8px 4px; }
+  body { font-family:'IRANSansX'; color: #202124; margin: 0; padding: 8px 4px; }
   .pdf-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
   h1 { font-size: 20px; margin: 0; font-weight: 700; flex: 1; text-align: right; }
   .meta { font-size: 12px; color: #5f6368; margin: 0; flex-shrink: 0; text-align: left; direction: rtl; white-space: nowrap; }
@@ -363,7 +364,7 @@ function generateProjectPdf(){
   td.mark { width: 36px; text-align: center; font-size: 14px; line-height: 1.4; color: #202124; }
   td.parent-mark { font-size: 13px; }
   td.parent-num {
-    font-family: 'IRANYekan', IRANYekan, Vazirmatn, Tahoma, sans-serif;
+    font-family:'IRANSansX';
     font-size: 16px; font-weight: 700; color: #202124;
     text-align: center; width: 40px;
   }
@@ -384,7 +385,7 @@ function generateProjectPdf(){
     gap: 4px;
   }
   .row-cost .cost-unit {
-    font-family: 'IRANYekan', IRANYekan, Vazirmatn, Tahoma, sans-serif;
+    font-family:'IRANSansX';
     font-size: 10px;
     font-weight: 500;
     color: #5f6368;

@@ -16,7 +16,7 @@
   html,body{height:100%;}
   body{
     margin:0;background:var(--bg);color:var(--text);
-    font-family:'IRANSansX',Tahoma,sans-serif;
+    font-family:'IRANSansX';
     display:flex;flex-direction:column;overflow:hidden;
   }
 
