@@ -3,6 +3,9 @@
 // render. Dashboard and routed module mounts may call it during startup.
 installLegacyCompatibilityBoundary();
 loadData();
+window.addEventListener('karha:workspace-route-synced', event => {
+  restoreGlobalMenuRoute(event?.detail?.moduleId);
+});
 window.KarhaApp?.taskRuntime?.configure({
   uid,
   afterMutation(projectId){
