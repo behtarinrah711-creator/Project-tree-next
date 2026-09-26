@@ -115,7 +115,8 @@ function renderAll(){
   }
   const p = findProject(getActiveTab());
   if(!p || p.archived || p.trashed){
-    renderWorkspaceLoginPrompt(content);
+    setActiveTab(null);
+    content.innerHTML = '';
     return;
   }
   if(window.KarhaApp?.router?.navigate){
