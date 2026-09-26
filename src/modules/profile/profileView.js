@@ -41,12 +41,12 @@ export function installProfileView({ windowRef = globalThis, documentRef = null 
     else call('refreshCurrentFooterPage');
   }
 
-  function openProfilePage(){
+  function openProfilePage({restoreRoute=false}={}){
     call('closeBottomPages');
     call('enterWorkspaceSurface');
     call('ensureHomeSelection');
     call('setBottomNavActive', 'Home');
-    call('pushMenuRootHistory', 'profile');
+    if(!restoreRoute) call('pushMenuRootHistory', 'profile');
     profileDraft = {...loadProfile()};
     const page = documentRef.getElementById('profilePage');
     if(page) page.classList.remove('hidden');
