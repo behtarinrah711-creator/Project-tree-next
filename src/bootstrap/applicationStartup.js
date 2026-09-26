@@ -139,6 +139,9 @@ export async function startApplication({
   installHtmlEscape({ windowRef });
   installBrowserHistory({windowRef});
   const saosaWorkspace = await prepareSaosaWorkspace({windowRef, store:appDataStore});
+  if(saosaWorkspace.enabled){
+    windowRef.dispatchEvent(new windowRef.CustomEvent('karha:saosa-session-synced'));
+  }
   await loadRuntime();
   saosaWorkspace.attach?.();
   // Attach after install so KarhaApp holds the live store reference.
