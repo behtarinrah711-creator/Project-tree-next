@@ -17,6 +17,7 @@ import {
 } from './timelineViewOptions.js';
 import { expandIconMarkup, materialIconMarkup } from '../../ui/materialIcons.js';
 import { ganttMenuPosition } from './ganttMenuGeometry.js';
+import { createViewToolbar } from './viewHeader.js';
 
 const CONFIG_ICON = 'M120-840h320v320H120v-320Zm400 0h320v320H520v-320ZM120-440h320v320H120v-320Zm520 0h80v120h120v80H720v120h-80v-120H520v-80h120v-120Zm-40-320v160h160v-160H600Zm-400 0v160h160v-160H200Zm0 400v160h160v-160H200Z';
 const LEVEL_ICON = 'M80-200v-80h240v-240h240v-240h320v80H640v240H400v240H80Z';
@@ -212,18 +213,10 @@ export function ensureViewToolbar(root, viewId){
 
   let header = root.querySelector('.wbs-timeline-view-header');
   if(!header){
-    header = root.ownerDocument.createElement('div');
-    header.className = 'wbs-view-header wbs-timeline-view-header';
-
-    const title = root.ownerDocument.createElement('div');
-    title.className = 'wbs-view-title';
-    title.textContent = 'نمودار گانت';
-
-    const actions = root.ownerDocument.createElement('div');
-    actions.className = 'wbs-view-actions';
-    actions.setAttribute('aria-label', 'ابزارهای نمودار گانت');
-
-    header.append(title, actions);
+    header = createViewToolbar(root.ownerDocument, {
+      className:'wbs-timeline-view-header',
+      ariaLabel:'ابزارهای نمودار گانت',
+    });
     gantt.parentElement?.insertBefore(header, gantt);
   }
 
