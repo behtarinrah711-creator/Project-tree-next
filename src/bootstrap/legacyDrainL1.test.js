@@ -44,3 +44,14 @@ test('startup preserves refreshable global menu routes before restoring the last
   assert.match(source, /notebook\(\?:\\\/\|\$\)\|profile\$\|management\$/);
   assert.match(source, /if\(routedGlobalSurface\)/);
 });
+
+test('early refresh callbacks cannot replace any global menu route with a project', async () => {
+  const [presentation,features] = await Promise.all([
+    read('../ui/workspacePresentationRuntime.js'),
+    read('../modules/runtime/featureComposition.js'),
+  ]);
+  assert.match(presentation, /function isGlobalWorkspaceRoute\(\)/);
+  assert.match(presentation, /notebook\(\?:\\\/\|\$\)\|profile\$\|management\$/);
+  assert.match(presentation, /function renderAll\(\)[\s\S]*?if\(isGlobalWorkspaceRoute\(\)\) return;/);
+  assert.match(features, /function refreshCurrentFooterPage\(\)[\s\S]*?if\(isGlobalWorkspaceRoute\(\)\) return;/);
+});
