@@ -35,6 +35,12 @@ async function createRouterHarness({initialHash,initialProjects,activeTab}){
   const { projectContext }=await import('./projectContext.js');
   projectContext.setProjectId(null,{silent:true});
   const data={projects:initialProjects,activeTab};
+  window.KarhaApp={projectRepository:{find:id=>data.projects.find(project=>String(project.id)===String(id))||null}};
+  window.KarhaAppData={
+    getActiveTab:()=>data.activeTab,
+    setActiveTab:id=>{data.activeTab=id;},
+    persistLocal(){},
+  };
   const dashboardMounts=[];
   const taskReads=[];
   const invalidDashboardMounts=[];
@@ -79,6 +85,26 @@ test('project routes decode the selected project and module identifiers', async 
   globalThis.window={location:{hash:'#/projects/%D9%BE%D8%B1%D9%88%DA%98%D9%87%20%DB%B1/dashboard',search:''}};
   const { parseRoute }=await import(`./router.js?decode=${Date.now()}`);
   assert.deepEqual(parseRoute(),{projectId:'پروژه ۱',moduleId:'dashboard'});
+});
+
+test('global menu routes survive reload without borrowing a project context', async () => {
+  globalThis.window={location:{hash:'#/management',search:''}};
+  const { parseRoute }=await import(`./router.js?global=${Date.now()}`);
+  assert.deepEqual(parseRoute(),{projectId:null,moduleId:'management',surface:'global'});
+  window.location.hash='#/profile';
+  assert.deepEqual(parseRoute(),{projectId:null,moduleId:'profile',surface:'global'});
+});
+
+test('a stale project URL cannot become the active project', async () => {
+  const harness=await createRouterHarness({
+    initialHash:'#/projects/notebook-list/dashboard',
+    initialProjects:[{id:'A',name:'Real project',tasks:[]}],
+    activeTab:'A',
+  });
+  assert.equal(harness.projectContext.getProjectId(),null);
+  assert.equal(window.KarhaRoute.projectId,null);
+  assert.equal(harness.router.currentMounted,null);
+  assert.deepEqual(harness.invalidDashboardMounts,[]);
 });
 
 test('programmatic A to B to C navigation keeps router, tasks, history, and contracts synchronized', async () => {
