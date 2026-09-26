@@ -326,7 +326,8 @@ test('Planning contains tree, timeline and estimate while Execution and Reports 
 
   await page.locator('#bottomPlanningBtn').click();
   const frame = page.locator('.wbs-view-frame.is-standard-view');
-  await expect(frame.locator('.wbs-view-title')).toHaveText('درخت پروژه');
+  await expect(frame.locator('.wbs-view-title')).toHaveCount(0);
+  await expect(frame.locator('.wbs-export-tool')).toBeVisible();
   await expect(frame.locator('.wbs-tree-mode-tab')).toHaveCount(3);
   await expect(frame.locator('.wbs-tree-mode-tab[aria-label="ثبت و ویرایش"]')).toHaveAttribute('aria-selected', 'true');
   await expect(frame.locator('.wbs-tree-mode-tab[aria-label="هزینه‌ها"]')).toBeVisible();
@@ -404,7 +405,8 @@ test('Timeline details survive initial render, timescale changes, and tree reren
   await page.locator('.wbs-tree-toggle').click();
   await assertDetails(3);
   const dependency = page.locator('.wbs-gantt-dependency-link[data-source-id="w1"][data-target-id="w2"]');
-  await expect(page.locator('.wbs-timeline-view-header .wbs-view-title')).toHaveText('نمودار گانت');
+  await expect(page.locator('.wbs-timeline-view-header .wbs-view-title')).toHaveCount(0);
+  await expect(page.locator('.wbs-timeline-view-header .wbs-export-tool')).toBeVisible();
   await expect(page.locator('.wbs-dependency-toggle')).toHaveCount(0);
   await expect(dependency).toBeHidden();
   await page.getByRole('button', { name:'کانفیگور نمودار گانت' }).click();
