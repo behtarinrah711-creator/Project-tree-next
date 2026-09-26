@@ -1,7 +1,7 @@
 import { COSTLINE_RANGES, WEEKDAYS, plannedCostline } from '../../domain/wbs/costline.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
 import { closeWbsSheet, openWbsSheet } from './wbsSheet.js';
-import { viewTitle } from './viewFrame.js';
+import { createViewToolbar } from './viewHeader.js';
 
 const money = value => new Intl.NumberFormat('fa-IR').format(Number(value) || 0);
 const BAR_WIDTH = 28;
@@ -40,13 +40,6 @@ function cycleButton({ label, ariaLabel, shade, icon, onClick }){
 }
 
 function renderToolbar(refresh){
-  const bar = document.createElement('div');
-  bar.className = 'wbs-costline-toolbar wbs-view-header';
-
-  const title = document.createElement('div');
-  title.className = 'wbs-costline-project wbs-view-title';
-  title.textContent = viewTitle('costline');
-
   const controls = document.createElement('div');
   controls.className = 'wbs-costline-controls wbs-view-actions';
   const range = COSTLINE_RANGES[rangeIndex] || COSTLINE_RANGES[1];
@@ -73,8 +66,11 @@ function renderToolbar(refresh){
     }),
   );
 
-  bar.append(title, controls);
-  return bar;
+  return createViewToolbar(document, {
+    className:'wbs-costline-toolbar',
+    ariaLabel:'ابزارهای برآورد هزینه',
+    controls:[...controls.children],
+  });
 }
 
 function renderBar(bucket, max){
