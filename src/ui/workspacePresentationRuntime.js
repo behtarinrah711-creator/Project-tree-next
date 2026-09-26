@@ -13,13 +13,18 @@ let menuRootMode = null;
 function pushMenuRootHistory(kind){
   menuRootPage = kind;
   menuRootMode = kind;
-  window.KarhaChildHistory?.open('menu-root',{kind});
+  const moduleId = kind === 'projects' ? 'management' : 'profile';
+  const hash = `#/${moduleId}`;
+  window.KarhaBrowserHistory?.push?.(
+    window.KarhaBrowserHistory.stateForRoute({projectId:null,moduleId,hash}),
+    hash
+  );
 }
 
 function closeMenuRootPage(fromPopState=false){
   menuRootPage = null;
   menuRootMode = null;
-  window.KarhaChildHistory?.consume('menu-root',{fromPopState});
+  if(!fromPopState){ window.KarhaBrowserHistory?.back?.(); return; }
   goHomeProjects();
 }
 
@@ -158,10 +163,9 @@ function ensureHomeSelection(){
 function leaveMenuRootForFooter(){
   // با کلیک مستقیم روی فوتر از صفحه منوی کناری خارج می‌شویم؛
   // رکورد history همان لحظه به یک وضعیت عادی تبدیل می‌شود تا Back دوباره به منوی قبلی برنگردد.
-  if(menuRootMode || window.KarhaChildHistory?.isOpen('menu-root')){
+  if(menuRootMode){
     menuRootMode = null;
     menuRootPage = null;
-    window.KarhaChildHistory?.replace('menu-root',{footer:true});
   }
 }
 
@@ -199,6 +203,21 @@ function applyRoutedSurface({moduleId='dashboard',surface=null}={}){
   if(moduleId==='people') renderSettingsWorkspace();
   renderTabs();
   updateWorkspaceContextBar();
+}
+
+function restoreGlobalMenuRoute(moduleId){
+  if(moduleId==='management'){
+    menuRootMode='projects'; menuRootPage='projects'; projectManagementView.reset();
+    closeBottomPages(); enterWorkspaceSurface(); setBottomNavActive('Home');
+    showOnlyWorkspacePage('projectsPage'); updateWorkspaceContextBar(); renderManagementPage();
+    return true;
+  }
+  if(moduleId==='profile'){
+    menuRootMode='profile'; menuRootPage='profile';
+    window.KarhaProfileView?.openProfilePage?.({restoreRoute:true});
+    return true;
+  }
+  return false;
 }
 
 

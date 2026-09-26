@@ -27,6 +27,8 @@ const MENU_TITLES = Object.freeze({
 });
 
 const GLOBAL_ROUTE_TITLES = Object.freeze({
+  profile: 'ثبت مشخصات',
+  management: 'مدیریت پروژه‌ها',
   notebook: 'دفترچه یادداشت',
   'notebook-export': 'خروجی دفترچه',
 });

@@ -99,8 +99,6 @@ function closeCreatePage(fromPopState=false){
   window.KarhaChildHistory?.consume('create-project',{fromPopState});
 }
 window.KarhaChildHistory?.register('create-project',{onPop:()=>closeCreatePage(true),onRestore:()=>openCreatePage()});
-window.KarhaChildHistory?.register('menu-root',{onPop:()=>closeMenuRootPage(true)});
-
 document.getElementById('closeCreatePage').onclick = closeCreatePage;
 document.getElementById('createPageCancelBtn').onclick = closeCreatePage;
 document.getElementById('createPageConfirmBtn').onclick = ()=>{
