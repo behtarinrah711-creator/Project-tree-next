@@ -1,4 +1,5 @@
 import { ensureViewToolbar } from './viewToolbar.js';
+import { createViewToolbar } from './viewHeader.js';
 
 export const WBS_VIEW_TITLES = Object.freeze({
   tree: 'درخت پروژه',
@@ -18,20 +19,8 @@ function activeViewId(root){
   return active?.dataset.view || 'tree';
 }
 
-function createHeader(documentRef, viewId){
-  const header = documentRef.createElement('div');
-  header.className = 'wbs-view-header';
-
-  const title = documentRef.createElement('div');
-  title.className = 'wbs-view-title';
-  title.textContent = viewTitle(viewId);
-
-  const actions = documentRef.createElement('div');
-  actions.className = 'wbs-view-actions';
-  actions.setAttribute('aria-label', 'ابزارهای نما');
-
-  header.append(title, actions);
-  return header;
+function createHeader(documentRef){
+  return createViewToolbar(documentRef);
 }
 
 function ensureActionSeparator(actions){
@@ -82,9 +71,6 @@ function ensureStandardFrame(root, viewId){
   }
 
   frame.dataset.view = viewId;
-  const title = frame.querySelector(':scope > .wbs-view-header > .wbs-view-title');
-  if(title) title.textContent = viewTitle(viewId);
-
   syncTreeHeaderActions(root, frame);
 
   const body = frame.querySelector(':scope > .wbs-view-body');
