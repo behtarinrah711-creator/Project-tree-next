@@ -27,9 +27,10 @@ function element(id){
   };
 }
 
-function harness({user=null,popupErrors=[],redirectErrors=[],route=null,hash=''}={}){
+function harness({user=null,popupErrors=[],redirectErrors=[],route=null,hash='',hostname='behtarinrah711-creator.github.io'}={}){
   const elements = Object.fromEntries(['drawerOverlay','topbarTitle','drawerSigninBtn','toast','globalNotebookBtn','projectSettingsTrigger'].map(id=>[id,element(id)]));
   const events=[];
+  const body=element('body');
   class CustomEvent { constructor(type,options={}){ this.type=type; this.detail=options.detail; } }
   const popupQueue=[...popupErrors];
   const redirectQueue=[...redirectErrors];
@@ -56,12 +57,23 @@ function harness({user=null,popupErrors=[],redirectErrors=[],route=null,hash=''}
     CustomEvent,
     dispatchEvent:event=>events.push(event),
     setTimeout:fn=>{ fn(); return 1; },
-    location:{hostname:'behtarinrah711-creator.github.io',hash},
+    location:{hostname,hash},
+    localStorage:{getItem(){ return null; }},
+    KarhaLegacy:{renderAll(){ events.push({type:'render-all'}); }},
     KarhaRoute:route,
     KarhaWorkspaceChrome:{closeBottomPages(){ events.push({type:'close-bottom-pages'}); }},
   };
-  return {elements,auth,events,windowRef,documentRef:{getElementById:id=>elements[id]}};
+  return {elements,auth,events,windowRef,documentRef:{body,getElementById:id=>elements[id]}};
 }
+
+test('Saosa guest home follows the same logged-out state used by the drawer', () => {
+  const h=harness({hostname:'saosa.ir'});
+  bindShellControls(h);
+  assert.equal(h.documentRef.body.classList.contains('saosa-logged-out'),true);
+  assert.equal(h.elements.drawerSigninBtn.dataset.authAction,'signin');
+  assert.equal(h.elements.drawerSigninBtn.textContent,'ورود با شماره موبایل');
+  assert.equal(h.events.some(event=>event.type === 'render-all'),true);
+});
 
 test('empty-storage shell opens the drawer before project startup', async () => {
   const h=harness();
