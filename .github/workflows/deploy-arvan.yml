@@ -46,7 +46,7 @@ jobs:
           DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           set -euo pipefail
-          sed -i "s/__DEPLOYMENT_VERSION__/${DEPLOY_SHA}/g" index.html src/bootstrap/cacheGuard.js
+          node scripts/stampDeploymentVersion.mjs "${DEPLOY_SHA}"
           if [ -z "$KAVENEGAR_API_KEY" ]; then
             echo 'KAVENEGAR_API_KEY is missing' >&2
             exit 1
