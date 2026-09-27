@@ -13,6 +13,14 @@ export const APPLICATION_RUNTIME_URLS = Object.freeze([
   new URL('./applicationRuntime.js', import.meta.url).href,
 ]);
 
+function versionRuntimeUrl(url, windowRef){
+  const version = String(windowRef.__KARHA_DEPLOYMENT_VERSION__ || '').trim();
+  if(!version || version.includes('__DEPLOYMENT_VERSION__')) return url;
+  const versioned = new URL(url, windowRef.location?.href || import.meta.url);
+  versioned.searchParams.set('v', version);
+  return versioned.href;
+}
+
 function installLegacyGlobalHelpers(windowRef, documentRef){
   if(typeof windowRef.elFromHtml !== 'function'){
     windowRef.elFromHtml = function elFromHtml(html){
@@ -136,7 +144,7 @@ export function loadApplicationRuntime({
   windowRef.__karhaApplicationRuntimePromise = sourceUrls.reduce((previous, url) =>
     previous.then(() => new Promise((resolve, reject) => {
       const script = documentRef.createElement('script');
-      script.src = url;
+      script.src = versionRuntimeUrl(url, windowRef);
       script.async = false;
       script.dataset.karhaApplicationRuntime = '';
       script.addEventListener('load', () => {
