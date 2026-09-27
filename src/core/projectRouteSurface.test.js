@@ -31,12 +31,17 @@ function createHarness(){
     getElementById:id=>ids.get(id)||null,
     querySelectorAll(selector){return selector==='.bottom-nav-item'?[ids.get('bottomHomeBtn'),other]:[];},
   };
+  const legacyCalls=[];
   const windowRef={
     document:documentRef,
+    KarhaLegacy:{
+      applyRoutedSurface(value){legacyCalls.push(['surface',value]);},
+      renderAll(){legacyCalls.push(['render']);},
+    },
     addEventListener(type,listener){listeners.set(type,listener);},
   };
   installWorkspaceChrome({windowRef,documentRef});
-  return {windowRef,documentRef,listeners,ids,topbar,tabbar};
+  return {windowRef,documentRef,listeners,ids,topbar,tabbar,legacyCalls};
 }
 
 test('dashboard route exposes project surface after navigating from an internal page',()=>{
@@ -59,4 +64,19 @@ test('contracts route exposes its canonical internal shell',()=>{
   assert.equal(h.ids.get('reportsPage').classList.contains('hidden'),true);
   assert.equal(h.ids.get('contractsPage').classList.contains('hidden'),false);
   assert.equal(h.ids.get('bottomReportsBtn').classList.contains('active'),true);
+});
+
+test('public route closes every project surface and renders only the guest entry',()=>{
+  const h=createHarness();
+  installProjectRouteSurfaceSync(h);
+  h.listeners.get('karha:workspace-route-synced')({
+    detail:{projectId:null,moduleId:'dashboard',surface:'public'},
+  });
+
+  assert.equal(h.ids.get('reportsPage').classList.contains('hidden'),true);
+  assert.equal(h.ids.get('settingsPage').classList.contains('hidden'),true);
+  assert.equal(h.ids.get('contractsPage').classList.contains('hidden'),true);
+  assert.deepEqual(h.legacyCalls.map(call=>call[0]),['surface','render']);
+  assert.equal(h.legacyCalls[0][1].projectId,null);
+  assert.equal(h.legacyCalls[0][1].moduleId,'dashboard');
 });
