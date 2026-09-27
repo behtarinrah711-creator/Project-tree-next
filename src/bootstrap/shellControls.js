@@ -1,6 +1,6 @@
 const byId = (documentRef, id) => documentRef.getElementById(id);
 import { SAOSA_SESSION_KEY, clearSaosaWorkspaceSession, isSaosaHost, readSaosaSession } from '../cloud/saosaWorkspaceSync.js';
-function saosaSessionUser(session){ return session?{uid:`phone:${session.phone}`,phoneNumber:session.phone,displayName:'کاربر سائوسا'}:null; }
+function saosaSessionUser(session){ return session?{uid:`phone:${session.phone}`,phoneNumber:session.phone,displayName:'کاربر ساُسا'}:null; }
 async function smsApi(windowRef,path,body){
   const response=await windowRef.fetch(path,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
   const payload=await response.json().catch(()=>({}));
