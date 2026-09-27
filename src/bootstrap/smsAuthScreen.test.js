@@ -25,7 +25,10 @@ test('Saosa login uses the full-screen two-step form instead of browser prompts'
   assert.doesNotMatch(html,/Sa O Sa/);
   assert.match(html,/class="sms-auth-title-brand"[\s\S]*?<strong>ساُسا<\/strong>[\s\S]*?<span>مدیریت ساخت و ساز<\/span>/);
   assert.match(css,/\.sms-auth-form h1\{font-size:20px;/);
-  assert.match(css,/\.sms-auth-form>p:not\(\.sms-auth-error\)\{[\s\S]*?font-size:16px;/);
+  assert.doesNotMatch(html,/id="smsAuthDescription"/);
+  assert.match(controls,/className='sms-auth-description'/);
+  assert.match(css,/\.sms-auth-description\{[\s\S]*?font-size:14px;/);
+  assert.match(css,/\.sms-auth-error\{min-height:14px!important;/);
   assert.match(css,/\.sms-auth-form\{[\s\S]*?border-radius:18px;[\s\S]*?background:#fff;[\s\S]*?flex:1 1 auto;/);
 });
 
