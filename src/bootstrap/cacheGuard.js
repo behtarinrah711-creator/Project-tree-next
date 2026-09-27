@@ -1,6 +1,6 @@
 (function(){
-  const DEPLOYMENT_VERSION = '__DEPLOYMENT_VERSION__';
-  window.__KARHA_DEPLOYMENT_VERSION__ = DEPLOYMENT_VERSION;
+  const DEV_CACHE_VERSION = '__DEPLOYMENT_VERSION__';
+  window.__KARHA_DEPLOYMENT_VERSION__ = DEV_CACHE_VERSION;
 
   if(!('serviceWorker' in navigator)) return;
   const appScope = new URL('./', window.location.href).href;
