@@ -1,6 +1,7 @@
 .sms-auth-screen[hidden]{display:none!important;}
 .sms-auth-screen{position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;min-height:100dvh;background:#f2f3f5;color:var(--text,#151515);font-family:'IRANSansX',Tahoma,sans-serif;}
 .sms-auth-header{min-height:78px;padding:env(safe-area-inset-top) 16px 0;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;background:#f1f3f4;border-bottom:1px solid #ececec;text-align:center;box-sizing:content-box;}
+.sms-auth-screen[data-step='code'] .sms-auth-header{background:#f1f3f4;}
 .sms-auth-title-brand{display:flex;flex-direction:column;align-items:center;font-size:14px;line-height:1.4;}
 .sms-auth-title-brand strong{font-size:14px;font-weight:700;}
 .sms-auth-title-brand span{font-size:14px;font-weight:400;}
