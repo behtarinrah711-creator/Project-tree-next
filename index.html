@@ -10,6 +10,19 @@
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
+<script>
+(function(){
+  try{
+    const host=String(location.hostname||'').toLowerCase();
+    if(host!=='saosa.ir'&&host!=='www.saosa.ir') return;
+    const session=JSON.parse(localStorage.getItem('saosa:v1:sms-session')||'null');
+    const authenticated=!!(session?.token&&session?.phone&&Number(session.expiresAt)>Date.now());
+    if(!authenticated) document.documentElement.classList.add('saosa-initial-logged-out');
+  }catch(_error){
+    document.documentElement.classList.add('saosa-initial-logged-out');
+  }
+})();
+</script>
 <script>window.__KARHA_DEPLOYMENT_VERSION__='__DEPLOYMENT_VERSION__';</script>
 <script src="src/bootstrap/cacheGuard.js?v=__DEPLOYMENT_VERSION__"></script>
 <script type="module" src="src/bootstrap/shellEntry.js?v=__DEPLOYMENT_VERSION__"></script>
@@ -78,6 +91,10 @@
 </section>
 
 <div class="topbar" id="topbar">
+  <div class="saosa-public-brand" aria-label="ساُسا، مدیریت ساخت و ساز">
+    <strong>ساُسا</strong>
+    <span>مدیریت ساخت و ساز</span>
+  </div>
   <div class="topbar-title" id="topbarTitle"><span class="app-title-lockup"><span class="app-title-main"></span></span><span class="app-title-project" id="topbarProjectName"></span></div>
   <input type="search" class="topbar-search" id="projectSearch" placeholder="جستجوی آیتم‌های پروژه…" autocomplete="off" enterkeyhint="search">
   <div class="mode-toggle" id="modeToggle">

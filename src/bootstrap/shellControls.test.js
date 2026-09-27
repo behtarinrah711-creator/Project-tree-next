@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { bindShellControls } from './shellControls.js';
 
 function element(id){
@@ -213,4 +214,21 @@ test('project settings trigger opens settings and a second click returns to the 
   await settings.elements.projectSettingsTrigger.click();
   assert.equal(backCalls,1);
   assert.equal(selected.length,1);
+});
+
+test('Saosa guest brand is resolved before first paint without a temporary generic title', async () => {
+  const [html, css] = await Promise.all([
+    readFile(new URL('../../index.html', import.meta.url), 'utf8'),
+    readFile(new URL('../styles/index.css', import.meta.url), 'utf8'),
+  ]);
+  assert.ok(html.indexOf("saosa-initial-logged-out") < html.indexOf('src/styles/index.css'));
+  assert.match(html, /class="saosa-public-brand"[\s\S]*?<strong>ساُسا<\/strong>[\s\S]*?<span>مدیریت ساخت و ساز<\/span>/);
+  assert.match(css, /\.saosa-public-brand strong\{font-size:14px;font-weight:700;\}/);
+  assert.match(css, /\.saosa-public-brand span\{font-size:14px;font-weight:400;\}/);
+  assert.match(css, /font-size:14px;\s*line-height:1\.4;/);
+  assert.match(css, /\.topbar::before\{content:none;\}/);
+  assert.match(css, /body\.saosa-logged-out \.content\{[\s\S]*?overflow:hidden;[\s\S]*?display:flex;/);
+  assert.match(css, /body\.saosa-logged-out \.saosa-guest-card\{[\s\S]*?min-height:0;[\s\S]*?flex:1 1 auto;[\s\S]*?overflow:hidden;/);
+  assert.match(css, /body\.saosa-logged-out \.saosa-guest-login\{[\s\S]*?background:var\(--primary-navy\);/);
+  assert.doesNotMatch(css, /\.saosa-guest-card\{[\s\S]*?min-height:560px;/);
 });
