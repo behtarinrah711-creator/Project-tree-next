@@ -53,6 +53,9 @@ export function installProjectRouteSurfaceSync({
       windowRef.KarhaLegacy?.renderAll?.();
       return;
     }
+    // Global menu destinations own independent page shells. Applying a
+    // project surface here would hide the page that their route just restored.
+    if(routeDetail.surface === 'global') return;
     const moduleId = routeDetail.moduleId;
     const surface = getProjectRouteSurface(moduleId);
     windowRef.KarhaWorkspaceChrome?.applyRoute?.(moduleId, surface);
