@@ -25,6 +25,47 @@ body:has(#profilePage:not(.hidden)) .content {
   padding-bottom: 0 !important;
 }
 
+#projectsPageBody:has(.mgmt-first-project-card){
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+  display:flex;
+  overflow:hidden;
+}
+.mgmt-first-project-card{
+  width:100%;
+  min-width:0;
+  min-height:0;
+  padding:clamp(20px,5vw,32px);
+  box-sizing:border-box;
+  border-radius:18px;
+  background:var(--surface);
+  display:flex;
+  flex:1 1 auto;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  gap:24px;
+  text-align:center;
+}
+.mgmt-first-project-card p{
+  margin:0;
+  max-width:420px;
+  font-size:16px;
+  line-height:2;
+  color:var(--text);
+}
+.mgmt-first-project-create{
+  min-width:180px;
+  min-height:46px;
+  padding:10px 24px;
+  border:0;
+  border-radius:12px;
+  background:var(--primary-navy);
+  color:#fff;
+  font:inherit;
+  font-weight:700;
+  cursor:pointer;
+}
+
 /* legacy style workspace-inner-section-bar-v1 */
 /* نوار استاندارد تمام زیرصفحه‌های داخلی حسابداری/تنظیمات/گزارش‌ها.
    این کامپوننت تنها مرجع اندازه، فاصله، عنوان و دکمه‌های نوار داخلی است. */
