@@ -34,6 +34,8 @@ function harness({user=null,popupErrors=[],redirectErrors=[],route=null,hash='',
   const windowListeners=new Map();
   let storedSaosaSession=saosaSession;
   const body=element('body');
+  const documentElement=element('html');
+  documentElement.classList.add('saosa-initial-logged-out');
   class CustomEvent { constructor(type,options={}){ this.type=type; this.detail=options.detail; } }
   const popupQueue=[...popupErrors];
   const redirectQueue=[...redirectErrors];
@@ -77,13 +79,14 @@ function harness({user=null,popupErrors=[],redirectErrors=[],route=null,hash='',
     KarhaRoute:route,
     KarhaWorkspaceChrome:{closeBottomPages(){ events.push({type:'close-bottom-pages'}); }},
   };
-  return {elements,auth,events,windowRef,documentRef:{body,getElementById:id=>elements[id]}};
+  return {elements,auth,events,windowRef,documentRef:{body,documentElement,getElementById:id=>elements[id]}};
 }
 
 test('Saosa guest home follows the same logged-out state used by the drawer', () => {
   const h=harness({hostname:'saosa.ir'});
   bindShellControls(h);
   assert.equal(h.documentRef.body.classList.contains('saosa-logged-out'),true);
+  assert.equal(h.documentRef.documentElement.classList.contains('saosa-initial-logged-out'),true);
   assert.equal(h.elements.drawerSigninBtn.dataset.authAction,'signin');
   assert.equal(h.elements.drawerSigninBtn.textContent,'ورود با شماره موبایل');
   assert.equal(h.events.some(event=>event.type === 'render-all'),true);
@@ -94,9 +97,11 @@ test('Saosa session resolution updates the shell before the workspace renders', 
   const h=harness({hostname:'saosa.ir',saosaSession:session});
   bindShellControls(h);
   assert.equal(h.documentRef.body.classList.contains('saosa-logged-out'),false);
+  assert.equal(h.documentRef.documentElement.classList.contains('saosa-initial-logged-out'),false);
   h.windowRef.localStorage.removeItem('saosa:v1:sms-session');
   h.windowRef.dispatchEvent(new h.windowRef.CustomEvent('karha:saosa-session-synced'));
   assert.equal(h.documentRef.body.classList.contains('saosa-logged-out'),true);
+  assert.equal(h.documentRef.documentElement.classList.contains('saosa-initial-logged-out'),true);
   assert.equal(h.elements.drawerSigninBtn.dataset.authAction,'signin');
 });
 
