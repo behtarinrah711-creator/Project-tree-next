@@ -115,11 +115,6 @@ function renderAll(){
   }
   const p = findProject(getActiveTab());
   if(!p || p.archived || p.trashed){
-    if(document.body?.classList?.contains('saosa-logged-out') || signinButton?.dataset?.authAction === 'signin'){
-      renderWorkspaceLoginPrompt(content);
-      return;
-    }
-    setActiveTab(null);
     content.innerHTML = '';
     return;
   }
