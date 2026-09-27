@@ -95,7 +95,6 @@ function signInWithSms({windowRef,documentRef}){
     let phone='';
     let busy=false;
     let resendTimer=null;
-    let otpController=null;
     const setBusy=value=>{busy=value;submit.disabled=value;if(resend)resend.disabled=value||resendTimer!==null;};
     const stopResendTimer=()=>{
       if(resendTimer!==null)(windowRef.clearInterval||clearInterval)(resendTimer);
@@ -114,29 +113,9 @@ function signInWithSms({windowRef,documentRef}){
       },1000);
     };
     const setError=value=>{if(error)error.textContent=value||'';input.classList.toggle('invalid',!!value);input.setAttribute('aria-invalid',value?'true':'false');};
-    const stopWebOtp=()=>{
-      otpController?.abort?.();
-      otpController=null;
-    };
-    const startWebOtp=()=>{
-      stopWebOtp();
-      if(!windowRef.isSecureContext||!('OTPCredential' in windowRef)||!windowRef.navigator?.credentials?.get||!windowRef.AbortController)return;
-      const controller=new windowRef.AbortController();
-      otpController=controller;
-      windowRef.navigator.credentials.get({otp:{transport:['sms']},signal:controller.signal})
-        .then(credential=>{
-          if(otpController!==controller||step!=='code'||!/^\d{6}$/.test(String(credential?.code||'')))return;
-          input.value=credential.code;
-          if(typeof form.requestSubmit==='function')form.requestSubmit();
-          else submit.click();
-        })
-        .catch(()=>{})
-        .finally(()=>{if(otpController===controller)otpController=null;});
-    };
     const showPhone=()=>{
       step='phone';
       stopResendTimer();
-      stopWebOtp();
       if(resend)resend.textContent='ارسال مجدد کد';
       heading.textContent='ورود با شماره موبایل';
       description.textContent='شماره موبایل خود را وارد کنید تا کد ورود برایتان پیامک شود.';
@@ -156,16 +135,14 @@ function signInWithSms({windowRef,documentRef}){
     };
     const close=value=>{
       stopResendTimer();
-      stopWebOtp();
       screen.hidden=true;documentRef.body?.classList?.remove('sms-auth-open');
       form.removeEventListener('submit',onSubmit);back?.removeEventListener('click',onBack);resend?.removeEventListener('click',onResend);input.removeEventListener('input',onInput);
       resolve(value);
     };
     const send=async()=>{
       setBusy(true);setError('');
-      startWebOtp();
       try{await requestSaosaOtp(phone,windowRef);showCode();startResendTimer();}
-      catch(requestError){stopWebOtp();setError(smsErrorMessage(requestError));}
+      catch(requestError){setError(smsErrorMessage(requestError));}
       finally{setBusy(false);}
     };
     const onSubmit=async event=>{
@@ -175,7 +152,6 @@ function signInWithSms({windowRef,documentRef}){
         if(!/^09\d{9}$/.test(rawValue)){setError('شماره موبایل را به‌صورت ۱۱ رقمی و با 09 وارد کنید.');return;}
         phone=rawValue;await send();return;
       }
-      stopWebOtp();
       const value=rawValue.replace(/\D/g,'');
       if(!/^\d{6}$/.test(value)){setError('کد ۶ رقمی را کامل وارد کنید');return;}
       setBusy(true);setError('');
