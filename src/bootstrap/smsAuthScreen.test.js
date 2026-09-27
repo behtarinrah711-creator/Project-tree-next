@@ -21,6 +21,11 @@ test('Saosa login uses the full-screen two-step form instead of browser prompts'
   assert.match(html,/id="smsAuthForm"/);
   assert.match(css,/position:fixed;inset:0/);
   assert.match(css,/min-height:100dvh/);
+  assert.doesNotMatch(html,/Sa O Sa/);
+  assert.match(html,/class="sms-auth-title-brand"[\s\S]*?<strong>ساُسا<\/strong>[\s\S]*?<span>مدیریت ساخت و ساز<\/span>/);
+  assert.match(css,/\.sms-auth-form h1\{font-size:20px;/);
+  assert.match(css,/\.sms-auth-form>p:not\(\.sms-auth-error\)\{[\s\S]*?font-size:16px;/);
+  assert.match(css,/\.sms-auth-form\{[\s\S]*?border-radius:18px;[\s\S]*?background:#fff;[\s\S]*?flex:1 1 auto;/);
 });
 
 test('Arvan deploy stamps cache guard with the deployed commit',async()=>{
