@@ -1,5 +1,5 @@
 const CACHE_PREFIX = 'project-tree-next-';
-const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v1`;
+const RUNTIME_CACHE = `${CACHE_PREFIX}runtime-v2`;
 
 self.addEventListener('install', () => {
   self.skipWaiting();
