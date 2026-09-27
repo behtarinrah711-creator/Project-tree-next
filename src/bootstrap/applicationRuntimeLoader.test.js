@@ -54,6 +54,23 @@ test('application runtime fragments load sequentially in declared order', async 
   assert.ok(harness.runtimeScripts.every(script => script.dataset.loaded === 'true'));
 });
 
+test('deployment version is appended to every classic runtime fragment', async () => {
+  const harness = createDocumentHarness();
+  const windowRef = {
+    __KARHA_DEPLOYMENT_VERSION__:'deploy-sha-123',
+    location:{href:'https://saosa.ir/'},
+  };
+  await loadApplicationRuntime({
+    documentRef:harness.documentRef,
+    windowRef,
+    sourceUrls:['/workspacePresentationRuntime.js','/applicationRuntime.js'],
+  });
+  assert.deepEqual(harness.runtimeScripts.map(script => script.src), [
+    'https://saosa.ir/workspacePresentationRuntime.js?v=deploy-sha-123',
+    'https://saosa.ir/applicationRuntime.js?v=deploy-sha-123',
+  ]);
+});
+
 test('legacy loader creates one ordered classic script', async () => {
   const harness = createDocumentHarness();
   const windowRef = {};
@@ -71,6 +88,7 @@ test('HTML has production entries without condemned share controls', async () =>
   const html = await readFile(new URL('../../index.html', import.meta.url), 'utf8');
   assert.match(html, /<script type="module" src="src\/bootstrap\/shellEntry\.js(?:\?[^"]*)?"><\/script>/);
   assert.match(html, /<script type="module" src="src\/bootstrap\/app\.js(?:\?[^"]*)?"><\/script>/);
+  assert.match(html, /window\.__KARHA_DEPLOYMENT_VERSION__='__DEPLOYMENT_VERSION__'/);
   assert.doesNotMatch(html, /<script[^>]+src="src\/legacy\/applicationRuntime\.js"/);
   assert.doesNotMatch(html, /share(?:DialogSub|EmailInput|CancelBtn|ConfirmBtn)/);
   assert.doesNotMatch(html, /آدرس جیمیل فردی که می‌خواهید به این پروژه دسترسی بدهید را وارد کنید/);
