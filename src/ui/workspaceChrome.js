@@ -147,8 +147,6 @@ export function installWorkspaceChrome({
       return;
     }
 
-    if(settingsTrigger) settingsTrigger.hidden = !state.project;
-
     const isWorkspace = !['Home','Planning','Execution'].includes(key);
     topbar?.classList?.remove?.('workspace-context');
     topbar?.classList?.remove?.('root-workspace-context');
@@ -159,6 +157,9 @@ export function installWorkspaceChrome({
     const routeProject = routeProjectId && String(routeProjectId) === String(state.project?.id)
       ? state.project
       : null;
+    // Project settings belongs to the same project workspace as the footer.
+    // A stale selected project must not expose it on the root or an empty route.
+    if(settingsTrigger) settingsTrigger.hidden = !routeProject;
     if(topbarMain) topbarMain.textContent = routeProject?.name || '';
     if(topbarProject) topbarProject.textContent = '';
     get('topbarTitle')?.classList?.toggle?.('has-active-project', !!routeProject?.name);
