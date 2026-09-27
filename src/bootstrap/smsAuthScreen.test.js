@@ -13,12 +13,10 @@ test('Saosa login uses the full-screen two-step form instead of browser prompts'
   assert.doesNotMatch(controls,/windowRef\.prompt/);
   assert.match(controls,/smsAuthScreen/);
   assert.match(controls,/autocomplete='one-time-code'/);
+  assert.doesNotMatch(controls,/navigator\.credentials\.get/);
   assert.match(controls,/SMS_RESEND_COOLDOWN_SECONDS = 60/);
   assert.match(controls,/ارسال مجدد کد \(\$\{seconds\}\)/);
   assert.match(controls,/if\(!busy&&resendTimer===null\)send\(\)/);
-  assert.match(controls,/navigator\.credentials\.get\(\{otp:\{transport:\['sms'\]\}/);
-  assert.match(controls,/form\.requestSubmit\(\)/);
-  assert.ok(controls.includes("!/^\\d{6}$/.test(String(credential?.code||''))"));
   assert.match(html,/id="smsAuthScreen"/);
   assert.match(html,/id="smsAuthForm"/);
   assert.match(css,/position:fixed;inset:0/);
