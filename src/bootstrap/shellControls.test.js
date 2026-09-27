@@ -227,4 +227,8 @@ test('Saosa guest brand is resolved before first paint without a temporary gener
   assert.match(css, /\.saosa-public-brand span\{font-size:14px;font-weight:400;\}/);
   assert.match(css, /font-size:14px;\s*line-height:1\.4;/);
   assert.match(css, /\.topbar::before\{content:none;\}/);
+  assert.match(css, /body\.saosa-logged-out \.content\{[\s\S]*?overflow:hidden;[\s\S]*?display:flex;/);
+  assert.match(css, /body\.saosa-logged-out \.saosa-guest-card\{[\s\S]*?min-height:0;[\s\S]*?flex:1 1 auto;[\s\S]*?overflow:hidden;/);
+  assert.match(css, /body\.saosa-logged-out \.saosa-guest-login\{[\s\S]*?background:var\(--primary-navy\);/);
+  assert.doesNotMatch(css, /\.saosa-guest-card\{[\s\S]*?min-height:560px;/);
 });
