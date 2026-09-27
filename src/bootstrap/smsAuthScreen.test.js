@@ -22,5 +22,5 @@ test('Saosa login uses the full-screen two-step form instead of browser prompts'
 test('Arvan deploy stamps cache guard with the deployed commit',async()=>{
   const workflow=await read('../../.github/workflows/deploy-arvan.yml');
   assert.match(workflow,/DEPLOY_SHA: \$\{\{ github\.event\.workflow_run\.head_sha \|\| github\.sha \}\}/);
-  assert.match(workflow,/s\/__DEPLOYMENT_VERSION__\/\$\{DEPLOY_SHA\}\/g/);
+  assert.match(workflow,/node scripts\/stampDeploymentVersion\.mjs "\$\{DEPLOY_SHA\}"/);
 });
