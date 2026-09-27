@@ -3,6 +3,7 @@ import { moduleRegistry } from './moduleRegistry.js';
 import { getSession } from './session.js';
 import { isProjectVisibleForSession } from './projectVisibility.js';
 import { isCondemnedRoute } from '../modules/condemned/index.js';
+import { isSaosaHost, readSaosaSession } from '../cloud/saosaWorkspaceSync.js';
 
 export function parseRoute(){
   const hash = window.location.hash.replace(/^#\/?/, '');
@@ -87,6 +88,27 @@ export class AppRouter{
     const route = parseRoute();
     this.lastSyncedHash = window.location.hash;
     const session = getSession();
+    const saosaLoggedOut = isSaosaHost(window) && !readSaosaSession(window);
+    if(saosaLoggedOut){
+      projectContext.setProjectId(null);
+      const publicHash = '#/';
+      if(window.location.hash !== publicHash){
+        const state = window.KarhaBrowserHistory?.stateForRoute?.({
+          projectId:null,moduleId:'dashboard',surface:'public',hash:publicHash,
+        });
+        window.KarhaBrowserHistory?.replace?.(state, publicHash);
+      }
+      const publicRoute = {
+        projectId:null,moduleId:'dashboard',module:null,surface:'public',
+      };
+      window.KarhaRoute = publicRoute;
+      document.body?.classList?.remove?.('global-surface');
+      this.currentMounted = null;
+      window.dispatchEvent(new CustomEvent('karha:workspace-route-synced', {
+        detail: publicRoute,
+      }));
+      return;
+    }
     const rawProject = route.projectId
       ? (window.KarhaApp?.projectRepository?.find?.(route.projectId) || null)
       : null;
@@ -98,7 +120,16 @@ export class AppRouter{
       window.KarhaAppData.persistLocal?.();
     }
     // Phase 5: condemned deep links → dashboard of the same project (not global home).
-    let moduleId = route.moduleId;
+    let moduleId = route.projectId && !allowed ? 'dashboard' : route.moduleId;
+    if(route.projectId && !allowed){
+      const safe = '#/';
+      if(window.location.hash !== safe){
+        const state = window.KarhaBrowserHistory?.stateForRoute?.({
+          projectId:null,moduleId:'dashboard',hash:safe,
+        });
+        window.KarhaBrowserHistory?.replace?.(state,safe);
+      }
+    }
     if(isCondemnedRoute(moduleId)){
       moduleId = 'dashboard';
       if(projectId){

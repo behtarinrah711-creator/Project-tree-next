@@ -5,14 +5,17 @@ const projects={
   A:{tasks:['task-A']}, B:{tasks:['task-B']}, C:{tasks:['task-C']},
 };
 
-async function createRouterHarness({initialHash,initialProjects,activeTab}){
+async function createRouterHarness({initialHash,initialProjects,activeTab,hostname='',saosaSession=null}){
   const listeners=new Map();
   const stack=[{url:initialHash,state:null}];
   let cursor=0;
   globalThis.CustomEvent=class { constructor(type,init={}){this.type=type;this.detail=init.detail;} };
-  globalThis.document={readyState:'complete'};
+  globalThis.document={readyState:'complete',body:{classList:{remove(){},toggle(){}}}};
   globalThis.window={
-    location:{hash:initialHash,href:initialHash,search:''},
+    location:{hash:initialHash,href:initialHash,search:'',hostname},
+    localStorage:{
+      getItem(key){return key==='saosa:v1:sms-session'&&saosaSession?JSON.stringify(saosaSession):null;},
+    },
     addEventListener(type,listener){
       const values=listeners.get(type)||[]; values.push(listener); listeners.set(type,values);
     },
@@ -204,4 +207,38 @@ test('late background dashboard replace cannot overwrite an explicit same-projec
   assert.equal(window.location.hash,'#/projects/A/reports');
   assert.equal(harness.router.currentMounted?.moduleId,'reports');
   assert.equal(window.history.state?.route?.moduleId,'reports');
+});
+
+test('logged-out Saosa rejects a stale project workspace route before any module mounts', async () => {
+  const harness=await createRouterHarness({
+    initialHash:'#/projects/A/role-management',
+    initialProjects:[{id:'A',name:'Private project',tasks:[]}],
+    activeTab:'A',
+    hostname:'saosa.ir',
+    saosaSession:null,
+  });
+
+  assert.equal(window.location.hash,'#/');
+  assert.equal(window.KarhaRoute.surface,'public');
+  assert.equal(window.KarhaRoute.projectId,null);
+  assert.equal(window.KarhaRoute.moduleId,'dashboard');
+  assert.equal(harness.projectContext.getProjectId(),null);
+  assert.equal(harness.router.currentMounted,null);
+  assert.deepEqual(harness.dashboardMounts,[]);
+  assert.deepEqual(harness.contractProjects,[]);
+});
+
+test('authenticated Saosa may resolve its allowed project workspace route', async () => {
+  const session={phone:'09170000000',token:'token',expiresAt:Date.now()+60_000};
+  const harness=await createRouterHarness({
+    initialHash:'#/projects/A/dashboard',
+    initialProjects:[{id:'A',name:'Private project',tasks:[],ownerUid:'phone:09170000000'}],
+    activeTab:'A',
+    hostname:'saosa.ir',
+    saosaSession:session,
+  });
+
+  assert.notEqual(window.KarhaRoute.surface,'public');
+  assert.equal(window.KarhaRoute.projectId,'A');
+  assert.equal(harness.router.currentMounted?.projectId,'A');
 });
