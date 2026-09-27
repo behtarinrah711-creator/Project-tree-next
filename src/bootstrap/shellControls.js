@@ -121,6 +121,7 @@ function signInWithSms({windowRef,documentRef}){
       form.querySelector('.sms-auth-description')?.remove();
       stopResendTimer();
       if(resend)resend.textContent='ارسال مجدد کد';
+      screen.dataset.step='phone';
       heading.textContent='ورود با شماره موبایل';
       input.type='tel';input.inputMode='numeric';input.autocomplete='tel';input.maxLength=11;
       input.placeholder='مثال: 09123456789';input.value=phone;input.classList.remove('sms-code');
@@ -128,6 +129,7 @@ function signInWithSms({windowRef,documentRef}){
     };
     const showCode=()=>{
       step='code';
+      screen.dataset.step='code';
       heading.textContent='تأیید شماره موبایل';
       form.querySelector('.sms-auth-description')?.remove();
       const description=documentRef.createElement('p');description.className='sms-auth-description';description.textContent=`کد ۶ رقمی ارسال‌شده به ${phone} را وارد کنید.`;heading.insertAdjacentElement('afterend',description);
