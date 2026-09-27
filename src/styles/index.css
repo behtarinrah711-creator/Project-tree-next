@@ -50,7 +50,7 @@ body:not(.global-surface){background:#f2f3f5;}
   padding-inline:10px;
 }
 .topbar:not(.workspace-context)::before{
-  content:'مدیریت ساخت';
+  content:'ساُسا';
   position:absolute;
   left:50%;
   top:50%;
