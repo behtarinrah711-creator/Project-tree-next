@@ -63,6 +63,11 @@ export function installWorkspaceChrome({
     if(footer.parentNode) footer.remove?.();
   }
 
+  function setProjectChromeMounted(mounted){
+    setProjectFooterMounted(mounted);
+    windowRef.KarhaProjectWorkspaceControls?.setMounted?.(mounted);
+  }
+
   function hideAllWorkspacePages(){
     WORKSPACE_PAGE_IDS.forEach(id => get(id)?.classList?.add?.('hidden'));
   }
@@ -102,7 +107,7 @@ export function installWorkspaceChrome({
     const topbar = get('topbar');
     const topbarMain = get('topbarTitle')?.querySelector?.('.app-title-main');
     const topbarProject = get('topbarProjectName');
-    const settingsTrigger = get('projectSettingsTrigger');
+    const settingsTrigger = get('projectSettingsTrigger') || windowRef.KarhaProjectWorkspaceControls?.element;
     if(!context || !contextName) return;
 
     const key = activeFooter();
@@ -121,9 +126,8 @@ export function installWorkspaceChrome({
     const menuTitle = MENU_TITLES[state.menuRootMode] || (profileVisible ? MENU_TITLES.profile : managementVisible ? MENU_TITLES.projects : '');
     const rootTitle = menuTitle || globalRouteTitle;
     documentRef.body?.classList?.toggle?.('global-surface', !!rootTitle);
-    setProjectFooterMounted(!rootTitle);
     if(rootTitle){
-      if(settingsTrigger) settingsTrigger.hidden = true;
+      setProjectChromeMounted(false);
       topbar?.classList?.remove?.('workspace-context');
       topbar?.classList?.remove?.('root-workspace-context');
       get('topbarTitle')?.classList?.add?.('global-menu-context');
@@ -151,9 +155,10 @@ export function installWorkspaceChrome({
     const routeProject = routeProjectId && String(routeProjectId) === String(state.project?.id)
       ? state.project
       : null;
+    setProjectChromeMounted(!!routeProject);
     // Project settings belongs to the same project workspace as the footer.
     // A stale selected project must not expose it on the root or an empty route.
-    if(settingsTrigger) settingsTrigger.hidden = !routeProject;
+    if(settingsTrigger) settingsTrigger.hidden = false;
     if(topbarMain) topbarMain.textContent = routeProject?.name || '';
     if(topbarProject) topbarProject.textContent = '';
     get('topbarTitle')?.classList?.toggle?.('has-active-project', !!routeProject?.name);
