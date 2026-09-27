@@ -4,19 +4,15 @@ import { getSession } from './session.js';
 import { isProjectVisibleForSession } from './projectVisibility.js';
 import { isCondemnedRoute } from '../modules/condemned/index.js';
 import { isSaosaHost, readSaosaSession } from '../cloud/saosaWorkspaceSync.js';
+import { getGlobalRoute } from './globalRoutes.js';
 
 export function parseRoute(){
   const hash = window.location.hash.replace(/^#\/?/, '');
   const [path] = hash.split('?');
   const parts = path.split('/').filter(Boolean);
   const decode = value => { try{ return decodeURIComponent(value); }catch{ return value; } };
-  if(parts[0] === 'notebook'){
-    const leaf = parts[1] === 'export' ? 'notebook-export' : 'notebook';
-    return { projectId: null, moduleId: leaf, surface: 'global' };
-  }
-  if(parts[0] === 'profile' || parts[0] === 'management'){
-    return { projectId: null, moduleId: parts[0], surface: 'global' };
-  }
+  const globalRoute = getGlobalRoute(window.location);
+  if(globalRoute) return { projectId:null, moduleId:globalRoute.moduleId, surface:'global' };
   const projectIndex = parts.findIndex(part => part === 'project' || part === 'projects');
   const projectId = projectIndex >= 0 ? decode(parts[projectIndex + 1]) : projectContext.getProjectId();
   const moduleId = projectIndex >= 0 ? decode(parts[projectIndex + 2] || 'dashboard') : decode(parts[0] || 'dashboard');
