@@ -82,7 +82,6 @@ function signInWithSms({windowRef,documentRef}){
   const form=byId(documentRef,'smsAuthForm');
   const back=byId(documentRef,'smsAuthBack');
   const heading=byId(documentRef,'smsAuthHeading');
-  const description=byId(documentRef,'smsAuthDescription');
   const label=byId(documentRef,'smsAuthInputLabel');
   const input=byId(documentRef,'smsAuthInput');
   const error=byId(documentRef,'smsAuthError');
@@ -120,10 +119,10 @@ function signInWithSms({windowRef,documentRef}){
     const setError=value=>{if(error)error.textContent=value||'';input.classList.toggle('invalid',!!value);input.setAttribute('aria-invalid',value?'true':'false');};
     const showPhone=()=>{
       step='phone';
+      form.querySelector('.sms-auth-description')?.remove();
       stopResendTimer();
       if(resend)resend.textContent='ارسال مجدد کد';
       heading.textContent='ورود با شماره موبایل';
-      description.textContent='شماره موبایل خود را وارد کنید تا کد ورود برایتان پیامک شود.';
       label.textContent='شماره موبایل';
       input.type='tel';input.inputMode='numeric';input.autocomplete='tel';input.maxLength=11;
       input.placeholder='مثال: 09123456789';input.value=phone;input.classList.remove('sms-code');
@@ -132,7 +131,8 @@ function signInWithSms({windowRef,documentRef}){
     const showCode=()=>{
       step='code';
       heading.textContent='تأیید شماره موبایل';
-      description.textContent=`کد ۶ رقمی ارسال‌شده به ${phone} را وارد کنید.`;
+      form.querySelector('.sms-auth-description')?.remove();
+      const description=documentRef.createElement('p');description.className='sms-auth-description';description.textContent=`کد ۶ رقمی ارسال‌شده به ${phone} را وارد کنید.`;heading.insertAdjacentElement('afterend',description);
       label.textContent='کد تأیید';
       input.type='text';input.inputMode='numeric';input.autocomplete='one-time-code';input.maxLength=6;
       input.placeholder='------';input.value='';input.classList.add('sms-code');
