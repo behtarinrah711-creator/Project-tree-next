@@ -25,6 +25,7 @@ function element(id){
       for(const handler of (listeners.click || [])) await handler({target});
     },
     listenerCount(type){ return (listeners[type] || []).length; },
+    remove(){ this.parentNode?.removeChild?.(this); },
   };
 }
 
@@ -34,6 +35,11 @@ function harness({user=null,popupErrors=[],redirectErrors=[],route=null,hash='',
   const windowListeners=new Map();
   let storedSaosaSession=saosaSession;
   const body=element('body');
+  const topbar=element('topbar');
+  topbar.childNodes=[elements.projectSettingsTrigger];
+  topbar.insertBefore=function(child,before){const index=before?this.childNodes.indexOf(before):-1;this.childNodes.splice(index>=0?index:this.childNodes.length,0,child);child.parentNode=this;};
+  topbar.removeChild=function(child){const index=this.childNodes.indexOf(child);if(index>=0)this.childNodes.splice(index,1);child.parentNode=null;};
+  elements.projectSettingsTrigger.parentNode=topbar;
   const documentElement=element('html');
   documentElement.classList.add('saosa-initial-logged-out');
   class CustomEvent { constructor(type,options={}){ this.type=type; this.detail=options.detail; } }
@@ -184,17 +190,17 @@ test('project settings trigger is visible only on an explicit project route',()=
   const project=harness({route:{projectId:'p-1',moduleId:'planning'},hash:'#/projects/p-1/planning'});
   project.windowRef.KarhaApp={projectWorkspace};
   bindShellControls(project);
-  assert.equal(project.elements.projectSettingsTrigger.hidden,false);
+  assert.equal(project.windowRef.KarhaProjectWorkspaceControls.isMounted(),true);
 
   const notebook=harness({route:{projectId:null,moduleId:'notebook'},hash:'#/notebook'});
   notebook.windowRef.KarhaApp={projectWorkspace};
   bindShellControls(notebook);
-  assert.equal(notebook.elements.projectSettingsTrigger.hidden,true);
+  assert.equal(notebook.windowRef.KarhaProjectWorkspaceControls.isMounted(),false);
 
   const global=harness({route:{projectId:null,moduleId:'dashboard'},hash:''});
   global.windowRef.KarhaApp={projectWorkspace};
   bindShellControls(global);
-  assert.equal(global.elements.projectSettingsTrigger.hidden,true);
+  assert.equal(global.windowRef.KarhaProjectWorkspaceControls.isMounted(),false);
 });
 
 test('project settings trigger opens settings and a second click returns to the previous route',async()=>{
