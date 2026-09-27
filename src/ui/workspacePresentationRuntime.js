@@ -72,6 +72,10 @@ function enterProjectsSurface(){
   return window.KarhaWorkspaceChrome?.enterProjectsSurface?.();
 }
 
+function isSaosaWorkspaceHost(){
+  return ['saosa.ir','www.saosa.ir'].includes(String(window.location?.hostname || '').toLowerCase());
+}
+
 function renderWorkspaceLoginPrompt(content){
   setActiveTab(null);
   content.innerHTML = '<div class="workspace-no-project saosa-guest-card"><p>جهت استفاده از امکانات ساُسا ابتدا وارد شوید یا ثبت نام کنید</p><button type="button" class="saosa-guest-login" id="saosaGuestLogin">ورود یا ثبت نام</button></div>';
@@ -103,8 +107,10 @@ function renderAll(){
   renderModeToggle();
   content.innerHTML = '';
   const signinButton = document.getElementById('drawerSigninBtn');
-  const isLoggedOut = document.body?.classList?.contains('saosa-logged-out')
-    || signinButton?.dataset?.authAction === 'signin';
+  const isLoggedOut = isSaosaWorkspaceHost() && (
+    document.body?.classList?.contains('saosa-logged-out')
+    || signinButton?.dataset?.authAction === 'signin'
+  );
   if(isLoggedOut){
     renderWorkspaceLoginPrompt(content);
     return;
@@ -115,12 +121,8 @@ function renderAll(){
   }
   const p = findProject(getActiveTab());
   if(!p || p.archived || p.trashed){
-    if(document.body?.classList?.contains('saosa-logged-out') || signinButton?.dataset?.authAction === 'signin'){
-      renderWorkspaceLoginPrompt(content);
-      return;
-    }
-    setActiveTab(null);
-    content.innerHTML = '';
+    if(isLoggedOut) renderWorkspaceLoginPrompt(content);
+    else content.innerHTML = '';
     return;
   }
   if(window.KarhaApp?.router?.navigate){
