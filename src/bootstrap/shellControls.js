@@ -17,6 +17,7 @@ async function verifySaosaOtp(phone,code,windowRef){
 
 const AUTH_READY_TIMEOUT_MS = 5000;
 const AUTH_READY_POLL_MS = 50;
+const SMS_RESEND_COOLDOWN_SECONDS = 60;
 
 function sleep(windowRef, ms){
   return new Promise(resolve => (windowRef.setTimeout || setTimeout)(resolve, ms));
@@ -93,10 +94,29 @@ function signInWithSms({windowRef,documentRef}){
     let step='phone';
     let phone='';
     let busy=false;
-    const setBusy=value=>{busy=value;submit.disabled=value;if(resend)resend.disabled=value;};
+    let resendTimer=null;
+    const setBusy=value=>{busy=value;submit.disabled=value;if(resend)resend.disabled=value||resendTimer!==null;};
+    const stopResendTimer=()=>{
+      if(resendTimer!==null)(windowRef.clearInterval||clearInterval)(resendTimer);
+      resendTimer=null;
+    };
+    const startResendTimer=()=>{
+      if(!resend)return;
+      stopResendTimer();
+      let seconds=SMS_RESEND_COOLDOWN_SECONDS;
+      const render=()=>{resend.disabled=true;resend.textContent=`ارسال مجدد کد (${seconds})`;};
+      render();
+      resendTimer=(windowRef.setInterval||setInterval)(()=>{
+        seconds-=1;
+        if(seconds<=0){stopResendTimer();resend.disabled=busy;resend.textContent='ارسال مجدد کد';return;}
+        render();
+      },1000);
+    };
     const setError=value=>{if(error)error.textContent=value||'';input.classList.toggle('invalid',!!value);input.setAttribute('aria-invalid',value?'true':'false');};
     const showPhone=()=>{
       step='phone';
+      stopResendTimer();
+      if(resend)resend.textContent='ارسال مجدد کد';
       heading.textContent='ورود با شماره موبایل';
       description.textContent='شماره موبایل خود را وارد کنید تا کد ورود برایتان پیامک شود.';
       label.textContent='شماره موبایل';
@@ -114,13 +134,14 @@ function signInWithSms({windowRef,documentRef}){
       submit.textContent='ورود';if(resend)resend.hidden=false;setError('');input.focus();
     };
     const close=value=>{
+      stopResendTimer();
       screen.hidden=true;documentRef.body?.classList?.remove('sms-auth-open');
       form.removeEventListener('submit',onSubmit);back?.removeEventListener('click',onBack);resend?.removeEventListener('click',onResend);input.removeEventListener('input',onInput);
       resolve(value);
     };
     const send=async()=>{
       setBusy(true);setError('');
-      try{await requestSaosaOtp(phone,windowRef);showCode();}
+      try{await requestSaosaOtp(phone,windowRef);showCode();startResendTimer();}
       catch(requestError){setError(smsErrorMessage(requestError));}
       finally{setBusy(false);}
     };
@@ -138,7 +159,7 @@ function signInWithSms({windowRef,documentRef}){
       catch(verifyError){setError(smsErrorMessage(verifyError));setBusy(false);}
     };
     const onBack=()=>step==='code'?showPhone():close(null);
-    const onResend=()=>{if(!busy)send();};
+    const onResend=()=>{if(!busy&&resendTimer===null)send();};
     const onInput=()=>setError('');input.addEventListener('input',onInput);
     form.addEventListener('submit',onSubmit);back?.addEventListener('click',onBack);resend?.addEventListener('click',onResend);
     screen.hidden=false;documentRef.body?.classList?.add('sms-auth-open');showPhone();
