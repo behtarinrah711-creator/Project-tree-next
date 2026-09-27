@@ -130,6 +130,7 @@ test('header stays empty until the route project matches the resolved context',(
   h.chrome.updateWorkspaceContextBar();
   assert.equal(h.ids.get('topbarTitle').main.textContent,'');
   assert.equal(h.ids.get('topbarTitle').classList.contains('has-active-project'),false);
+  assert.equal(h.ids.get('projectSettingsTrigger').hidden,true);
 
   h.windowRef.KarhaRoute={projectId:'B',moduleId:'dashboard'};
   h.chrome.updateWorkspaceContextBar();
@@ -139,6 +140,7 @@ test('header stays empty until the route project matches the resolved context',(
   h.chrome.updateWorkspaceContextBar();
   assert.equal(h.ids.get('topbarTitle').main.textContent,'Alpha');
   assert.equal(h.ids.get('topbarTitle').classList.contains('has-active-project'),true);
+  assert.equal(h.ids.get('projectSettingsTrigger').hidden,false);
 });
 
 test('global menu destinations keep one header and do not mount the project footer',()=>{
@@ -164,7 +166,7 @@ test('global menu destinations keep one header and do not mount the project foot
   assert.equal(h.ids.get('projectSettingsTrigger').hidden,true);
 
   h.state={...h.state,menuRootMode:null};
-  h.windowRef.KarhaRoute={moduleId:'dashboard'};
+  h.windowRef.KarhaRoute={projectId:'A',moduleId:'dashboard'};
   h.chrome.applyRoute('dashboard',getProjectRouteSurface('dashboard'));
   assert.equal(h.body.classList.contains('global-surface'),false);
   assert.equal(h.ids.get('bottomNav').parentNode,h.body);
