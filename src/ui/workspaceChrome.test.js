@@ -213,8 +213,11 @@ test('legacy retains only thin chrome delegates and keeps contract back policy c
   assert.doesNotMatch(source,/getElementById\('bottomProjectsBtn'\)\.onclick/);
   assert.doesNotMatch(source,/addEventListener\('karha:drawer-open'/);
   assert.match(source,/function updateWorkspaceContextBar\(\)\{ return window\.KarhaWorkspaceChrome/);
+  assert.match(source,/function isSaosaWorkspaceHost\(\)/);
+  assert.match(source,/const isLoggedOut = isSaosaWorkspaceHost\(\) && \(/);
   assert.match(source,/signinButton\?\.dataset\?\.authAction === 'signin'/);
   assert.match(source,/if\(isLoggedOut\)\{/);
+  assert.doesNotMatch(source,/setActiveTab\(null\);\s*content\.innerHTML = '';\s*return;/);
   assert.match(source,/function renderWorkspaceLoginPrompt\(content\)/);
   assert.doesNotMatch(source,/برای ورود به Workspace/);
   assert.match(source,/if\(workspaceSubpage === 'contractForm'\)\{ requestCloseContractForm\(\); return; \}/);
