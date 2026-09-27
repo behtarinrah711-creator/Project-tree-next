@@ -20,7 +20,7 @@ function element(id, initial=[]){
   };
 }
 
-function harness(){
+function harness({hash=''}={}){
   const ids=new Map();
   const make=(id,classes=[])=>{const value=element(id,classes);ids.set(id,value);return value;};
   const footers=['Home','Planning','Execution','Reports','Financial'].map(key=>make(`bottom${key}Btn`,['bottom-nav-item']));
@@ -48,7 +48,7 @@ function harness(){
     querySelector(selector){return selector==='.bottom-nav-item.active'?footers.find(x=>x.classList.contains('active'))||null:null;},
     querySelectorAll(selector){return selector==='.bottom-nav-item'?footers:[];},
   };
-  const windowRef={document:documentRef,KarhaRoute:{projectId:'A',moduleId:'dashboard'},setTimeout:fn=>fn(),addEventListener(type,fn){events.set(type,fn);}};
+  const windowRef={document:documentRef,location:{hash},KarhaRoute:{projectId:'A',moduleId:'dashboard'},setTimeout:fn=>fn(),addEventListener(type,fn){events.set(type,fn);}};
   const calls=[];
   let state={workspaceSubpage:null,menuRootMode:null,project:{id:'A',name:'Alpha'}};
   const chrome=installWorkspaceChrome({
@@ -130,6 +130,7 @@ test('header stays empty until the route project matches the resolved context',(
   h.chrome.updateWorkspaceContextBar();
   assert.equal(h.ids.get('topbarTitle').main.textContent,'');
   assert.equal(h.ids.get('topbarTitle').classList.contains('has-active-project'),false);
+  assert.equal(h.ids.get('projectSettingsTrigger').hidden,true);
 
   h.windowRef.KarhaRoute={projectId:'B',moduleId:'dashboard'};
   h.chrome.updateWorkspaceContextBar();
@@ -139,6 +140,7 @@ test('header stays empty until the route project matches the resolved context',(
   h.chrome.updateWorkspaceContextBar();
   assert.equal(h.ids.get('topbarTitle').main.textContent,'Alpha');
   assert.equal(h.ids.get('topbarTitle').classList.contains('has-active-project'),true);
+  assert.equal(h.ids.get('projectSettingsTrigger').hidden,false);
 });
 
 test('global menu destinations keep one header and do not mount the project footer',()=>{
@@ -164,12 +166,19 @@ test('global menu destinations keep one header and do not mount the project foot
   assert.equal(h.ids.get('projectSettingsTrigger').hidden,true);
 
   h.state={...h.state,menuRootMode:null};
-  h.windowRef.KarhaRoute={moduleId:'dashboard'};
+  h.windowRef.KarhaRoute={projectId:'A',moduleId:'dashboard'};
   h.chrome.applyRoute('dashboard',getProjectRouteSurface('dashboard'));
   assert.equal(h.body.classList.contains('global-surface'),false);
   assert.equal(h.ids.get('bottomNav').parentNode,h.body);
   assert.equal(h.ids.get('topbarTitle').classList.contains('global-menu-context'),false);
   assert.equal(h.ids.get('projectSettingsTrigger').hidden,false);
+});
+
+test('global route gets its final compact header during chrome installation',()=>{
+  const h=harness({hash:'#/notebook'});
+  assert.equal(h.ids.get('topbarTitle').main.textContent,'دفترچه یادداشت');
+  assert.equal(h.ids.get('topbarTitle').classList.contains('global-menu-context'),true);
+  assert.equal(h.ids.get('bottomNav').parentNode,null);
 });
 
 test('project switches and repeated route application never leave stale footer or context',()=>{

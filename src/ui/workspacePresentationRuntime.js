@@ -82,6 +82,11 @@ function renderWorkspaceLoginPrompt(content){
   document.getElementById('saosaGuestLogin')?.addEventListener('click', () => document.getElementById('drawerSigninBtn')?.click());
 }
 
+function renderEmptyProjectPrompt(content){
+  content.innerHTML = '<div class="workspace-no-project saosa-empty-project-card"><button type="button" class="saosa-empty-project-create" id="saosaEmptyProjectCreate">+ ایجاد پروژه</button></div>';
+  document.getElementById('saosaEmptyProjectCreate')?.addEventListener('click', () => document.getElementById('drawerAddProjectBtn')?.click());
+}
+
 function renderAll(){
   // Global pages own their surfaces. A late project refresh must not replace
   // the notebook/export DOM while its route is opening.
@@ -112,6 +117,7 @@ function renderAll(){
     || signinButton?.dataset?.authAction === 'signin'
   );
   if(isLoggedOut){
+    document.body?.classList?.remove('saosa-no-project');
     renderWorkspaceLoginPrompt(content);
     return;
   }
@@ -121,10 +127,12 @@ function renderAll(){
   }
   const p = findProject(getActiveTab());
   if(!p || p.archived || p.trashed){
+    document.body?.classList?.add('saosa-no-project');
     if(isLoggedOut) renderWorkspaceLoginPrompt(content);
-    else content.innerHTML = '';
+    else renderEmptyProjectPrompt(content);
     return;
   }
+  document.body?.classList?.remove('saosa-no-project');
   if(window.KarhaApp?.router?.navigate){
     replaceWorkspaceRoute(p.id,'dashboard');
     return;

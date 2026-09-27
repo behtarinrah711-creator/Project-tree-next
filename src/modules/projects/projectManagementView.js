@@ -4,7 +4,7 @@ const {document,getData,projectsVisibleForAuth,isPendingDeleted,svgGrip,svgTrash
   openMiniPrompt,renameProject,cloudRenameProject,findProject,archiveProject,
   setActiveTab,getActiveTab,cloudSyncProjectStatus,refreshWorkspace,showToast,
   openExportPage,openConfirm,softDelete,undoPendingDelete,persist,
-  permanentlyDeleteProject}=deps;
+  permanentlyDeleteProject,openCreateProject}=deps;
 let managementProjectTab='active';
 function render(){
   const body = document.getElementById('projectsPageBody');
@@ -16,6 +16,15 @@ function render(){
   const active = visible.filter(p => !p.trashed && !p.archived && !isPendingDeleted('project',p.id));
   const archived = visible.filter(p => p.archived && !p.trashed && !isPendingDeleted('project',p.id));
   const deleted = visible.filter(p => p.trashed || isPendingDeleted('project',p.id));
+
+  if(!visible.length){
+    const card=document.createElement('div'); card.className='mgmt-first-project-card';
+    const message=document.createElement('p'); message.textContent='برای شروع یک پروژه ایجاد کنید';
+    const create=document.createElement('button'); create.type='button'; create.className='mgmt-first-project-create'; create.textContent='+ پروژه جدید';
+    create.onclick=()=>openCreateProject?.();
+    card.appendChild(message); card.appendChild(create); body.appendChild(card);
+    return;
+  }
 
   const tabs=document.createElement('div');
   tabs.className='mgmt-project-tabs';

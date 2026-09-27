@@ -170,7 +170,8 @@ const projectManagementView=window.KarhaApp.createProjectManagementView({
   openMiniPrompt,renameProject:(id,name)=>window.KarhaApp?.projectApi?.rename?.(id,name),
   cloudRenameProject,findProject,archiveProject:(id,value)=>window.KarhaApp?.projectApi?.archive?.(id,value),
   setActiveTab,getActiveTab,cloudSyncProjectStatus,refreshWorkspace:renderAll,showToast,
-  openExportPage,openConfirm,softDelete,undoPendingDelete,persist,permanentlyDeleteProject
+  openExportPage,openConfirm,softDelete,undoPendingDelete,persist,permanentlyDeleteProject,
+  openCreateProject:openCreatePage
 });
 function renderManagementPage(){ return projectManagementView.render(); }
 function openProjectsPage(){

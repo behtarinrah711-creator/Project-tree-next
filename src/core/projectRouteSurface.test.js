@@ -80,3 +80,11 @@ test('public route closes every project surface and renders only the guest entry
   assert.equal(h.legacyCalls[0][1].projectId,null);
   assert.equal(h.legacyCalls[0][1].moduleId,'dashboard');
 });
+
+test('global menu routes remain owned by their independent page shell',()=>{
+  const h=createHarness();
+  installProjectRouteSurfaceSync(h);
+  h.listeners.get('karha:workspace-route-synced')({detail:{projectId:null,moduleId:'management',surface:'global'}});
+  assert.equal(h.ids.get('reportsPage').classList.contains('hidden'),false);
+  assert.deepEqual(h.legacyCalls,[]);
+});

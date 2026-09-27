@@ -13,16 +13,20 @@ test('Saosa login uses the full-screen two-step form instead of browser prompts'
   assert.doesNotMatch(controls,/windowRef\.prompt/);
   assert.match(controls,/smsAuthScreen/);
   assert.match(controls,/autocomplete='one-time-code'/);
+  assert.doesNotMatch(controls,/navigator\.credentials\.get/);
   assert.match(controls,/SMS_RESEND_COOLDOWN_SECONDS = 60/);
   assert.match(controls,/ارسال مجدد کد \(\$\{seconds\}\)/);
-  assert.match(controls,/if\(!busy&&resendTimer===null\)send\(\)/);
-  assert.match(controls,/navigator\.credentials\.get\(\{otp:\{transport:\['sms'\]\}/);
-  assert.match(controls,/form\.requestSubmit\(\)/);
-  assert.ok(controls.includes("!/^\\d{6}$/.test(String(credential?.code||''))"));
+  assert.match(controls,/submit\.disabled=verifying\|\|\(step==='phone'&&sending\)/);
+  assert.match(controls,/send\(\{resendCode:true\}\)/);
   assert.match(html,/id="smsAuthScreen"/);
   assert.match(html,/id="smsAuthForm"/);
   assert.match(css,/position:fixed;inset:0/);
   assert.match(css,/min-height:100dvh/);
+  assert.doesNotMatch(html,/Sa O Sa/);
+  assert.match(html,/class="sms-auth-title-brand"[\s\S]*?<strong>ساُسا<\/strong>[\s\S]*?<span>مدیریت ساخت و ساز<\/span>/);
+  assert.match(css,/\.sms-auth-form h1\{font-size:20px;/);
+  assert.match(css,/\.sms-auth-form>p:not\(\.sms-auth-error\)\{[\s\S]*?font-size:16px;/);
+  assert.match(css,/\.sms-auth-form\{[\s\S]*?border-radius:18px;[\s\S]*?background:#fff;[\s\S]*?flex:1 1 auto;/);
 });
 
 test('Arvan deploy stamps cache guard with the deployed commit',async()=>{
