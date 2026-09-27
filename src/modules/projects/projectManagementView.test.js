@@ -17,3 +17,15 @@ test('management renders canonical projects and delegates archive/restore/delete
   assert.deepEqual(calls[0],['archive','A',true]);
   view.setTab('deleted'); view.render(); const restore=flatten(body).find(x=>x.textContent==='بازگردانی'); restore.onclick(); assert.equal(projects[2].trashed,false);
 });
+
+test('management offers first project creation when the account has no projects',()=>{
+  const body=node(); let opened=0;
+  const view=createProjectManagementView({document:{createElement:node,getElementById:id=>id==='projectsPageBody'?body:null},getData:()=>({projects:[]}),projectsVisibleForAuth:x=>x,isPendingDeleted:()=>false,openCreateProject:()=>opened++});
+  view.render();
+  const content=flatten(body);
+  assert.match(content.map(x=>x.textContent).join('|'),/برای شروع یک پروژه ایجاد کنید/);
+  const create=content.find(x=>x.textContent==='+ پروژه جدید');
+  assert.ok(create);
+  create.onclick();
+  assert.equal(opened,1);
+});
