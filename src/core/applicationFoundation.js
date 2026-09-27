@@ -143,7 +143,7 @@ const source = projectsVisibleForAuth(window.KarhaApp.projectWorkspace.listProje
 const projects=source.filter(p=>p && !p.trashed && !p.archived && !isPendingDeleted('project',p.id));
 if(!projects.length){
 list.replaceChildren();
-const empty=document.createElement('div'); empty.className='drawer-empty-projects'; empty.textContent='هنوز پروژه فعالی وجود ندارد. از «پروژه جدید» شروع کنید.'; list.appendChild(empty); return;
+const empty=document.createElement('div'); empty.className='drawer-empty-projects'; empty.textContent='برای شروع یک پروژه ایجاد کنید'; list.appendChild(empty); return;
 }
 window.KarhaApp?.reconcileDrawerProjectList?.(list,projects,{
 activeProjectId:getActiveTab(),
