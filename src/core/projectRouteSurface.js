@@ -43,10 +43,20 @@ export function installProjectRouteSurfaceSync({
   if(windowRef.__karhaProjectRouteSurfaceSyncInstalled) return false;
   windowRef.__karhaProjectRouteSurfaceSyncInstalled = true;
   windowRef.addEventListener('karha:workspace-route-synced', event => {
-    const moduleId = event?.detail?.moduleId;
+    const routeDetail = event?.detail || {};
+    if(routeDetail.surface === 'public'){
+      const surface = getProjectRouteSurface('dashboard');
+      windowRef.KarhaWorkspaceChrome?.applyRoute?.('dashboard', surface);
+      windowRef.KarhaLegacy?.applyRoutedSurface?.({
+        projectId:null,moduleId:'dashboard',surface,
+      });
+      windowRef.KarhaLegacy?.renderAll?.();
+      return;
+    }
+    const moduleId = routeDetail.moduleId;
     const surface = getProjectRouteSurface(moduleId);
     windowRef.KarhaWorkspaceChrome?.applyRoute?.(moduleId, surface);
-    windowRef.KarhaLegacy?.applyRoutedSurface?.({ ...event?.detail, surface });
+    windowRef.KarhaLegacy?.applyRoutedSurface?.({ ...routeDetail, surface });
   });
   return true;
 }
