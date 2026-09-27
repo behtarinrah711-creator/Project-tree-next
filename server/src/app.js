@@ -301,6 +301,22 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
           await pool.query('DELETE FROM otp_challenges WHERE id = $1', [challengeId]);
           throw error;
         }
+        const client = await pool.connect();
+        try{
+          await client.query('BEGIN');
+          await client.query('SELECT pg_advisory_xact_lock(hashtext($1))', [phone]);
+          await client.query(
+            'UPDATE otp_challenges SET consumed_at = now() WHERE phone = $1 AND id <> $2 AND consumed_at IS NULL',
+            [phone, challengeId],
+          );
+          await client.query('UPDATE otp_challenges SET consumed_at = NULL WHERE id = $1', [challengeId]);
+          await client.query('COMMIT');
+        }catch(error){
+          await client.query('ROLLBACK');
+          throw error;
+        }finally{
+          client.release();
+        }
         return sendJson(response, 202, {ok:true,expiresIn:OTP_LIFETIME_SECONDS});
       }
 
