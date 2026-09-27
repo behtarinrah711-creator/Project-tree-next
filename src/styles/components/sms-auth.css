@@ -1,6 +1,7 @@
 .sms-auth-screen[hidden]{display:none!important;}
 .sms-auth-screen{position:fixed;inset:0;z-index:10000;display:flex;flex-direction:column;min-height:100dvh;background:#f2f3f5;color:var(--text,#151515);font-family:'IRANSansX',Tahoma,sans-serif;}
-.sms-auth-header{min-height:78px;padding:env(safe-area-inset-top) 16px 0;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;background:var(--bg);border-bottom:1px solid #ececec;text-align:center;box-sizing:content-box;}
+.sms-auth-header{min-height:78px;padding:env(safe-area-inset-top) 16px 0;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;background:#f1f3f4;border-bottom:1px solid #ececec;text-align:center;box-sizing:content-box;}
+.sms-auth-screen[data-step='code'] .sms-auth-header{background:#f1f3f4;}
 .sms-auth-title-brand{display:flex;flex-direction:column;align-items:center;font-size:14px;line-height:1.4;}
 .sms-auth-title-brand strong{font-size:14px;font-weight:700;}
 .sms-auth-title-brand span{font-size:14px;font-weight:400;}
@@ -8,7 +9,6 @@
 .sms-auth-form{width:auto;min-width:0;min-height:0;margin:12px 16px;padding:clamp(20px,5vw,32px);box-sizing:border-box;border-radius:18px;background:#fff;display:flex;flex:1 1 auto;flex-direction:column;justify-content:center;overflow:hidden;}
 .sms-auth-form h1{font-size:20px;line-height:1.5;margin:0 0 10px;text-align:center;}
 .sms-auth-description{margin:0 0 30px;color:#686868;font-size:14px;line-height:2;text-align:center;}
-.sms-auth-label{margin-bottom:9px;font-size:13px;font-weight:700;}
 .sms-auth-input{width:100%;height:54px;border:1px solid #cfcfcf;border-radius:12px;padding:0 16px;box-sizing:border-box;background:#fff;color:#161616;font:inherit;font-size:18px;text-align:center;outline:none;}
 .sms-auth-input:focus{border-color:#00075d;box-shadow:0 0 0 3px rgba(0,7,93,.08);}
 .sms-auth-input.invalid,.sms-auth-input.invalid:focus{border-color:#c62828;box-shadow:0 0 0 2px rgba(198,40,40,.12);}
