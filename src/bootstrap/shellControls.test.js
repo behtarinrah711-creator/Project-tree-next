@@ -237,3 +237,22 @@ test('Saosa guest brand is resolved before first paint without a temporary gener
   assert.match(css, /body\.saosa-logged-out \.saosa-guest-login\{[\s\S]*?background:var\(--primary-navy\);/);
   assert.doesNotMatch(css, /\.saosa-guest-card\{[\s\S]*?min-height:560px;/);
 });
+
+test('Saosa authenticated empty-project state keeps only the global drawer entry points', async () => {
+  const [controls, foundation, presentation, css, html] = await Promise.all([
+    readFile(new URL('./shellControls.js', import.meta.url), 'utf8'),
+    readFile(new URL('../core/applicationFoundation.js', import.meta.url), 'utf8'),
+    readFile(new URL('../ui/workspacePresentationRuntime.js', import.meta.url), 'utf8'),
+    readFile(new URL('../styles/index.css', import.meta.url), 'utf8'),
+    readFile(new URL('../../index.html', import.meta.url), 'utf8'),
+  ]);
+  assert.match(controls, /displayName:'کاربر ساُسا'/);
+  assert.match(foundation, /empty\.textContent='برای شروع یک پروژه ایجاد کنید'/);
+  assert.match(presentation, /saosa-no-project/);
+  assert.match(presentation, />\+ ایجاد پروژه<\/button>/);
+  assert.match(css, /body\.saosa-no-project #bottomNav,[\s\S]*?#projectSettingsTrigger\{display:none!important;\}/);
+  assert.match(css, /body\.saosa-no-project:not\(\.global-surface\) \.topbar-title\.project-menu-trigger::before/);
+  assert.match(css, /#drawerOverlay #drawerSigninBtn\[data-auth-action="signout"\]\{color:var\(--danger\);border:0;\}/);
+  assert.match(css, /#drawerOverlay #drawerProjectsBtn\{[\s\S]*?font-size:14px;/);
+  assert.match(html, /id="drawerAddProjectBtn"[^>]*>\+ پروژه جدید<\/button>/);
+});
