@@ -125,7 +125,7 @@ function signInWithSms({windowRef,documentRef}){
       otpController=controller;
       windowRef.navigator.credentials.get({otp:{transport:['sms']},signal:controller.signal})
         .then(credential=>{
-          if(otpController!==controller||step!=='code'||!/^\\d{6}$/.test(String(credential?.code||'')))return;
+          if(otpController!==controller||step!=='code'||!/^\d{6}$/.test(String(credential?.code||'')))return;
           input.value=credential.code;
           if(typeof form.requestSubmit==='function')form.requestSubmit();
           else submit.click();
