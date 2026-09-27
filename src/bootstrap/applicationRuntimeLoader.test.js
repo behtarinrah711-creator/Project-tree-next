@@ -99,3 +99,14 @@ test('application runtime remains a classic-script source without module declara
   assert.doesNotMatch(source, /^\s*(?:import|export)\s/m);
   assert.match(source, /installLegacyCompatibilityBoundary\(\);\s*\nloadData\(\);/);
 });
+
+test('cache refresh never reloads the rendered authentication screen', async () => {
+  const [guard, worker] = await Promise.all([
+    readFile(new URL('./cacheGuard.js', import.meta.url), 'utf8'),
+    readFile(new URL('../../sw.js', import.meta.url), 'utf8'),
+  ]);
+  assert.doesNotMatch(guard, /window\.location\.reload/);
+  assert.doesNotMatch(guard, /addEventListener\(['"]load['"]/);
+  assert.match(worker, /runtime-v2/);
+  assert.doesNotMatch(worker, /runtime-v1/);
+});
