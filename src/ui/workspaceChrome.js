@@ -1,4 +1,5 @@
 import { firstAllowedPlanningView } from '../modules/roleManagement/planningAccess.js';
+import { getGlobalRoute, getGlobalRouteByModule } from '../core/globalRoutes.js';
 
 const WORKSPACE_PAGE_IDS = Object.freeze([
   'projectsPage','profilePage','calendarPage','createPage','reportsPage','accountingPage','settingsPage',
@@ -24,13 +25,6 @@ const SECTION_TITLES = Object.freeze({
 const MENU_TITLES = Object.freeze({
   profile: 'ثبت مشخصات',
   projects: 'مدیریت پروژه‌ها',
-});
-
-const GLOBAL_ROUTE_TITLES = Object.freeze({
-  profile: 'ثبت مشخصات',
-  management: 'مدیریت پروژه‌ها',
-  notebook: 'دفترچه یادداشت',
-  'notebook-export': 'خروجی دفترچه',
 });
 
 const INNER_SECTION_SUBPAGES = new Set([
@@ -120,9 +114,9 @@ export function installWorkspaceChrome({
     if(planningButton) planningButton.hidden=!!state.project&&!firstAllowedPlanningView(state.project.id,undefined,windowRef);
     settingsTrigger?.classList?.toggle?.('active',SETTINGS_MODULES.has(routeModuleId));
     settingsTrigger?.setAttribute?.('aria-pressed',SETTINGS_MODULES.has(routeModuleId)?'true':'false');
-    const globalRouteTitle = GLOBAL_ROUTE_TITLES[routeModuleId] || (/^#\/notebook(?:\/export)?/i.test(windowRef.location?.hash || '')
-      ? (/\/export/i.test(windowRef.location?.hash || '') ? GLOBAL_ROUTE_TITLES['notebook-export'] : GLOBAL_ROUTE_TITLES.notebook)
-      : '');
+    const globalRouteTitle = getGlobalRouteByModule(routeModuleId)?.title
+      || getGlobalRoute(windowRef.location)?.title
+      || '';
     // A freshly selected drawer destination must win over a stale global route.
     const menuTitle = MENU_TITLES[state.menuRootMode] || (profileVisible ? MENU_TITLES.profile : managementVisible ? MENU_TITLES.projects : '');
     const rootTitle = menuTitle || globalRouteTitle;
@@ -248,6 +242,9 @@ export function installWorkspaceChrome({
   windowRef.addEventListener?.('karha:drawer-open', openDrawer);
   windowRef.addEventListener?.('resize', syncWorkspacePageTop);
   windowRef.addEventListener?.('orientationchange', () => windowRef.setTimeout(syncWorkspacePageTop, 50));
+  // Resolve global chrome from the URL immediately. This prevents the base
+  // 18px project-title style from painting before the final 15px menu title.
+  updateWorkspaceContextBar(getGlobalRoute(windowRef.location)?.moduleId);
 
   const api = Object.freeze({
     WORKSPACE_PAGE_IDS, activeFooter, applyRoute, closeBottomPages, closeDrawer, enterProjectsSurface,
