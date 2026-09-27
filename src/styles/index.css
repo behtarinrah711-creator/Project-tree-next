@@ -227,20 +227,29 @@ body:not(.global-surface){background:#f2f3f5;}
 }
 .saosa-public-brand strong{font-size:14px;font-weight:700;}
 .saosa-public-brand span{font-size:14px;font-weight:400;}
-body.saosa-logged-out .content{padding-bottom:8px;}
+body.saosa-logged-out .content{
+  min-height:0;
+  padding:12px 16px calc(12px + env(safe-area-inset-bottom));
+  overflow:hidden;
+  display:flex;
+}
 body.saosa-logged-out .saosa-guest-card{
-  min-height:560px;
-  margin:40px 30px 0;
-  padding:28px 22px;
+  width:100%;
+  min-width:0;
+  min-height:0;
+  margin:0;
+  padding:clamp(20px,5vw,32px);
   box-sizing:border-box;
   border-radius:18px;
   background:var(--surface);
   display:flex;
+  flex:1 1 auto;
   flex-direction:column;
   align-items:center;
   justify-content:center;
   gap:24px;
   text-align:center;
+  overflow:hidden;
 }
 body.saosa-logged-out .saosa-guest-card p{
   margin:0;
@@ -255,7 +264,7 @@ body.saosa-logged-out .saosa-guest-login{
   padding:10px 24px;
   border:0;
   border-radius:12px;
-  background:#1687D9;
+  background:var(--primary-navy);
   color:#fff;
   font:inherit;
   font-weight:700;
