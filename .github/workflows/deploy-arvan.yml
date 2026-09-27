@@ -43,9 +43,10 @@ jobs:
       - name: Publish static site and configure Nginx
         env:
           KAVENEGAR_API_KEY: ${{ secrets.KAVENEGAR_API_KEY }}
+          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
         run: |
           set -euo pipefail
-          sed -i "s/__DEPLOYMENT_VERSION__/${GITHUB_SHA}/g" index.html src/bootstrap/cacheGuard.js
+          sed -i "s/__DEPLOYMENT_VERSION__/${DEPLOY_SHA}/g" index.html src/bootstrap/cacheGuard.js
           if [ -z "$KAVENEGAR_API_KEY" ]; then
             echo 'KAVENEGAR_API_KEY is missing' >&2
             exit 1
@@ -89,7 +90,7 @@ jobs:
           rm -f /etc/nginx/sites-enabled/default
           nginx -t
           REMOTE
-          release="$(date -u +%Y%m%d%H%M%S)-${GITHUB_SHA:0:8}"
+          release="$(date -u +%Y%m%d%H%M%S)-${DEPLOY_SHA:0:8}"
           ssh -i ~/.ssh/id_arvan -o BatchMode=yes root@37.32.30.98 "install -d -m 755 /srv/saosa/releases/$release"
           tar -czf - --exclude=.git --exclude=.github --exclude=node_modules \
             --exclude=tests --exclude=playwright-report --exclude=test-results \
