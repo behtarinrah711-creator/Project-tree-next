@@ -211,7 +211,23 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
   const main = title?.querySelector?.('.app-title-main');
   const projectLabel = byId(documentRef, 'topbarProjectName');
   const settingsTrigger = byId(documentRef, 'projectSettingsTrigger');
+  const settingsParent = settingsTrigger?.parentNode || null;
+  const settingsNextSibling = settingsTrigger?.nextSibling || null;
   const settingsModules = new Set(['people','project-settings','role-management','activities']);
+
+  const setSettingsMounted = mounted => {
+    if(!settingsTrigger || !settingsParent) return;
+    if(mounted){
+      if(!settingsTrigger.parentNode) settingsParent.insertBefore?.(settingsTrigger, settingsNextSibling);
+    }else if(settingsTrigger.parentNode){
+      settingsTrigger.remove?.();
+    }
+  };
+  windowRef.KarhaProjectWorkspaceControls = Object.freeze({
+    element:settingsTrigger,
+    setMounted:setSettingsMounted,
+    isMounted:()=>!!settingsTrigger?.parentNode,
+  });
 
   if(title){
     title.classList.add('project-menu-trigger');
@@ -227,7 +243,8 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     const project = windowRef.KarhaApp?.projectWorkspace?.getActiveProject?.();
     const projectScoped = /^#\/?projects?\//i.test(windowRef.location?.hash || '')
       && !!windowRef.KarhaRoute?.projectId;
-    if(settingsTrigger) settingsTrigger.hidden = notebook || !projectScoped || !project;
+    setSettingsMounted(!notebook && projectScoped && !!project);
+    if(settingsTrigger) settingsTrigger.hidden = false;
     settingsTrigger?.classList?.toggle?.('active',settingsModules.has(moduleId));
     settingsTrigger?.setAttribute?.('aria-pressed',settingsModules.has(moduleId)?'true':'false');
     if(windowRef.KarhaWorkspaceChrome){

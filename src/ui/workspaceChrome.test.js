@@ -41,6 +41,8 @@ function harness({hash=''}={}){
   };
   body.removeChild=function(child){const index=this.childNodes.indexOf(child);if(index>=0)this.childNodes.splice(index,1);child.parentNode=null;};
   ids.get('bottomNav').parentNode=body;
+  body.childNodes.push(ids.get('projectSettingsTrigger'));
+  ids.get('projectSettingsTrigger').parentNode=body;
   const documentRef={
     body,
     documentElement:{style:{setProperty(name,value){this[name]=value;}}},
@@ -49,6 +51,10 @@ function harness({hash=''}={}){
     querySelectorAll(selector){return selector==='.bottom-nav-item'?footers:[];},
   };
   const windowRef={document:documentRef,location:{hash},KarhaRoute:{projectId:'A',moduleId:'dashboard'},setTimeout:fn=>fn(),addEventListener(type,fn){events.set(type,fn);}};
+  windowRef.KarhaProjectWorkspaceControls={element:ids.get('projectSettingsTrigger'),setMounted(mounted){
+    const trigger=ids.get('projectSettingsTrigger');
+    if(mounted){if(!trigger.parentNode)body.insertBefore(trigger,null);}else trigger.remove();
+  },isMounted:()=>!!ids.get('projectSettingsTrigger').parentNode};
   const calls=[];
   let state={workspaceSubpage:null,menuRootMode:null,project:{id:'A',name:'Alpha'}};
   const chrome=installWorkspaceChrome({
@@ -130,7 +136,7 @@ test('header stays empty until the route project matches the resolved context',(
   h.chrome.updateWorkspaceContextBar();
   assert.equal(h.ids.get('topbarTitle').main.textContent,'');
   assert.equal(h.ids.get('topbarTitle').classList.contains('has-active-project'),false);
-  assert.equal(h.ids.get('projectSettingsTrigger').hidden,true);
+  assert.equal(h.ids.get('projectSettingsTrigger').parentNode,null);
 
   h.windowRef.KarhaRoute={projectId:'B',moduleId:'dashboard'};
   h.chrome.updateWorkspaceContextBar();
@@ -140,7 +146,7 @@ test('header stays empty until the route project matches the resolved context',(
   h.chrome.updateWorkspaceContextBar();
   assert.equal(h.ids.get('topbarTitle').main.textContent,'Alpha');
   assert.equal(h.ids.get('topbarTitle').classList.contains('has-active-project'),true);
-  assert.equal(h.ids.get('projectSettingsTrigger').hidden,false);
+  assert.equal(h.ids.get('projectSettingsTrigger').parentNode,h.body);
 });
 
 test('global menu destinations keep one header and do not mount the project footer',()=>{
@@ -152,7 +158,7 @@ test('global menu destinations keep one header and do not mount the project foot
   assert.equal(h.ids.get('bottomNav').parentNode,null);
   assert.equal(h.ids.get('topbar').classList.contains('workspace-context'),false);
   assert.equal(h.ids.get('topbarTitle').classList.contains('global-menu-context'),true);
-  assert.equal(h.ids.get('projectSettingsTrigger').hidden,true);
+  assert.equal(h.ids.get('projectSettingsTrigger').parentNode,null);
 
   // The just-clicked menu item must supersede a route value that has not synced yet.
   h.state={...h.state,menuRootMode:'profile'};
@@ -163,7 +169,7 @@ test('global menu destinations keep one header and do not mount the project foot
   h.state={...h.state,menuRootMode:'projects'};
   h.chrome.setBottomNavActive('Home');
   assert.equal(h.ids.get('topbarTitle').main.textContent,'مدیریت پروژه‌ها');
-  assert.equal(h.ids.get('projectSettingsTrigger').hidden,true);
+  assert.equal(h.ids.get('projectSettingsTrigger').parentNode,null);
 
   h.state={...h.state,menuRootMode:null};
   h.windowRef.KarhaRoute={projectId:'A',moduleId:'dashboard'};
@@ -171,7 +177,7 @@ test('global menu destinations keep one header and do not mount the project foot
   assert.equal(h.body.classList.contains('global-surface'),false);
   assert.equal(h.ids.get('bottomNav').parentNode,h.body);
   assert.equal(h.ids.get('topbarTitle').classList.contains('global-menu-context'),false);
-  assert.equal(h.ids.get('projectSettingsTrigger').hidden,false);
+  assert.equal(h.ids.get('projectSettingsTrigger').parentNode,h.body);
 });
 
 test('global route gets its final compact header during chrome installation',()=>{
