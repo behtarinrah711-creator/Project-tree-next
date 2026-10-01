@@ -17,3 +17,13 @@ test('Saosa adapter sends phone and optional email as one invitation',async()=>{
   assert.equal(calls[0][0],'/api/v1/projects/p1/invitations');
   assert.deepEqual(JSON.parse(calls[0][1].body),{phone:'09123456789',email:'u@example.com',role:'viewer',permissions:{},projectName:'خانه'});
 });
+
+test('Saosa adapter persists edits through the member backend endpoint',async()=>{
+  const calls=[];
+  const win={location:{hostname:'saosa.ir'},localStorage:{getItem:()=>JSON.stringify({token:'t',phone:'09123456789',expiresAt:Date.now()+1000})},fetch:async(...args)=>{calls.push(args);return {ok:true,json:async()=>({member:{mobile:'09120000000',permissions:{'planning:tree':'create'}}})};}};
+  const adapter=createSmsInvitationAdapter({windowRef:win});
+  const result=await adapter.updateMember({projectId:'p1',member:{mobile:'09120000000',permissions:{'planning:tree':'create'}}});
+  assert.equal(calls[0][0],'/api/v1/projects/p1/members');
+  assert.equal(calls[0][1].method,'PATCH');
+  assert.equal(result.member.permissions['planning:tree'],'create');
+});

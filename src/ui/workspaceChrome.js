@@ -1,4 +1,4 @@
-import { firstAllowedPlanningView } from '../modules/roleManagement/planningAccess.js';
+import { planningPermissionState } from '../modules/roleManagement/planningAccess.js';
 import { getGlobalRoute, getGlobalRouteByModule } from '../core/globalRoutes.js';
 
 const WORKSPACE_PAGE_IDS = Object.freeze([
@@ -53,6 +53,16 @@ export function installWorkspaceChrome({
   const footer = get('bottomNav');
   const footerParent = footer?.parentNode || null;
   const footerNextSibling = footer?.nextSibling || null;
+  const planningButton=get('bottomPlanningBtn');
+  const planningButtonParent=planningButton?.parentNode || footer;
+  const planningButtonNextSibling=planningButton?.nextSibling || null;
+
+  function setPlanningFooterMounted(mounted){
+    if(!planningButton || !planningButtonParent) return;
+    if(mounted){
+      if(!planningButton.parentNode) planningButtonParent.insertBefore?.(planningButton,planningButtonNextSibling);
+    }else if(planningButton.parentNode) planningButton.remove?.();
+  }
 
   function setProjectFooterMounted(mounted){
     if(!footer || !footerParent) return;
@@ -115,8 +125,7 @@ export function installWorkspaceChrome({
     const managementVisible = !get('projectsPage')?.classList?.contains?.('hidden');
     const routeModuleId = routeModuleOverride || windowRef.KarhaRoute?.moduleId;
     const routeProjectId = windowRef.KarhaRoute?.projectId;
-    const planningButton=get('bottomPlanningBtn');
-    if(planningButton) planningButton.hidden=!!state.project&&!firstAllowedPlanningView(state.project.id,undefined,windowRef);
+    setPlanningFooterMounted(!state.project || planningPermissionState(state.project.id,windowRef).visible);
     settingsTrigger?.classList?.toggle?.('active',SETTINGS_MODULES.has(routeModuleId));
     settingsTrigger?.setAttribute?.('aria-pressed',SETTINGS_MODULES.has(routeModuleId)?'true':'false');
     const globalRouteTitle = getGlobalRouteByModule(routeModuleId)?.title
