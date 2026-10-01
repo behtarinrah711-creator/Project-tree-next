@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {canDeletePlanning,canViewPlanning,canWritePlanning,firstAllowedPlanningView,planningAccessLevel} from './planningAccess.js';
+import {canDeletePlanning,canViewPlanning,canWritePlanning,firstAllowedPlanningView,planningAccessLevel,planningPermissionState} from './planningAccess.js';
 
 test('planning access reads invitation module permissions and normalizes legacy edit',()=>{
   const win={KarhaSaosaWorkspaceAccess:{p:{role:'invite',permissions:{modules:{'planning:tree':'none','planning:timeline':'edit','planning:costline':'view'}}}}};
@@ -8,6 +8,15 @@ test('planning access reads invitation module permissions and normalizes legacy 
   assert.equal(planningAccessLevel('p','timeline',win),'create');
   assert.equal(firstAllowedPlanningView('p',undefined,win),'timeline');
   assert.equal(planningAccessLevel('p','costline',{KarhaSaosaWorkspaceAccess:{p:{role:'invite',permissions:{modules:{'planning:tree':'view'},edit:true}}}}),'none');
+});
+
+test('planning parent visibility is derived from the same three module permissions',()=>{
+  const denied={KarhaSaosaWorkspaceAccess:{p:{role:'invite',permissions:{modules:{
+    'planning:tree':'none','planning:timeline':'none','planning:costline':'none',
+  }}}}};
+  assert.equal(planningPermissionState('p',denied).visible,false);
+  denied.KarhaSaosaWorkspaceAccess.p.permissions.modules['planning:costline']='view';
+  assert.equal(planningPermissionState('p',denied).visible,true);
 });
 
 test('owner and legacy projects remain fully accessible',()=>{

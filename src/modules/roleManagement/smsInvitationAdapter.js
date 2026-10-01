@@ -30,6 +30,12 @@ export function createSmsInvitationAdapter({windowRef=globalThis.window}={}){
       if(!configured) return Object.freeze({sent:false,reason:'provider-not-configured'});
       return request(windowRef,`/api/v1/projects/${encodeURIComponent(projectId)}/invitations/${encodeURIComponent(invitationId)}/resend`,{method:'POST',body:'{}'});
     },
+    async updateMember({projectId,member}){
+      if(!configured) return Object.freeze({updated:false,reason:'provider-not-configured',member});
+      return request(windowRef,`/api/v1/projects/${encodeURIComponent(projectId)}/members`,{
+        method:'PATCH',body:JSON.stringify(member),
+      });
+    },
   });
 }
 

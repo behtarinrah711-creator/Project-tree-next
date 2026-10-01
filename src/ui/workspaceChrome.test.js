@@ -31,6 +31,15 @@ function harness({hash=''}={}){
   ['topbarProjectName','tabbar','bottomNav','workspaceProjectContext','workspaceProjectName','workspaceContextBack',
     'workspaceContextAction','projectSettingsTrigger','drawerOverlay','closeReportsPage','closeAccountingPage','closeSettingsPage'].forEach(id=>make(id));
   ids.get('drawerOverlay').classList.add('hidden');
+  const bottomNav=ids.get('bottomNav');
+  bottomNav.childNodes.push(...footers);
+  footers.forEach(item=>{item.parentNode=bottomNav;});
+  bottomNav.insertBefore=function(child,before){
+    const current=this.childNodes.indexOf(child);if(current>=0)this.childNodes.splice(current,1);
+    const index=before?this.childNodes.indexOf(before):-1;
+    this.childNodes.splice(index>=0?index:this.childNodes.length,0,child);child.parentNode=this;
+  };
+  bottomNav.removeChild=function(child){const index=this.childNodes.indexOf(child);if(index>=0)this.childNodes.splice(index,1);child.parentNode=null;};
   const events=new Map();
   const body=element('body');
   body.childNodes.push(ids.get('bottomNav'));
@@ -116,6 +125,19 @@ test('footer binding delegates navigation and routed surfaces own active state a
   assert.equal(h.ids.get('bottomHomeBtn').classList.contains('active'),true);
   assert.equal(h.ids.get('settingsPage').classList.contains('hidden'),true);
   assert.equal(h.ids.get('projectSettingsTrigger').classList.contains('active'),false);
+});
+
+test('planning footer item is removed from DOM only when all planning modules are denied',()=>{
+  const h=harness();
+  h.windowRef.KarhaSaosaWorkspaceAccess={A:{role:'invite',permissions:{modules:{
+    'planning:tree':'none','planning:timeline':'none','planning:costline':'none',
+  }}}};
+  h.chrome.updateWorkspaceContextBar();
+  assert.equal(h.ids.get('bottomPlanningBtn').parentNode,null);
+
+  h.windowRef.KarhaSaosaWorkspaceAccess.A.permissions.modules['planning:timeline']='view';
+  h.chrome.updateWorkspaceContextBar();
+  assert.equal(h.ids.get('bottomPlanningBtn').parentNode,h.ids.get('bottomNav'));
 });
 
 test('drawer event opens chrome and refreshes drawer/context presentation',()=>{

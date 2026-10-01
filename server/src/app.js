@@ -44,6 +44,11 @@ function invitationRoute(pathname){
   return null;
 }
 
+function memberRoute(pathname){
+  const match=/^\/api\/v1\/projects\/([^/]+)\/members$/.exec(pathname);
+  return match?{projectId:decodeURIComponent(match[1])}:null;
+}
+
 function invitationAccess(permissions){
   const values=Object.values(permissions || {});
   return {view:true,edit:values.some(value=>['edit','create','full'].includes(value)),modules:permissions || {}};
@@ -434,6 +439,60 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
             WHERE id=$1 RETURNING id,expires_at`,[item.id,hashToken(rawToken,sessionSecret),String(INVITATION_LIFETIME_DAYS),smsSent,emailSent],
         );
         return sendJson(response,200,{id:resent.rows[0].id,status:'invited',expiresAt:resent.rows[0].expires_at,smsSent,emailSent});
+      }
+
+      const memberEditRoute=memberRoute(url.pathname);
+      if(memberEditRoute && request.method==='PATCH'){
+        if(!PROJECT_ID_PATTERN.test(memberEditRoute.projectId)) return sendJson(response,400,{error:'invalid_project'});
+        const accountId=await authenticate(request,pool,sessionSecret);
+        if(!accountId) return sendJson(response,401,{error:'unauthorized'});
+        const body=await readJson(request,64*1024);
+        const phone=normalizeIranPhone(body.mobile);if(!phone) return sendJson(response,400,{error:'invalid_phone'});
+        const permissions=body.permissions && typeof body.permissions==='object' && !Array.isArray(body.permissions)?body.permissions:{};
+        const status=body.status==='inactive'?'inactive':'active';
+        const owner=await pool.query('SELECT id FROM projects WHERE id=$1 AND owner_account_id=$2',[memberEditRoute.projectId,accountId]);
+        if(!owner.rowCount) return sendJson(response,403,{error:'forbidden_project'});
+
+        const client=await pool.connect();
+        try{
+          await client.query('BEGIN');
+          const invitation=await client.query(
+            `UPDATE project_invitations SET role_key=$3,permissions=$4::jsonb,updated_at=now()
+              WHERE project_id=$1 AND phone=$2
+              RETURNING id,status`,
+            [memberEditRoute.projectId,phone,String(body.role||'member').slice(0,48),JSON.stringify(permissions)],
+          );
+          const membership=await client.query(
+            `SELECT m.role_id,m.account_id FROM project_memberships m JOIN accounts a ON a.id=m.account_id
+              WHERE m.project_id=$1 AND a.phone=$2 FOR UPDATE`,
+            [memberEditRoute.projectId,phone],
+          );
+          if(membership.rowCount){
+            await client.query(
+              `UPDATE project_roles SET display_name=$2,permissions=$3::jsonb,updated_at=now() WHERE id=$1`,
+              [membership.rows[0].role_id,String(body.role||'member').slice(0,48),JSON.stringify(invitationAccess(permissions))],
+            );
+            await client.query(
+              `UPDATE project_memberships SET status=$3,updated_at=now()
+                WHERE project_id=$1 AND account_id=$2`,
+              [memberEditRoute.projectId,membership.rows[0].account_id,status],
+            );
+          }else if(!invitation.rowCount){
+            await client.query('ROLLBACK');
+            return sendJson(response,404,{error:'member_not_found'});
+          }
+          const project=await client.query('SELECT payload FROM projects WHERE id=$1 FOR UPDATE',[memberEditRoute.projectId]);
+          const payload=project.rows[0]?.payload || {};
+          const member={...body,mobile:phone,status:membership.rowCount?status:'invited',permissions};
+          if(Array.isArray(payload.projectMembers)){
+            payload.projectMembers=payload.projectMembers.map(item=>item?.mobile===phone?{...item,...member}:item);
+            await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[memberEditRoute.projectId,JSON.stringify(payload)]);
+          }
+          await client.query('COMMIT');
+          return sendJson(response,200,{member,access:invitationAccess(permissions)});
+        }catch(error){
+          await client.query('ROLLBACK');throw error;
+        }finally{client.release();}
       }
 
       if(url.pathname === '/api/v1/workspace'){
