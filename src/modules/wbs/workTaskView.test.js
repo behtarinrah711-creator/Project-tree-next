@@ -63,6 +63,12 @@ test('task drag uses the same drop-line classes as stage drag', () => {
   const documentRef = new EventTarget();
   documentRef.defaultView = new EventTarget();
   documentRef.visibilityState = 'visible';
+  let indicator = null;
+  documentRef.createElement = () => {
+    indicator = row('indicator');
+    indicator.remove = () => {};
+    return indicator;
+  };
   const grip = new EventTarget();
   grip.setPointerCapture = () => {};
   grip.hasPointerCapture = () => false;
@@ -71,12 +77,16 @@ test('task drag uses the same drop-line classes as stage drag', () => {
   second.getBoundingClientRect = () => ({ top:0, height:20 });
   const rows = [first, second];
   const group = {
+    scrollTop:0,
+    getBoundingClientRect:() => ({ top:0 }),
     querySelectorAll:() => rows,
     insertBefore(item, before){
+      if(!rows.includes(item)) return;
       rows.splice(rows.indexOf(item), 1);
       rows.splice(rows.indexOf(before), 0, item);
     },
     appendChild(item){
+      if(!rows.includes(item)) return;
       rows.splice(rows.indexOf(item), 1);
       rows.push(item);
     },
@@ -86,9 +96,8 @@ test('task drag uses the same drop-line classes as stage drag', () => {
   grip.dispatchEvent(pointerEvent('pointerdown', 9));
   documentRef.dispatchEvent(pointerEvent('pointermove', 9));
 
-  assert.equal(second.classList.contains('wbs-drop-before'), true);
+  assert.equal(indicator.classList.contains('is-visible'), true);
   documentRef.dispatchEvent(pointerEvent('pointercancel', 9));
-  assert.equal(second.classList.contains('wbs-drop-before'), false);
 });
 
 test('task drag cleanup also runs when the browser cancels the mobile gesture', () => {
