@@ -45,3 +45,31 @@ test('completion waits for approval; rejection is typed and returns actionable',
   assert.equal(entity(store).approvedAt,400);
   assert.equal(store.getSnapshot().projects[0].tasks[0].progress,100);
 });
+
+test('cancel start clears the start and records history without touching pending approval',()=>{
+  const store=install(),actor={id:'a',name:'الف'};
+  assert.equal(todayApi.cancelStart('p1',ref,actor,()=>10).code,'not_started');
+  todayApi.start('p1',ref,actor,()=>20);
+  assert.equal(todayApi.cancelStart('p1',ref,actor,()=>30).ok,true);
+  assert.equal(entity(store).actualStart,null);
+  assert.equal(entity(store).executionHistory.at(-1).type,'start_cancelled');
+  todayApi.start('p1',ref,actor,()=>40);
+  todayApi.markComplete('p1',ref,actor,()=>50);
+  assert.equal(todayApi.cancelStart('p1',ref,actor,()=>60).code,'locked');
+  assert.ok(entity(store).actualStart);
+});
+
+test('responsible person can withdraw a pending check back to the previous tab',()=>{
+  const store=install(),owner={id:'a',name:'الف'},other={id:'b',name:'ب'};
+  todayApi.start('p1',ref,owner,()=>20);
+  todayApi.markComplete('p1',ref,owner,()=>30);
+  assert.equal(entity(store).completionSubmittedBy.id,'a');
+  assert.equal(todayApi.withdrawCompletion('p1',ref,other,()=>40).code,'not_submitter');
+  assert.equal(entity(store).completionState,'pending_approval');
+  assert.equal(todayApi.withdrawCompletion('p1',ref,owner,()=>50).ok,true);
+  assert.equal(entity(store).completionState,'incomplete');
+  assert.equal(entity(store).returnedToTodayOn,null);
+  assert.ok(entity(store).actualStart);
+  assert.equal(entity(store).executionHistory.at(-2).type,'completion_withdrawn');
+  assert.equal(entity(store).executionHistory.at(-1).type,'returned_to_previous');
+});

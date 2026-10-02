@@ -39,19 +39,37 @@ function renderComments(documentRef,item,onChanged){
   if(comments.length>2){ const more=documentRef.createElement('button'); more.type='button'; more.className='today-show-comments'; more.textContent=`مشاهده ${toPersianDigits(comments.length-2)} نظر قبلی`; more.addEventListener('click',()=>{ expanded=true; paint(); more.remove(); }); host.appendChild(more); }
   const form=documentRef.createElement('form'); form.className='today-comment-form'; form.innerHTML=`<input class="wbs-input" name="comment" minlength="${COMMENT_MIN_LENGTH}" placeholder="افزودن نظر"><button type="submit">ثبت</button>`; form.addEventListener('submit',event=>{ event.preventDefault(); const result=todayApi.addComment(activeProjectId,refOf(item),form.elements.comment.value,actor()); if(!result.ok){ window.KarhaUI?.showToast?.(`نظر حداقل ${toPersianDigits(COMMENT_MIN_LENGTH)} حرف باشد`); return; } onChanged?.(); }); host.appendChild(form); return host;
 }
-function historyLabel(type){ return ({started:'شروع شد',report_created:'گزارش ثبت شد',report_edited:'گزارش ویرایش شد',comment_added:'نظر ثبت شد',marked_complete:'انجام‌شده اعلام شد',sent_for_approval:'برای تأیید ارسال شد',approval_rejected:'تأیید رد شد',returned_to_active:'به فهرست فعال برگشت',approved:'تأیید نهایی شد'})[type]||type; }
+function historyLabel(type){ return ({started:'شروع شد',start_cancelled:'شروع لغو شد',report_created:'گزارش ثبت شد',report_edited:'گزارش ویرایش شد',comment_added:'نظر ثبت شد',marked_complete:'انجام‌شده اعلام شد',sent_for_approval:'برای تأیید ارسال شد',approval_rejected:'تأیید رد شد',returned_to_active:'به فهرست فعال برگشت',completion_withdrawn:'تیک انجام‌شدن برداشته شد',returned_to_previous:'به تب قبلی برگشت',approved:'تأیید نهایی شد'})[type]||type; }
 function renderHistory(documentRef,entity){ const history=(entity.executionHistory||[]).slice().sort((a,b)=>Number(b.at)-Number(a.at)); if(!history.length)return null; const details=documentRef.createElement('details'); details.className='today-history'; details.innerHTML='<summary>تاریخچه</summary>'; history.forEach(entry=>{ const row=documentRef.createElement('div'); row.textContent=`${historyLabel(entry.type)} · ${entry.actor?.name||'کاربر'} · ${formatMoment(entry.at)}`; details.appendChild(row); }); return details; }
 function renderCard(documentRef,project,item,today,onChanged){
   const entity=item.entity,status=executionStatus(entity),assignee=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.assigneeContactId||'')),contractor=contractorForItem(project,item).contact;
   const card=documentRef.createElement('article'); card.className='today-task-card'; card.dataset.entityId=item.id; card.dataset.entityKind=item.kind;
   const dateText=entity.scheduleStart===entity.scheduleEnd?formatDate(entity.scheduleStart):`${formatDate(entity.scheduleStart)} ← ${formatDate(entity.scheduleEnd)}`;
   const type=entity.type||item.work.type||'کار';
-  const startButton = entity.actualStart ? '' : '<button type="button" class="today-start" aria-label="شروع">شروع</button>';
-  card.innerHTML=`<div class="today-task-primary"><button type="button" class="today-complete" aria-label="اعلام انجام‌شدن" ${entity.actualStart || status==='pending_approval' ? '' : 'disabled'}>${status==='pending_approval'?'✓':'□'}</button>${startButton}<span class="wbs-type-chip ${TYPE_CLASSES.get(type)||'type-7'}">${esc(type)}</span><strong>${esc(entity.title||entity.text||'')}</strong></div><div class="today-task-meta"><span>${esc(item.path.join(' ← '))}</span>${contractor?`<span>پیمانکار: ${esc(contactName(contractor))}</span>`:''}</div><div class="today-task-meta"><span>${esc(dateText)}</span><span>${esc(remainingLabel(entity,today))}</span></div><div class="today-task-meta"><span>${assignee?`مسئول: ${esc(contactName(assignee))}`:''}</span><span>وضعیت: ${esc(statusLabel(status))}</span></div>`;
+  const pending = item.mode==='pending';
+  const statusText = pending
+    ? `<span class="today-status-slot">وضعیت: ${esc(statusLabel(status))}</span>`
+    : (entity.actualStart
+      ? `<span class="today-status-slot">وضعیت: ${esc(statusLabel(status))} <button type="button" class="today-cancel-start today-status-action" aria-label="لغو شروع">لغو شروع</button></span>`
+      : '<span class="today-status-slot">وضعیت: <button type="button" class="today-start today-status-action" aria-label="شروع">شروع</button></span>');
+  card.innerHTML=`<div class="today-task-primary"><button type="button" class="today-complete" aria-label="اعلام انجام‌شدن" ${entity.actualStart || pending ? '' : 'disabled'}>${pending?'✓':'□'}</button><span class="wbs-type-chip ${TYPE_CLASSES.get(type)||'type-7'}">${esc(type)}</span><strong>${esc(entity.title||entity.text||'')}</strong></div><div class="today-task-meta"><span>${esc(item.path.join(' ← '))}</span>${contractor?`<span>پیمانکار: ${esc(contactName(contractor))}</span>`:''}</div><div class="today-task-meta"><span>${esc(dateText)}</span><span>${esc(remainingLabel(entity,today))}</span></div><div class="today-task-meta"><span>${assignee?`مسئول: ${esc(contactName(assignee))}`:''}</span>${statusText}</div>`;
   const actions=documentRef.createElement('div'); actions.className='today-task-actions';
-  if(item.mode==='pending'){ const approve=documentRef.createElement('button'); approve.type='button'; approve.textContent='تأیید'; approve.addEventListener('click',()=>{todayApi.approve(activeProjectId,refOf(item),actor());onChanged?.();}); const reject=documentRef.createElement('button'); reject.type='button'; reject.className='is-danger'; reject.textContent='رد'; reject.addEventListener('click',()=>openReject(item,onChanged)); actions.append(approve,reject); }
-  else card.querySelector('.today-complete').addEventListener('click',()=>{ if(!entity.actualStart){ window.KarhaUI?.showToast?.('اول شروع را بزن'); return; } todayApi.markComplete(activeProjectId,refOf(item),actor());activeMode='pending';onChanged?.();});
-  card.querySelector('.today-start')?.addEventListener('click',()=>{todayApi.start(activeProjectId,refOf(item),actor());onChanged?.();});
+  if(pending){
+    const approve=documentRef.createElement('button'); approve.type='button'; approve.textContent='تأیید'; approve.addEventListener('click',()=>{todayApi.approve(activeProjectId,refOf(item),actor());onChanged?.();});
+    const reject=documentRef.createElement('button'); reject.type='button'; reject.className='is-danger'; reject.textContent='رد'; reject.addEventListener('click',()=>openReject(item,onChanged));
+    actions.append(approve,reject);
+    card.querySelector('.today-complete').addEventListener('click',()=>{
+      const submitter = entity.completionSubmittedBy?.id;
+      if(submitter && String(submitter)!==String(actor().id)){ window.KarhaUI?.showToast?.('فقط مسئول این کار می‌تواند تیک را بردارد'); return; }
+      const result=todayApi.withdrawCompletion(activeProjectId,refOf(item),actor());
+      if(!result.ok){ window.KarhaUI?.showToast?.('برداشتن تیک ممکن نیست'); return; }
+      onChanged?.();
+    });
+  } else {
+    card.querySelector('.today-complete').addEventListener('click',()=>{ if(!entity.actualStart){ window.KarhaUI?.showToast?.('اول شروع را بزن'); return; } todayApi.markComplete(activeProjectId,refOf(item),actor());activeMode='pending';onChanged?.();});
+    card.querySelector('.today-start')?.addEventListener('click',()=>{todayApi.start(activeProjectId,refOf(item),actor());onChanged?.();});
+    card.querySelector('.today-cancel-start')?.addEventListener('click',()=>{todayApi.cancelStart(activeProjectId,refOf(item),actor());onChanged?.();});
+  }
   const report=documentRef.createElement('button'); report.type='button'; report.textContent=ownLatestReport(entity)?'ویرایش گزارش':'ثبت گزارش'; report.addEventListener('click',()=>openReport(item,onChanged)); actions.appendChild(report);
   card.append(actions,renderReports(documentRef,entity),renderComments(documentRef,item,onChanged)); const history=renderHistory(documentRef,entity); if(history)card.appendChild(history); return card;
 }
