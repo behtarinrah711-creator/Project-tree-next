@@ -6,7 +6,10 @@ export function fundingReceiptsOf(project){
 }
 
 export function allocationsOf(project){
-  return fundingReceiptsOf(project).flatMap(row => (row.allocations || []).map(item => ({ ...item, receiptId: row.id })));
+  return [
+    ...fundingReceiptsOf(project).flatMap(row => (row.allocations || []).map(item => ({ ...item, receiptId: row.id }))),
+    ...(project?.fundingAllocations || []),
+  ];
 }
 
 export function allocatedFor(project, taskId, bucketId){
@@ -44,4 +47,16 @@ export function stopIntervalForItem(project, item, today = tehranTodayJalali()){
   const id = String(item?.id || '');
   const hit = openFundingStops(project, today).find(stop => stop.taskId === id);
   return hit ? { start: hit.start, end: hit.end, duration: hit.duration } : null;
+}
+
+export function poolReceived(project){
+  return fundingReceiptsOf(project).reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+}
+export function poolAllocated(project){
+  const fromReceipts = fundingReceiptsOf(project).flatMap(row => row.allocations || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  const fromPool = (project?.fundingAllocations || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  return fromReceipts + fromPool;
+}
+export function poolRemaining(project){
+  return Math.max(0, poolReceived(project) - poolAllocated(project));
 }
