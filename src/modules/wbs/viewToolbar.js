@@ -2,7 +2,6 @@ import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import {
   advanceExpansionLevel,
-  expandAll,
   getExpansionProgress,
   getExpandedIds,
 } from './wbsExpandState.js';
@@ -34,11 +33,6 @@ const CONFIG_ITEMS = [
   ['float','شناوری'],
   ['criticalPath','مسیر بحرانی'],
 ];
-
-// Level filters survive view renders, while expansion state starts collapsed.
-// Remember the projects whose initial Gantt filter state has already been
-// reconciled so a later manual collapse is not immediately undone.
-const initializedLevelExpansion = new Set();
 
 function activeProject(){
   const id = projectContext.getProjectId?.() || projectContext.getActiveProjectId?.() || null;
@@ -144,15 +138,6 @@ function createConfigTool(documentRef, root){
 function createLevelTool(documentRef, root, project){
   const options = ganttLevelOptions(project.tasks || []);
   const state = ganttLevelState();
-  const projectKey = String(project.id);
-  const hasSelectedDeeperLevel = options.some(option => option.key !== 'package' && state.get(option.key) !== false);
-  if(!initializedLevelExpansion.has(projectKey)){
-    initializedLevelExpansion.add(projectKey);
-    if(hasSelectedDeeperLevel){
-      expandAll(project.id, project.tasks || []);
-      queueMicrotask(refreshWbs);
-    }
-  }
   return createMenuTool(documentRef, {
     className:'wbs-gantt-level-toggle',
     ariaLabel:'لول‌های WBS',
@@ -167,10 +152,6 @@ function createLevelTool(documentRef, root, project){
       options.forEach(option => {
         menu.appendChild(checkboxRow(documentRef, option.label, state.get(option.key) !== false, checked => {
           setGanttLevelVisible(option.key, checked);
-          // A checked level must be immediately visible. Deeper selected levels can
-          // otherwise stay hidden behind a collapsed visible stage, making the
-          // combined «مرحله + کار» filter look broken.
-          if(checked && option.key !== 'package') expandAll(project.id, project.tasks || []);
           refreshWbs();
         }));
       });
