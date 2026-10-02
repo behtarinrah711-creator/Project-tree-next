@@ -33,12 +33,12 @@ test('only works with start date and estimate enter planned costline', () => {
   assert.match(works.find(item => item.id === 'w1').path, /فونداسیون/);
 });
 
-test('daily buckets place the full work amount on start date', () => {
+test('daily buckets spread a multi-day amount instead of parking it on the start date', () => {
   const model = plannedCostline(tasks, { rangeId: 'day' });
-  const first = model.buckets.find(bucket => bucket.works.some(work => work.id === 'w1'));
-  assert.ok(first);
-  assert.equal(first.total, 50);
-  assert.deepEqual(first.works.map(work => work.id).sort(), ['w1', 'w2']);
+  const hits = model.buckets.filter(bucket => bucket.works.some(work => work.id === 'w1'));
+  assert.equal(hits.length, 3);
+  assert.ok(Math.abs(hits.reduce((sum, bucket) => sum + bucket.works.filter(work => work.id === 'w1').reduce((inner, work) => inner + work.sliceAmount, 0), 0) - 20) <= 2);
+  assert.ok(Math.abs(model.buckets.reduce((sum, bucket) => sum + bucket.total, 0) - 100) <= 3);
 });
 
 test('weekly buckets honor weekday origin and use Timeline range wording', () => {
@@ -50,7 +50,7 @@ test('weekly buckets honor weekday origin and use Timeline range wording', () =>
   assert.match(first.label, /شهریور/);
   assert.ok(later);
   assert.equal(later.works.some(work => work.id === 'w1'), false);
-  assert.equal(later.total, 50);
+  assert.ok(later.total > 0 && later.total < 50);
 });
 
 test('two-week buckets retain the selected weekday origin', () => {

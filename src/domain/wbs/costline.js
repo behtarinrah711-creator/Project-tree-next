@@ -141,7 +141,7 @@ export function buildBuckets({ rangeId = 'week', originWeekday = 4, works = [] }
   const range = COSTLINE_RANGES.find(item => item.id === rangeId) || COSTLINE_RANGES[1];
   const dated = works.filter(work => jalaliDayNumber(work.start) != null);
   if(!dated.length) return [];
-  const days = dated.map(work => jalaliDayNumber(work.start));
+  const days = dated.flatMap(work => [jalaliDayNumber(work.start), jalaliDayNumber(work.end)].filter(day => day != null));
   const minDay = Math.min(...days);
   const maxDay = Math.max(...days);
   const buckets = [];
@@ -203,7 +203,7 @@ export function sliceShare(work, bucket){
   if(accrual === 'end') return end >= bucket.startDay && end <= bucket.endDay ? amount : 0;
   const overlap = Math.max(0, Math.min(end, bucket.endDay) - Math.max(start, bucket.startDay) + 1);
   const duration = Math.max(1, end - start + 1);
-  return amount * overlap / duration;
+  return Math.round(amount * overlap / duration);
 }
 
 export function assignWorksToBuckets(buckets, works){
