@@ -66,7 +66,6 @@ test('task drag uses the same drop-line classes as stage drag', () => {
   let indicator = null;
   documentRef.createElement = () => {
     indicator = row('indicator');
-    indicator.style = {};
     indicator.remove = () => {};
     return indicator;
   };
@@ -82,6 +81,7 @@ test('task drag uses the same drop-line classes as stage drag', () => {
     getBoundingClientRect:() => ({ top:0 }),
     querySelectorAll:() => rows,
     insertBefore(item, before){
+      if(!rows.includes(item)) return;
       rows.splice(rows.indexOf(item), 1);
       rows.splice(rows.indexOf(before), 0, item);
     },
