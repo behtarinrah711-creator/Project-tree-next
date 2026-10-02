@@ -400,6 +400,7 @@ function enhance(windowRef, documentRef){
   gantt.classList.toggle('hide-gantt-dates', !config.dates);
   gantt.classList.toggle('hide-gantt-actual', !config.actualProgress);
   gantt.classList.toggle('hide-gantt-planned', !config.plannedProgress);
+  gantt.classList.toggle('hide-gantt-baseline', !config.baseline);
   const project = activeProject();
   if(!project) return;
   const entries = buildTimelineRows(project.tasks || [], project.id);
@@ -416,7 +417,7 @@ function enhance(windowRef, documentRef){
 
   paintHierarchy(gantt, entries);
   syncRowHeights(gantt);
-  const baselineDay = baselineFinishDay(project);
+  const baselineDay = config.baseline ? baselineFinishDay(project) : null;
   gantt.dataset.baselineDay = Number.isFinite(baselineDay) ? String(baselineDay) : '';
   paintScaleGeometry(gantt, entries, documentRef, baselineDay);
   paintProgress(gantt, entries);

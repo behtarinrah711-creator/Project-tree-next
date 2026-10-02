@@ -1,5 +1,6 @@
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
+import { captureBaseline } from '../../domain/wbs/baseline.js';
 import { isStage } from '../../domain/wbs/normalize.js';
 import {
   advanceExpansionLevel,
@@ -33,6 +34,7 @@ const CONFIG_ITEMS = [
   ['dependencies','خطوط پیش‌نیاز'],
   ['float','شناوری'],
   ['criticalPath','مسیر بحرانی'],
+  ['baseline','بیس‌لاین'],
 ];
 
 function activeProject(){
@@ -105,7 +107,11 @@ function createMenuTool(documentRef, { className, ariaLabel, iconPath, menuId, b
     closeMenus(root, next ? menu : null);
     menu.classList.toggle('is-open', next);
     button.setAttribute('aria-expanded', next ? 'true' : 'false');
-    if(next) positionMenu(button, menu);
+    if(next){
+      menu.textContent = '';
+      buildMenu(menu);
+      positionMenu(button, menu);
+    }
   });
 
   wrap.append(button, menu);
@@ -125,12 +131,13 @@ function createConfigTool(documentRef, root){
       title.textContent = 'نمایش در نمودار';
       menu.appendChild(title);
       const state = ganttConfig();
+      const hasBaseline = Boolean(activeProject()?.baselineFinish);
       CONFIG_ITEMS.forEach(([key, label]) => {
         menu.appendChild(checkboxRow(documentRef, label, state[key], checked => {
           setGanttConfig(key, checked);
           if(key === 'dependencies') setTimelineDependenciesVisible(checked);
           refreshWbs();
-        }));
+        }, { disabled:key === 'baseline' && !hasBaseline }));
       });
     },
   });
@@ -207,6 +214,39 @@ function createOrderButton(documentRef){
   return button;
 }
 
+
+function createBaselineButton(documentRef){
+  const button = documentRef.createElement('button');
+  button.type = 'button';
+  button.className = 'wbs-gantt-header-tool wbs-gantt-baseline-set';
+  const hasBaseline = Boolean(activeProject()?.baselineFinish);
+  button.setAttribute('aria-label', 'ثبت بیس‌لاین');
+  button.setAttribute('title', hasBaseline ? 'بیس‌لاین ثبت شده؛ ثبت دوباره جایگزینش می‌کند' : 'ثبت بیس‌لاین از برنامه فعلی');
+  button.innerHTML = `${materialIconMarkup(DATE_ORDER_ICON)}<span>بیس‌لاین</span>`;
+  button.addEventListener('click', () => {
+    const project = activeProject();
+    if(!project) return;
+    const apply = () => {
+      const captured = captureBaseline(project);
+      if(!captured.ok){
+        window.KarhaUI?.openConfirm?.('برای ثبت بیس‌لاین اول باید کارها تاریخ داشته باشند.', () => {}, 'باشه');
+        return;
+      }
+      projectRepository.updateProject(project.id, () => captured.project);
+      setGanttConfig('baseline', true);
+      refreshWbs();
+    };
+    if(project.baselineFinish){
+      const message = 'بیس‌لاین فعلی جایگزین شود؟ تاریخ‌های قبلی مقایسه پاک می‌شوند.';
+      if(typeof window.KarhaUI?.openConfirm === 'function') window.KarhaUI.openConfirm(message, apply, 'جایگزین');
+      else if(window.confirm(message)) apply();
+      return;
+    }
+    apply();
+  });
+  return button;
+}
+
 export function ensureViewToolbar(root, viewId){
   if(viewId !== 'timeline') return;
   const project = activeProject();
@@ -232,6 +272,9 @@ export function ensureViewToolbar(root, viewId){
   let expand = root.querySelector('.wbs-tree-toggle');
   if(!expand) expand = createExpandButton(root.ownerDocument, project);
 
+  let baseline = root.querySelector('.wbs-gantt-baseline-set');
+  if(!baseline) baseline = createBaselineButton(root.ownerDocument);
+
   let order = root.querySelector('.wbs-gantt-order-toggle');
   if(!order) order = createOrderButton(root.ownerDocument);
 
@@ -244,7 +287,7 @@ export function ensureViewToolbar(root, viewId){
   // Keep toolbar setup idempotent. Timeline enhancement is driven by a
   // MutationObserver; replacing/re-appending the same controls on every pass
   // would create a self-sustaining mutation loop and keep the Gantt unstable.
-  [timescale, levelWrap, configWrap, order, expand].forEach(control => {
+  [timescale, baseline, levelWrap, configWrap, order, expand].forEach(control => {
     if(control.parentElement !== actions) actions.appendChild(control);
   });
 
