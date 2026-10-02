@@ -62,7 +62,7 @@ import { taskIcons } from '../ui/taskIcons.js';
 import * as projectRecordReferences from '../domain/projectRecordReferences.js';
 import { installApplicationTheme } from '../core/applicationTheme.js';
 import { createFoundationCloudRuntime } from '../cloud/foundationCloudComposition.js';
-import { prepareSaosaWorkspace, isSaosaHost } from '../cloud/saosaWorkspaceSync.js';
+import { prepareSaosaWorkspace, refreshSaosaWorkspace, isSaosaHost } from '../cloud/saosaWorkspaceSync.js';
 
 /** Start the modular API, then the classic application runtime, then routing. */
 export async function startApplication({
@@ -144,6 +144,21 @@ export async function startApplication({
   }
   await loadRuntime();
   saosaWorkspace.attach?.();
+  if(saosaWorkspace.enabled && saosaWorkspace.authenticated){
+    let refreshPromise=null;
+    windowRef.addEventListener('karha:drawer-open',()=>{
+      if(refreshPromise) return;
+      refreshPromise=refreshSaosaWorkspace({windowRef,store:appDataStore})
+        .then(result=>{
+          if(!result.changed) return;
+          windowRef.KarhaLegacy?.renderDrawerProjectList?.();
+          windowRef.KarhaApp?.router?.sync?.();
+          windowRef.dispatchEvent(new windowRef.CustomEvent('karha:projects-recovered'));
+        })
+        .catch(error=>console.warn('Saosa workspace refresh failed',error))
+        .finally(()=>{refreshPromise=null;});
+    });
+  }
   // Attach after install so KarhaApp holds the live store reference.
   if(windowRef.KarhaApp && windowRef.KarhaAppData){
     try{
