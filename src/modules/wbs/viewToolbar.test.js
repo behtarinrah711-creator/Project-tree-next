@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { ganttMenuPosition } from './ganttMenuGeometry.js';
 
 test('Gantt menu stays within the right edge of a mobile viewport', () => {
@@ -22,4 +23,10 @@ test('Gantt menu opens above its trigger when the space below is insufficient', 
     ),
     {left:20, top:395},
   );
+});
+
+
+test('checking a deeper Gantt level reveals it through collapsed stages', async () => {
+  const source = await readFile(new URL('./viewToolbar.js', import.meta.url), 'utf8');
+  assert.match(source, /if\(checked && option\.key !== 'package'\) expandAll\(project\.id, project\.tasks \|\| \[\]\)/);
 });
