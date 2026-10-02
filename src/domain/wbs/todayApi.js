@@ -89,6 +89,7 @@ export const todayApi = {
       completionSubmittedAt:at, actualFinishDay:null,
       actualStart: entity.actualStart,
       ...(ref.kind === 'work' ? { progressBeforeApproval:Number(entity.progress) || 0, status:'in_progress' } : {}),
+      completionSubmittedBy:by,
       executionHistory:[...(entity.executionHistory || []), event('marked_complete', by, at), event('sent_for_approval', by, at)],
       updatedAt:at,
     }); }, { completion:false });
@@ -104,6 +105,55 @@ export const todayApi = {
       ...(ref.kind === 'work' ? { progress:100, status:'completed' } : {}),
       executionHistory:[...(entity.executionHistory || []), event('approved', by, at)], updatedAt:at,
     }), { completion:true });
+  },
+
+
+  cancelStart(projectId, ref, actor, clock = Date.now){
+    const at = clock(); const by = actorValue(actor);
+    let code = null;
+    const result = mutate(projectId, ref, entity => {
+      if(entity.completionState === 'pending_approval' || entity.completionState === 'approved' || entity.completed){ code = 'locked'; return entity; }
+      if(!entity.actualStart){ code = 'not_started'; return entity; }
+      code = 'ok';
+      const reports = (entity.executionReports || []).some(report => report && !report.trashed);
+      return {
+        ...entity,
+        actualStart:null,
+        workflowStatus: reports || Number(entity.progress) > 0 ? 'in_progress' : 'not_started',
+        executionHistory:[...(entity.executionHistory || []), event('start_cancelled', by, at)],
+        updatedAt:at,
+      };
+    });
+    if(!result.ok) return result;
+    return code === 'ok' ? result : { ok:false, code };
+  },
+
+  withdrawCompletion(projectId, ref, actor, clock = Date.now){
+    const at = clock(); const by = actorValue(actor);
+    let code = null;
+    const result = mutate(projectId, ref, entity => {
+      if(entity.completionState !== 'pending_approval'){ code = 'not_pending'; return entity; }
+      const submitter = entity.completionSubmittedBy?.id;
+      if(submitter && String(submitter) !== by.id){ code = 'not_submitter'; return entity; }
+      code = 'ok';
+      return {
+        ...entity,
+        completed:false,
+        done:false,
+        completionState:'incomplete',
+        workflowStatus: entity.actualStart ? 'in_progress' : 'not_started',
+        completionSubmittedAt:null,
+        completionSubmittedBy:null,
+        actualFinishDay:null,
+        approvedAt:null,
+        returnedToTodayOn:null,
+        ...(ref.kind === 'work' ? { progress:Number(entity.progressBeforeApproval) || 0, status:'in_progress' } : {}),
+        executionHistory:[...(entity.executionHistory || []), event('completion_withdrawn', by, at), event('returned_to_previous', by, at)],
+        updatedAt:at,
+      };
+    }, { completion:false });
+    if(!result.ok) return result;
+    return code === 'ok' ? result : { ok:false, code };
   },
 
   reject(projectId, ref, reason, actor, clock = Date.now){

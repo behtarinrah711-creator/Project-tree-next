@@ -58,7 +58,8 @@ test('shopping is a native WBS view with its own modular surface', async ({ page
   await expect(card).toContainText('اهمیت: زیاد');
   await expect(card).toContainText('۱۰٬۰۰۰ تومان');
   await expect(card).toContainText('مسئول: مهندس احمدی');
-  await expect(card).toContainText('وضعیت: خرید شروع نشده');
+  await expect(card.locator('.today-status-slot .today-start')).toHaveText('شروع');
+  await expect(card).not.toContainText('خرید شروع نشده');
   await expect(page.locator('.shopping-item-card[data-entity-id="w2"]')).toHaveCount(0);
   await expect(page.locator('.wbs-toolbar')).toHaveCount(0);
   await expect(page.locator('.wbs-tree')).toHaveCount(0);
