@@ -25,12 +25,16 @@ test('same author edits the latest report while another author creates the next 
 
 test('completion waits for approval; rejection is typed and returns actionable',()=>{
   const store=install(),actor={id:'a',name:'الف'};
+  todayApi.markComplete('p1',ref,actor,()=>50);
+  assert.equal(entity(store).completionState,'incomplete');
+  todayApi.start('p1',ref,actor,()=>80);
   todayApi.markComplete('p1',ref,actor,()=>100);
   assert.equal(entity(store).completionState,'pending_approval');
   assert.equal(entity(store).completed,false);
   assert.equal(todayApi.reject('p1',ref,'کوتاه',actor,()=>200).ok,true);
   assert.equal(entity(store).executionComments.at(-1).type,'approval_rejected');
   assert.equal(entity(store).executionHistory.at(-1).type,'returned_to_active');
+  todayApi.start('p1',ref,actor,()=>280);
   todayApi.markComplete('p1',ref,actor,()=>300);
   todayApi.approve('p1',ref,actor,()=>400);
   assert.equal(entity(store).completionState,'approved');
