@@ -132,6 +132,25 @@ async function acceptPhoneInvitations(client, accountId, phone){
   return pending.rows.map(row=>row.project_id);
 }
 
+async function refreshAccountInvitations(pool, accountId){
+  const client=await pool.connect();
+  try{
+    await client.query('BEGIN');
+    const account=await client.query('SELECT phone FROM accounts WHERE id=$1 FOR UPDATE',[accountId]);
+    if(account.rowCount){
+      await acceptPhoneInvitations(client,accountId,account.rows[0].phone);
+    }
+    const workspace=await readWorkspace(client,accountId);
+    await client.query('COMMIT');
+    return workspace;
+  }catch(error){
+    await client.query('ROLLBACK');
+    throw error;
+  }finally{
+    client.release();
+  }
+}
+
 const PROJECT_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
 const DEFAULT_ROLES = [
   ['owner', 'مالک', {view:true, edit:true, manageMembers:true, manageRoles:true, delete:true}],
@@ -498,7 +517,10 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
       if(url.pathname === '/api/v1/workspace'){
         const accountId = await authenticate(request, pool, sessionSecret);
         if(!accountId) return sendJson(response, 401, {error: 'unauthorized'});
-        if(request.method === 'GET') return sendJson(response, 200, await readWorkspace(pool, accountId));
+        // A user can receive more invitations while an existing 30-day session
+        // is still valid. Activate those invitations on every authoritative
+        // workspace refresh instead of requiring logout/login to run OTP verify.
+        if(request.method === 'GET') return sendJson(response, 200, await refreshAccountInvitations(pool, accountId));
         if(request.method === 'PUT'){
           const body = await readJson(request);
           const snapshot = normalizeWorkspaceSnapshot(body.snapshot);
