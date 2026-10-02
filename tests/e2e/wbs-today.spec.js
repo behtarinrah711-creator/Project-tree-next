@@ -71,6 +71,7 @@ test('report is edited in place with edit time and upload placeholders remain di
 
 test('completion enters pending approval, rejection returns Today with typed newest comment, and approval is final',async({page})=>{
   let card=page.locator('.today-task-card[data-entity-id="today-task"]');
+  await card.locator('.today-start').click();
   await card.locator('.today-complete:not(.today-start)').click();
   await expect(page.locator('.wbs-today-frame')).toHaveAttribute('data-mode','pending');
   card=page.locator('.today-task-card[data-entity-id="today-task"]');

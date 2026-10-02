@@ -5,7 +5,8 @@ import { createViewToolbar } from './viewHeader.js';
 import { uid } from '../../data/projectFactories.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
-import { allocatedFor, fundingReceiptsOf } from '../../domain/wbs/fundingReceipts.js';
+import { allocatedFor, fundingReceiptsOf, poolRemaining } from '../../domain/wbs/fundingReceipts.js';
+import { openNumpadGeneric } from '../../ui/numpad.js';
 
 const money = value => new Intl.NumberFormat('fa-IR').format(Math.round(Number(value) || 0));
 const BAR_WIDTH = 28;
@@ -105,10 +106,16 @@ function openDepositSheet(project, refresh){
     title: 'واریز کارفرما',
     saveLabel: 'ذخیره',
     body(host){
-      const amount = document.createElement('input');
+      const amount = document.createElement('button');
+      amount.type = 'button';
       amount.className = 'wbs-input';
       amount.name = 'amount';
-      amount.inputMode = 'numeric';
+      amount.dataset.value = '';
+      amount.textContent = 'مبلغ را وارد کنید';
+      amount.addEventListener('click', () => openNumpadGeneric(amount.dataset.value, value => {
+        amount.dataset.value = String(value || '');
+        amount.textContent = amount.dataset.value ? new Intl.NumberFormat('fa-IR').format(Number(amount.dataset.value)) + ' تومان' : 'مبلغ را وارد کنید';
+      }, { suffix: ' تومان' }));
       host.appendChild(fieldRow('مبلغ', amount));
       host.appendChild(fieldRow('تاریخ واریز', dateButton('depositDate', '')));
       const party = document.createElement('input');
@@ -126,7 +133,7 @@ function openDepositSheet(project, refresh){
       host.appendChild(hint);
     },
     onSave(host){
-      const amount = Number(String(host.querySelector('[name="amount"]').value).replace(/[^0-9.]/g, ''));
+      const amount = Number(host.querySelector('[name="amount"]').dataset.value || 0);
       const depositDate = host.querySelector('[name="depositDate"]').dataset.value;
       if(!amount || !depositDate){
         window.KarhaUI?.showToast?.('مبلغ و تاریخ واریز لازم است');
@@ -221,42 +228,61 @@ function openBucketSheet(project, bucket, refresh){
     saveLabel: 'بستن',
     onSave: () => true,
     body(host){
+      const current = projectRepository.getActiveProject(project.id) || project;
+      const pool = document.createElement('div');
+      pool.className = 'wbs-note wbs-delay-summary';
+      pool.textContent = `مانده بودجه: ${money(poolRemaining(current))} تومان`;
+      host.appendChild(pool);
       if(!bucket.works.length){
-        host.textContent = 'کاری در این بازه نیست.';
+        host.append('کاری در این بازه نیست.');
         return;
       }
       bucket.works.forEach(work => {
         const slice = Number(work.sliceAmount) || 0;
-        const covered = allocatedFor(project, work.id, bucket.id);
+        const covered = allocatedFor(current, work.id, bucket.id);
         const card = document.createElement('article');
         card.className = 'wbs-costline-work';
+        card.innerHTML = `<h4>${escapeText(work.text)}</h4><p>مرحله: ${escapeText(work.path || '—')}</p><p>شروع: ${escapeText(formatJalaliDisplay(work.start) || work.start || '—')}</p><p>پایان: ${escapeText(formatJalaliDisplay(work.end) || work.end || '—')}</p><p>سهم این بازه: ${escapeText(money(slice))} تومان</p><p>تأمین‌شده: ${escapeText(money(covered))} تومان</p><p>کل برآورد: ${escapeText(money(work.amount))} تومان</p>`;
+        const mode = document.createElement('select');
+        mode.className = 'wbs-input';
+        [['spread','پخش روی مدت'],['start','اول کار'],['end','آخر کار']].forEach(([value, label]) => {
+          const option = document.createElement('option');
+          option.value = value;
+          option.textContent = label;
+          option.selected = (work.accrual || 'spread') === value;
+          mode.appendChild(option);
+        });
+        mode.addEventListener('change', () => {
+          projectRepository.updateProject(project.id, row => setAccrual(row, work.id, mode.value));
+          markDirty(project.id);
+          persist({ local:false });
+          refresh();
+        });
+        card.appendChild(fieldRow('زمان پول', mode));
         const tick = document.createElement('label');
         tick.className = 'wbs-note';
         const box = document.createElement('input');
         box.type = 'checkbox';
         box.checked = covered + 1 >= slice && slice > 0;
         box.addEventListener('change', () => {
-          const current = projectRepository.getActiveProject(project.id) || project;
-          const receipts = fundingReceiptsOf(current).filter(row => receiptRemaining(row) > 0 || (row.allocations || []).some(item => String(item.taskId) === String(work.id) && String(item.bucketId) === String(bucket.id)));
-          if(box.checked && !receipts.length){
+          const live = projectRepository.getActiveProject(project.id) || project;
+          if(box.checked && poolRemaining(live) + 1 < slice){
             box.checked = false;
-            window.KarhaUI?.showToast?.('اول واریز را ثبت کنید');
+            window.KarhaUI?.showToast?.('مانده بودجه کافی نیست');
             return;
           }
           projectRepository.updateProject(project.id, row => ({
             ...row,
-            fundingReceipts: fundingReceiptsOf(row).map(receipt => {
-              const allocations = (receipt.allocations || []).filter(item => !(String(item.taskId) === String(work.id) && String(item.bucketId) === String(bucket.id)));
-              if(box.checked && receipt.id === receipts[0].id) allocations.push({ taskId: work.id, bucketId: bucket.id, amount: slice });
-              return { ...receipt, allocations };
-            }),
+            fundingAllocations: [
+              ...(row.fundingAllocations || []).filter(item => !(String(item.taskId) === String(work.id) && String(item.bucketId) === String(bucket.id))),
+              ...(box.checked ? [{ taskId: work.id, bucketId: bucket.id, amount: slice }] : []),
+            ],
           }));
           markDirty(project.id);
           persist({ local:false });
           refresh();
         });
         tick.append(box, document.createTextNode(' تأمین همین برش'));
-        card.innerHTML = `<h4>${escapeText(work.text)}</h4><p>سهم این بازه: ${escapeText(money(slice))} تومان</p><p>تأمین‌شده: ${escapeText(money(covered))} تومان</p><p>کل برآورد: ${escapeText(money(work.amount))} تومان</p>`;
         card.appendChild(tick);
         host.appendChild(card);
       });
@@ -264,10 +290,18 @@ function openBucketSheet(project, bucket, refresh){
   });
 }
 
+function setAccrual(project, taskId, accrual){
+  const walk = nodes => (nodes || []).map(node => {
+    if(!node) return node;
+    const workTasks = (node.workTasks || []).map(task => String(task.id) === String(taskId) ? { ...task, fundingAccrual: accrual } : task);
+    const self = String(node.id) === String(taskId) ? { ...node, fundingAccrual: accrual } : node;
+    return { ...self, workTasks, subtasks: walk(node.subtasks) };
+  });
+  return { ...project, tasks: walk(project.tasks) };
+}
+
 function escapeText(value){
-  return String(value ?? '').replace(/[&<>"']/g, char => ({
-    '&': '&', '<': '<', '>': '>', '"': '"', "'": '&#39;',
-  })[char]);
+  return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&','<':'<','>':'>','"':'"',"'":'&#39;'}[char]));
 }
 
 export function resetCostlineState(){

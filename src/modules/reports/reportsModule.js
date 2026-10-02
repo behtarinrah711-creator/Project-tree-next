@@ -1,6 +1,7 @@
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { renderDelayView, DELAY_ICON } from '../wbs/delayView.js';
+import { renderDoneWorks } from './doneWorksView.js';
 import { openProjectFinishSheet } from '../wbs/homeView.js';
 
 const REPORT_ICON = 'M160-120v-80h640v80H160Zm40-160q-33 0-56.5-23.5T120-360v-400q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v400q0 33-23.5 56.5T760-280H200Zm0-80h560v-400H200v400Zm80-80h80v-160h-80v160Zm160 0h80v-280h-80v280Zm160 0h80v-80h-80v80Z';
@@ -58,6 +59,7 @@ export const reportsModule = {
     [
       {id:'reports',label:'قراردادها',icon:REPORT_ICON},
       {id:'delay',label:'دیرکردها',icon:DELAY_ICON},
+      {id:'done',label:'کارهای انجام‌شده',icon:DELAY_ICON},
     ].forEach(view=>{
       const button=document.createElement('button');
       button.type='button';
@@ -74,6 +76,10 @@ export const reportsModule = {
 
     if(activeReportView === 'delay'){
       body.appendChild(renderDelayView(project, document, openProjectFinishSheet));
+      return;
+    }
+    if(activeReportView === 'done'){
+      body.appendChild(renderDoneWorks(project, document));
       return;
     }
 
