@@ -35,6 +35,11 @@ const CONFIG_ITEMS = [
   ['criticalPath','مسیر بحرانی'],
 ];
 
+// Level filters survive view renders, while expansion state starts collapsed.
+// Remember the projects whose initial Gantt filter state has already been
+// reconciled so a later manual collapse is not immediately undone.
+const initializedLevelExpansion = new Set();
+
 function activeProject(){
   const id = projectContext.getProjectId?.() || projectContext.getActiveProjectId?.() || null;
   return id ? projectRepository.getActiveProject(id) : null;
@@ -137,6 +142,17 @@ function createConfigTool(documentRef, root){
 }
 
 function createLevelTool(documentRef, root, project){
+  const options = ganttLevelOptions(project.tasks || []);
+  const state = ganttLevelState();
+  const projectKey = String(project.id);
+  const hasSelectedDeeperLevel = options.some(option => option.key !== 'package' && state.get(option.key) !== false);
+  if(!initializedLevelExpansion.has(projectKey)){
+    initializedLevelExpansion.add(projectKey);
+    if(hasSelectedDeeperLevel){
+      expandAll(project.id, project.tasks || []);
+      queueMicrotask(refreshWbs);
+    }
+  }
   return createMenuTool(documentRef, {
     className:'wbs-gantt-level-toggle',
     ariaLabel:'لول‌های WBS',
@@ -148,8 +164,7 @@ function createLevelTool(documentRef, root, project){
       title.className = 'wbs-gantt-menu-title';
       title.textContent = 'لول‌های WBS';
       menu.appendChild(title);
-      const state = ganttLevelState();
-      ganttLevelOptions(project.tasks || []).forEach(option => {
+      options.forEach(option => {
         menu.appendChild(checkboxRow(documentRef, option.label, state.get(option.key) !== false, checked => {
           setGanttLevelVisible(option.key, checked);
           // A checked level must be immediately visible. Deeper selected levels can
