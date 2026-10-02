@@ -200,6 +200,11 @@ export function bindTaskReorder(group, row, { projectId, workId, taskId, onChang
       eventTarget.removeEventListener('pointermove', move, true);
       eventTarget.removeEventListener('pointerup', end, true);
       eventTarget.removeEventListener('pointercancel', end, true);
+      if(eventTarget !== documentRef){
+        documentRef.removeEventListener('pointermove', move);
+        documentRef.removeEventListener('pointerup', end);
+        documentRef.removeEventListener('pointercancel', end);
+      }
       documentRef.defaultView?.removeEventListener('blur', end);
       documentRef.removeEventListener('visibilitychange', onVisibilityChange);
       if(grip.hasPointerCapture?.(pointerId)){
@@ -225,6 +230,11 @@ export function bindTaskReorder(group, row, { projectId, workId, taskId, onChang
     eventTarget.addEventListener('pointermove', move, { capture:true, passive:false });
     eventTarget.addEventListener('pointerup', end, true);
     eventTarget.addEventListener('pointercancel', end, true);
+    if(eventTarget !== documentRef){
+      documentRef.addEventListener('pointermove', move);
+      documentRef.addEventListener('pointerup', end);
+      documentRef.addEventListener('pointercancel', end);
+    }
     documentRef.defaultView?.addEventListener('blur', end);
     documentRef.addEventListener('visibilitychange', onVisibilityChange);
     try{ grip.setPointerCapture(event.pointerId); }catch(_error){}
