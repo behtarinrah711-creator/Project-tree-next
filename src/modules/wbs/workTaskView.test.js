@@ -70,7 +70,17 @@ test('task drag uses the same drop-line classes as stage drag', () => {
   const second = row('second');
   second.getBoundingClientRect = () => ({ top:0, height:20 });
   const rows = [first, second];
-  const group = { querySelectorAll:() => rows };
+  const group = {
+    querySelectorAll:() => rows,
+    insertBefore(item, before){
+      rows.splice(rows.indexOf(item), 1);
+      rows.splice(rows.indexOf(before), 0, item);
+    },
+    appendChild(item){
+      rows.splice(rows.indexOf(item), 1);
+      rows.push(item);
+    },
+  };
 
   bindTaskReorder(group, first, { projectId:'project', workId:'work', taskId:'first', documentRef });
   grip.dispatchEvent(pointerEvent('pointerdown', 9));
