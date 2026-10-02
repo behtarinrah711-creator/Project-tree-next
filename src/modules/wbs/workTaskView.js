@@ -203,14 +203,8 @@ export function bindTaskReorder(group, row, { projectId, workId, taskId, onChang
         group.appendChild(row);
       }
       if(indicator){
-        const target = before || others[others.length - 1];
-        const targetRect = target?.getBoundingClientRect();
-        const groupRect = group.getBoundingClientRect();
-        const boundary = before ? targetRect?.top : targetRect?.bottom;
-        if(Number.isFinite(boundary)){
-          indicator.style.transform = `translateY(${boundary - groupRect.top + group.scrollTop}px)`;
-          indicator.classList.add('is-visible');
-        }
+        group.insertBefore(indicator, before || row);
+        indicator.classList.add('is-visible');
       }
     };
     const cleanup = () => {
