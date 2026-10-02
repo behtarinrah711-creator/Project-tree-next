@@ -22,6 +22,7 @@ export function jalaliDayNumber(value){
 export function executionStatus(entity){
   if(entity?.completionState === 'pending_approval') return 'pending_approval';
   if(entity?.completionState === 'approved' || entity?.completed) return 'approved';
+  if(entity?.actualStart) return 'in_progress';
   if((entity?.executionReports || []).some(report => report && !report.trashed)) return 'in_progress';
   if(Number(entity?.progress) > 0) return 'in_progress';
   return 'not_started';

@@ -64,11 +64,28 @@ export const todayApi = {
     }));
   },
 
+  start(projectId, ref, actor, clock = Date.now){
+    const at = clock(); const by = actorValue(actor);
+    const day = tehranTodayJalali(new Date(at));
+    return mutate(projectId, ref, entity => {
+      if(entity.actualStart) return entity;
+      return {
+        ...entity,
+        actualStart: day,
+        workflowStatus: entity.workflowStatus === 'approved' ? entity.workflowStatus : 'in_progress',
+        executionHistory: [...(entity.executionHistory || []), event('started', by, at, { actualStart: day })],
+        updatedAt: at,
+      };
+    });
+  },
+
   markComplete(projectId, ref, actor, clock = Date.now){
     const at = clock(); const by = actorValue(actor);
+    const day = tehranTodayJalali(new Date(at));
     return mutate(projectId, ref, entity => ({
       ...entity, completed:false, done:false, completionState:'pending_approval', workflowStatus:'pending_approval',
       completionSubmittedAt:at, actualFinishDay:null,
+      actualStart: entity.actualStart || entity.scheduleStart || day,
       ...(ref.kind === 'work' ? { progressBeforeApproval:Number(entity.progress) || 0, status:'in_progress' } : {}),
       executionHistory:[...(entity.executionHistory || []), event('marked_complete', by, at), event('sent_for_approval', by, at)],
       updatedAt:at,

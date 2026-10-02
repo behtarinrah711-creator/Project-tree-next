@@ -71,7 +71,7 @@ test('report is edited in place with edit time and upload placeholders remain di
 
 test('completion enters pending approval, rejection returns Today with typed newest comment, and approval is final',async({page})=>{
   let card=page.locator('.today-task-card[data-entity-id="today-task"]');
-  await card.locator('.today-complete').click();
+  await card.locator('.today-complete:not(.today-start)').click();
   await expect(page.locator('.wbs-today-frame')).toHaveAttribute('data-mode','pending');
   card=page.locator('.today-task-card[data-entity-id="today-task"]');
   await expect(card).toContainText('در انتظار تأیید');
@@ -81,7 +81,7 @@ test('completion enters pending approval, rejection returns Today with typed new
   await expect(page.locator('.wbs-today-frame')).toHaveAttribute('data-mode','today');
   card=page.locator('.today-task-card[data-entity-id="today-task"]');
   await expect(card.locator('.today-comment').first()).toContainText('نیاز به اصلاح');
-  await card.locator('.today-complete').click();
+  await card.locator('.today-complete:not(.today-start)').click();
   await page.locator('.today-task-card[data-entity-id="today-task"]').getByRole('button',{name:'تأیید',exact:true}).click();
   await expect(page.locator('.today-task-card[data-entity-id="today-task"]')).toHaveCount(0);
   await expect.poll(()=>page.evaluate(()=>window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0].workTasks[0].completionState)).toBe('approved');
