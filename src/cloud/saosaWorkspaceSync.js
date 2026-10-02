@@ -117,6 +117,17 @@ export async function prepareSaosaWorkspace({windowRef = window, store} = {}){
   }
 
   let snapshot = remote.snapshot || createEmptySnapshot();
+  // PostgreSQL memberships are authoritative on Saosa. Align the project owner
+  // marker with the authenticated account so owner-only UI (role management)
+  // is not hidden by a stale Firebase/local ownerUid from pre-Saosa data.
+  if(Array.isArray(snapshot.projects)){
+    snapshot = {
+      ...snapshot,
+      projects:snapshot.projects.map(project => remote.access?.[project.id]?.role === 'owner'
+        ? {...project, ownerUid:String(remote.accountId)}
+        : project),
+    };
+  }
   const mayImportCache = snapshotHasProjects(cachedSnapshot)
     && !snapshotHasProjects(snapshot)
     && (!cachedAccountId || cachedAccountId === remote.accountId);
