@@ -110,7 +110,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         completion.textContent = isTaskComplete(task) ? 'تأیید شده' : (pending ? 'در انتظار تأیید' : 'ارسال برای تأیید');
         completion.disabled = isTaskComplete(task) || pending;
         completion.addEventListener('click', () => {
-          todayApi.markComplete(projectId, { kind:'task', id:task.id, workId:work.id }, currentActor());
+          const ref = { kind:'task', id:task.id, workId:work.id }; const actor = currentActor(); todayApi.start(projectId, ref, actor); todayApi.markComplete(projectId, ref, actor);
           closeWbsSheet(); onChanged?.();
         });
         root.appendChild(completion);

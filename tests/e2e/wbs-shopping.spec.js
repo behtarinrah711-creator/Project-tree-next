@@ -79,6 +79,7 @@ test('shopping report, comment and approval use the same WBS purchase entity',as
   await card.locator('[name="comment"]').fill('قیمت با فروشنده بررسی شود');
   await card.locator('.today-comment-form button').click();
   await expect(card).toContainText('قیمت با فروشنده بررسی شود');
+  await card.locator('.today-start').click();
   await card.locator('.today-complete').click();
   await expect(page.locator('.wbs-shopping-frame')).toHaveAttribute('data-mode','pending');
   card=page.locator('.shopping-item-card[data-entity-id="w1"]');
