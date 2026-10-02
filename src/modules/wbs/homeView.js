@@ -299,12 +299,13 @@ export function openProjectFinishSheet(){
     saveLabel:'ذخیره',
     body(root){
       root.appendChild(dateField('plannedFinish', 'موعد پایان اختیاری', project.plannedFinish || ''));
+      root.appendChild(dateField('baselineFinish', 'بیس‌لاین پایان', project.baselineFinish || ''));
       const note = document.createElement('div'); note.className = 'wbs-note';
-      note.textContent = 'اگر خالی باشد، پایان پروژه از دیرترین پایان برنامه‌ریزی‌شده فعالیت‌ها محاسبه می‌شود.';
+      note.textContent = 'موعد پایان روی محاسبه اثر می‌گذارد. بیس‌لاین فقط خط مقایسه است و با اضافه شدن تسک جابه‌جا نمی‌شود.';
       root.appendChild(note);
     },
     onSave(root){
-      projectRepository.updateProject(project.id, current => ({ ...current, plannedFinish:root.querySelector('[name="plannedFinish"]').dataset.value || '' }));
+      projectRepository.updateProject(project.id, current => ({ ...current, plannedFinish:root.querySelector('[name="plannedFinish"]').dataset.value || '', baselineFinish:root.querySelector('[name="baselineFinish"]').dataset.value || '' }));
       render(); return true;
     },
   });

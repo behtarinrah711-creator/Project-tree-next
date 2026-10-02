@@ -9,7 +9,7 @@ import { applyTimelineDependencies } from './timelineDependencies.js';
 import { applyTimelineStickyHeader } from './timelineStickyHeader.js';
 import { ensureViewToolbar } from './viewToolbar.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
-import { PROJECT_FINISH_MILESTONE_ID, actualProgress, plannedProgressOf, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
+import { PROJECT_FINISH_MILESTONE_ID, actualProgress, baselineFinishDay, plannedProgressOf, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
 import { ganttConfig } from './timelineViewOptions.js';
 import { applyTimelineCpm } from './timelineCpm.js';
 
@@ -147,20 +147,19 @@ function yearStart(day){
   return dayFromJalali(j.jy, 1, 1);
 }
 
-function rawTimelineRange(entries){
+function rawTimelineRange(entries, baselineDay = null){
   const scheduled = entries.filter(entry => entry.range);
-  if(scheduled.length){
-    return {
-      start:Math.min(...scheduled.map(entry => entry.range.start)),
-      end:Math.max(...scheduled.map(entry => entry.range.end)),
-    };
+  const points = scheduled.flatMap(entry => [entry.range.start, entry.range.end]);
+  if(Number.isFinite(baselineDay)) points.push(baselineDay);
+  if(points.length){
+    return { start:Math.min(...points), end:Math.max(...points) };
   }
   const today = Math.floor(Date.now() / 86400000);
   return { start:today, end:today + 27 };
 }
 
-function timelineDomain(entries, scale){
-  const raw = rawTimelineRange(entries);
+function timelineDomain(entries, scale, baselineDay = null){
+  const raw = rawTimelineRange(entries, baselineDay);
   if(scale.id === 'day' || scale.id === 'week'){
     return { start:raw.start, endExclusive:Math.max(raw.end + 1, raw.start + scale.minSpan) };
   }
@@ -308,9 +307,9 @@ function scaleSignature(entries, domain, scale, lines){
   return `${scale.id}:${domain.start}:${domain.endExclusive}:${rowShape}:${ranges}`;
 }
 
-function paintScaleGeometry(gantt, entries, documentRef){
+function paintScaleGeometry(gantt, entries, documentRef, baselineDay = null){
   const scale = currentTimescale();
-  const domain = timelineDomain(entries, scale);
+  const domain = timelineDomain(entries, scale, baselineDay);
   const buckets = timelineBuckets(domain, scale);
   const canvasWidth = Math.max(1, Math.round((domain.endExclusive - domain.start) * scale.dayWidth));
   const lines = [...gantt.querySelectorAll('.wbs-gantt-line')];
@@ -417,7 +416,9 @@ function enhance(windowRef, documentRef){
 
   paintHierarchy(gantt, entries);
   syncRowHeights(gantt);
-  paintScaleGeometry(gantt, entries, documentRef);
+  const baselineDay = baselineFinishDay(project);
+  gantt.dataset.baselineDay = Number.isFinite(baselineDay) ? String(baselineDay) : '';
+  paintScaleGeometry(gantt, entries, documentRef, baselineDay);
   paintProgress(gantt, entries);
   applyTimelineDetails(gantt, entries, documentRef);
   applyTimelineStickyHeader(gantt, windowRef, documentRef);

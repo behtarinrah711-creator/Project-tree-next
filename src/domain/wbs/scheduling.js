@@ -9,6 +9,10 @@ export function jalaliDayNumber(value){
   return Math.floor(Date.UTC(g.gy, g.gm - 1, g.gd) / 86400000);
 }
 
+export function baselineFinishDay(project){
+  return jalaliDayNumber(project?.baselineFinish);
+}
+
 export function tehranTodayDayNumber(now = new Date()){
   const parts = new Intl.DateTimeFormat('en-CA', {
     timeZone:'Asia/Tehran', year:'numeric', month:'2-digit', day:'2-digit',
