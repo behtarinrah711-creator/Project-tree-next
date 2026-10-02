@@ -41,13 +41,24 @@ export function seedCollapsed(projectId){
   return state.ids;
 }
 
-function expandableLevels(items){
+function expandableLevels(items, {
+  nodeVisible = () => true,
+  tasksVisible = () => true,
+} = {}){
   const levels = [];
+  const branchHasVisibleRows = (node, depth) => {
+    if(!node || node.trashed) return false;
+    const tasks = (node.workTasks || []).filter(task => task && !task.trashed);
+    if(nodeVisible(node, depth) || (tasksVisible(node, depth) && tasks.length)) return true;
+    return (node.subtasks || []).some(child => branchHasVisibleRows(child, depth + 1));
+  };
   const walk = (nodes, depth = 0) => {
     (nodes || []).filter(node => node && !node.trashed).forEach(node => {
       const children = (node.subtasks || []).filter(child => child && !child.trashed);
       const tasks = (node.workTasks || []).filter(task => task && !task.trashed);
-      if(children.length || tasks.length){
+      const visibleChildren = children.filter(child => branchHasVisibleRows(child, depth + 1));
+      const visibleTasks = tasksVisible(node, depth) ? tasks : [];
+      if(nodeVisible(node, depth) && (visibleChildren.length || visibleTasks.length)){
         if(!levels[depth]) levels[depth] = [];
         levels[depth].push(String(node.id));
         walk(children, depth + 1);
@@ -58,9 +69,9 @@ function expandableLevels(items){
   return levels;
 }
 
-export function getExpansionProgress(projectId, items){
+export function getExpansionProgress(projectId, items, options){
   const ids = bucket(projectId).ids;
-  const levels = expandableLevels(items);
+  const levels = expandableLevels(items, options);
   const expandedLevels = levels.findIndex(level => level.some(id => !ids.has(id)));
   const completedLevels = expandedLevels < 0 ? levels.length : expandedLevels;
   return {
@@ -70,9 +81,9 @@ export function getExpansionProgress(projectId, items){
   };
 }
 
-export function advanceExpansionLevel(projectId, items){
+export function advanceExpansionLevel(projectId, items, options){
   const state = bucket(projectId);
-  const levels = expandableLevels(items);
+  const levels = expandableLevels(items, options);
   const expandableIds = levels.flat();
   if(!expandableIds.length || expandableIds.every(id => state.ids.has(id))){
     state.ids.clear();

@@ -1,9 +1,9 @@
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
+import { isStage } from '../../domain/wbs/normalize.js';
 import {
   advanceExpansionLevel,
   getExpansionProgress,
-  getExpandedIds,
 } from './wbsExpandState.js';
 import { setTimelineDependenciesVisible } from './timelineDependencies.js';
 import {
@@ -14,6 +14,7 @@ import {
   setGanttConfig,
   setGanttLevelVisible,
   setGanttOrderMode,
+  isGanttLevelVisible,
 } from './timelineViewOptions.js';
 import { expandIconMarkup, materialIconMarkup } from '../../ui/materialIcons.js';
 import { ganttMenuPosition } from './ganttMenuGeometry.js';
@@ -161,8 +162,12 @@ function createLevelTool(documentRef, root, project){
 
 function createExpandButton(documentRef, project){
   const button = documentRef.createElement('button');
-  const isTreeOpen = getExpandedIds(project.id).size > 0;
-  const expansionProgress = getExpansionProgress(project.id, project.tasks || []);
+  const expansionOptions = {
+    nodeVisible:(item, depth) => isGanttLevelVisible({ item, kind:isStage(item) ? 'stage' : 'work', depth }),
+    tasksVisible:(_item, depth) => isGanttLevelVisible({ item:{kind:'workTask'}, kind:'workTask', depth:depth + 1 }),
+  };
+  const expansionProgress = getExpansionProgress(project.id, project.tasks || [], expansionOptions);
+  const isTreeOpen = expansionProgress.expandedLevels > 0;
   button.type = 'button';
   button.className = 'wbs-tree-toggle' + (isTreeOpen ? ' is-active' : '') + (expansionProgress.ratio >= .5 ? ' is-past-midpoint' : '');
   button.setAttribute('aria-label', 'تغییر سطح بازشدگی نمودار');
@@ -171,7 +176,7 @@ function createExpandButton(documentRef, project){
   button.dataset.totalLevels = String(expansionProgress.totalLevels);
   button.innerHTML = `<svg class="wbs-expand-shade" viewBox="0 0 1 1" preserveAspectRatio="none" aria-hidden="true" focusable="false"><rect width="1" height="1" fill="currentColor" opacity="${expansionProgress.ratio}"/></svg>${expandIconMarkup()}`;
   button.addEventListener('click', () => {
-    advanceExpansionLevel(project.id, project.tasks || []);
+    advanceExpansionLevel(project.id, project.tasks || [], expansionOptions);
     refreshWbs();
   });
   return button;

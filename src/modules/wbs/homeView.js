@@ -419,7 +419,7 @@ function tNameRow(entry){
   const milestone = entry.item.kind === 'milestone';
   row.className = 'wbs-gantt-name depth-' + Math.min(entry.depth, 6) + (isStage(entry.item) ? ' is-stage' : (task ? ' is-task' : (milestone ? ' is-milestone' : ' is-work')));
   const kids = task ? [] : [...(entry.item.subtasks || []).filter(x => x && !x.trashed), ...activeWorkTasks(entry.item)];
-  row.innerHTML = `${kids.length ? '<button type="button" class="wbs-gantt-chev">'+(isExpanded(projectIdOf(), entry.item.id)?'▾':'▸')+'</button>' : '<span class="wbs-gantt-chev"></span>'}<span>${escapeHtml(entry.item.text)}</span>`;
+  row.innerHTML = `${kids.length ? '<button type="button" class="wbs-gantt-chev">'+(isExpanded(projectIdOf(), entry.item.id)?'▾':'◂')+'</button>' : '<span class="wbs-gantt-chev"></span>'}<span>${escapeHtml(entry.item.text)}</span>`;
   row.querySelector('button')?.addEventListener('click', () => { toggleExpanded(projectIdOf(), String(entry.item.id)); render(); });
   return row;
 }
