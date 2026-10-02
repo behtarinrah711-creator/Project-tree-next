@@ -10,7 +10,6 @@ import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 import { isExpanded, toggleExpanded } from './wbsExpandState.js';
 import { closeWbsSheet, fieldRow, openWbsSheet, selectInput, textInput } from './wbsSheet.js';
 import { predecessorField } from './predecessorField.js';
-import { reorderedIds } from './wbsDrag.js';
 
 const PRIORITY_LABELS = Object.freeze({ low:'کم', normal:'عادی', high:'زیاد' });
 const TYPE_CLASSES = new Map([
@@ -182,30 +181,25 @@ export function bindTaskReorder(group, row, { projectId, workId, taskId, onChang
     const eventTarget = documentRef.defaultView || documentRef;
     let moved = false;
     let finished = false;
-    let target = null;
-    let position = null;
     row.classList.add('is-dragging');
     const move = ev => {
       if(ev.pointerId !== pointerId) return;
       ev.preventDefault?.();
       moved = true;
       const others = rows().filter(item => item !== row);
-      target = null;
-      position = null;
+      let before = null;
       for(const candidate of others){
         const rect = candidate.getBoundingClientRect();
-        if(ev.clientY < rect.top + rect.height / 2){
-          target = candidate;
-          position = 'before';
-          break;
-        }
-      }
-      if(!target && others.length){
-        target = others[others.length - 1];
-        position = 'after';
+        if(ev.clientY < rect.top + rect.height / 2){ before = candidate; break; }
       }
       startRows.forEach(item => item.classList.remove('wbs-drop-before', 'wbs-drop-after'));
-      target?.classList.add(position === 'before' ? 'wbs-drop-before' : 'wbs-drop-after');
+      if(before){
+        before.classList.add('wbs-drop-before');
+        group.insertBefore(row, before);
+      }else if(others.length){
+        others[others.length - 1].classList.add('wbs-drop-after');
+        group.appendChild(row);
+      }
     };
     const cleanup = () => {
       if(finished) return false;
@@ -231,9 +225,9 @@ export function bindTaskReorder(group, row, { projectId, workId, taskId, onChang
     const end = ev => {
       if(ev?.pointerId != null && ev.pointerId !== pointerId) return;
       if(!cleanup()) return;
-      if(!moved || !target) return;
-      const orderedIds = reorderedIds(initialIds, taskId, target.dataset.taskId, position);
-      if(!orderedIds || orderedIds.every((id, index) => id === initialIds[index])) return;
+      const orderedIds = rows().map(item => String(item.dataset.taskId));
+      const changed = moved && orderedIds.some((id, index) => id !== initialIds[index]);
+      if(!changed) return;
       const result = workTaskApi.reorder(projectId, workId, orderedIds);
       onChanged?.(result);
     };
