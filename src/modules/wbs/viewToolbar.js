@@ -2,6 +2,7 @@ import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import {
   advanceExpansionLevel,
+  expandAll,
   getExpansionProgress,
   getExpandedIds,
 } from './wbsExpandState.js';
@@ -151,6 +152,10 @@ function createLevelTool(documentRef, root, project){
       ganttLevelOptions(project.tasks || []).forEach(option => {
         menu.appendChild(checkboxRow(documentRef, option.label, state.get(option.key) !== false, checked => {
           setGanttLevelVisible(option.key, checked);
+          // A checked level must be immediately visible. Deeper selected levels can
+          // otherwise stay hidden behind a collapsed visible stage, making the
+          // combined «مرحله + کار» filter look broken.
+          if(checked && option.key !== 'package') expandAll(project.id, project.tasks || []);
           refreshWbs();
         }));
       });
