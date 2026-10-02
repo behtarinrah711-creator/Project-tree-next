@@ -48,6 +48,7 @@ export function renderDelayView(project, documentRef = document, onEditFinish = 
   summary.className = 'wbs-note wbs-delay-summary';
   summary.textContent = `پایان محاسباتی: ${dayLabel(analysis.calculatedFinish)}${project?.plannedFinish ? ` · موعد پروژه: ${project.plannedFinish}` : ''}`;
   body.appendChild(summary);
+  renderFundingStops(documentRef, body, project);
   if(!rows.length){
     body.insertAdjacentHTML('beforeend', '<div class="empty-state">کار عقب‌افتاده‌ای برای نمایش وجود ندارد.</div>');
   }else{
@@ -74,4 +75,35 @@ function dayLabel(day){
 
 function escapeHtml(value){
   return String(value ?? '').replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
+}
+
+import { openFundingStops } from '../../domain/wbs/fundingReceipts.js';
+import { tehranTodayJalali } from '../../domain/wbs/todayDomain.js';
+
+function renderFundingStops(documentRef, body, project){
+  const stops = openFundingStops(project, tehranTodayJalali());
+  const heading = documentRef.createElement('div');
+  heading.className = 'wbs-note wbs-delay-summary';
+  heading.textContent = 'توقف مالی';
+  body.appendChild(heading);
+  if(!stops.length){
+    body.insertAdjacentHTML('beforeend', '<div class="empty-state">توقف مالی باز نیست.</div>');
+    return;
+  }
+  const titles = new Map();
+  const walk = nodes => (nodes || []).forEach(node => {
+    if(!node || node.trashed) return;
+    titles.set(String(node.id), node.text || node.title || node.id);
+    (node.workTasks || []).forEach(task => task && titles.set(String(task.id), task.title || task.text || task.id));
+    walk(node.subtasks);
+  });
+  walk(project?.tasks || []);
+  stops.forEach(stop => {
+    const item = documentRef.createElement('article');
+    item.className = 'wbs-delay-row';
+    const names = stop.affectedTaskIds.map(id => titles.get(id) || id).join('، ');
+    const days = new Intl.NumberFormat('fa-IR').format(stop.duration);
+    item.innerHTML = `<strong>${escapeHtml(stop.receipt.description || 'واریز دیر کارفرما')}</strong><span>مسئول: ${escapeHtml(stop.receipt.party || 'کارفرما')}</span><span>بازه: ${escapeHtml(stop.receipt.dueDate)} تا امروز</span><span>تسک‌ها: ${escapeHtml(names)}</span><span>مدت رویداد: ${days} روز</span><span>اثر پایان: —</span>`;
+    body.appendChild(item);
+  });
 }
