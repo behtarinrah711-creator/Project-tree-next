@@ -34,9 +34,9 @@ test('hiding grouping levels reveals descendants while preserving source depth',
   assert.equal(rows[0].sourceDepth,2);
   assert.deepEqual(ganttLevelOptions(tree).map(option=>option.label),['مرحله ۱','مرحله ۲','کارها']);
 });
-test('work visibility stays independent while collapsed stages suppress child stages', () => {
+test('collapsed stages suppress active task rows until Expand opens them', () => {
   const tree=[{id:'root',kind:'stage',workTasks:[task('leaf')],subtasks:[]}];
-  assert.deepEqual(buildTimelineRows(tree,'p',{expanded:()=>false}).map(row=>row.item.id),['root','leaf']);
+  assert.deepEqual(buildTimelineRows(tree,'p',{expanded:()=>false}).map(row=>row.item.id),['root']);
 });
 test('date order sorts by start then end while leaving unscheduled rows last', () => {
   const rows = [
