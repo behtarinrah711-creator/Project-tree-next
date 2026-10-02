@@ -179,6 +179,11 @@ export function bindTaskReorder(group, row, { projectId, workId, taskId, onChang
     const initialIds = startRows.map(item => String(item.dataset.taskId));
     const pointerId = event.pointerId;
     const eventTarget = documentRef.defaultView || documentRef;
+    const indicator = documentRef.createElement?.('span') || null;
+    if(indicator){
+      indicator.className = 'wbs-task-drop-indicator';
+      group.appendChild(indicator);
+    }
     let moved = false;
     let finished = false;
     row.classList.add('is-dragging');
@@ -192,13 +197,20 @@ export function bindTaskReorder(group, row, { projectId, workId, taskId, onChang
         const rect = candidate.getBoundingClientRect();
         if(ev.clientY < rect.top + rect.height / 2){ before = candidate; break; }
       }
-      startRows.forEach(item => item.classList.remove('wbs-drop-before', 'wbs-drop-after'));
       if(before){
-        before.classList.add('wbs-drop-before');
         group.insertBefore(row, before);
       }else if(others.length){
-        others[others.length - 1].classList.add('wbs-drop-after');
         group.appendChild(row);
+      }
+      if(indicator){
+        const target = before || others[others.length - 1];
+        const targetRect = target?.getBoundingClientRect();
+        const groupRect = group.getBoundingClientRect();
+        const boundary = before ? targetRect?.top : targetRect?.bottom;
+        if(Number.isFinite(boundary)){
+          indicator.style.transform = `translateY(${boundary - groupRect.top + group.scrollTop}px)`;
+          indicator.classList.add('is-visible');
+        }
       }
     };
     const cleanup = () => {
@@ -218,7 +230,7 @@ export function bindTaskReorder(group, row, { projectId, workId, taskId, onChang
         try{ grip.releasePointerCapture(pointerId); }catch(_error){}
       }
       row.classList.remove('is-dragging');
-      startRows.forEach(item => item.classList.remove('wbs-drop-before', 'wbs-drop-after'));
+      indicator?.remove();
       if(activeTaskDragCleanup === cleanup) activeTaskDragCleanup = null;
       return true;
     };
