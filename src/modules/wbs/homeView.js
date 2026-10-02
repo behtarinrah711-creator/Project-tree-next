@@ -300,7 +300,7 @@ export function openProjectFinishSheet(){
     body(root){
       root.appendChild(dateField('plannedFinish', 'موعد پایان اختیاری', project.plannedFinish || ''));
       const note = document.createElement('div'); note.className = 'wbs-note';
-      note.textContent = 'اگر خالی باشد، پایان پروژه از دیرترین پایان برنامه‌ریزی‌شده فعالیت‌ها محاسبه می‌شود.';
+      note.textContent = 'اگر خالی باشد، پایان پروژه از دیرترین پایان برنامه‌ریزی‌شده فعالیت‌ها محاسبه می‌شود. بیس‌لاین از دکمه ثبت بیس‌لاین در نمودار گانت ذخیره می‌شود.';
       root.appendChild(note);
     },
     onSave(root){

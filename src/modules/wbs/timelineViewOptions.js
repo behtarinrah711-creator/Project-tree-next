@@ -6,6 +6,7 @@ const config = {
   dependencies:false,
   float:false,
   criticalPath:false,
+  baseline:false,
 };
 
 const levels = new Map();

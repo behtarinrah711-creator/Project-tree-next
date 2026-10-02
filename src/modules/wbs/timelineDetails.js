@@ -122,6 +122,33 @@ function paintTodayIndicator(gantt, documentRef){
     canvas.appendChild(svgElement(documentRef, 'line', { class:'wbs-gantt-today-line', x1:x, x2:x, y1:0, y2:height }));
   });
 }
+
+function paintBaselineIndicator(gantt, documentRef){
+  gantt.querySelectorAll('.wbs-gantt-baseline-line,.wbs-gantt-baseline-label').forEach(node => node.remove());
+  const domain = timelineDomainFromSignature(gantt.dataset.timescaleSignature);
+  const baseline = Number(gantt.dataset.baselineDay);
+  if(!domain || !Number.isFinite(baseline) || baseline < domain.start || baseline >= domain.endExclusive) return;
+  const headerCanvas = gantt.querySelector('.wbs-gantt-scale-header-canvas');
+  const headerX = todayX(headerCanvas, domain, baseline);
+  if(headerCanvas && headerX !== null){
+    headerCanvas.appendChild(svgElement(documentRef, 'line', { class:'wbs-gantt-baseline-line is-header', x1:headerX, x2:headerX, y1:16, y2:42 }));
+    const labelWidth = 52;
+    const width = Number(headerCanvas.getAttribute('width')) || labelWidth;
+    const labelX = clamp(headerX - labelWidth / 2, 0, Math.max(0, width - labelWidth));
+    const foreign = svgElement(documentRef, 'foreignObject', { class:'wbs-gantt-baseline-label', x:labelX, y:1, width:labelWidth, height:16 });
+    const label = documentRef.createElement('div');
+    label.textContent = 'بیس‌لاین';
+    foreign.appendChild(label);
+    headerCanvas.appendChild(foreign);
+  }
+  gantt.querySelectorAll('.wbs-gantt-scale-canvas').forEach(canvas => {
+    const x = todayX(canvas, domain, baseline);
+    if(x === null) return;
+    const height = Number(canvas.getAttribute('height')) || 36;
+    canvas.appendChild(svgElement(documentRef, 'line', { class:'wbs-gantt-baseline-line', x1:x, x2:x, y1:0, y2:height }));
+  });
+}
+
 export function applyTimelineDetails(gantt, entries, documentRef = document){
   if(!gantt?.classList.contains('is-scale-enhanced') || !gantt.dataset.timescaleSignature) return;
   const headerTitle = gantt.querySelector('.wbs-gantt-project-title'); if(headerTitle) headerTitle.textContent = viewTitle('timeline');
@@ -132,7 +159,7 @@ export function applyTimelineDetails(gantt, entries, documentRef = document){
     const bar = line.querySelector('.wbs-gantt-bar');
     return `${entry?.item?.id || ''}:${entry?.item?.text || entry?.item?.title || ''}:${bar?.dataset.progress || ''}:${bar?.dataset.planned || ''}`;
   }).join('|');
-  const signature = `${gantt.dataset.timescaleSignature}|${detailState}`;
+  const signature = `${gantt.dataset.timescaleSignature}|${gantt.dataset.baselineDay || ''}|${detailState}`;
   const expectedDetails = lines.reduce((sum, line, index) => {
     const entry = entries[index];
     if(!entry?.range) return sum;
@@ -149,5 +176,6 @@ export function applyTimelineDetails(gantt, entries, documentRef = document){
   separatorRows(gantt, entries);
   lines.forEach((line, index) => paintRowDetails(documentRef, line, entries[index], domain, today));
   paintTodayIndicator(gantt, documentRef);
+  paintBaselineIndicator(gantt, documentRef);
   gantt.dataset.timelineDetailsSignature = signature;
 }
