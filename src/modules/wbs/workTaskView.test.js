@@ -7,6 +7,7 @@ function pointerEvent(type, pointerId = 1){
   Object.defineProperties(event, {
     pointerId:{ value:pointerId },
     button:{ value:0 },
+    clientY:{ value:5 },
   });
   event.stopPropagation = () => {};
   return event;
@@ -56,6 +57,28 @@ test('a task grip tap releases pointer capture without rerendering or leaving dr
   assert.equal(first.classList.contains('is-dragging'), false);
   assert.equal(released, 7);
   assert.equal(renders, 0);
+});
+
+test('task drag uses the same drop-line classes as stage drag', () => {
+  const documentRef = new EventTarget();
+  documentRef.defaultView = new EventTarget();
+  documentRef.visibilityState = 'visible';
+  const grip = new EventTarget();
+  grip.setPointerCapture = () => {};
+  grip.hasPointerCapture = () => false;
+  const first = row('first', grip);
+  const second = row('second');
+  second.getBoundingClientRect = () => ({ top:0, height:20 });
+  const rows = [first, second];
+  const group = { querySelectorAll:() => rows };
+
+  bindTaskReorder(group, first, { projectId:'project', workId:'work', taskId:'first', documentRef });
+  grip.dispatchEvent(pointerEvent('pointerdown', 9));
+  documentRef.dispatchEvent(pointerEvent('pointermove', 9));
+
+  assert.equal(second.classList.contains('wbs-drop-before'), true);
+  documentRef.dispatchEvent(pointerEvent('pointercancel', 9));
+  assert.equal(second.classList.contains('wbs-drop-before'), false);
 });
 
 test('task drag cleanup also runs when the browser cancels the mobile gesture', () => {
