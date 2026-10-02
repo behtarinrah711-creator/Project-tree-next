@@ -164,17 +164,26 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
 
 export function openCreateWorkTaskSheet(options){ taskForm(options); }
 
-function bindTaskReorder(group, row, { projectId, workId, taskId, onChanged }){
+let activeTaskDragCleanup = null;
+
+export function bindTaskReorder(group, row, { projectId, workId, taskId, onChanged, documentRef = document }){
   const grip = row.querySelector('.wbs-grip');
   if(!grip) return;
   grip.addEventListener('pointerdown', event => {
     if(event.button === 2) return;
     event.preventDefault(); event.stopPropagation();
+    activeTaskDragCleanup?.();
     const rows = () => Array.from(group.querySelectorAll(':scope > .wbs-work-task'));
     const startRows = rows();
     if(startRows.length < 2) return;
+    const initialIds = startRows.map(item => String(item.dataset.taskId));
+    const pointerId = event.pointerId;
+    let moved = false;
+    let finished = false;
     row.classList.add('is-dragging');
     const move = ev => {
+      if(ev.pointerId !== pointerId) return;
+      moved = true;
       const others = rows().filter(item => item !== row);
       let before = null;
       for(const candidate of others){
@@ -183,19 +192,41 @@ function bindTaskReorder(group, row, { projectId, workId, taskId, onChanged }){
       }
       if(before) group.insertBefore(row, before); else group.appendChild(row);
     };
-    const end = () => {
+    const cleanup = () => {
+      if(finished) return false;
+      finished = true;
       documentRef.removeEventListener('pointermove', move);
       documentRef.removeEventListener('pointerup', end);
       documentRef.removeEventListener('pointercancel', end);
+      grip.removeEventListener('lostpointercapture', end);
+      documentRef.defaultView?.removeEventListener('blur', end);
+      documentRef.removeEventListener('visibilitychange', onVisibilityChange);
+      if(grip.hasPointerCapture?.(pointerId)){
+        try{ grip.releasePointerCapture(pointerId); }catch(_error){}
+      }
       row.classList.remove('is-dragging');
-      const orderedIds = rows().map(item => item.dataset.taskId);
-      const result = workTaskApi.reorder(projectId, workId, orderedIds);
-      if(!result.ok) onChanged?.();
-      else onChanged?.();
+      if(activeTaskDragCleanup === cleanup) activeTaskDragCleanup = null;
+      return true;
     };
+    const end = ev => {
+      if(ev?.pointerId != null && ev.pointerId !== pointerId) return;
+      if(!cleanup()) return;
+      const orderedIds = rows().map(item => String(item.dataset.taskId));
+      const changed = moved && orderedIds.some((id, index) => id !== initialIds[index]);
+      if(!changed) return;
+      const result = workTaskApi.reorder(projectId, workId, orderedIds);
+      onChanged?.(result);
+    };
+    const onVisibilityChange = () => {
+      if(documentRef.visibilityState === 'hidden') end();
+    };
+    activeTaskDragCleanup = cleanup;
     documentRef.addEventListener('pointermove', move);
-    documentRef.addEventListener('pointerup', end, { once:true });
-    documentRef.addEventListener('pointercancel', end, { once:true });
+    documentRef.addEventListener('pointerup', end);
+    documentRef.addEventListener('pointercancel', end);
+    grip.addEventListener('lostpointercapture', end);
+    documentRef.defaultView?.addEventListener('blur', end);
+    documentRef.addEventListener('visibilitychange', onVisibilityChange);
     try{ grip.setPointerCapture(event.pointerId); }catch(_error){}
   });
 }
@@ -227,7 +258,7 @@ export function renderWorkTasks({ documentRef = document, projectId, work, view,
       taskForm({ projectId, work, task, onChanged, readOnly, canDelete });
     });
     group.appendChild(row);
-    if(!readOnly) bindTaskReorder(group, row, { projectId, workId:work.id, taskId:task.id, onChanged });
+    if(!readOnly) bindTaskReorder(group, row, { projectId, workId:work.id, taskId:task.id, onChanged, documentRef });
   });
   return group;
 }
