@@ -2,7 +2,7 @@
 // does not imply a shared navigation surface or a hidden set of other tabs.
 export const WBS_VIEW_SCOPES = Object.freeze({
   planning: Object.freeze({ scope:'planning', views:['tree','timeline','costline'], defaultView:'tree' }),
-  execution: Object.freeze({ scope:'execution', views:['today','delay','shopping'], defaultView:'today' }),
+  execution: Object.freeze({ scope:'execution', views:['today','shopping'], defaultView:'today' }),
 });
 
 export function activeWbsScope(windowRef = globalThis.window){
