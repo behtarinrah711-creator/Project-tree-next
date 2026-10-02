@@ -108,7 +108,11 @@ export class AppRouter{
     const rawProject = route.projectId
       ? (window.KarhaApp?.projectRepository?.find?.(route.projectId) || null)
       : null;
-    const allowed = !!rawProject && isProjectVisibleForSession(rawProject, session);
+    // /api/v1/workspace is already scoped to the signed-in SMS account. Its
+    // invited projects legitimately have another user's ownerUid, so applying
+    // the legacy Firebase owner filter here would cancel the first navigation.
+    const serverScopedWorkspace = isSaosaHost(window) && !!readSaosaSession(window);
+    const allowed = !!rawProject && (serverScopedWorkspace || isProjectVisibleForSession(rawProject, session));
     const projectId = allowed ? route.projectId : null;
     projectContext.setProjectId(projectId);
     if(projectId && window.KarhaAppData && window.KarhaAppData.getActiveTab?.() !== projectId){
