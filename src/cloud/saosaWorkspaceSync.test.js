@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createAppDataStore, APP_DATA_STORAGE_KEY} from '../data/appDataStore.js';
-import {prepareSaosaWorkspace, SAOSA_SESSION_KEY, clearSaosaWorkspaceSession} from './saosaWorkspaceSync.js';
+import {prepareSaosaWorkspace, refreshSaosaWorkspace, SAOSA_SESSION_KEY, clearSaosaWorkspaceSession} from './saosaWorkspaceSync.js';
 
 function storage(initial = {}){
   const values = new Map(Object.entries(initial));
@@ -99,4 +99,21 @@ test('successful workspace sync refreshes project access without a new login', a
   putResolve();
   await new Promise(resolve => setTimeout(resolve, 0));
   assert.equal(win.KarhaSaosaWorkspaceAccess.inew.role, 'owner');
+});
+
+test('drawer refresh adds later invitations without replacing the live snapshot', async () => {
+  const local=storage({[SAOSA_SESSION_KEY]:session});
+  const initial={schemaVersion:8,projects:[{id:'first'}],viewMode:'simple',activeTab:'first',starredOrder:[]};
+  const invited={...initial,projects:[...initial.projects,{id:'second'}]};
+  const win=windowWith({localStorage:local,fetch:async()=>response(200,{
+    accountId:'account-a',snapshot:invited,access:{second:{role:'member',permissions:{view:true}}},
+  })});
+  const store=createAppDataStore({storage:local});
+  store.replaceSnapshot(initial);
+  const live=store.getSnapshot();
+  const result=await refreshSaosaWorkspace({windowRef:win,store});
+  assert.equal(result.changed,true);
+  assert.equal(store.getSnapshot(),live);
+  assert.deepEqual(live.projects.map(project=>project.id),['first','second']);
+  assert.equal(win.KarhaSaosaWorkspaceAccess.second.role,'member');
 });
