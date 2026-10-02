@@ -5,9 +5,9 @@ import { createViewToolbar } from './viewHeader.js';
 import { uid } from '../../data/projectFactories.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
-import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
+import { allocatedFor, fundingReceiptsOf } from '../../domain/wbs/fundingReceipts.js';
 
-const money = value => new Intl.NumberFormat('fa-IR').format(Number(value) || 0);
+const money = value => new Intl.NumberFormat('fa-IR').format(Math.round(Number(value) || 0));
 const BAR_WIDTH = 28;
 const BAR_HEIGHT = 220;
 const BAR_RADIUS = 5;
@@ -23,8 +23,8 @@ export function renderCostline(project){
   const range = COSTLINE_RANGES[rangeIndex] || COSTLINE_RANGES[1];
   const model = plannedCostline(project.tasks || [], { rangeId: range.id, originWeekday });
   root.append(renderToolbar(project, () => {
-    root.replaceWith(renderCostline(project));
-  }, project), renderChart(model));
+    root.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project));
+  }), renderChart(project, model));
   return root;
 }
 
@@ -58,7 +58,7 @@ function renderToolbar(project, refresh){
         refresh();
       },
     }),
-    depositButton(project),
+    depositButton(project, refresh),
     cycleButton({
       label: WEEKDAYS[originWeekday],
       ariaLabel: `مبدأ دوره ${WEEKDAYS[originWeekday]}`,
@@ -70,7 +70,6 @@ function renderToolbar(project, refresh){
       },
     }),
   );
-
   return createViewToolbar(document, {
     className:'wbs-costline-toolbar',
     ariaLabel:'ابزارهای برآورد هزینه',
@@ -78,27 +77,15 @@ function renderToolbar(project, refresh){
   });
 }
 
-function depositButton(project){
+function depositButton(project, refresh){
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'wbs-timescale-toggle wbs-costline-cycle';
   button.setAttribute('aria-label', 'واریز');
   button.setAttribute('title', 'واریز');
   button.innerHTML = '<span class="wbs-timescale-label">واریز</span>';
-  button.addEventListener('click', () => openDepositSheet(project));
+  button.addEventListener('click', () => openDepositSheet(project, refresh));
   return button;
-}
-
-function taskChoices(project){
-  const rows = [];
-  const walk = nodes => (nodes || []).forEach(node => {
-    if(!node || node.trashed) return;
-    activeWorkTasks(node).forEach(task => rows.push({ id:task.id, label:task.title || task.text || task.id }));
-    if(!activeWorkTasks(node).length && node.text) rows.push({ id:node.id, label:node.text });
-    walk(node.subtasks);
-  });
-  walk(project?.tasks || []);
-  return rows;
 }
 
 function dateButton(name, value){
@@ -113,7 +100,7 @@ function dateButton(name, value){
   return button;
 }
 
-function openDepositSheet(project){
+function openDepositSheet(project, refresh){
   openWbsSheet({
     title: 'واریز کارفرما',
     saveLabel: 'ذخیره',
@@ -123,7 +110,6 @@ function openDepositSheet(project){
       amount.name = 'amount';
       amount.inputMode = 'numeric';
       host.appendChild(fieldRow('مبلغ', amount));
-      host.appendChild(fieldRow('تاریخ مقرر', dateButton('dueDate', '')));
       host.appendChild(fieldRow('تاریخ واریز', dateButton('depositDate', '')));
       const party = document.createElement('input');
       party.className = 'wbs-input';
@@ -134,31 +120,25 @@ function openDepositSheet(project){
       note.className = 'wbs-input';
       note.name = 'description';
       host.appendChild(fieldRow('توضیح', note));
-      const list = document.createElement('div');
-      taskChoices(project).forEach(choice => {
-        const label = document.createElement('label');
-        label.className = 'wbs-note';
-        label.innerHTML = `<input type="checkbox" name="affected" value="${escapeText(choice.id)}"> ${escapeText(choice.label)}`;
-        list.appendChild(label);
-      });
-      host.appendChild(fieldRow('تسک‌های متأثر', list));
+      const hint = document.createElement('div');
+      hint.className = 'wbs-note';
+      hint.textContent = 'تخصیص این مبلغ روی کارت همان بازهٔ برآورد تیک می‌خورد، نه اینجا.';
+      host.appendChild(hint);
     },
     onSave(host){
       const amount = Number(String(host.querySelector('[name="amount"]').value).replace(/[^0-9.]/g, ''));
-      const dueDate = host.querySelector('[name="dueDate"]').dataset.value;
-      if(!amount || !dueDate){
-        window.KarhaUI?.showToast?.('مبلغ و تاریخ مقرر لازم است');
+      const depositDate = host.querySelector('[name="depositDate"]').dataset.value;
+      if(!amount || !depositDate){
+        window.KarhaUI?.showToast?.('مبلغ و تاریخ واریز لازم است');
         return false;
       }
-      const affectedTaskIds = [...host.querySelectorAll('[name="affected"]:checked')].map(input => input.value);
       const receipt = {
         id: uid(),
         amount,
-        dueDate,
-        depositDate: host.querySelector('[name="depositDate"]').dataset.value || '',
+        depositDate,
         party: host.querySelector('[name="party"]').value.trim() || 'کارفرما',
         description: host.querySelector('[name="description"]').value.trim(),
-        affectedTaskIds,
+        allocations: [],
         createdAt: Date.now(),
       };
       projectRepository.updateProject(project.id, current => ({
@@ -167,6 +147,7 @@ function openDepositSheet(project){
       }));
       markDirty(project.id);
       persist({ local:false });
+      refresh();
       return true;
     },
   });
@@ -178,7 +159,6 @@ function renderBar(bucket, max){
   svg.setAttribute('viewBox', `0 0 ${BAR_WIDTH} ${BAR_HEIGHT}`);
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('focusable', 'false');
-
   const height = Math.max(4, (bucket.total / max) * BAR_HEIGHT);
   const top = BAR_HEIGHT - height;
   const radius = Math.min(BAR_RADIUS, height, BAR_WIDTH / 2);
@@ -199,7 +179,7 @@ function renderMoney(value){
   return line;
 }
 
-function renderChart(model){
+function renderChart(project, model){
   const wrap = document.createElement('div');
   wrap.className = 'wbs-costline-chart wbs-view-body';
   const scroll = document.createElement('div');
@@ -207,12 +187,10 @@ function renderChart(model){
   const axis = document.createElement('div');
   axis.className = 'wbs-costline-axis';
   const max = Math.max(1, ...model.buckets.map(bucket => bucket.total));
-
   if(!model.buckets.length){
     wrap.innerHTML = '<div class="empty-state">کاری با تاریخ شروع و برآورد ثبت نشده است.</div>';
     return wrap;
   }
-
   model.buckets.forEach(bucket => {
     const col = document.createElement('button');
     col.type = 'button';
@@ -222,16 +200,22 @@ function renderChart(model){
     label.className = 'wbs-costline-label';
     label.textContent = bucket.label;
     col.append(renderMoney(bucket.total), renderBar(bucket, max), label);
-    col.addEventListener('click', () => openBucketSheet(bucket));
+    col.addEventListener('click', () => openBucketSheet(project, bucket, () => {
+      wrap.closest('.wbs-costline')?.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project));
+    }));
     axis.appendChild(col);
   });
-
   scroll.appendChild(axis);
   wrap.appendChild(scroll);
   return wrap;
 }
 
-function openBucketSheet(bucket){
+function receiptRemaining(receipt){
+  const used = (receipt.allocations || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  return Math.max(0, (Number(receipt.amount) || 0) - used);
+}
+
+function openBucketSheet(project, bucket, refresh){
   openWbsSheet({
     title: `برآورد · ${bucket.label}`,
     saveLabel: 'بستن',
@@ -242,17 +226,38 @@ function openBucketSheet(bucket){
         return;
       }
       bucket.works.forEach(work => {
+        const slice = Number(work.sliceAmount) || 0;
+        const covered = allocatedFor(project, work.id, bucket.id);
         const card = document.createElement('article');
         card.className = 'wbs-costline-work';
-        card.innerHTML = `
-          <h4>${escapeText(work.text)}</h4>
-          <p>نوع کار: ${escapeText(work.type || '—')}</p>
-          <p>مبلغ برآورد: ${escapeText(money(work.amount))} تومان</p>
-          <p>تاریخ شروع: ${escapeText(formatJalaliDisplay(work.start) || work.start || '—')}</p>
-          <p>تاریخ پایان: ${escapeText(formatJalaliDisplay(work.end) || work.end || '—')}</p>
-          <p>مدت کار: ${escapeText(new Intl.NumberFormat('fa-IR').format(work.duration || 0))} روز</p>
-          <p>مسیر: ${escapeText(work.path || work.text)}</p>
-        `;
+        const tick = document.createElement('label');
+        tick.className = 'wbs-note';
+        const box = document.createElement('input');
+        box.type = 'checkbox';
+        box.checked = covered + 1 >= slice && slice > 0;
+        box.addEventListener('change', () => {
+          const current = projectRepository.getActiveProject(project.id) || project;
+          const receipts = fundingReceiptsOf(current).filter(row => receiptRemaining(row) > 0 || (row.allocations || []).some(item => String(item.taskId) === String(work.id) && String(item.bucketId) === String(bucket.id)));
+          if(box.checked && !receipts.length){
+            box.checked = false;
+            window.KarhaUI?.showToast?.('اول واریز را ثبت کنید');
+            return;
+          }
+          projectRepository.updateProject(project.id, row => ({
+            ...row,
+            fundingReceipts: fundingReceiptsOf(row).map(receipt => {
+              const allocations = (receipt.allocations || []).filter(item => !(String(item.taskId) === String(work.id) && String(item.bucketId) === String(bucket.id)));
+              if(box.checked && receipt.id === receipts[0].id) allocations.push({ taskId: work.id, bucketId: bucket.id, amount: slice });
+              return { ...receipt, allocations };
+            }),
+          }));
+          markDirty(project.id);
+          persist({ local:false });
+          refresh();
+        });
+        tick.append(box, document.createTextNode(' تأمین همین برش'));
+        card.innerHTML = `<h4>${escapeText(work.text)}</h4><p>سهم این بازه: ${escapeText(money(slice))} تومان</p><p>تأمین‌شده: ${escapeText(money(covered))} تومان</p><p>کل برآورد: ${escapeText(money(work.amount))} تومان</p>`;
+        card.appendChild(tick);
         host.appendChild(card);
       });
     },
@@ -261,7 +266,7 @@ function openBucketSheet(bucket){
 
 function escapeText(value){
   return String(value ?? '').replace(/[&<>"']/g, char => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+    '&': '&', '<': '<', '>': '>', '"': '"', "'": '&#39;',
   })[char]);
 }
 

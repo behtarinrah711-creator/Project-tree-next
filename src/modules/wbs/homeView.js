@@ -39,6 +39,7 @@ import { DEFAULT_TREE_MODE, createTreeModeTabs } from './treeModes.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
+import { stopIntervalForItem } from '../../domain/wbs/fundingReceipts.js';
 import { activeWbsScope, WBS_VIEW_SCOPES } from './viewScopes.js';
 import { openCreateWorkTaskSheet, renderWorkTasks } from './workTaskView.js';
 import { PROJECT_FINISH_MILESTONE_ID, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
@@ -435,7 +436,15 @@ function tBarRow(entry, min, dayWidth){
     bar.style.left = `${(entry.range.start - min) * dayWidth}px`;
     bar.style.width = `${Math.max(dayWidth, (entry.range.end - entry.range.start + 1) * dayWidth)}px`;
     bar.style.backgroundColor = timelineColor(entry.item);
-    bar.title = `${entry.range.startDate || ''} تا ${entry.range.endDate || ''}`;
+    const stop = stopIntervalForItem(projectOf(), entry.item);
+    if(stop && entry.range){
+      const left = Math.max(0, stop.start - entry.range.start);
+      const span = Math.max(1, entry.range.end - entry.range.start + 1);
+      const from = Math.min(100, (left / span) * 100);
+      const to = Math.min(100, ((Math.min(stop.end, entry.range.end) - entry.range.start + 1) / span) * 100);
+      bar.style.backgroundImage = `linear-gradient(90deg, ${timelineColor(entry.item)} ${from}%, rgba(255,255,255,.72) ${from}%, rgba(255,255,255,.72) ${to}%, ${timelineColor(entry.item)} ${to}%)`;
+      bar.title = `توقف مالی ${stop.duration} روز`;
+    } else bar.title = `${entry.range.startDate || ''} تا ${entry.range.endDate || ''}`;
     if(entry.item.kind !== 'milestone') bar.addEventListener('click', () => task
       ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render, readOnly:!canWritePlanning(activePlanningLevel), canDelete:canDeletePlanning(activePlanningLevel) })
       : openItemDetails(entry.item));

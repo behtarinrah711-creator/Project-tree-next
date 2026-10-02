@@ -77,6 +77,7 @@ export function collectPlannedWorks(tasksRoot){
         text:unit.title || unit.text || '',
         type:unit.type || '',
         amount,
+        accrual:unit.fundingAccrual || "spread",
         start,
         end:scheduleEndOf(unit),
         duration:durationDays(start,scheduleEndOf(unit)),
@@ -192,18 +193,31 @@ export function buildBuckets({ rangeId = 'week', originWeekday = 4, works = [] }
   return buckets;
 }
 
+export function sliceShare(work, bucket){
+  const amount = Number(work.amount) || 0;
+  const start = jalaliDayNumber(work.start);
+  const end = jalaliDayNumber(work.end) ?? start;
+  if(start == null || end == null || !amount) return 0;
+  const accrual = work.accrual || 'spread';
+  if(accrual === 'start') return start >= bucket.startDay && start <= bucket.endDay ? amount : 0;
+  if(accrual === 'end') return end >= bucket.startDay && end <= bucket.endDay ? amount : 0;
+  const overlap = Math.max(0, Math.min(end, bucket.endDay) - Math.max(start, bucket.startDay) + 1);
+  const duration = Math.max(1, end - start + 1);
+  return amount * overlap / duration;
+}
+
 export function assignWorksToBuckets(buckets, works){
   buckets.forEach(bucket => {
     bucket.works = [];
     bucket.total = 0;
   });
   works.forEach(work => {
-    const day = jalaliDayNumber(work.start);
-    if(day == null) return;
-    const bucket = buckets.find(item => day >= item.startDay && day <= item.endDay);
-    if(!bucket) return;
-    bucket.works.push(work);
-    bucket.total += Number(work.amount) || 0;
+    buckets.forEach(bucket => {
+      const share = sliceShare(work, bucket);
+      if(share <= 0) return;
+      bucket.works.push({ ...work, sliceAmount: share });
+      bucket.total += share;
+    });
   });
   return buckets;
 }
