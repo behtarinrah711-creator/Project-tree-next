@@ -47,6 +47,36 @@ function snapshotHasProjects(snapshot){
   return Array.isArray(snapshot?.projects) && snapshot.projects.length > 0;
 }
 
+function applySnapshotInPlace(store, next){
+  const current=store?.getSnapshot?.();
+  if(!current || typeof current !== 'object'){
+    store?.replaceSnapshot?.(next);
+    return;
+  }
+  // Legacy runtime keeps a reference to this snapshot. Preserve its identity
+  // so a newly accepted invitation becomes selectable on the first tap.
+  Object.keys(current).forEach(key=>delete current[key]);
+  Object.assign(current,next);
+}
+
+export async function refreshSaosaWorkspace({windowRef = window, store} = {}){
+  if(!isSaosaHost(windowRef)) return {enabled:false,changed:false};
+  const session=readSaosaSession(windowRef);
+  if(!session) return {enabled:true,authenticated:false,changed:false};
+  const remote=await workspaceRequest(windowRef,session);
+  const next=remote.snapshot || createEmptySnapshot();
+  const current=store?.getSnapshot?.() || createEmptySnapshot();
+  const changed=JSON.stringify(current.projects || [])!==JSON.stringify(next.projects || [])
+    || JSON.stringify(windowRef.KarhaSaosaWorkspaceAccess || {})!==JSON.stringify(remote.access || {});
+  if(changed){
+    applySnapshotInPlace(store,next);
+    store?.persistLocal?.();
+  }
+  windowRef.KarhaSaosaWorkspaceAccess=remote.access || {};
+  windowRef.localStorage?.setItem(ACCOUNT_MARKER_KEY,remote.accountId);
+  return {enabled:true,authenticated:true,changed,accountId:remote.accountId};
+}
+
 function createPersistAttach(windowRef, session, store, initialSnapshot = null){
   let timer = null;
   let queuedSnapshot = initialSnapshot;
