@@ -55,3 +55,15 @@ test('date order is the default timeline row mode', () => {
   ];
   assert.deepEqual(buildTimelineRows(tree,'p',{expanded:()=>true}).map(row=>row.item.id),['early','late']);
 });
+
+test('date order keeps every task below its parent stage', () => {
+  const tree=[{
+    id:'parent',kind:'stage',subtasks:[],workTasks:[
+      {...task('short'),scheduleStart:'1405/06/01',scheduleEnd:'1405/06/02'},
+      {...task('long'),scheduleStart:'1405/06/01',scheduleEnd:'1405/06/20'},
+    ],
+  }];
+  const rows=buildTimelineRows(tree,'p',{expanded:()=>true,orderMode:'date'});
+  assert.deepEqual(rows.map(row=>row.item.id),['parent','short','long']);
+  assert.ok(rows.every(row=>row.rootId==='parent'));
+});
