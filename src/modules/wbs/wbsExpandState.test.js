@@ -77,6 +77,20 @@ test('work tasks are the final progressive expansion level without becoming WBS 
   assert.deepEqual(advanceExpansionLevel('tasks', tree), { collapsed:true, visibleDepth:0 });
 });
 
+test('filtered expansion ignores inactive tasks and opens active tasks one level at a time', () => {
+  resetExpandState();
+  const tree = [{ id:'stage', kind:'stage', subtasks:[], workTasks:[{ id:'task' }] }];
+  const stagesOnly = { tasksVisible:() => false };
+  assert.deepEqual(getExpansionProgress('filtered', tree, stagesOnly), { expandedLevels:0, totalLevels:0, ratio:0 });
+  assert.deepEqual(advanceExpansionLevel('filtered', tree, stagesOnly), { collapsed:true, visibleDepth:0 });
+  assert.equal(isExpanded('filtered','stage'), false);
+
+  const stagesAndTasks = { tasksVisible:() => true };
+  assert.deepEqual(advanceExpansionLevel('filtered', tree, stagesAndTasks), { collapsed:false, visibleDepth:1 });
+  assert.equal(isExpanded('filtered','stage'), true);
+  assert.deepEqual(getExpansionProgress('filtered', tree, stagesAndTasks), { expandedLevels:1, totalLevels:1, ratio:1 });
+});
+
 test('saving reveals every ancestor and the new branch without opening unrelated branches', () => {
   resetExpandState();
   const items=[{id:'root',subtasks:[{id:'parent',subtasks:[{id:'created'}]}]},{id:'other'}];
