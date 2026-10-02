@@ -2,7 +2,6 @@ import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import {
   advanceExpansionLevel,
-  expandAll,
   getExpansionProgress,
   getExpandedIds,
 } from './wbsExpandState.js';
@@ -137,6 +136,8 @@ function createConfigTool(documentRef, root){
 }
 
 function createLevelTool(documentRef, root, project){
+  const options = ganttLevelOptions(project.tasks || []);
+  const state = ganttLevelState();
   return createMenuTool(documentRef, {
     className:'wbs-gantt-level-toggle',
     ariaLabel:'لول‌های WBS',
@@ -148,14 +149,9 @@ function createLevelTool(documentRef, root, project){
       title.className = 'wbs-gantt-menu-title';
       title.textContent = 'لول‌های WBS';
       menu.appendChild(title);
-      const state = ganttLevelState();
-      ganttLevelOptions(project.tasks || []).forEach(option => {
+      options.forEach(option => {
         menu.appendChild(checkboxRow(documentRef, option.label, state.get(option.key) !== false, checked => {
           setGanttLevelVisible(option.key, checked);
-          // A checked level must be immediately visible. Deeper selected levels can
-          // otherwise stay hidden behind a collapsed visible stage, making the
-          // combined «مرحله + کار» filter look broken.
-          if(checked && option.key !== 'package') expandAll(project.id, project.tasks || []);
           refreshWbs();
         }));
       });

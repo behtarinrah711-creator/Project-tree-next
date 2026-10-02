@@ -26,7 +26,7 @@ test('Gantt menu opens above its trigger when the space below is insufficient', 
 });
 
 
-test('checking a deeper Gantt level reveals it through collapsed stages', async () => {
+test('Gantt level filters never mutate independent expansion state', async () => {
   const source = await readFile(new URL('./viewToolbar.js', import.meta.url), 'utf8');
-  assert.match(source, /if\(checked && option\.key !== 'package'\) expandAll\(project\.id, project\.tasks \|\| \[\]\)/);
+  assert.doesNotMatch(source, /expandAll/);
 });

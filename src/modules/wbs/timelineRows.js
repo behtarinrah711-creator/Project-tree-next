@@ -42,9 +42,12 @@ export function buildTimelineRows(items, projectId, {
     const shown = visible({item, kind, depth});
     if(shown) rows.push({item, kind, grouping:true, depth:visibleDepth, sourceDepth:depth,
       range:scheduleRangeOf(item), shadeLevel:Math.max(1, maxDepth - depth + 1)});
-    if(shown && !expanded(item.id)) return;
     const childDepth = visibleDepth + (shown ? 1 : 0);
-    visit(item.subtasks, depth + 1, childDepth);
+    const branchOpen = !shown || expanded(item.id);
+    if(branchOpen) visit(item.subtasks, depth + 1, childDepth);
+    // Work visibility is an independent filter, not an expansion level. Show
+    // tasks owned by the current stage even while its child-stage branch is
+    // collapsed; the Expand button continues to control only stage depth.
     activeWorkTasks(item).forEach(task => {
       const taskItem = {...task, kind:'workTask', text:task.title, parentWork:item};
       if(visible({item:taskItem, kind:'workTask', depth:depth + 1})){
