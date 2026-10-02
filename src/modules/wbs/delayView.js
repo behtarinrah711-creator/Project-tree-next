@@ -79,6 +79,7 @@ function escapeHtml(value){
 
 import { openFundingStops } from '../../domain/wbs/fundingReceipts.js';
 import { tehranTodayJalali } from '../../domain/wbs/todayDomain.js';
+import { jalaliFromDay } from '../../domain/wbs/costline.js';
 
 function renderFundingStops(documentRef, body, project){
   const stops = openFundingStops(project, tehranTodayJalali());
@@ -90,20 +91,12 @@ function renderFundingStops(documentRef, body, project){
     body.insertAdjacentHTML('beforeend', '<div class="empty-state">توقف مالی باز نیست.</div>');
     return;
   }
-  const titles = new Map();
-  const walk = nodes => (nodes || []).forEach(node => {
-    if(!node || node.trashed) return;
-    titles.set(String(node.id), node.text || node.title || node.id);
-    (node.workTasks || []).forEach(task => task && titles.set(String(task.id), task.title || task.text || task.id));
-    walk(node.subtasks);
-  });
-  walk(project?.tasks || []);
   stops.forEach(stop => {
     const item = documentRef.createElement('article');
     item.className = 'wbs-delay-row';
-    const names = stop.affectedTaskIds.map(id => titles.get(id) || id).join('، ');
     const days = new Intl.NumberFormat('fa-IR').format(stop.duration);
-    item.innerHTML = `<strong>${escapeHtml(stop.receipt.description || 'واریز دیر کارفرما')}</strong><span>مسئول: ${escapeHtml(stop.receipt.party || 'کارفرما')}</span><span>بازه: ${escapeHtml(stop.receipt.dueDate)} تا امروز</span><span>تسک‌ها: ${escapeHtml(names)}</span><span>مدت رویداد: ${days} روز</span><span>اثر پایان: —</span>`;
+    const gap = new Intl.NumberFormat('fa-IR').format(Math.round(stop.gap));
+    item.innerHTML = `<strong>${escapeHtml(stop.title)}</strong><span>بازه: ${escapeHtml(stop.bucketLabel)}</span><span>از ${escapeHtml(jalaliFromDay(stop.start))}</span><span>مانده تأمین‌نشده: ${gap} تومان</span><span>مدت رویداد: ${days} روز</span><span>اثر پایان: —</span>`;
     body.appendChild(item);
   });
 }
