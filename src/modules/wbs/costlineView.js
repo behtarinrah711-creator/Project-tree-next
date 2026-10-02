@@ -1,7 +1,11 @@
 import { COSTLINE_RANGES, WEEKDAYS, plannedCostline } from '../../domain/wbs/costline.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
-import { closeWbsSheet, openWbsSheet } from './wbsSheet.js';
+import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
 import { createViewToolbar } from './viewHeader.js';
+import { uid } from '../../data/projectFactories.js';
+import { projectRepository } from '../../data/projectRepository.js';
+import { markDirty, persist } from '../../sync/persistAdapter.js';
+import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 
 const money = value => new Intl.NumberFormat('fa-IR').format(Number(value) || 0);
 const BAR_WIDTH = 28;
@@ -18,9 +22,9 @@ export function renderCostline(project){
   root.className = 'wbs-costline wbs-view-frame is-costline-frame';
   const range = COSTLINE_RANGES[rangeIndex] || COSTLINE_RANGES[1];
   const model = plannedCostline(project.tasks || [], { rangeId: range.id, originWeekday });
-  root.append(renderToolbar(() => {
+  root.append(renderToolbar(project, () => {
     root.replaceWith(renderCostline(project));
-  }), renderChart(model));
+  }, project), renderChart(model));
   return root;
 }
 
@@ -39,7 +43,7 @@ function cycleButton({ label, ariaLabel, shade, icon, onClick }){
   return button;
 }
 
-function renderToolbar(refresh){
+function renderToolbar(project, refresh){
   const controls = document.createElement('div');
   controls.className = 'wbs-costline-controls wbs-view-actions';
   const range = COSTLINE_RANGES[rangeIndex] || COSTLINE_RANGES[1];
@@ -54,6 +58,7 @@ function renderToolbar(refresh){
         refresh();
       },
     }),
+    depositButton(project),
     cycleButton({
       label: WEEKDAYS[originWeekday],
       ariaLabel: `مبدأ دوره ${WEEKDAYS[originWeekday]}`,
@@ -70,6 +75,100 @@ function renderToolbar(refresh){
     className:'wbs-costline-toolbar',
     ariaLabel:'ابزارهای برآورد هزینه',
     controls:[...controls.children],
+  });
+}
+
+function depositButton(project){
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'wbs-timescale-toggle wbs-costline-cycle';
+  button.setAttribute('aria-label', 'واریز');
+  button.setAttribute('title', 'واریز');
+  button.innerHTML = '<span class="wbs-timescale-label">واریز</span>';
+  button.addEventListener('click', () => openDepositSheet(project));
+  return button;
+}
+
+function taskChoices(project){
+  const rows = [];
+  const walk = nodes => (nodes || []).forEach(node => {
+    if(!node || node.trashed) return;
+    activeWorkTasks(node).forEach(task => rows.push({ id:task.id, label:task.title || task.text || task.id }));
+    if(!activeWorkTasks(node).length && node.text) rows.push({ id:node.id, label:node.text });
+    walk(node.subtasks);
+  });
+  walk(project?.tasks || []);
+  return rows;
+}
+
+function dateButton(name, value){
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.name = name;
+  button.className = 'wbs-input wbs-date-input';
+  button.dataset.value = value || '';
+  const paint = () => { button.textContent = button.dataset.value ? formatJalaliDisplay(button.dataset.value) : 'انتخاب تاریخ'; };
+  button.addEventListener('click', () => window.KarhaUI?.openJalaliPicker?.(button.dataset.value, next => { button.dataset.value = next || ''; paint(); }));
+  paint();
+  return button;
+}
+
+function openDepositSheet(project){
+  openWbsSheet({
+    title: 'واریز کارفرما',
+    saveLabel: 'ذخیره',
+    body(host){
+      const amount = document.createElement('input');
+      amount.className = 'wbs-input';
+      amount.name = 'amount';
+      amount.inputMode = 'numeric';
+      host.appendChild(fieldRow('مبلغ', amount));
+      host.appendChild(fieldRow('تاریخ مقرر', dateButton('dueDate', '')));
+      host.appendChild(fieldRow('تاریخ واریز', dateButton('depositDate', '')));
+      const party = document.createElement('input');
+      party.className = 'wbs-input';
+      party.name = 'party';
+      party.value = 'کارفرما';
+      host.appendChild(fieldRow('پرداخت‌کننده', party));
+      const note = document.createElement('textarea');
+      note.className = 'wbs-input';
+      note.name = 'description';
+      host.appendChild(fieldRow('توضیح', note));
+      const list = document.createElement('div');
+      taskChoices(project).forEach(choice => {
+        const label = document.createElement('label');
+        label.className = 'wbs-note';
+        label.innerHTML = `<input type="checkbox" name="affected" value="${escapeText(choice.id)}"> ${escapeText(choice.label)}`;
+        list.appendChild(label);
+      });
+      host.appendChild(fieldRow('تسک‌های متأثر', list));
+    },
+    onSave(host){
+      const amount = Number(String(host.querySelector('[name="amount"]').value).replace(/[^0-9.]/g, ''));
+      const dueDate = host.querySelector('[name="dueDate"]').dataset.value;
+      if(!amount || !dueDate){
+        window.KarhaUI?.showToast?.('مبلغ و تاریخ مقرر لازم است');
+        return false;
+      }
+      const affectedTaskIds = [...host.querySelectorAll('[name="affected"]:checked')].map(input => input.value);
+      const receipt = {
+        id: uid(),
+        amount,
+        dueDate,
+        depositDate: host.querySelector('[name="depositDate"]').dataset.value || '',
+        party: host.querySelector('[name="party"]').value.trim() || 'کارفرما',
+        description: host.querySelector('[name="description"]').value.trim(),
+        affectedTaskIds,
+        createdAt: Date.now(),
+      };
+      projectRepository.updateProject(project.id, current => ({
+        ...current,
+        fundingReceipts: [...(current.fundingReceipts || []), receipt],
+      }));
+      markDirty(project.id);
+      persist({ local:false });
+      return true;
+    },
   });
 }
 
