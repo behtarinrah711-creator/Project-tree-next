@@ -3,6 +3,11 @@ import { projectRepository } from '../data/projectRepository.js';
 import { getSession } from './session.js';
 import { isProjectVisibleForSession, projectsVisibleForSession } from './projectVisibility.js';
 import { appRouter } from './router.js';
+import { isSaosaHost, readSaosaSession } from '../cloud/saosaWorkspaceSync.js';
+
+function usesServerScopedWorkspace(){
+  return isSaosaHost(window) && !!readSaosaSession(window);
+}
 
 function normalizeProject(project){
   if(!project) return null;
@@ -14,6 +19,9 @@ function normalizeProject(project){
 }
 
 export function listProjects(){
+  if(usesServerScopedWorkspace()){
+    return projectRepository.getProjectsList().map(normalizeProject);
+  }
   const session = getSession();
   return projectsVisibleForSession(projectRepository.getProjectsList(), session).map(normalizeProject);
 }
@@ -21,6 +29,11 @@ export function listProjects(){
 export function getProject(projectId = projectContext.getProjectId()){
   if(!projectId) return null;
   const project = normalizeProject(projectRepository.getActiveProject(projectId));
+  // Saosa's workspace endpoint already returns only projects authorized for
+  // this SMS account, including projects owned by somebody else and shared
+  // through an accepted invitation. Do not reject those with Firebase's
+  // legacy ownerUid rule during project selection.
+  if(usesServerScopedWorkspace()) return project;
   return isProjectVisibleForSession(project, getSession()) ? project : null;
 }
 
