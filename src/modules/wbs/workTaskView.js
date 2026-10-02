@@ -178,11 +178,13 @@ export function bindTaskReorder(group, row, { projectId, workId, taskId, onChang
     if(startRows.length < 2) return;
     const initialIds = startRows.map(item => String(item.dataset.taskId));
     const pointerId = event.pointerId;
+    const eventTarget = documentRef.defaultView || documentRef;
     let moved = false;
     let finished = false;
     row.classList.add('is-dragging');
     const move = ev => {
       if(ev.pointerId !== pointerId) return;
+      ev.preventDefault?.();
       moved = true;
       const others = rows().filter(item => item !== row);
       let before = null;
@@ -195,10 +197,9 @@ export function bindTaskReorder(group, row, { projectId, workId, taskId, onChang
     const cleanup = () => {
       if(finished) return false;
       finished = true;
-      documentRef.removeEventListener('pointermove', move);
-      documentRef.removeEventListener('pointerup', end);
-      documentRef.removeEventListener('pointercancel', end);
-      grip.removeEventListener('lostpointercapture', end);
+      eventTarget.removeEventListener('pointermove', move, true);
+      eventTarget.removeEventListener('pointerup', end, true);
+      eventTarget.removeEventListener('pointercancel', end, true);
       documentRef.defaultView?.removeEventListener('blur', end);
       documentRef.removeEventListener('visibilitychange', onVisibilityChange);
       if(grip.hasPointerCapture?.(pointerId)){
@@ -221,10 +222,9 @@ export function bindTaskReorder(group, row, { projectId, workId, taskId, onChang
       if(documentRef.visibilityState === 'hidden') end();
     };
     activeTaskDragCleanup = cleanup;
-    documentRef.addEventListener('pointermove', move);
-    documentRef.addEventListener('pointerup', end);
-    documentRef.addEventListener('pointercancel', end);
-    grip.addEventListener('lostpointercapture', end);
+    eventTarget.addEventListener('pointermove', move, { capture:true, passive:false });
+    eventTarget.addEventListener('pointerup', end, true);
+    eventTarget.addEventListener('pointercancel', end, true);
     documentRef.defaultView?.addEventListener('blur', end);
     documentRef.addEventListener('visibilitychange', onVisibilityChange);
     try{ grip.setPointerCapture(event.pointerId); }catch(_error){}
