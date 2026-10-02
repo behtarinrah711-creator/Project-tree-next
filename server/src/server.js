@@ -2,6 +2,7 @@ import {createServer} from 'node:http';
 import pg from 'pg';
 import {createApp} from './app.js';
 import {loadConfig} from './config.js';
+import {createKavenegarLookup} from './kavenegar.js';
 
 const config = loadConfig();
 const pool = new pg.Pool({
@@ -10,24 +11,14 @@ const pool = new pg.Pool({
   idleTimeoutMillis: 30_000,
 });
 
+const kavenegarLookup = createKavenegarLookup({
+  apiKey:config.kavenegarApiKey,
+});
+
 async function sendLoginCode(phone, code){
-  const endpoint = new URL(`https://api.kavenegar.com/v1/${encodeURIComponent(config.kavenegarApiKey)}/verify/lookup.json`);
-  endpoint.searchParams.set('receptor', phone);
-  endpoint.searchParams.set('token', code);
-  endpoint.searchParams.set('template', config.kavenegarTemplate);
-  const response = await fetch(endpoint);
-  if(!response.ok){
-    const error = new Error('sms_provider_error');
-    error.statusCode = 502;
-    throw error;
-  }
+  return kavenegarLookup(phone, code, config.kavenegarTemplate);
 }
-async function kavenegarLookup(phone,token,template){
-  const endpoint=new URL(`https://api.kavenegar.com/v1/${encodeURIComponent(config.kavenegarApiKey)}/verify/lookup.json`);
-  endpoint.searchParams.set('receptor',phone);endpoint.searchParams.set('token',token);endpoint.searchParams.set('template',template);
-  const response=await fetch(endpoint);
-  if(!response.ok){const error=new Error('sms_provider_error');error.statusCode=502;throw error;}
-}
+
 async function sendInvitationSms({phone,projectName}){return kavenegarLookup(phone,projectName,config.kavenegarInviteTemplate);}
 function escapeHtml(value){return String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));}
 async function sendInvitationEmail({email,projectName,acceptUrl}){
