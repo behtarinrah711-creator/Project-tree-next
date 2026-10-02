@@ -131,21 +131,17 @@ function paintBaselineIndicator(gantt, documentRef){
   const headerCanvas = gantt.querySelector('.wbs-gantt-scale-header-canvas');
   const headerX = todayX(headerCanvas, domain, baseline);
   if(headerCanvas && headerX !== null){
-    headerCanvas.appendChild(svgElement(documentRef, 'line', { class:'wbs-gantt-baseline-line is-header', x1:headerX, x2:headerX, y1:16, y2:42 }));
-    const labelWidth = 52;
-    const width = Number(headerCanvas.getAttribute('width')) || labelWidth;
-    const labelX = clamp(headerX - labelWidth / 2, 0, Math.max(0, width - labelWidth));
-    const foreign = svgElement(documentRef, 'foreignObject', { class:'wbs-gantt-baseline-label', x:labelX, y:1, width:labelWidth, height:16 });
-    const label = documentRef.createElement('div');
-    label.textContent = 'بیس‌لاین';
-    foreign.appendChild(label);
-    headerCanvas.appendChild(foreign);
+    headerCanvas.appendChild(svgElement(documentRef, 'line', {
+      class:'wbs-gantt-baseline-line is-header', x1:headerX, x2:headerX, y1:18, y2:42,
+    }));
   }
   gantt.querySelectorAll('.wbs-gantt-scale-canvas').forEach(canvas => {
     const x = todayX(canvas, domain, baseline);
     if(x === null) return;
     const height = Number(canvas.getAttribute('height')) || 36;
-    canvas.appendChild(svgElement(documentRef, 'line', { class:'wbs-gantt-baseline-line', x1:x, x2:x, y1:0, y2:height }));
+    canvas.appendChild(svgElement(documentRef, 'line', {
+      class:'wbs-gantt-baseline-line', x1:x, x2:x, y1:0, y2:height,
+    }));
   });
 }
 
