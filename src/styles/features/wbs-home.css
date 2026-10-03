@@ -307,5 +307,6 @@ body:has(.wbs-home-root){background:#fff;}
 
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-caption{flex:1;min-width:0;text-align:center;overflow-wrap:anywhere;}
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-head button{flex-shrink:0;}
+:is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-head{box-sizing:border-box;min-height:86px;padding-block:0;align-items:center;}
 
 .wbs-row .wbs-title{font-weight:700;}
