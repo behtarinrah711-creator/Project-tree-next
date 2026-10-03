@@ -5,7 +5,7 @@ import { createViewToolbar } from './viewHeader.js';
 import { uid } from '../../data/projectFactories.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
-import { allocatedForBucket, allocatedForTask, allocationForInterval, setAllocationsForBucketTotal, fundingReceiptsOf, poolRemaining, trimFundingAllocationsToReceipts } from '../../domain/wbs/fundingReceipts.js';
+import { allocatedForBucket, allocatedForTask, setAllocationsForBucketTotal, fundingReceiptsOf, poolRemaining, trimFundingAllocationsToReceipts } from '../../domain/wbs/fundingReceipts.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
