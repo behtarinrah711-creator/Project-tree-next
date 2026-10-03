@@ -17,6 +17,8 @@
     overflow-wrap:anywhere;
   }
   .numpad-display.empty{color:var(--text-dim);font-size:16px;font-weight:400;}
+  .numpad-error{display:none;color:#b3261e;text-align:center;font-size:12px;margin:-8px 0 12px;direction:rtl;}
+  .numpad-error.is-visible{display:block;}
   .numpad-grid{direction:ltr;
     display:grid;grid-template-columns:repeat(3,1fr);gap:10px;
   }

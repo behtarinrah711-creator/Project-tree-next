@@ -12,6 +12,7 @@ export function openNumpadGeneric(initial, onDone, opts, { documentRef = documen
   const raw = toEnglishDigits(String(initial==null?'':initial)).replace(/[^\d]/g,'');
   numpadBuffer = raw;
   updateNumpadDisplay({ documentRef });
+  showNumpadError('', { documentRef });
   const overlay = documentRef.getElementById('numpadOverlay');
   if(overlay) overlay.classList.remove('hidden');
   windowRef.KarhaChildHistory?.open('numpad');
@@ -44,6 +45,18 @@ function updateNumpadDisplay({ documentRef = document } = {}){
   }
 }
 
+function showNumpadError(message, { documentRef = document } = {}){
+  let error = documentRef.getElementById('numpadError');
+  if(!error){
+    error = documentRef.createElement('div');
+    error.id = 'numpadError';
+    error.className = 'numpad-error';
+    documentRef.getElementById('numpadDisplay')?.after(error);
+  }
+  error.textContent = message || '';
+  error.classList.toggle('is-visible', Boolean(message));
+}
+
 export function installNumpadBindings({ documentRef, windowRef = globalThis } = {}){
   if(!documentRef) return;
   if(installed) return;
@@ -55,17 +68,24 @@ export function installNumpadBindings({ documentRef, windowRef = globalThis } = 
       if(numpadBuffer.length >= (numpadOpts.maxLen||13)) return;
       numpadBuffer += btn.dataset.d;
       updateNumpadDisplay({ documentRef });
+      showNumpadError('', { documentRef });
     };
   });
   const backspace = documentRef.getElementById('numpadBackspace');
   if(backspace) backspace.onclick = ()=>{
     numpadBuffer = numpadBuffer.slice(0, -1);
     updateNumpadDisplay({ documentRef });
+    showNumpadError('', { documentRef });
   };
   const done = documentRef.getElementById('numpadDoneBtn');
   if(done) done.onclick = ()=>{
+    const validationError = typeof numpadOpts.validate === 'function' ? numpadOpts.validate(numpadBuffer) : '';
+    if(validationError){
+      showNumpadError(validationError, { documentRef });
+      return;
+    }
     if(numpadOnDone){
-      numpadOnDone(numpadBuffer);
+      if(numpadOnDone(numpadBuffer) === false) return;
       closeNumpad(false, { documentRef, windowRef });
       return;
     }

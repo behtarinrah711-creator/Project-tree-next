@@ -39,3 +39,4 @@
 .wbs-funding-row.is-summary{font-weight:700;}
 .wbs-funding-amount{direction:rtl;text-align:left;white-space:nowrap;font-family:'IRANSansX',Tahoma,sans-serif;}
 .wbs-funding-divider{height:0;margin:10px 0;border-top:1px solid #d8d1c7;}
+.wbs-costline-manual{width:100%;min-height:38px;margin-top:6px;padding:0;border:0;background:transparent;color:#1267b2;font:inherit;text-align:right;cursor:pointer;}
