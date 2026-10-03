@@ -58,13 +58,19 @@ function spreadAmountForBucket(total, work, bucket){
   return Math.floor(total * through / duration) - Math.floor(total * before / duration);
 }
 
-/** Pool allocations have one task-level total and follow that task's accrual mode in
- * every scale. Legacy receipt-embedded rows retain their original interval. */
+/** Date-bound allocations keep their real interval when the chart scale changes.
+ * Older task-level allocations still follow the task accrual mode for compatibility. */
 export function allocatedForBucket(project, taskId, bucket){
   const work = plannedWorkOf(project, taskId);
   if(work){
-    const poolTotal = trimFundingAllocationsToReceipts(project)
-      .filter(item => String(item.taskId) === String(taskId))
+    const poolRows = trimFundingAllocationsToReceipts(project)
+      .filter(item => String(item.taskId) === String(taskId));
+    const intervalTotal = poolRows.reduce((sum, item) => {
+      const overlap = overlapAmount(item, bucket);
+      return sum + (overlap == null ? 0 : overlap);
+    }, 0);
+    const taskLevelTotal = poolRows
+      .filter(item => overlapAmount(item, bucket) == null)
       .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
     const embedded = fundingReceiptsOf(project).flatMap(row => row.allocations || [])
       .filter(item => String(item.taskId) === String(taskId))
@@ -73,13 +79,16 @@ export function allocatedForBucket(project, taskId, bucket){
         if(overlap != null) return sum + overlap;
         return sum + (String(item.bucketId) === String(bucket?.id) ? (Number(item.amount) || 0) : 0);
       }, 0);
-    const total = Math.min(Number(work.amount) || 0, poolTotal);
-    if(total <= 0) return Math.round(embedded);
-    const start = jalaliDayNumber(work.start);
-    const end = jalaliDayNumber(work.end) ?? start;
-    if(work.accrual === 'start') return Math.round(embedded + (start >= bucket.startDay && start <= bucket.endDay ? total : 0));
-    if(work.accrual === 'end') return Math.round(embedded + (end >= bucket.startDay && end <= bucket.endDay ? total : 0));
-    return Math.round(embedded + spreadAmountForBucket(total, work, bucket));
+    const total = Math.min(Number(work.amount) || 0, taskLevelTotal);
+    let distributed = 0;
+    if(total > 0){
+      const start = jalaliDayNumber(work.start);
+      const end = jalaliDayNumber(work.end) ?? start;
+      if(work.accrual === 'start') distributed = start >= bucket.startDay && start <= bucket.endDay ? total : 0;
+      else if(work.accrual === 'end') distributed = end >= bucket.startDay && end <= bucket.endDay ? total : 0;
+      else distributed = spreadAmountForBucket(total, work, bucket);
+    }
+    return Math.round(embedded + intervalTotal + distributed);
   }
   return Math.round(allocationsOf(project)
     .filter(item => String(item.taskId) === String(taskId))
