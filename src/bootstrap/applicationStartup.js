@@ -53,6 +53,7 @@ import { showWorkspacePage, hideAllWorkspacePages, SHELL_WORKSPACE_PAGE_IDS } fr
 import { installFirebaseRuntime } from '../firebase/firebaseRuntime.js';
 import { createCloudRuntime } from '../cloud/cloudRuntime.js';
 import { createNotebookCloudLifecycle } from '../cloud/notebookCloudLifecycle.js';
+import { createSaosaNotebookLifecycle } from '../cloud/saosaNotebookSync.js';
 import { runDataMigrations, normalizeProjectScopedData } from '../data/migrations/index.js';
 import * as projectFactories from '../data/projectFactories.js';
 import * as taskTree from '../domain/taskTree.js';
@@ -167,10 +168,12 @@ export async function startApplication({
   }
   // Phase 8.2: UI primitives own toast/confirm/numpad/jalali (no new DOM ownership in legacy).
   installUiPrimitives({ windowRef, documentRef: windowRef.document });
-  const notebookRepository = createNotebookCloudLifecycle({
-    auth: windowRef.KarhaFirebaseRuntime.auth,
-    db: windowRef.KarhaFirebaseRuntime.db,
-  });
+  const notebookRepository = isSaosaHost(windowRef)
+    ? createSaosaNotebookLifecycle({windowRef})
+    : createNotebookCloudLifecycle({
+      auth: windowRef.KarhaFirebaseRuntime.auth,
+      db: windowRef.KarhaFirebaseRuntime.db,
+    });
   installNotebookWorkspace({ windowRef, documentRef: windowRef.document, repository:notebookRepository });
   installProfileStore({ windowRef });
   installProfileView({ windowRef, documentRef: windowRef.document });

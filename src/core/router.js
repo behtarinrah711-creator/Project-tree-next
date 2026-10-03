@@ -85,7 +85,9 @@ export class AppRouter{
     this.lastSyncedHash = window.location.hash;
     const session = getSession();
     const saosaLoggedOut = isSaosaHost(window) && !readSaosaSession(window);
-    if(saosaLoggedOut){
+    const globalRoute = getGlobalRoute(window.location);
+    const stayInNotebook = globalRoute?.moduleId === 'notebook' || globalRoute?.moduleId === 'notebook-export';
+    if(saosaLoggedOut && !stayInNotebook){
       projectContext.setProjectId(null);
       const publicHash = '#/';
       if(window.location.hash !== publicHash){

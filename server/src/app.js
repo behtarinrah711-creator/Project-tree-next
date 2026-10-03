@@ -2,6 +2,7 @@ import {readJson, route, sendJson} from './http.js';
 import {authenticate} from './auth.js';
 import {createHash, randomBytes, randomInt, randomUUID} from 'node:crypto';
 import {constantTimeEqual, hashToken} from './auth.js';
+import {normalizeAccountNotebook, readAccountNotebook, saveAccountNotebook} from './accountNotebook.js';
 
 const SCOPE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/i;
 const IRAN_PHONE_PATTERN = /^09\d{9}$/;
@@ -526,6 +527,23 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
           const snapshot = normalizeWorkspaceSnapshot(body.snapshot);
           if(!snapshot) return sendJson(response, 400, {error: 'invalid_workspace'});
           return sendJson(response, 200, await saveWorkspace(pool, accountId, snapshot));
+        }
+      }
+
+      if(url.pathname === '/api/v1/notebook'){
+        const accountId = await authenticate(request, pool, sessionSecret);
+        if(!accountId) return sendJson(response, 401, {error: 'unauthorized'});
+        if(request.method === 'GET') return sendJson(response, 200, await readAccountNotebook(pool, accountId));
+        if(request.method === 'PUT'){
+          const body = await readJson(request);
+          const notebook = normalizeAccountNotebook(body.notebook);
+          if(!notebook) return sendJson(response, 400, {error: 'invalid_notebook'});
+          try{
+            return sendJson(response, 200, await saveAccountNotebook(pool, accountId, notebook, body.expectedRevision));
+          }catch(error){
+            if(error.statusCode === 409) return sendJson(response, 409, {error: 'revision_conflict', revision: error.revision});
+            throw error;
+          }
         }
       }
 
