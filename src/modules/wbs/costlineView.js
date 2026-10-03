@@ -504,31 +504,40 @@ function openBucketSheet(project, bucket, refresh){
         manual.className = 'wbs-costline-manual';
         const paintManual = () => {
           const live = projectRepository.getActiveProject(project.id) || project;
-          const allocation = allocationForInterval(live, work.id, bucket);
-          manual.textContent = allocation?.kind === 'manual' && Number(allocation.amount) > 0
-            ? `${money(allocation.amount)} تومان`
+          const amount = allocatedForBucket(live, work.id, bucket);
+          manual.textContent = amount > 0
+            ? `${money(amount)} تومان`
             : 'وارد کردن مبلغ';
         };
         manual.addEventListener('click', () => {
           const live = projectRepository.getActiveProject(project.id) || project;
-          const previous = allocationForInterval(live, work.id, bucket);
-          const previousAmount = Number(previous?.amount) || 0;
-          openNumpadGeneric(previous?.kind === 'manual' ? previousAmount : '', value => {
+          const visibleAmount = allocatedForBucket(live, work.id, bucket);
+          openNumpadGeneric(visibleAmount || '', value => {
             const next = Number(value) || 0;
             const latest = projectRepository.getActiveProject(project.id) || project;
-            const allowed = intervalAllocationLimit(latest, work, bucket);
+            const exact = Number(allocationForInterval(latest, work.id, bucket)?.amount) || 0;
+            const otherCovered = Math.max(0, allocatedForBucket(latest, work.id, bucket) - exact);
+            const allowed = otherCovered + intervalAllocationLimit(latest, work, bucket);
+            if(next < otherCovered){
+              window.KarhaUI?.showToast?.(`این بازه از بازه‌های کوچک‌تر ${money(otherCovered)} تومان تأمین دارد`);
+              return false;
+            }
             if(next > allowed){
               window.KarhaUI?.showToast?.(`مبلغ نمی‌تواند بیشتر از ${money(allowed)} تومان باشد`);
               return false;
             }
-            saveIntervalAllocation(project.id, work.id, bucket, next, 'manual');
+            saveIntervalAllocation(project.id, work.id, bucket, next - otherCovered, 'manual');
             refresh();
             paint();
             return true;
           }, { suffix:' تومان', validate:value => {
             const latest = projectRepository.getActiveProject(project.id) || project;
-            const allowed = intervalAllocationLimit(latest, work, bucket);
-            return Number(value || 0) <= allowed ? '' : `حداکثر مبلغ مجاز ${money(allowed)} تومان است`;
+            const exact = Number(allocationForInterval(latest, work.id, bucket)?.amount) || 0;
+            const otherCovered = Math.max(0, allocatedForBucket(latest, work.id, bucket) - exact);
+            const allowed = otherCovered + intervalAllocationLimit(latest, work, bucket);
+            const next = Number(value || 0);
+            if(next < otherCovered) return `حداقل مبلغ این بازه ${money(otherCovered)} تومان است`;
+            return next <= allowed ? '' : `حداکثر مبلغ مجاز ${money(allowed)} تومان است`;
           }});
         });
         paintManual();
