@@ -36,8 +36,12 @@
 .wbs-costline-detail-row.is-title > span:last-child{font-size:12px;}
 .wbs-costline-detail-row:last-of-type{border-bottom:0;}
 .wbs-costline-control-row,.wbs-costline-allocation-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;direction:rtl;min-height:44px;font-size:11px;}
-.wbs-costline-control-row{border-top:1px solid #eee8df;}
+.wbs-costline-control-row{position:relative;border-top:1px solid #eee8df;}
 .wbs-costline-mode{min-height:36px;padding:0;border:0;background:transparent;color:#2f2a24;font:inherit;text-align:left;cursor:pointer;}
+.wbs-costline-mode-menu{position:absolute;left:0;top:38px;z-index:2;min-width:120px;padding:4px;border:1px solid #ded7cd;border-radius:8px;background:#fff;box-shadow:0 6px 18px rgba(47,42,36,.14);}
+.wbs-costline-mode-menu[hidden]{display:none;}
+.wbs-costline-mode-menu button{display:block;width:100%;min-height:36px;padding:0 10px;border:0;border-bottom:1px solid #eee8df;background:transparent;color:#2f2a24;font:inherit;font-size:11px;text-align:right;white-space:nowrap;}
+.wbs-costline-mode-menu button:last-child{border-bottom:0;}
 .wbs-costline-allocation-row{border:0;background:transparent;}
 .wbs-costline-fund-slice{display:flex;align-items:center;gap:6px;margin:0;border:0;background:transparent;color:#4d4741;}
 .wbs-costline-fund-slice input{margin:0;}

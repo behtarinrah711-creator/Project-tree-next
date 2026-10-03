@@ -414,8 +414,8 @@ function openBucketSheet(project, bucket, refresh){
         );
         const accrualOptions = [
           { id:'spread', name:'پخش روی مدت' },
-          { id:'start', name:'اول کار' },
-          { id:'end', name:'آخر کار' },
+          { id:'start', name:'ابتدای کار' },
+          { id:'end', name:'انتهای کار' },
         ];
         const modeRow = document.createElement('div');
         modeRow.className = 'wbs-costline-control-row';
@@ -428,22 +428,31 @@ function openBucketSheet(project, bucket, refresh){
         const paintMode = () => {
           mode.textContent = accrualOptions.find(option => option.id === mode.dataset.value)?.name || accrualOptions[0].name;
         };
-        mode.addEventListener('click', () => openSearchPicker({
-          title:'زمان پول', listTitle:'زمان تخصیص', selectedTitle:'گزینه منتخب',
-          contextKey:`wbs-funding-accrual:${work.id}`,
-          items:accrualOptions,
-          showStar:false, showAdd:false,
-          onSelect:selected => {
-            mode.dataset.value = selected.id;
+        const modeMenu = document.createElement('div');
+        modeMenu.className = 'wbs-costline-mode-menu';
+        modeMenu.hidden = true;
+        accrualOptions.forEach(option => {
+          const item = document.createElement('button');
+          item.type = 'button';
+          item.textContent = option.name;
+          item.addEventListener('click', () => {
+            mode.dataset.value = option.id;
+            modeMenu.hidden = true;
             paintMode();
-            projectRepository.updateProject(project.id, row => setAccrual(row, work.id, selected.id));
+            projectRepository.updateProject(project.id, row => setAccrual(row, work.id, option.id));
             markDirty(project.id);
             persist({ local:false });
             refresh();
-          },
-        }));
+          });
+          modeMenu.appendChild(item);
+        });
+        mode.addEventListener('click', event => {
+          event.stopPropagation();
+          modeMenu.hidden = !modeMenu.hidden;
+          if(!modeMenu.hidden) queueMicrotask(() => document.addEventListener('click', () => { modeMenu.hidden = true; }, { once:true }));
+        });
         paintMode();
-        modeRow.append(modeLabel, mode);
+        modeRow.append(modeLabel, mode, modeMenu);
         card.appendChild(modeRow);
         const tick = document.createElement('label');
         tick.className = 'wbs-costline-fund-slice';
