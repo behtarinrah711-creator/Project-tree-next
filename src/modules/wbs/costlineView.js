@@ -5,7 +5,7 @@ import { createViewToolbar } from './viewHeader.js';
 import { uid } from '../../data/projectFactories.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
-import { allocatedFor, fundingReceiptsOf, poolRemaining } from '../../domain/wbs/fundingReceipts.js';
+import { allocatedForBucket, allocatedForTask, allocationForInterval, fundingReceiptsOf, poolRemaining } from '../../domain/wbs/fundingReceipts.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
@@ -302,7 +302,7 @@ function renderChart(project, model){
     col.type = 'button';
     col.className = 'wbs-costline-col';
     col.setAttribute('aria-label', `${bucket.label} ${money(bucket.total)} تومان`);
-    const allocated = Math.min(bucket.total, bucket.works.reduce((sum, work) => sum + allocatedFor(project, work.id, bucket.id), 0));
+    const allocated = Math.min(bucket.total, bucket.works.reduce((sum, work) => sum + allocatedForBucket(project, work.id, bucket), 0));
     const shortage = Math.max(0, bucket.total - allocated);
     const values = document.createElement('span');
     values.className = 'wbs-costline-values';
@@ -333,7 +333,9 @@ function openBucketSheet(project, bucket, refresh){
     saveLabel: 'بستن',
     onSave: () => true,
     body(host){
-      const current = projectRepository.getActiveProject(project.id) || project;
+      const paint = () => {
+        host.replaceChildren();
+        const current = projectRepository.getActiveProject(project.id) || project;
       const pool = document.createElement('div');
       pool.className = 'wbs-note wbs-delay-summary';
       pool.textContent = `مانده بودجه: ${money(poolRemaining(current))} تومان`;
@@ -344,7 +346,7 @@ function openBucketSheet(project, bucket, refresh){
       }
       bucket.works.forEach(work => {
         const slice = Number(work.sliceAmount) || 0;
-        const covered = allocatedFor(current, work.id, bucket.id);
+        const covered = allocatedForBucket(current, work.id, bucket);
         const card = document.createElement('article');
         card.className = 'wbs-costline-work';
         card.innerHTML = `<h4>${escapeText(work.text)}</h4><p>مرحله: ${escapeText(work.path || '—')}</p><p>شروع: ${escapeText(formatJalaliDisplay(work.start) || work.start || '—')}</p><p>پایان: ${escapeText(formatJalaliDisplay(work.end) || work.end || '—')}</p><p>سهم این بازه: ${escapeText(money(slice))} تومان</p><p>تأمین‌شده: ${escapeText(money(covered))} تومان</p><p>کل برآورد: ${escapeText(money(work.amount))} تومان</p>`;
@@ -371,28 +373,80 @@ function openBucketSheet(project, bucket, refresh){
         box.checked = covered + 1 >= slice && slice > 0;
         box.addEventListener('change', () => {
           const live = projectRepository.getActiveProject(project.id) || project;
-          if(box.checked && poolRemaining(live) + 1 < slice){
+          const previous = Number(allocationForInterval(live, work.id, bucket)?.amount) || 0;
+          const liveCovered = allocatedForBucket(live, work.id, bucket);
+          const nextAmount = previous + Math.max(0, slice - liveCovered);
+          const available = Math.min(
+            poolRemaining(live) + previous,
+            Math.max(0, (Number(work.amount) || 0) - allocatedForTask(live, work.id) + previous),
+          );
+          if(box.checked && nextAmount > available + 1){
             box.checked = false;
             window.KarhaUI?.showToast?.('مانده بودجه کافی نیست');
             return;
           }
-          projectRepository.updateProject(project.id, row => ({
-            ...row,
-            fundingAllocations: [
-              ...(row.fundingAllocations || []).filter(item => !(String(item.taskId) === String(work.id) && String(item.bucketId) === String(bucket.id))),
-              ...(box.checked ? [{ taskId: work.id, bucketId: bucket.id, amount: slice }] : []),
-            ],
-          }));
-          markDirty(project.id);
-          persist({ local:false });
+          saveIntervalAllocation(project.id, work.id, bucket, box.checked ? nextAmount : 0, 'slice');
           refresh();
+          paint();
         });
         tick.append(box, document.createTextNode(' تأمین همین برش'));
-        card.appendChild(tick);
+        const manual = document.createElement('button');
+        manual.type = 'button';
+        manual.className = 'wbs-costline-manual';
+        const paintManual = () => {
+          const live = projectRepository.getActiveProject(project.id) || project;
+          const allocation = allocationForInterval(live, work.id, bucket);
+          manual.textContent = allocation?.kind === 'manual' && Number(allocation.amount) > 0
+            ? `${money(allocation.amount)} تومان`
+            : 'وارد کردن مبلغ';
+        };
+        manual.addEventListener('click', () => {
+          const live = projectRepository.getActiveProject(project.id) || project;
+          const previous = allocationForInterval(live, work.id, bucket);
+          const previousAmount = Number(previous?.amount) || 0;
+          openNumpadGeneric(previous?.kind === 'manual' ? previousAmount : '', value => {
+            const next = Number(value) || 0;
+            const latest = projectRepository.getActiveProject(project.id) || project;
+            const existing = Number(allocationForInterval(latest, work.id, bucket)?.amount) || 0;
+            const taskRemaining = Math.max(0, (Number(work.amount) || 0) - allocatedForTask(latest, work.id) + existing);
+            const allowed = Math.min(poolRemaining(latest) + existing, taskRemaining);
+            if(next > allowed){
+              window.KarhaUI?.showToast?.(`مبلغ نمی‌تواند بیشتر از ${money(allowed)} تومان باشد`);
+              return false;
+            }
+            saveIntervalAllocation(project.id, work.id, bucket, next, 'manual');
+            refresh();
+            paint();
+            return true;
+          }, { suffix:' تومان', validate:value => {
+            const latest = projectRepository.getActiveProject(project.id) || project;
+            const existing = Number(allocationForInterval(latest, work.id, bucket)?.amount) || 0;
+            const allowed = Math.min(poolRemaining(latest) + existing, Math.max(0, (Number(work.amount) || 0) - allocatedForTask(latest, work.id) + existing));
+            return Number(value || 0) <= allowed ? '' : `حداکثر مبلغ مجاز ${money(allowed)} تومان است`;
+          }});
+        });
+        paintManual();
+        card.append(tick, manual);
         host.appendChild(card);
       });
+      };
+      paint();
     },
   });
+}
+
+function saveIntervalAllocation(projectId, taskId, bucket, amount, kind){
+  projectRepository.updateProject(projectId, row => ({
+    ...row,
+    fundingAllocations: [
+      ...(row.fundingAllocations || []).filter(item => !(String(item.taskId) === String(taskId)
+        && Number(item.startDay) === Number(bucket.startDay)
+        && Number(item.endDay) === Number(bucket.endDay))),
+      ...(Number(amount) > 0 ? [{ taskId, bucketId:bucket.id, startDay:bucket.startDay, endDay:bucket.endDay, amount:Number(amount), kind }] : []),
+    ],
+  }));
+  markDirty(projectId);
+  persist({ local:false });
 }
 
 function setAccrual(project, taskId, accrual){
