@@ -40,21 +40,41 @@ function overlapAmount(item, bucket){
   return (Number(item.amount) || 0) * overlap / Math.max(1, end - start + 1);
 }
 
-export function clearAllocationsForBucket(allocations, taskId, bucket){
-  return (allocations || []).flatMap(item => {
-    if(String(item?.taskId) !== String(taskId)) return [item];
-    const start = Number(item?.startDay);
-    const end = Number(item?.endDay);
-    if(!Number.isFinite(start) || !Number.isFinite(end)) return [];
+function allocationInterval(item, work){
+  const start = Number(item?.startDay);
+  const end = Number(item?.endDay);
+  if(Number.isFinite(start) && Number.isFinite(end)) return { start, end };
+  if(!work) return null;
+  const workStart = jalaliDayNumber(work.start);
+  const workEnd = jalaliDayNumber(work.end) ?? workStart;
+  if(workStart == null || workEnd == null) return null;
+  if(work.accrual === 'start') return { start:workStart, end:workStart };
+  if(work.accrual === 'end') return { start:workEnd, end:workEnd };
+  return { start:workStart, end:workEnd };
+}
+
+export function setAllocationsForBucketTotal(project, taskId, bucket, targetAmount){
+  const work = plannedWorkOf(project, taskId);
+  const outside = [];
+  (project?.fundingAllocations || []).forEach(item => {
+    if(String(item?.taskId) !== String(taskId)){
+      outside.push(item);
+      return;
+    }
+    const interval = allocationInterval(item, work);
+    if(!interval) return;
+    const { start, end } = interval;
     const overlapStart = Math.max(start, Number(bucket?.startDay));
     const overlapEnd = Math.min(end, Number(bucket?.endDay));
-    if(overlapEnd < overlapStart) return [item];
+    if(overlapEnd < overlapStart){
+      outside.push({ ...item, startDay:start, endDay:end });
+      return;
+    }
     const duration = Math.max(1, end - start + 1);
-    const pieces = [];
     const beforeDays = Math.max(0, overlapStart - start);
     const afterDays = Math.max(0, end - overlapEnd);
     if(beforeDays){
-      pieces.push({
+      outside.push({
         ...item,
         bucketId:`${item.bucketId || 'allocation'}:before:${start}-${overlapStart - 1}`,
         startDay:start,
@@ -63,7 +83,7 @@ export function clearAllocationsForBucket(allocations, taskId, bucket){
       });
     }
     if(afterDays){
-      pieces.push({
+      outside.push({
         ...item,
         bucketId:`${item.bucketId || 'allocation'}:after:${overlapEnd + 1}-${end}`,
         startDay:overlapEnd + 1,
@@ -71,8 +91,19 @@ export function clearAllocationsForBucket(allocations, taskId, bucket){
         amount:Math.round((Number(item.amount) || 0) * afterDays / duration),
       });
     }
-    return pieces.filter(piece => piece.amount > 0);
   });
+  const target = Math.max(0, Number(targetAmount) || 0);
+  if(target > 0){
+    outside.push({
+      taskId,
+      bucketId:bucket.id,
+      startDay:bucket.startDay,
+      endDay:bucket.endDay,
+      amount:target,
+      kind:'manual',
+    });
+  }
+  return outside.filter(item => (Number(item.amount) || 0) > 0);
 }
 
 function plannedWorkOf(project, taskId){
