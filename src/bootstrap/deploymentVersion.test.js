@@ -26,6 +26,8 @@ test('Arvan deploy stamps the complete module graph and removes stale app caches
     readFile(new URL('./cacheGuard.js',import.meta.url),'utf8'),
     readFile(new URL('../../sw.js',import.meta.url),'utf8'),
   ]);
+  assert.match(workflow,/on:\n  push:\n    branches: \[main\]/);
+  assert.doesNotMatch(workflow,/workflow_run:/);
   assert.match(workflow,/node scripts\/stampDeploymentVersion\.mjs "\$\{DEPLOY_SHA\}"/);
   assert.doesNotMatch(guard,/window\.location\.reload/);
   assert.match(guard,/key\.startsWith\(CACHE_PREFIX\)/);
