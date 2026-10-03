@@ -228,19 +228,24 @@ test('logged-out Saosa rejects a stale project workspace route before any module
   assert.deepEqual(harness.contractProjects,[]);
 });
 
-test('Saosa refresh keeps the private notebook route', async () => {
-  const loggedOut=await createRouterHarness({
-    initialHash:'#/notebook',
-    hostname:'saosa.ir',
-    saosaSession:null,
-  });
-  assert.equal(window.location.hash,'#/notebook');
-  assert.equal(window.KarhaRoute.moduleId,'notebook');
-  assert.equal(window.KarhaRoute.surface,'global');
-  assert.equal(window.KarhaRoute.projectId,null);
-  assert.equal(loggedOut.projectContext.getProjectId(),null);
-  assert.deepEqual(loggedOut.dashboardMounts,[]);
+test('logged-out Saosa leaves the notebook and opens the public entry page', async () => {
+  for(const initialHash of ['#/notebook', '#/notebook/export']){
+    const loggedOut=await createRouterHarness({
+      initialHash,
+      hostname:'saosa.ir',
+      saosaSession:null,
+    });
+    assert.equal(window.location.hash,'#/');
+    assert.equal(window.KarhaRoute.surface,'public');
+    assert.equal(window.KarhaRoute.moduleId,'dashboard');
+    assert.equal(window.KarhaRoute.projectId,null);
+    assert.equal(loggedOut.projectContext.getProjectId(),null);
+    assert.equal(loggedOut.router.currentMounted,null);
+    assert.deepEqual(loggedOut.dashboardMounts,[]);
+  }
+});
 
+test('logged-in Saosa refresh keeps the private notebook route', async () => {
   const session={phone:'09170000000',token:'token',expiresAt:Date.now()+60_000};
   const loggedIn=await createRouterHarness({
     initialHash:'#/notebook',
