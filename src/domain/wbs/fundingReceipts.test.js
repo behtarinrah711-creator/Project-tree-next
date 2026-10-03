@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { allocatedForBucket, openFundingStops } from './fundingReceipts.js';
+import { allocatedForBucket, openFundingStops, trimFundingAllocationsToReceipts } from './fundingReceipts.js';
 
 test('uncovered month slice is a funding stop without picking tasks on the receipt', () => {
   const project = {
@@ -17,6 +17,7 @@ test('uncovered month slice is a funding stop without picking tasks on the recei
 
 test('a weekly allocation remains funded inside a two-week view', () => {
   const project = {
+    fundingReceipts: [{ id:'r1', amount:20 }],
     fundingAllocations: [{ taskId:'w1', startDay:100, endDay:106, amount:20, kind:'manual' }],
   };
   assert.equal(allocatedForBucket(project, 'w1', { id:'week2-100', startDay:100, endDay:113 }), 20);
@@ -24,7 +25,27 @@ test('a weekly allocation remains funded inside a two-week view', () => {
 
 test('an allocation is apportioned when a narrower view overlaps part of it', () => {
   const project = {
+    fundingReceipts: [{ id:'r1', amount:40 }],
     fundingAllocations: [{ taskId:'w1', startDay:100, endDay:113, amount:40, kind:'slice' }],
   };
   assert.equal(allocatedForBucket(project, 'w1', { id:'week-100', startDay:100, endDay:106 }), 20);
+});
+
+test('deleting every receipt removes every pool allocation', () => {
+  const project = {
+    fundingReceipts: [{ id:'r1', amount:100, trashed:true }],
+    fundingAllocations: [{ taskId:'w1', startDay:100, endDay:106, amount:80, kind:'manual' }],
+  };
+  assert.deepEqual(trimFundingAllocationsToReceipts(project), []);
+  assert.equal(allocatedForBucket(project, 'w1', { startDay:100, endDay:106 }), 0);
+});
+
+test('deleting a receipt trims pool allocations to the remaining received budget', () => {
+  const project = {
+    fundingAllocations: [
+      { taskId:'w1', amount:70, kind:'manual' },
+      { taskId:'w2', amount:60, kind:'manual' },
+    ],
+  };
+  assert.deepEqual(trimFundingAllocationsToReceipts(project, [{ id:'r1', amount:100 }]).map(item => item.amount), [70, 30]);
 });

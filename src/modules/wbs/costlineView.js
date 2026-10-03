@@ -5,7 +5,7 @@ import { createViewToolbar } from './viewHeader.js';
 import { uid } from '../../data/projectFactories.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
-import { allocatedForBucket, allocationForInterval, fundingReceiptsOf, poolRemaining } from '../../domain/wbs/fundingReceipts.js';
+import { allocatedForBucket, allocationForInterval, fundingReceiptsOf, poolRemaining, trimFundingAllocationsToReceipts } from '../../domain/wbs/fundingReceipts.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
@@ -178,12 +178,17 @@ function openDepositSheet(project, refresh, receipt = null){
         remove.textContent = 'حذف واریزی';
         remove.addEventListener('click', () => {
           const perform = () => {
-            projectRepository.updateProject(project.id, current => ({
-              ...current,
-              fundingReceipts: (current.fundingReceipts || []).map(row => String(row.id) === String(receipt.id)
+            projectRepository.updateProject(project.id, current => {
+              const fundingReceipts = (current.fundingReceipts || []).map(row => String(row.id) === String(receipt.id)
                 ? { ...row, trashed:true, updatedAt:Date.now() }
-                : row),
-            }));
+                : row);
+              const activeReceipts = fundingReceipts.filter(row => row && !row.trashed);
+              return {
+                ...current,
+                fundingReceipts,
+                fundingAllocations: trimFundingAllocationsToReceipts(current, activeReceipts),
+              };
+            });
             markDirty(project.id);
             persist({ local:false });
             closeWbsSheet();
@@ -219,6 +224,7 @@ function openDepositSheet(project, refresh, receipt = null){
       };
       projectRepository.updateProject(project.id, current => ({
         ...current,
+        fundingAllocations: !editing && fundingReceiptsOf(current).length === 0 ? [] : (current.fundingAllocations || []),
         fundingReceipts: editing
           ? (current.fundingReceipts || []).map(row => String(row.id) === String(receipt.id) ? nextReceipt : row)
           : [...(current.fundingReceipts || []), nextReceipt],

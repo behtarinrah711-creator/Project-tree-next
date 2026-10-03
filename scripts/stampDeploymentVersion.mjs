@@ -13,6 +13,11 @@ export function versionModuleSpecifiers(source, version){
     .replace(/(\bimport\s*\(\s*['"])([^'"]+\.js)(['"]\s*\))/g, stamp);
 }
 
+export function versionCssImports(source, version){
+  return source.replace(/(@import\s+url\(["'])([^"']+\.css)(?:\?v=[^"']*)?(["']\))/g,
+    (_match, before, specifier, after) => `${before}${specifier}?v=${version}${after}`);
+}
+
 async function javascriptFiles(directory){
   const entries = await readdir(directory, { withFileTypes:true });
   const nested = await Promise.all(entries.map(async entry => {
@@ -37,6 +42,9 @@ export async function stampDeployment(version, root=process.cwd()){
     const source = await readFile(file, 'utf8');
     await writeFile(file, source.replaceAll('__DEPLOYMENT_VERSION__', version));
   }
+  const cssManifest = path.join(root, 'src/styles/index.css');
+  const cssSource = await readFile(cssManifest, 'utf8');
+  await writeFile(cssManifest, versionCssImports(cssSource, version));
 }
 
 if(process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href){

@@ -5,10 +5,23 @@ export function fundingReceiptsOf(project){
   return (project?.fundingReceipts || []).filter(row => row && !row.trashed);
 }
 
+export function trimFundingAllocationsToReceipts(project, receipts = fundingReceiptsOf(project)){
+  const receiptBudget = receipts.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
+  const embeddedUsed = receipts.flatMap(row => row.allocations || [])
+    .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  let available = Math.max(0, receiptBudget - embeddedUsed);
+  return (project?.fundingAllocations || []).flatMap(item => {
+    const amount = Math.min(Math.max(0, Number(item.amount) || 0), available);
+    available -= amount;
+    return amount > 0 ? [{ ...item, amount }] : [];
+  });
+}
+
 export function allocationsOf(project){
+  const receipts = fundingReceiptsOf(project);
   return [
-    ...fundingReceiptsOf(project).flatMap(row => (row.allocations || []).map(item => ({ ...item, receiptId: row.id }))),
-    ...(project?.fundingAllocations || []),
+    ...receipts.flatMap(row => (row.allocations || []).map(item => ({ ...item, receiptId: row.id }))),
+    ...trimFundingAllocationsToReceipts(project, receipts),
   ];
 }
 
@@ -88,9 +101,7 @@ export function poolReceived(project){
   return fundingReceiptsOf(project).reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
 }
 export function poolAllocated(project){
-  const fromReceipts = fundingReceiptsOf(project).flatMap(row => row.allocations || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-  const fromPool = (project?.fundingAllocations || []).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-  return fromReceipts + fromPool;
+  return allocationsOf(project).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
 }
 export function poolRemaining(project){
   return Math.max(0, poolReceived(project) - poolAllocated(project));
