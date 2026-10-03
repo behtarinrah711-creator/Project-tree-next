@@ -201,9 +201,13 @@ export function sliceShare(work, bucket){
   const accrual = work.accrual || 'spread';
   if(accrual === 'start') return start >= bucket.startDay && start <= bucket.endDay ? amount : 0;
   if(accrual === 'end') return end >= bucket.startDay && end <= bucket.endDay ? amount : 0;
-  const overlap = Math.max(0, Math.min(end, bucket.endDay) - Math.max(start, bucket.startDay) + 1);
-  const duration = Math.max(1, end - start + 1);
-  return Math.round(amount * overlap / duration);
+  const overlapStart = Math.max(start, Number(bucket.startDay));
+  const overlapEnd = Math.min(end, Number(bucket.endDay));
+  if(overlapEnd < overlapStart) return 0;
+  const duration = end - start + 1;
+  const before = overlapStart - start;
+  const through = overlapEnd - start + 1;
+  return Math.floor(amount * through / duration) - Math.floor(amount * before / duration);
 }
 
 export function assignWorksToBuckets(buckets, works){

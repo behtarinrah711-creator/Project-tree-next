@@ -1,43 +1,29 @@
-import { jalaliDayNumber, tehranTodayJalali } from './todayDomain.js';
-import { buildBuckets, collectPlannedWorks, sliceShare } from './costline.js';
+import { jalaliMonthLength } from '../../ui/jalali.js';
+import { tehranTodayJalali } from './todayDomain.js';
+import { buildBuckets, collectPlannedWorks, jalaliDayNumber, sliceShare } from './costline.js';
 
 export function fundingReceiptsOf(project){
   return (project?.fundingReceipts || []).filter(row => row && !row.trashed);
 }
 
-export function trimFundingAllocationsToReceipts(project, receipts = fundingReceiptsOf(project)){
-  const receiptBudget = receipts.reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
-  const embeddedUsed = receipts.flatMap(row => row.allocations || [])
-    .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-  let available = Math.max(0, receiptBudget - embeddedUsed);
-  return (project?.fundingAllocations || []).flatMap(item => {
-    const amount = Math.min(Math.max(0, Number(item.amount) || 0), available);
-    available -= amount;
-    return amount > 0 ? [{ ...item, amount }] : [];
-  });
+function splitExact(total, count){
+  const amount = Math.max(0, Math.round(Number(total) || 0));
+  const days = Math.max(0, Math.floor(count) || 0);
+  if(!amount || !days) return Array.from({ length:days }, () => 0);
+  const shares = [];
+  for(let index = 0; index < days; index += 1){
+    shares.push(Math.floor((index + 1) * amount / days) - Math.floor(index * amount / days));
+  }
+  return shares;
 }
 
-export function allocationsOf(project){
-  const receipts = fundingReceiptsOf(project);
-  return [
-    ...receipts.flatMap(row => (row.allocations || []).map(item => ({ ...item, receiptId: row.id }))),
-    ...trimFundingAllocationsToReceipts(project, receipts),
-  ];
-}
-
-export function allocatedFor(project, taskId, bucketId){
-  return allocationsOf(project)
-    .filter(item => String(item.taskId) === String(taskId) && String(item.bucketId) === String(bucketId))
-    .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-}
-
-function overlapAmount(item, bucket){
-  const start = Number(item?.startDay);
-  const end = Number(item?.endDay);
-  if(!Number.isFinite(start) || !Number.isFinite(end) || !bucket) return null;
-  const overlap = Math.max(0, Math.min(end, bucket.endDay) - Math.max(start, bucket.startDay) + 1);
-  if(!overlap) return 0;
-  return (Number(item.amount) || 0) * overlap / Math.max(1, end - start + 1);
+function fundingSpan(work){
+  const start = jalaliDayNumber(work?.start);
+  const end = jalaliDayNumber(work?.end) ?? start;
+  if(start == null || end == null || end < start) return null;
+  if(work.accrual === 'start') return { start, end:start };
+  if(work.accrual === 'end') return { start:end, end };
+  return { start, end };
 }
 
 function plannedWorkOf(project, taskId){
@@ -45,82 +31,231 @@ function plannedWorkOf(project, taskId){
     .find(work => String(work.id) === String(taskId));
 }
 
-function spreadAmountForBucket(total, work, bucket){
-  const start = jalaliDayNumber(work?.start);
-  const end = jalaliDayNumber(work?.end) ?? start;
-  if(start == null || end == null || !bucket) return 0;
-  const overlapStart = Math.max(start, Number(bucket.startDay));
-  const overlapEnd = Math.min(end, Number(bucket.endDay));
-  if(overlapEnd < overlapStart) return 0;
-  const duration = Math.max(1, end - start + 1);
-  const before = overlapStart - start;
-  const through = overlapEnd - start + 1;
-  return Math.floor(total * through / duration) - Math.floor(total * before / duration);
-}
-
-/** Date-bound allocations keep their real interval when the chart scale changes.
- * Older task-level allocations still follow the task accrual mode for compatibility. */
-export function allocatedForBucket(project, taskId, bucket){
-  const work = plannedWorkOf(project, taskId);
-  if(work){
-    const poolRows = trimFundingAllocationsToReceipts(project)
-      .filter(item => String(item.taskId) === String(taskId));
-    const intervalTotal = poolRows.reduce((sum, item) => {
-      const overlap = overlapAmount(item, bucket);
-      return sum + (overlap == null ? 0 : overlap);
-    }, 0);
-    const taskLevelTotal = poolRows
-      .filter(item => overlapAmount(item, bucket) == null)
-      .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-    const embedded = fundingReceiptsOf(project).flatMap(row => row.allocations || [])
-      .filter(item => String(item.taskId) === String(taskId))
-      .reduce((sum, item) => {
-        const overlap = overlapAmount(item, bucket);
-        if(overlap != null) return sum + overlap;
-        return sum + (String(item.bucketId) === String(bucket?.id) ? (Number(item.amount) || 0) : 0);
-      }, 0);
-    const total = Math.min(Number(work.amount) || 0, taskLevelTotal);
-    let distributed = 0;
-    if(total > 0){
-      const start = jalaliDayNumber(work.start);
-      const end = jalaliDayNumber(work.end) ?? start;
-      if(work.accrual === 'start') distributed = start >= bucket.startDay && start <= bucket.endDay ? total : 0;
-      else if(work.accrual === 'end') distributed = end >= bucket.startDay && end <= bucket.endDay ? total : 0;
-      else distributed = spreadAmountForBucket(total, work, bucket);
-    }
-    return Math.round(embedded + intervalTotal + distributed);
+function legacyBucket(bucketId){
+  const id = String(bucketId || '');
+  const month = /^m-(\d+)-(\d+)$/.exec(id);
+  if(month){
+    const jy = Number(month[1]);
+    const jm = Number(month[2]);
+    const startDay = jalaliDayNumber(`${jy}/${String(jm).padStart(2, '0')}/01`);
+    if(startDay == null) return null;
+    return { startDay, endDay:startDay + jalaliMonthLength(jy, jm) - 1 };
   }
-  return Math.round(allocationsOf(project)
-    .filter(item => String(item.taskId) === String(taskId))
-    .reduce((sum, item) => {
-      const overlap = overlapAmount(item, bucket);
-      if(overlap != null) return sum + overlap;
-      return sum + (String(item.bucketId) === String(bucket?.id) ? (Number(item.amount) || 0) : 0);
-    }, 0));
+  const quarter = /^q-(\d+)-(\d+)$/.exec(id);
+  if(quarter){
+    const jy = Number(quarter[1]);
+    const index = Number(quarter[2]) - 1;
+    const jm = index * 3 + 1;
+    const startDay = jalaliDayNumber(`${jy}/${String(jm).padStart(2, '0')}/01`);
+    if(startDay == null) return null;
+    const nextAbsolute = (jy * 12) + (jm - 1) + 3;
+    const nextJy = Math.floor(nextAbsolute / 12);
+    const nextJm = (nextAbsolute % 12) + 1;
+    const endDay = jalaliDayNumber(`${nextJy}/${String(nextJm).padStart(2, '0')}/01`) - 1;
+    return { startDay, endDay };
+  }
+  const ranged = /^(day|week|week2)-(-?\d+)$/.exec(id);
+  if(!ranged) return null;
+  const size = ranged[1] === 'day' ? 1 : (ranged[1] === 'week' ? 7 : 14);
+  const startDay = Number(ranged[2]);
+  return { startDay, endDay:startDay + size - 1 };
 }
 
-export function allocationForInterval(project, taskId, bucket){
-  return (project?.fundingAllocations || []).find(item =>
-    String(item.taskId) === String(taskId)
-    && Number(item.startDay) === Number(bucket?.startDay)
-    && Number(item.endDay) === Number(bucket?.endDay));
+function addDay(map, taskId, day, amount){
+  const value = Math.round(Number(amount) || 0);
+  if(!Number.isFinite(day) || value === 0) return;
+  const key = String(taskId);
+  if(!map.has(key)) map.set(key, new Map());
+  const days = map.get(key);
+  days.set(day, (days.get(day) || 0) + value);
+  if((days.get(day) || 0) <= 0) days.delete(day);
+}
+
+function placeOnDays(map, taskId, start, end, amount){
+  if(!Number.isFinite(start) || !Number.isFinite(end) || end < start) return;
+  splitExact(amount, end - start + 1).forEach((share, index) => addDay(map, taskId, start + index, share));
+}
+
+function absorbItem(map, item, work){
+  const amount = Math.round(Number(item?.amount) || 0);
+  if(!amount) return;
+  const day = Number(item.day);
+  if(Number.isFinite(day)){
+    addDay(map, item.taskId, day, amount);
+    return;
+  }
+  const start = Number(item.startDay);
+  const end = Number(item.endDay);
+  if(Number.isFinite(start) && Number.isFinite(end) && end >= start){
+    placeOnDays(map, item.taskId, start, end, amount);
+    return;
+  }
+  const span = fundingSpan(work);
+  const legacy = legacyBucket(item.bucketId);
+  if(legacy && span){
+    const from = Math.max(span.start, legacy.startDay);
+    const to = Math.min(span.end, legacy.endDay);
+    if(to >= from){
+      placeOnDays(map, item.taskId, from, to, amount);
+      return;
+    }
+  }
+  if(span) placeOnDays(map, item.taskId, span.start, span.end, amount);
+}
+
+function sourceRows(project){
+  return [
+    ...(project?.fundingAllocations || []),
+    ...fundingReceiptsOf(project).flatMap(row => row.allocations || []),
+  ];
+}
+
+function absorbAll(project){
+  const works = new Map(collectPlannedWorks(project?.tasks || []).map(work => [String(work.id), work]));
+  const map = new Map();
+  sourceRows(project).forEach(item => {
+    if(!item) return;
+    absorbItem(map, item, works.get(String(item.taskId)));
+  });
+  return map;
+}
+
+function sumTask(map, taskId){
+  let total = 0;
+  (map.get(String(taskId)) || new Map()).forEach(amount => { total += amount; });
+  return total;
+}
+
+function clearTask(map, taskId){
+  map.delete(String(taskId));
+}
+
+function rowsFromMap(map){
+  const rows = [];
+  map.forEach((days, taskId) => {
+    [...days.keys()].sort((a, b) => a - b).forEach(day => {
+      const amount = days.get(day) || 0;
+      if(amount > 0) rows.push({ taskId, day, amount });
+    });
+  });
+  return rows;
+}
+
+function writeMap(project, map){
+  return {
+    ...project,
+    fundingReceipts:(project?.fundingReceipts || []).map(row => row ? { ...row, allocations:[] } : row),
+    fundingAllocations:rowsFromMap(map),
+  };
+}
+
+function plannedIdSet(project){
+  return new Set(collectPlannedWorks(project?.tasks || []).map(work => String(work.id)));
+}
+
+export function cardFundingKey(project, taskId){
+  const work = plannedWorkOf(project, taskId);
+  if(!work) return 'gone';
+  return [work.start, work.end, work.accrual, work.amount].join('|');
+}
+
+export function poolReceived(project){
+  return fundingReceiptsOf(project).reduce((sum, row) => sum + (Math.round(Number(row.amount) || 0)), 0);
+}
+
+export function poolAllocated(project){
+  const ids = plannedIdSet(project);
+  const map = absorbAll(project);
+  let total = 0;
+  map.forEach((days, taskId) => {
+    if(!ids.has(taskId)) return;
+    days.forEach(amount => { total += amount; });
+  });
+  return total;
+}
+
+export function poolRemaining(project){
+  return Math.max(0, poolReceived(project) - poolAllocated(project));
+}
+
+export function receiptTotalAllowed(project, nextReceived){
+  return Math.round(Number(nextReceived) || 0) >= poolAllocated(project);
+}
+
+export function trimFundingAllocationsToReceipts(project){
+  return project?.fundingAllocations || [];
+}
+
+export function allocationsOf(project){
+  return rowsFromMap(absorbAll(project));
+}
+
+export function allocatedForBucket(project, taskId, bucket){
+  if(!bucket || !Number.isFinite(Number(bucket.startDay)) || !Number.isFinite(Number(bucket.endDay))) return 0;
+  const days = absorbAll(project).get(String(taskId));
+  if(!days) return 0;
+  let total = 0;
+  days.forEach((amount, day) => {
+    if(day >= Number(bucket.startDay) && day <= Number(bucket.endDay)) total += amount;
+  });
+  return total;
+}
+
+export function allocatedFor(project, taskId, bucketId){
+  const bucket = legacyBucket(bucketId);
+  return bucket ? allocatedForBucket(project, taskId, bucket) : 0;
+}
+
+export function allocationForInterval(){
+  return undefined;
 }
 
 export function allocatedForTask(project, taskId){
-  return allocationsOf(project)
-    .filter(item => String(item.taskId) === String(taskId))
-    .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+  return sumTask(absorbAll(project), taskId);
 }
 
 export function taskAllocationTotalForSlice(project, taskId, bucket, desiredAmount){
   const work = plannedWorkOf(project, taskId);
-  const desired = Math.max(0, Number(desiredAmount) || 0);
+  const desired = Math.max(0, Math.round(Number(desiredAmount) || 0));
   if(!work) return desired;
-  const estimate = Math.max(0, Number(work.amount) || 0);
-  if(work.accrual === 'start' || work.accrual === 'end') return Math.min(estimate, desired);
+  return Math.min(Math.max(0, Math.round(work.amount) || 0), desired, sliceShare(work, bucket) || desired);
+}
+
+export function setBucketFunding(project, taskId, bucket, targetAmount){
+  const work = plannedWorkOf(project, taskId);
+  const span = fundingSpan(work);
+  if(!work || !span || !bucket) return { ok:false, reason:'range' };
+  const from = Math.max(span.start, Number(bucket.startDay));
+  const to = Math.min(span.end, Number(bucket.endDay));
+  if(to < from) return { ok:false, reason:'range' };
+  const target = Math.max(0, Math.round(Number(targetAmount) || 0));
   const slice = sliceShare(work, bucket);
-  if(slice <= 0 || estimate <= 0) return 0;
-  return Math.min(estimate, Math.round(desired * estimate / slice));
+  if(target > slice) return { ok:false, reason:'slice' };
+  const map = absorbAll(project);
+  let current = 0;
+  for(let day = from; day <= to; day += 1) current += (map.get(String(taskId)) || new Map()).get(day) || 0;
+  if(target === current) return { ok:true, project };
+  const nextAllocated = poolAllocated(project) - current + target;
+  if(nextAllocated > poolReceived(project)) return { ok:false, reason:'budget' };
+  clearTask(map, taskId);
+  (absorbAll(project).get(String(taskId)) || new Map()).forEach((amount, day) => {
+    if(day < from || day > to) addDay(map, taskId, day, amount);
+  });
+  splitExact(target, to - from + 1).forEach((share, index) => addDay(map, taskId, from + index, share));
+  return { ok:true, project:writeMap(project, map) };
+}
+
+export function placeCardFunding(project, taskId){
+  const map = absorbAll(project);
+  const total = sumTask(map, taskId);
+  clearTask(map, taskId);
+  const work = plannedWorkOf(project, taskId);
+  const span = fundingSpan(work);
+  if(work && span){
+    const capped = Math.min(total, Math.max(0, Math.round(Number(work.amount) || 0)));
+    splitExact(capped, span.end - span.start + 1).forEach((share, index) => addDay(map, taskId, span.start + index, share));
+  }
+  return writeMap(project, map);
 }
 
 export function fundingSlices(project, rangeId = 'month'){
@@ -130,36 +265,26 @@ export function fundingSlices(project, rangeId = 'month'){
     const amount = sliceShare(work, bucket);
     if(amount <= 0) return null;
     const covered = allocatedForBucket(project, work.id, bucket);
-    return { work, bucket, amount, covered, gap: Math.max(0, amount - covered) };
+    return { work, bucket, amount, covered, gap:Math.max(0, amount - covered) };
   }).filter(Boolean));
 }
 
 export function openFundingStops(project, today = tehranTodayJalali()){
   const todayDay = jalaliDayNumber(today);
   return fundingSlices(project, 'month').filter(slice => slice.gap > 1 && slice.bucket.endDay < todayDay).map(slice => ({
-    taskId: String(slice.work.id),
-    title: slice.work.text,
-    bucketLabel: slice.bucket.label,
-    start: slice.bucket.startDay,
-    end: todayDay,
-    duration: todayDay - slice.bucket.endDay,
-    gap: slice.amount - slice.covered,
-    finishEffect: null,
+    taskId:String(slice.work.id),
+    title:slice.work.text,
+    bucketLabel:slice.bucket.label,
+    start:slice.bucket.startDay,
+    end:todayDay,
+    duration:todayDay - slice.bucket.endDay,
+    gap:slice.amount - slice.covered,
+    finishEffect:null,
   }));
 }
 
 export function stopIntervalForItem(project, item, today = tehranTodayJalali()){
   const id = String(item?.id || '');
   const hit = openFundingStops(project, today).find(stop => stop.taskId === id);
-  return hit ? { start: hit.start, end: hit.end, duration: hit.duration } : null;
-}
-
-export function poolReceived(project){
-  return fundingReceiptsOf(project).reduce((sum, row) => sum + (Number(row.amount) || 0), 0);
-}
-export function poolAllocated(project){
-  return allocationsOf(project).reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-}
-export function poolRemaining(project){
-  return Math.max(0, poolReceived(project) - poolAllocated(project));
+  return hit ? { start:hit.start, end:hit.end, duration:hit.duration } : null;
 }

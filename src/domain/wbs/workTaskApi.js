@@ -6,6 +6,7 @@ import { WORK_TYPES } from './normalize.js';
 import { TASK_PRIORITIES, activeWorkTasks, normalizeWorkTask, workTaskProgress } from './workTaskModel.js';
 import { validatePredecessors } from './scheduling.js';
 import { projectRepository } from '../../data/projectRepository.js';
+import { cardFundingKey, placeCardFunding } from './fundingReceipts.js';
 
 function publish(projectId){
   if(typeof window !== 'undefined'){
@@ -89,6 +90,7 @@ export const workTaskApi = {
     if(!dependencyCheck.ok) return dependencyCheck;
     const checked = validate(projectId, workId, next);
     if(!checked.ok) return checked;
+    const beforeKey = cardFundingKey(projectRepository.find(projectId), taskId);
     const saved = workTaskRepository.update(projectId, workId, taskId, {
       ...checked.value,
       id:current.id, workId, completed:Boolean(next.completed),
@@ -96,6 +98,9 @@ export const workTaskApi = {
       createdAt:current.createdAt, updatedAt:clock(),
     });
     if(!saved) return { ok:false, code:'persist' };
+    if(cardFundingKey(projectRepository.find(projectId), taskId) !== beforeKey){
+      projectRepository.updateProject(projectId, row => placeCardFunding(row, taskId));
+    }
     syncWorkCompletion(projectId, workId); publish(projectId);
     return { ok:true, task:saved };
   },
@@ -116,6 +121,7 @@ export const workTaskApi = {
       updatedAt:clock(),
     }));
     if(!saved) return { ok:false, code:'persist' };
+    projectRepository.updateProject(projectId, row => placeCardFunding(row, taskId));
     if(remaining.length) syncWorkCompletion(projectId, workId);
     publish(projectId);
     return { ok:true };

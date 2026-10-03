@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { allocatedForBucket, openFundingStops, trimFundingAllocationsToReceipts } from './fundingReceipts.js';
+import { allocatedForBucket, openFundingStops, placeCardFunding, poolAllocated, poolRemaining, receiptTotalAllowed, setBucketFunding } from './fundingReceipts.js';
 import { jalaliDayNumber } from './costline.js';
 
 const mdfTasks = accrual => [{
@@ -39,23 +39,24 @@ test('an allocation is apportioned when a narrower view overlaps part of it', ()
   assert.equal(allocatedForBucket(project, 'w1', { id:'week-100', startDay:100, endDay:106 }), 20);
 });
 
-test('deleting every receipt removes every pool allocation', () => {
+test('a receipt cannot be reduced below the allocated total', () => {
   const project = {
-    fundingReceipts: [{ id:'r1', amount:100, trashed:true }],
-    fundingAllocations: [{ taskId:'w1', startDay:100, endDay:106, amount:80, kind:'manual' }],
-  };
-  assert.deepEqual(trimFundingAllocationsToReceipts(project), []);
-  assert.equal(allocatedForBucket(project, 'w1', { startDay:100, endDay:106 }), 0);
-});
-
-test('deleting a receipt trims pool allocations to the remaining received budget', () => {
-  const project = {
-    fundingAllocations: [
-      { taskId:'w1', amount:70, kind:'manual' },
-      { taskId:'w2', amount:60, kind:'manual' },
+    tasks:[{
+      id:'s1', kind:'stage', text:'مرحله', subtasks:[
+        { id:'w1', kind:'work', text:'اول', quantity:1, unitCost:70, scheduleStart:'1405/07/18', scheduleEnd:'1405/07/18', subtasks:[] },
+        { id:'w2', kind:'work', text:'دوم', quantity:1, unitCost:60, scheduleStart:'1405/07/19', scheduleEnd:'1405/07/19', subtasks:[] },
+      ],
+    }],
+    fundingReceipts:[{ id:'r1', amount:100 }, { id:'r2', amount:50 }],
+    fundingAllocations:[
+      { taskId:'w1', day:jalaliDayNumber('1405/07/18'), amount:70 },
+      { taskId:'w2', day:jalaliDayNumber('1405/07/19'), amount:60 },
     ],
   };
-  assert.deepEqual(trimFundingAllocationsToReceipts(project, [{ id:'r1', amount:100 }]).map(item => item.amount), [70, 30]);
+  assert.equal(poolAllocated(project), 130);
+  assert.equal(receiptTotalAllowed(project, 120), false);
+  assert.equal(receiptTotalAllowed(project, 130), true);
+  assert.equal(poolRemaining(project), 20);
 });
 
 test('task allocation follows the single start accrual mode in every chart scale', () => {
@@ -144,4 +145,70 @@ test('adding tasks before, between, or after funded work does not move its alloc
   assert.equal(allocatedForBucket(project, 'before', fundedBucket), 0);
   assert.equal(allocatedForBucket(project, 'middle', fundedBucket), 0);
   assert.equal(allocatedForBucket(project, 'after', fundedBucket), 0);
+});
+
+test('start funding stays on the start day and is invisible in other ranges', () => {
+  const startDay = jalaliDayNumber('1405/07/18');
+  const project = {
+    tasks:mdfTasks('start'),
+    fundingReceipts:[{ id:'r1', amount:200 }],
+    fundingAllocations:[{ taskId:'w1', day:startDay, amount:80 }],
+  };
+  assert.equal(allocatedForBucket(project, 'w1', { startDay, endDay:startDay }), 80);
+  assert.equal(allocatedForBucket(project, 'w1', { startDay:startDay + 1, endDay:startDay + 6 }), 0);
+});
+
+test('editing one range keeps the funded amount outside it and the exact total', () => {
+  const startDay = jalaliDayNumber('1405/07/18');
+  const project = {
+    tasks:mdfTasks('spread'),
+    fundingReceipts:[{ id:'r1', amount:200 }],
+    fundingAllocations:[
+      { taskId:'w1', startDay, endDay:startDay + 6, amount:20 },
+      { taskId:'w1', startDay:startDay + 7, endDay:startDay + 13, amount:30 },
+    ],
+  };
+  const saved = setBucketFunding(project, 'w1', { startDay, endDay:startDay + 6 }, 10);
+  assert.equal(saved.ok, true);
+  assert.equal(allocatedForBucket(saved.project, 'w1', { startDay, endDay:startDay + 6 }), 10);
+  assert.equal(allocatedForBucket(saved.project, 'w1', { startDay:startDay + 7, endDay:startDay + 13 }), 30);
+  assert.equal(poolAllocated(saved.project), 40);
+});
+
+test('moving dates puts start funding on the new start and respreads uniform funding', () => {
+  const startDay = jalaliDayNumber('1405/07/18');
+  const project = {
+    tasks:mdfTasks('start'),
+    fundingReceipts:[{ id:'r1', amount:200 }],
+    fundingAllocations:[{ taskId:'w1', day:startDay, amount:80 }],
+  };
+  project.tasks[0].subtasks[0].scheduleStart = '1405/07/20';
+  const moved = placeCardFunding(project, 'w1');
+  assert.equal(allocatedForBucket(moved, 'w1', { startDay:jalaliDayNumber('1405/07/20'), endDay:jalaliDayNumber('1405/07/20') }), 80);
+  assert.equal(allocatedForBucket(moved, 'w1', { startDay, endDay:startDay }), 0);
+
+  const spread = {
+    tasks:mdfTasks('spread'),
+    fundingReceipts:[{ id:'r1', amount:200 }],
+    fundingAllocations:[{ taskId:'w1', startDay, endDay:startDay + 1, amount:10 }],
+  };
+  spread.tasks[0].subtasks[0].scheduleStart = '1405/07/18';
+  spread.tasks[0].subtasks[0].scheduleEnd = '1405/07/21';
+  const respread = placeCardFunding(spread, 'w1');
+  const days = [0, 1, 2, 3].map(offset => allocatedForBucket(respread, 'w1', { startDay:startDay + offset, endDay:startDay + offset }));
+  assert.deepEqual(days, [2, 3, 2, 3]);
+  assert.equal(days.reduce((sum, amount) => sum + amount, 0), 10);
+});
+
+test('lowering the estimate frees the extra funded amount', () => {
+  const startDay = jalaliDayNumber('1405/07/18');
+  const project = {
+    tasks:mdfTasks('start'),
+    fundingReceipts:[{ id:'r1', amount:200 }],
+    fundingAllocations:[{ taskId:'w1', day:startDay, amount:80 }],
+  };
+  project.tasks[0].subtasks[0].unitCost = 50;
+  const next = placeCardFunding(project, 'w1');
+  assert.equal(poolAllocated(next), 50);
+  assert.equal(poolRemaining(next), 150);
 });
