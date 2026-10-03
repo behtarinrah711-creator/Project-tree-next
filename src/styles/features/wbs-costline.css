@@ -20,8 +20,8 @@
 .wbs-costline-bar{display:block;width:28px;height:220px;overflow:visible;}
 .wbs-costline-bar-planned{fill:#033E8A;opacity:.5;}
 .wbs-costline-bar-funded{fill:#033E8A;opacity:1;}
-.wbs-costline-values{display:flex;min-height:26px;flex-direction:column;align-items:center;justify-content:flex-end;gap:1px;}
-.wbs-costline-value{display:flex;align-items:baseline;justify-content:center;gap:2px;direction:rtl;white-space:nowrap;font-family:'IRANSansX',Tahoma,sans-serif;font-size:12px;line-height:1.2;}
+.wbs-costline-values{display:flex;min-height:44px;flex-direction:column;align-items:center;justify-content:flex-end;gap:1px;}
+.wbs-costline-value{display:flex;align-items:baseline;justify-content:center;gap:2px;direction:rtl;white-space:nowrap;color:#2f2a24;font-family:'IRANSansX',Tahoma,sans-serif;font-size:12px;line-height:1.2;}
 .wbs-costline-value small{font-size:7px;font-weight:400;color:#8a8176;}
 .wbs-costline-value.is-funded,.wbs-costline-value.is-funded small{color:#033E8A;}
 .wbs-costline-value.is-shortage,.wbs-costline-value.is-shortage small{color:#c62828;}
