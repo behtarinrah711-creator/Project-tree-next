@@ -129,6 +129,7 @@ function openDepositSheet(project, refresh, receipt = null){
   openWbsSheet({
     title: editing ? 'ویرایش بودجه' : 'ثبت بودجه',
     saveLabel: 'ذخیره',
+    presentation: 'stage-create',
     body(host){
       const amount = document.createElement('button');
       amount.type = 'button';
@@ -365,18 +366,33 @@ function intervalAllocationLimit(project, work, bucket){
   return Math.min(poolRemaining(project) + existing, existing + sliceRemaining);
 }
 
+function costlineDetailRow(label, value, className = ''){
+  const row = document.createElement('div');
+  row.className = `wbs-costline-detail-row${className ? ` ${className}` : ''}`;
+  const labelEl = document.createElement('span');
+  labelEl.textContent = label;
+  const valueEl = document.createElement('span');
+  valueEl.textContent = value;
+  row.append(labelEl, valueEl);
+  return row;
+}
+
 function openBucketSheet(project, bucket, refresh){
   openWbsSheet({
     title: `برآورد · ${bucket.label}`,
     saveLabel: 'بستن',
+    presentation: 'stage-create',
     onSave: () => true,
     body(host){
       const paint = () => {
         host.replaceChildren();
-        const current = projectRepository.getActiveProject(project.id) || project;
+      const current = projectRepository.getActiveProject(project.id) || project;
       const pool = document.createElement('div');
-      pool.className = 'wbs-note wbs-delay-summary';
-      pool.textContent = `مانده بودجه: ${money(poolRemaining(current))} تومان`;
+      pool.className = 'wbs-costline-balance';
+      pool.append(
+        Object.assign(document.createElement('span'), { textContent:'مانده بودجه' }),
+        Object.assign(document.createElement('span'), { textContent:`${money(poolRemaining(current))} تومان` }),
+      );
       host.appendChild(pool);
       if(!bucket.works.length){
         host.append('کاری در این بازه نیست.');
@@ -387,7 +403,15 @@ function openBucketSheet(project, bucket, refresh){
         const covered = allocatedForBucket(current, work.id, bucket);
         const card = document.createElement('article');
         card.className = 'wbs-costline-work';
-        card.innerHTML = `<h4>${escapeText(work.text)}</h4><p>مرحله: ${escapeText(work.path || '—')}</p><p>شروع: ${escapeText(formatJalaliDisplay(work.start) || work.start || '—')}</p><p>پایان: ${escapeText(formatJalaliDisplay(work.end) || work.end || '—')}</p><p>سهم این بازه: ${escapeText(money(slice))} تومان</p><p>تأمین‌شده: ${escapeText(money(covered))} تومان</p><p>کل برآورد: ${escapeText(money(work.amount))} تومان</p>`;
+        card.append(
+          costlineDetailRow('عنوان کار', work.text || '—', 'is-title'),
+          costlineDetailRow('مرحله', work.path || '—'),
+          costlineDetailRow('شروع', formatJalaliDisplay(work.start) || work.start || '—'),
+          costlineDetailRow('پایان', formatJalaliDisplay(work.end) || work.end || '—'),
+          costlineDetailRow('سهم این بازه', `${money(slice)} تومان`),
+          costlineDetailRow('تأمین‌شده', `${money(covered)} تومان`),
+          costlineDetailRow('کل برآورد', `${money(work.amount)} تومان`),
+        );
         const mode = document.createElement('select');
         mode.className = 'wbs-input';
         [['spread','پخش روی مدت'],['start','اول کار'],['end','آخر کار']].forEach(([value, label]) => {
@@ -489,10 +513,6 @@ function setAccrual(project, taskId, accrual){
     return { ...self, workTasks, subtasks: walk(node.subtasks) };
   });
   return { ...project, tasks: walk(project.tasks) };
-}
-
-function escapeText(value){
-  return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&','<':'<','>':'>','"':'"',"'":'&#39;'}[char]));
 }
 
 export function resetCostlineState(){
