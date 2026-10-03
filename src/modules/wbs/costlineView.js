@@ -11,6 +11,7 @@ import { contactRepository } from '../../data/contactRepository.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 
 const money = value => new Intl.NumberFormat('fa-IR').format(Math.round(Number(value) || 0));
+const chartMoney = value => Math.trunc((Number(value) || 0) / 1000) * 1000;
 const BAR_WIDTH = 28;
 const BAR_HEIGHT = 220;
 const BAR_RADIUS = 5;
@@ -329,7 +330,7 @@ function renderMoney(value, { className = '', negative = false } = {}){
   const line = document.createElement('span');
   line.className = `wbs-costline-value${className ? ` ${className}` : ''}`;
   const amount = document.createElement('span');
-  amount.textContent = `${money(value)}${negative ? '-' : ''}`;
+  amount.textContent = `${money(chartMoney(value))}${negative ? '-' : ''}`;
   const unit = document.createElement('small');
   unit.textContent = 'تومان';
   line.append(amount, unit);
@@ -352,13 +353,16 @@ function renderChart(project, model){
     const col = document.createElement('button');
     col.type = 'button';
     col.className = 'wbs-costline-col';
-    col.setAttribute('aria-label', `${bucket.label} ${money(bucket.total)} تومان`);
     const allocated = Math.min(bucket.total, bucket.works.reduce((sum, work) => sum + allocatedForBucket(project, work.id, bucket), 0));
     const shortage = Math.max(0, bucket.total - allocated);
+    col.setAttribute('aria-label', `${bucket.label}، مورد نیاز ${money(chartMoney(bucket.total))} تومان، تأمین شده ${money(chartMoney(allocated))} تومان، کسری ${money(chartMoney(shortage))} تومان`);
     const values = document.createElement('span');
     values.className = 'wbs-costline-values';
-    values.appendChild(renderMoney(bucket.total, { className:shortage <= 1 ? 'is-funded' : '' }));
-    if(shortage > 1) values.appendChild(renderMoney(shortage, { className:'is-shortage', negative:true }));
+    values.append(
+      renderMoney(bucket.total),
+      renderMoney(allocated, { className:'is-funded' }),
+      renderMoney(shortage, { className:'is-shortage', negative:shortage > 0 }),
+    );
     const label = document.createElement('span');
     label.className = 'wbs-costline-label';
     label.textContent = bucket.label;
