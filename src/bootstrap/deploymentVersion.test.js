@@ -20,7 +20,7 @@ test('deployment stamper versions static, side-effect, and dynamic local imports
   assert.doesNotMatch(stamped,/remote\.js\?v=/);
 });
 
-test('Arvan deploy stamps the complete module graph and never forces a page reload',async()=>{
+test('Arvan deploy stamps the complete module graph and removes stale app caches',async()=>{
   const [workflow,guard,worker] = await Promise.all([
     readFile(new URL('../../.github/workflows/deploy-arvan.yml',import.meta.url),'utf8'),
     readFile(new URL('./cacheGuard.js',import.meta.url),'utf8'),
@@ -28,5 +28,8 @@ test('Arvan deploy stamps the complete module graph and never forces a page relo
   ]);
   assert.match(workflow,/node scripts\/stampDeploymentVersion\.mjs "\$\{DEPLOY_SHA\}"/);
   assert.doesNotMatch(guard,/window\.location\.reload/);
-  assert.match(worker,/runtime-__DEPLOYMENT_VERSION__/);
+  assert.match(guard,/key\.startsWith\(CACHE_PREFIX\)/);
+  assert.match(worker,/key\.startsWith\(CACHE_PREFIX\)/);
+  assert.doesNotMatch(worker,/addEventListener\('fetch'/);
+  assert.doesNotMatch(worker,/caches\.match|cache\.put/);
 });
