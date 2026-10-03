@@ -111,6 +111,19 @@ test('Saosa session resolution updates the shell before the workspace renders', 
   assert.equal(h.elements.drawerSigninBtn.dataset.authAction,'signin');
 });
 
+test('Saosa logout clears the notebook address before returning to the entry page', async () => {
+  const session={phone:'09170000000',token:'token',expiresAt:Date.now()+60_000};
+  const h=harness({hostname:'saosa.ir',saosaSession:session,hash:'#/notebook'});
+  let reloads=0;
+  h.windowRef.location.reload=()=>{ reloads++; };
+  bindShellControls(h);
+  assert.equal(h.elements.drawerSigninBtn.dataset.authAction,'signout');
+  await h.elements.drawerSigninBtn.click();
+  assert.equal(h.windowRef.localStorage.getItem('saosa:v1:sms-session'),null);
+  assert.equal(h.windowRef.location.hash,'');
+  assert.equal(reloads,1);
+});
+
 test('empty-storage shell opens the drawer before project startup', async () => {
   const h=harness();
   assert.equal(bindShellControls(h),true);
@@ -238,6 +251,8 @@ test('Saosa guest brand is resolved before first paint without a temporary gener
   assert.match(css, /\.saosa-public-brand span\{font-size:14px;font-weight:400;\}/);
   assert.match(css, /font-size:14px;\s*line-height:1\.4;/);
   assert.match(css, /\.topbar::before\{content:none;\}/);
+  assert.match(css, /html\.saosa-initial-logged-out body,body\.saosa-logged-out\) #notebookPage/);
+  assert.match(css, /html\.saosa-initial-logged-out body,body\.saosa-logged-out\) #notebookExportPage\{display:none !important;\}/);
   assert.match(css, /body\.saosa-logged-out \.content\{[\s\S]*?overflow:hidden;[\s\S]*?display:flex;/);
   assert.match(css, /body\.saosa-logged-out \.saosa-guest-card\{[\s\S]*?min-height:0;[\s\S]*?flex:1 1 auto;[\s\S]*?overflow:hidden;/);
   assert.match(css, /body\.saosa-logged-out \.saosa-guest-login\{[\s\S]*?background:var\(--primary-navy\);/);

@@ -254,6 +254,8 @@ body.saosa-no-project .saosa-empty-project-create{
 
 /* Saosa public entry state: resolve the guest header before the first paint. */
 .saosa-public-brand{display:none;}
+:is(html.saosa-initial-logged-out body,body.saosa-logged-out) #notebookPage,
+:is(html.saosa-initial-logged-out body,body.saosa-logged-out) #notebookExportPage{display:none !important;}
 :is(html.saosa-initial-logged-out body,body.saosa-logged-out) #bottomNav,
 :is(html.saosa-initial-logged-out body,body.saosa-logged-out) #projectSettingsTrigger,
 :is(html.saosa-initial-logged-out body,body.saosa-logged-out) #tabbar,

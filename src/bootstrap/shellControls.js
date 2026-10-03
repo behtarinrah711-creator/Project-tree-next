@@ -411,6 +411,7 @@ export function bindShellControls({ windowRef = window, documentRef = document }
         const current = readSaosaSession(windowRef);
         if(current){
           clearSaosaWorkspaceSession(windowRef);
+          if(windowRef.location) windowRef.location.hash = '';
           windowRef.location?.reload?.();
           return;
         }
