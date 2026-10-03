@@ -1,6 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { allocatedForBucket, openFundingStops, trimFundingAllocationsToReceipts } from './fundingReceipts.js';
+import { allocatedForBucket, openFundingStops, taskAllocationTotalForSlice, trimFundingAllocationsToReceipts } from './fundingReceipts.js';
+import { jalaliDayNumber } from './costline.js';
+
+const mdfTasks = accrual => [{
+  id:'s1', kind:'stage', text:'دکور MDF', subtasks:[{
+    id:'w1', kind:'work', text:'اجرای MDF', quantity:1, unitCost:140,
+    scheduleStart:'1405/07/18', scheduleEnd:'1405/08/10', fundingAccrual:accrual, subtasks:[],
+  }],
+}];
 
 test('uncovered month slice is a funding stop without picking tasks on the receipt', () => {
   const project = {
@@ -48,4 +56,43 @@ test('deleting a receipt trims pool allocations to the remaining received budget
     ],
   };
   assert.deepEqual(trimFundingAllocationsToReceipts(project, [{ id:'r1', amount:100 }]).map(item => item.amount), [70, 30]);
+});
+
+test('task allocation follows the single start accrual mode in every chart scale', () => {
+  const project = {
+    tasks:mdfTasks('start'),
+    fundingReceipts:[{ id:'r1', amount:150 }],
+    fundingAllocations:[
+      { taskId:'w1', startDay:1, endDay:14, amount:100, kind:'manual' },
+      { taskId:'w1', startDay:1, endDay:30, amount:20, kind:'manual' },
+    ],
+  };
+  const startDay = jalaliDayNumber('1405/07/18');
+  assert.equal(allocatedForBucket(project, 'w1', { startDay:startDay - 3, endDay:startDay + 10 }), 120);
+  assert.equal(allocatedForBucket(project, 'w1', { startDay:startDay - 17, endDay:startDay - 4 }), 0);
+});
+
+test('spread allocation never exceeds the planned slice and conserves the task total', () => {
+  const project = {
+    tasks:mdfTasks('spread'),
+    fundingReceipts:[{ id:'r1', amount:150 }],
+    fundingAllocations:[{ taskId:'w1', amount:120, kind:'manual' }],
+  };
+  const startDay = jalaliDayNumber('1405/07/18');
+  const endDay = jalaliDayNumber('1405/08/10');
+  const buckets = [{ startDay, endDay:startDay + 10 }, { startDay:startDay + 11, endDay }];
+  const funded = buckets.map(bucket => allocatedForBucket(project, 'w1', bucket));
+  assert.equal(funded.reduce((sum, amount) => sum + amount, 0), 120);
+  assert.ok(funded[0] <= 65);
+  assert.ok(funded[1] <= 76);
+});
+
+test('full-slice checkbox and manual amount share one task allocation value', () => {
+  const project = {
+    tasks:mdfTasks('spread'),
+  };
+  const startDay = jalaliDayNumber('1405/07/18');
+  const bucket = { startDay, endDay:startDay + 10 };
+  const total = taskAllocationTotalForSlice(project, 'w1', bucket, 67);
+  assert.ok(total >= 139 && total <= 140);
 });
