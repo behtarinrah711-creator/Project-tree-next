@@ -124,32 +124,33 @@ function dateButton(name, value){
   return button;
 }
 
-function openDepositSheet(project, refresh){
+function openDepositSheet(project, refresh, receipt = null){
+  const editing = Boolean(receipt);
   openWbsSheet({
-    title: 'ثبت بودجه',
+    title: editing ? 'ویرایش بودجه' : 'ثبت بودجه',
     saveLabel: 'ذخیره',
     body(host){
       const amount = document.createElement('button');
       amount.type = 'button';
       amount.className = 'wbs-input';
       amount.name = 'amount';
-      amount.dataset.value = '';
-      amount.textContent = 'مبلغ را وارد کنید';
+      amount.dataset.value = receipt?.amount ? String(receipt.amount) : '';
+      amount.textContent = amount.dataset.value ? `${money(amount.dataset.value)} تومان` : 'مبلغ را وارد کنید';
       amount.addEventListener('click', () => openNumpadGeneric(amount.dataset.value, value => {
         amount.dataset.value = String(value || '');
         amount.textContent = amount.dataset.value ? new Intl.NumberFormat('fa-IR').format(Number(amount.dataset.value)) + ' تومان' : 'مبلغ را وارد کنید';
       }, { suffix: ' تومان' }));
       host.appendChild(fieldRow('مبلغ', amount));
-      host.appendChild(fieldRow('تاریخ دریافت', dateButton('depositDate', '')));
+      host.appendChild(fieldRow('تاریخ دریافت', dateButton('depositDate', receipt?.depositDate || '')));
       const contacts = contactRepository.list(project.id).filter(contact => contact && !contact.trashed);
       const party = document.createElement('button');
       party.type = 'button';
       party.className = 'wbs-input';
       party.name = 'party';
-      party.dataset.value = '';
+      party.dataset.value = receipt?.partyContactId ? String(receipt.partyContactId) : '';
       const paintParty = () => {
         const selected = contacts.find(contact => String(contact.id) === String(party.dataset.value));
-        party.textContent = selected ? contactName(selected) : 'انتخاب واریزکننده';
+        party.textContent = selected ? contactName(selected) : (editing && party.dataset.value ? receipt.party : 'انتخاب واریزکننده');
       };
       party.addEventListener('click', () => openSearchPicker({
         title:'انتخاب واریزکننده', listTitle:'مخاطبین', selectedTitle:'واریزکننده منتخب',
@@ -163,11 +164,35 @@ function openDepositSheet(project, refresh){
       const note = document.createElement('textarea');
       note.className = 'wbs-input';
       note.name = 'description';
+      note.value = receipt?.description || '';
       host.appendChild(fieldRow('توضیح', note));
       const hint = document.createElement('div');
       hint.className = 'wbs-note';
       hint.textContent = 'تخصیص این مبلغ روی کارت همان بازهٔ برآورد تیک می‌خورد، نه اینجا.';
       host.appendChild(hint);
+      if(editing){
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'wbs-info-row is-danger';
+        remove.textContent = 'حذف واریزی';
+        remove.addEventListener('click', () => {
+          const perform = () => {
+            projectRepository.updateProject(project.id, current => ({
+              ...current,
+              fundingReceipts: (current.fundingReceipts || []).map(row => String(row.id) === String(receipt.id)
+                ? { ...row, trashed:true, updatedAt:Date.now() }
+                : row),
+            }));
+            markDirty(project.id);
+            persist({ local:false });
+            closeWbsSheet();
+            refresh();
+          };
+          if(typeof window.KarhaUI?.openConfirm === 'function') window.KarhaUI.openConfirm('این واریزی حذف شود؟', perform, 'حذف');
+          else if(window.confirm?.('این واریزی حذف شود؟')) perform();
+        });
+        host.appendChild(remove);
+      }
     },
     onSave(host){
       const amount = Number(host.querySelector('[name="amount"]').dataset.value || 0);
@@ -179,19 +204,23 @@ function openDepositSheet(project, refresh){
         return false;
       }
       const partyContact = contactRepository.get(project.id, partyId);
-      const receipt = {
-        id: uid(),
+      const nextReceipt = {
+        ...(receipt || {}),
+        id: receipt?.id || uid(),
         amount,
         depositDate,
         partyContactId: partyId,
         party: contactName(partyContact),
         description: host.querySelector('[name="description"]').value.trim(),
-        allocations: [],
-        createdAt: Date.now(),
+        allocations: receipt?.allocations || [],
+        createdAt: receipt?.createdAt || Date.now(),
+        updatedAt: Date.now(),
       };
       projectRepository.updateProject(project.id, current => ({
         ...current,
-        fundingReceipts: [...(current.fundingReceipts || []), receipt],
+        fundingReceipts: editing
+          ? (current.fundingReceipts || []).map(row => String(row.id) === String(receipt.id) ? nextReceipt : row)
+          : [...(current.fundingReceipts || []), nextReceipt],
       }));
       markDirty(project.id);
       persist({ local:false });
@@ -218,10 +247,6 @@ function renderFundingPanel(project, refresh){
     fundingRow('مجموع دریافتی تاکنون:', `${money(receipts.reduce((sum, row) => sum + (Number(row.amount) || 0), 0))} تومان`, 'is-summary'),
     fundingRow('مانده تخصیص داده نشده:', `${money(poolRemaining(project))} تومان`, 'is-summary'),
   );
-  const divider = document.createElement('div');
-  divider.className = 'wbs-funding-divider';
-  divider.setAttribute('aria-hidden', 'true');
-  body.appendChild(divider);
   receipts
     .map((receipt, index) => ({ receipt, number:index + 1 }))
     .sort((a, b) => String(b.receipt.depositDate || '').localeCompare(String(a.receipt.depositDate || '')) || Number(b.receipt.createdAt || 0) - Number(a.receipt.createdAt || 0))
@@ -229,15 +254,21 @@ function renderFundingPanel(project, refresh){
       body.appendChild(fundingRow(
         `دریافتی شماره ${new Intl.NumberFormat('fa-IR').format(number)} | ${numericJalaliDate(receipt.depositDate)}`,
         `${money(receipt.amount)} تومان`,
+        'is-action',
+        () => openDepositSheet(project, refresh, receipt),
       ));
     });
   frame.append(header, body);
   return frame;
 }
 
-function fundingRow(label, value, className = ''){
-  const row = document.createElement('div');
+function fundingRow(label, value, className = '', onClick = null){
+  const row = document.createElement(onClick ? 'button' : 'div');
   row.className = `wbs-funding-row${className ? ` ${className}` : ''}`;
+  if(onClick){
+    row.type = 'button';
+    row.addEventListener('click', onClick);
+  }
   const labelEl = document.createElement('span');
   labelEl.textContent = label;
   const valueEl = document.createElement('span');

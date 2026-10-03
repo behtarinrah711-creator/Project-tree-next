@@ -34,9 +34,9 @@
 .wbs-funding-add > span:first-child{font-size:21px;font-weight:400;line-height:1;}
 .wbs-funding-list{background:#fff;min-height:0;padding:0 12px;}
 .wbs-funding-row{width:100%;min-height:44px;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;direction:rtl;border-bottom:1px solid #eee8df;color:#4d4741;font-size:11px;}
+.wbs-funding-row.is-action{padding:0;border-top:0;border-right:0;border-left:0;background:transparent;font-family:inherit;cursor:pointer;}
 .wbs-funding-row > span:first-child{text-align:right;}
 .wbs-funding-row:last-child{border-bottom:0;}
 .wbs-funding-row.is-summary{font-weight:700;}
 .wbs-funding-amount{direction:rtl;text-align:left;white-space:nowrap;font-family:'IRANSansX',Tahoma,sans-serif;}
-.wbs-funding-divider{height:0;margin:10px 0;border-top:1px solid #d8d1c7;}
 .wbs-costline-manual{width:100%;min-height:38px;margin-top:6px;padding:0;border:0;background:transparent;color:#1267b2;font:inherit;text-align:right;cursor:pointer;}
