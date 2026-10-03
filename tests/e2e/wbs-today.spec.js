@@ -10,7 +10,7 @@ const project={id:'e2e-today',name:'پروژه امروز',location:'تهران'
     {id:'today-task',workId:'w1',title:'قالب‌بندی',type:'اجرا',scheduleStart:today,scheduleEnd:today,priority:'high',assigneeContactId:'a',weight:1,executionComments:[
       {id:'c1',text:'نظر اول',createdBy:{id:'a',name:'الف'},createdAt:1},{id:'c2',text:'نظر دوم',createdBy:{id:'a',name:'الف'},createdAt:2},{id:'c3',text:'نظر سوم',createdBy:{id:'a',name:'الف'},createdAt:3},
     ]},
-    {id:'unscheduled-task',workId:'w1',title:'بدون تاریخ',type:'خرید',scheduleStart:'',scheduleEnd:'',priority:'normal',weight:1},
+    {id:'unscheduled-task',workId:'w1',title:'بدون تاریخ',type:'پیگیری',scheduleStart:'',scheduleEnd:'',priority:'normal',weight:1},
   ]},
   {id:'future-work',kind:'work',text:'کار آینده',type:'خدمات',scheduleStart:'1405/06/19',scheduleEnd:'1405/06/25',workTasks:[]},
   {id:'overdue-work',kind:'work',text:'کار عقب‌افتاده',type:'اجرا',scheduleStart:'1405/06/01',scheduleEnd:'1405/06/17',workTasks:[]},

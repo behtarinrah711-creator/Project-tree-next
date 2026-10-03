@@ -63,13 +63,13 @@ export function collectTodayItems(project, today = tehranTodayJalali()){
       const tasks = activeWorkTasks(node);
       if(tasks.length){
         tasks.forEach(task => {
-          if(executionStatus(task) === 'approved') return;
+          if(task.type === 'خرید' || executionStatus(task) === 'approved') return;
           result.push({
             id:task.id, kind:'task', entity:task, work:node, workId:node.id,
             path:[...ancestors, title].filter(Boolean), mode:timeState(task, today),
           });
         });
-      }else if(isWork(node) && executionStatus(node) !== 'approved'){
+      }else if(isWork(node) && node.type !== 'خرید' && executionStatus(node) !== 'approved'){
         result.push({
           id:node.id, kind:'work', entity:node, work:node, workId:node.id,
           path:[...ancestors].filter(Boolean), mode:timeState(node, today),

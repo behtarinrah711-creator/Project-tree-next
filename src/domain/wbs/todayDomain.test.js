@@ -33,6 +33,17 @@ test('same-day work is rendered once and contract contractor overrides manual fa
   assert.equal(contractorForItem(withoutContract, item).contact.id, 'manual');
 });
 
+test('purchase label stays out of the work list and returns to its schedule when changed', () => {
+  const source = project();
+  const task = source.tasks[0].subtasks[0].workTasks[0];
+  task.type = 'خرید';
+  assert.equal(collectTodayItems(source, '1405/06/18').some(item => item.id === 't1'), false);
+  task.type = 'اجرا';
+  assert.equal(collectTodayItems(source, '1405/06/18').find(item => item.id === 't1').mode, 'today');
+  source.tasks[0].subtasks[1].type = 'خرید';
+  assert.equal(collectTodayItems(source, '1405/06/18').some(item => item.id === 'w2'), false);
+});
+
 test('Tehran calendar crosses into Nowruz independently from UTC date', () => {
   assert.equal(tehranTodayJalali(new Date('2026-03-20T21:00:00.000Z')), '1405/01/01');
 });
