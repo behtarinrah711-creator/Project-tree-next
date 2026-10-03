@@ -5,7 +5,7 @@ import { createViewToolbar } from './viewHeader.js';
 import { uid } from '../../data/projectFactories.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
-import { allocatedForBucket, allocatedForTask, allocationForInterval, clearAllocationsForBucket, fundingReceiptsOf, poolRemaining, trimFundingAllocationsToReceipts } from '../../domain/wbs/fundingReceipts.js';
+import { allocatedForBucket, allocatedForTask, allocationForInterval, setAllocationsForBucketTotal, fundingReceiptsOf, poolRemaining, trimFundingAllocationsToReceipts } from '../../domain/wbs/fundingReceipts.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
@@ -382,13 +382,10 @@ function receiptRemaining(receipt){
   return Math.max(0, (Number(receipt.amount) || 0) - used);
 }
 
-function intervalAllocationLimit(project, work, bucket){
-  const existing = Number(allocationForInterval(project, work.id, bucket)?.amount) || 0;
+function bucketAllocationLimit(project, work, bucket){
   const covered = allocatedForBucket(project, work.id, bucket);
-  const otherCovered = Math.max(0, covered - existing);
-  const sliceCapacity = Math.max(0, (Number(work.sliceAmount) || 0) - otherCovered);
-  const taskCapacity = Math.max(0, (Number(work.amount) || 0) - allocatedForTask(project, work.id) + existing);
-  return Math.min(sliceCapacity, poolRemaining(project) + existing, taskCapacity);
+  const taskCapacity = Math.max(0, (Number(work.amount) || 0) - allocatedForTask(project, work.id) + covered);
+  return Math.min(Number(work.sliceAmount) || 0, poolRemaining(project) + covered, taskCapacity);
 }
 
 function costlineDetailRow(label, value, className = ''){
@@ -486,15 +483,12 @@ function openBucketSheet(project, bucket, refresh){
         box.checked = covered + 1 >= slice && slice > 0;
         box.addEventListener('change', () => {
           const live = projectRepository.getActiveProject(project.id) || project;
-          const previous = Number(allocationForInterval(live, work.id, bucket)?.amount) || 0;
-          const liveCovered = allocatedForBucket(live, work.id, bucket);
-          const nextAmount = previous + Math.max(0, slice - liveCovered);
-          if(box.checked && nextAmount > intervalAllocationLimit(live, work, bucket) + 1){
+          if(box.checked && slice > bucketAllocationLimit(live, work, bucket) + 1){
             box.checked = false;
             window.KarhaUI?.showToast?.('مانده بودجه کافی نیست');
             return;
           }
-          saveIntervalAllocation(project.id, work.id, bucket, box.checked ? nextAmount : 0, 'slice');
+          saveBucketAllocation(project.id, work.id, bucket, box.checked ? slice : 0);
           refresh();
           paint();
         });
@@ -514,37 +508,20 @@ function openBucketSheet(project, bucket, refresh){
           const visibleAmount = allocatedForBucket(live, work.id, bucket);
           openNumpadGeneric(visibleAmount || '', value => {
             const next = Number(value) || 0;
-            if(next === 0){
-              clearTaskFundingInBucket(project.id, work.id, bucket);
-              refresh();
-              paint();
-              return true;
-            }
             const latest = projectRepository.getActiveProject(project.id) || project;
-            const exact = Number(allocationForInterval(latest, work.id, bucket)?.amount) || 0;
-            const otherCovered = Math.max(0, allocatedForBucket(latest, work.id, bucket) - exact);
-            const allowed = otherCovered + intervalAllocationLimit(latest, work, bucket);
-            if(next < otherCovered){
-              window.KarhaUI?.showToast?.(`این بازه از بازه‌های کوچک‌تر ${money(otherCovered)} تومان تأمین دارد`);
-              return false;
-            }
+            const allowed = bucketAllocationLimit(latest, work, bucket);
             if(next > allowed){
               window.KarhaUI?.showToast?.(`مبلغ نمی‌تواند بیشتر از ${money(allowed)} تومان باشد`);
               return false;
             }
-            saveIntervalAllocation(project.id, work.id, bucket, next - otherCovered, 'manual');
+            saveBucketAllocation(project.id, work.id, bucket, next);
             refresh();
             paint();
             return true;
           }, { suffix:' تومان', validate:value => {
             const latest = projectRepository.getActiveProject(project.id) || project;
-            const exact = Number(allocationForInterval(latest, work.id, bucket)?.amount) || 0;
-            const otherCovered = Math.max(0, allocatedForBucket(latest, work.id, bucket) - exact);
-            const allowed = otherCovered + intervalAllocationLimit(latest, work, bucket);
-            const next = Number(value || 0);
-            if(next === 0) return '';
-            if(next < otherCovered) return `حداقل مبلغ این بازه ${money(otherCovered)} تومان است`;
-            return next <= allowed ? '' : `حداکثر مبلغ مجاز ${money(allowed)} تومان است`;
+            const allowed = bucketAllocationLimit(latest, work, bucket);
+            return Number(value || 0) <= allowed ? '' : `حداکثر مبلغ مجاز ${money(allowed)} تومان است`;
           }});
         });
         paintManual();
@@ -560,31 +537,10 @@ function openBucketSheet(project, bucket, refresh){
   });
 }
 
-function clearTaskFundingInBucket(projectId, taskId, bucket){
+function saveBucketAllocation(projectId, taskId, bucket, amount){
   projectRepository.updateProject(projectId, row => ({
     ...row,
-    fundingAllocations:clearAllocationsForBucket(row.fundingAllocations, taskId, bucket),
-  }));
-  markDirty(projectId);
-  persist({ local:false });
-}
-
-function saveIntervalAllocation(projectId, taskId, bucket, amount, kind){
-  projectRepository.updateProject(projectId, row => ({
-    ...row,
-    fundingAllocations: [
-      ...(row.fundingAllocations || []).filter(item => !(String(item.taskId) === String(taskId)
-        && Number(item.startDay) === Number(bucket.startDay)
-        && Number(item.endDay) === Number(bucket.endDay))),
-      ...(Number(amount) > 0 ? [{
-        taskId,
-        bucketId:bucket.id,
-        startDay:bucket.startDay,
-        endDay:bucket.endDay,
-        amount:Number(amount),
-        kind,
-      }] : []),
-    ],
+    fundingAllocations:setAllocationsForBucketTotal(row, taskId, bucket, amount),
   }));
   markDirty(projectId);
   persist({ local:false });
