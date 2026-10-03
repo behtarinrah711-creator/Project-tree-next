@@ -5,7 +5,7 @@ import { createViewToolbar } from './viewHeader.js';
 import { uid } from '../../data/projectFactories.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
-import { allocatedForBucket, allocatedForTask, allocationForInterval, fundingReceiptsOf, poolRemaining, trimFundingAllocationsToReceipts } from '../../domain/wbs/fundingReceipts.js';
+import { allocatedForBucket, allocatedForTask, allocationForInterval, clearAllocationsForBucket, fundingReceiptsOf, poolRemaining, trimFundingAllocationsToReceipts } from '../../domain/wbs/fundingReceipts.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
@@ -514,6 +514,12 @@ function openBucketSheet(project, bucket, refresh){
           const visibleAmount = allocatedForBucket(live, work.id, bucket);
           openNumpadGeneric(visibleAmount || '', value => {
             const next = Number(value) || 0;
+            if(next === 0){
+              clearTaskFundingInBucket(project.id, work.id, bucket);
+              refresh();
+              paint();
+              return true;
+            }
             const latest = projectRepository.getActiveProject(project.id) || project;
             const exact = Number(allocationForInterval(latest, work.id, bucket)?.amount) || 0;
             const otherCovered = Math.max(0, allocatedForBucket(latest, work.id, bucket) - exact);
@@ -536,6 +542,7 @@ function openBucketSheet(project, bucket, refresh){
             const otherCovered = Math.max(0, allocatedForBucket(latest, work.id, bucket) - exact);
             const allowed = otherCovered + intervalAllocationLimit(latest, work, bucket);
             const next = Number(value || 0);
+            if(next === 0) return '';
             if(next < otherCovered) return `حداقل مبلغ این بازه ${money(otherCovered)} تومان است`;
             return next <= allowed ? '' : `حداکثر مبلغ مجاز ${money(allowed)} تومان است`;
           }});
@@ -551,6 +558,15 @@ function openBucketSheet(project, bucket, refresh){
       paint();
     },
   });
+}
+
+function clearTaskFundingInBucket(projectId, taskId, bucket){
+  projectRepository.updateProject(projectId, row => ({
+    ...row,
+    fundingAllocations:clearAllocationsForBucket(row.fundingAllocations, taskId, bucket),
+  }));
+  markDirty(projectId);
+  persist({ local:false });
 }
 
 function saveIntervalAllocation(projectId, taskId, bucket, amount, kind){
