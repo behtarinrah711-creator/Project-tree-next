@@ -4,6 +4,8 @@
 .wbs-costline-frame{margin:0 2px;}
 .wbs-funding-frame{margin:15px 2px 24px;}
 .wbs-costline-toolbar{box-sizing:border-box;height:var(--wbs-frame-header-height,42px);display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 6px 0 10px;background:var(--wbs-frame-header-bg,#f7f4ef);border-bottom:1px solid var(--wbs-frame-border,#ded7cd);color:var(--wbs-frame-title,#4d4741);}
+.wbs-costline-title{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--wbs-frame-title,#4d4741);white-space:nowrap;}
+.wbs-costline-toolbar .wbs-view-actions{justify-content:flex-start;}
 .wbs-costline-project{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:700;}
 .wbs-costline-controls{display:flex;align-items:center;gap:6px;flex:0 0 auto;}
 .wbs-costline-cycle{flex:0 0 44px;width:44px;height:38px;border-radius:var(--wbs-frame-radius,5px);}
@@ -15,9 +17,13 @@
 .wbs-costline-axis{display:flex;align-items:flex-end;gap:10px;width:max-content;min-width:100%;min-height:300px;padding:14px 8px 8px;box-sizing:border-box;}
 .wbs-costline-col{box-sizing:border-box;flex:0 0 88px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:6px;border:0;border-radius:var(--wbs-frame-radius,5px);background:transparent;min-height:278px;padding:0 4px;font-family:inherit;color:#2f2a24;}
 .wbs-costline-bar{display:block;width:28px;height:220px;overflow:visible;}
-.wbs-costline-bar path{fill:#033E8A;}
+.wbs-costline-bar-planned{fill:#033E8A;opacity:.5;}
+.wbs-costline-bar-funded{fill:#033E8A;opacity:1;}
+.wbs-costline-values{display:flex;min-height:26px;flex-direction:column;align-items:center;justify-content:flex-end;gap:1px;}
 .wbs-costline-value{display:flex;align-items:baseline;justify-content:center;gap:2px;direction:rtl;white-space:nowrap;font-family:'IRANSansX',Tahoma,sans-serif;font-size:12px;line-height:1.2;}
 .wbs-costline-value small{font-size:7px;font-weight:400;color:#8a8176;}
+.wbs-costline-value.is-funded,.wbs-costline-value.is-funded small{color:#033E8A;}
+.wbs-costline-value.is-shortage,.wbs-costline-value.is-shortage small{color:#c62828;}
 .wbs-costline-label{box-sizing:border-box;display:block;width:100%;min-height:30px;font-size:11px;font-weight:500;line-height:15px;color:#6f675d;text-align:center;white-space:normal;direction:rtl;unicode-bidi:plaintext;}
 .wbs-costline-work{border:1px solid #e5ded3;border-radius:var(--wbs-frame-radius,5px);padding:10px;margin-bottom:8px;}
 .wbs-costline-work h4{margin:0 0 6px;}
@@ -32,3 +38,4 @@
 .wbs-funding-row:last-child{border-bottom:0;}
 .wbs-funding-row.is-summary{font-weight:700;}
 .wbs-funding-amount{direction:rtl;text-align:left;white-space:nowrap;font-family:'IRANSansX',Tahoma,sans-serif;}
+.wbs-funding-divider{height:0;margin:10px 0;border-top:1px solid #d8d1c7;}
