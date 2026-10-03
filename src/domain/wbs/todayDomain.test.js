@@ -36,3 +36,19 @@ test('same-day work is rendered once and contract contractor overrides manual fa
 test('Tehran calendar crosses into Nowruz independently from UTC date', () => {
   assert.equal(tehranTodayJalali(new Date('2026-03-20T21:00:00.000Z')), '1405/01/01');
 });
+
+test('overdue work stays in overdue after it is sent back without management approval', () => {
+  const source = project();
+  const task = source.tasks[0].subtasks[0].workTasks[0];
+  task.scheduleStart = '1405/06/14';
+  task.scheduleEnd = '1405/06/14';
+  task.returnedToTodayOn = '1405/07/11';
+  const today = '1405/07/11';
+  const items = collectTodayItems(source, today);
+  assert.equal(items.find(item => item.id === 't1').mode, 'overdue');
+  assert.equal(itemsForMode(source, 'today', today).some(item => item.id === 't1'), false);
+  assert.equal(itemsForMode(source, 'overdue', today).some(item => item.id === 't1'), true);
+  task.scheduleStart = today;
+  task.scheduleEnd = today;
+  assert.equal(collectTodayItems(source, today).find(item => item.id === 't1').mode, 'today');
+});

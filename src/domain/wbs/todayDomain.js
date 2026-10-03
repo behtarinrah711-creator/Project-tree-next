@@ -30,11 +30,14 @@ export function executionStatus(entity){
 
 export function timeState(entity, today){
   if(executionStatus(entity) === 'pending_approval') return 'pending';
-  if(entity?.returnedToTodayOn === today) return 'today';
   const start = entity?.scheduleStart || '';
   const end = entity?.scheduleEnd || '';
+  const endDay = jalaliDayNumber(end);
+  const todayDay = jalaliDayNumber(today);
+  if(start && end && endDay !== null && todayDay !== null && endDay < todayDay) return 'overdue';
+  if(start && end && (endDay === null || todayDay === null) && end < today) return 'overdue';
+  if(entity?.returnedToTodayOn === today) return 'today';
   if(!start || !end) return 'unscheduled';
-  if(end < today) return 'overdue';
   if(start > today) return 'future';
   return 'today';
 }
