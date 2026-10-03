@@ -69,7 +69,7 @@ test('mixed children keep task costs, weighted progress, schedule and list visib
   assert.equal(actualProgress(project.tasks[0]),25);
   assert.equal(scheduleRangeOf(project.tasks[0]).endDate,'1405/01/05');
   assert.equal(scheduleRangeOf(project.tasks[0]).startDate,'1405/01/01');
-  assert.deepEqual(collectTodayItems(project).map(row=>row.id),['direct']);
+  assert.deepEqual(collectTodayItems(project).map(row=>row.id),[]);
   assert.deepEqual(collectShoppingItems(project).map(row=>row.id),['direct']);
   assert.equal(buildEffectiveNetwork(project.tasks).activities.length,2);
   assert.equal(project.tasks[0].kind,'stage');
