@@ -412,24 +412,41 @@ function openBucketSheet(project, bucket, refresh){
           costlineDetailRow('تأمین‌شده', `${money(covered)} تومان`),
           costlineDetailRow('کل برآورد', `${money(work.amount)} تومان`),
         );
-        const mode = document.createElement('select');
-        mode.className = 'wbs-input';
-        [['spread','پخش روی مدت'],['start','اول کار'],['end','آخر کار']].forEach(([value, label]) => {
-          const option = document.createElement('option');
-          option.value = value;
-          option.textContent = label;
-          option.selected = (work.accrual || 'spread') === value;
-          mode.appendChild(option);
-        });
-        mode.addEventListener('change', () => {
-          projectRepository.updateProject(project.id, row => setAccrual(row, work.id, mode.value));
-          markDirty(project.id);
-          persist({ local:false });
-          refresh();
-        });
-        card.appendChild(fieldRow('زمان پول', mode));
+        const accrualOptions = [
+          { id:'spread', name:'پخش روی مدت' },
+          { id:'start', name:'اول کار' },
+          { id:'end', name:'آخر کار' },
+        ];
+        const modeRow = document.createElement('div');
+        modeRow.className = 'wbs-costline-control-row';
+        const modeLabel = document.createElement('span');
+        modeLabel.textContent = 'زمان پول';
+        const mode = document.createElement('button');
+        mode.type = 'button';
+        mode.className = 'wbs-costline-mode';
+        mode.dataset.value = work.accrual || 'spread';
+        const paintMode = () => {
+          mode.textContent = accrualOptions.find(option => option.id === mode.dataset.value)?.name || accrualOptions[0].name;
+        };
+        mode.addEventListener('click', () => openSearchPicker({
+          title:'زمان پول', listTitle:'زمان تخصیص', selectedTitle:'گزینه منتخب',
+          contextKey:`wbs-funding-accrual:${work.id}`,
+          items:accrualOptions,
+          showStar:false, showAdd:false,
+          onSelect:selected => {
+            mode.dataset.value = selected.id;
+            paintMode();
+            projectRepository.updateProject(project.id, row => setAccrual(row, work.id, selected.id));
+            markDirty(project.id);
+            persist({ local:false });
+            refresh();
+          },
+        }));
+        paintMode();
+        modeRow.append(modeLabel, mode);
+        card.appendChild(modeRow);
         const tick = document.createElement('label');
-        tick.className = 'wbs-note';
+        tick.className = 'wbs-costline-fund-slice';
         const box = document.createElement('input');
         box.type = 'checkbox';
         box.checked = covered + 1 >= slice && slice > 0;
@@ -482,7 +499,10 @@ function openBucketSheet(project, bucket, refresh){
           }});
         });
         paintManual();
-        card.append(tick, manual);
+        const allocationRow = document.createElement('div');
+        allocationRow.className = 'wbs-costline-allocation-row';
+        allocationRow.append(tick, manual);
+        card.appendChild(allocationRow);
         host.appendChild(card);
       });
       };
