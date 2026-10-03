@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { allocatedForBucket, openFundingStops, trimFundingAllocationsToReceipts } from './fundingReceipts.js';
+import { allocatedForBucket, openFundingStops, setAllocationsForBucketTotal, trimFundingAllocationsToReceipts } from './fundingReceipts.js';
 import { jalaliDayNumber } from './costline.js';
 
 const mdfTasks = accrual => [{
@@ -144,4 +144,41 @@ test('adding tasks before, between, or after funded work does not move its alloc
   assert.equal(allocatedForBucket(project, 'before', fundedBucket), 0);
   assert.equal(allocatedForBucket(project, 'middle', fundedBucket), 0);
   assert.equal(allocatedForBucket(project, 'after', fundedBucket), 0);
+});
+
+
+test('editing a wider bucket redistributes smaller allocations to the requested total', () => {
+  const startDay = jalaliDayNumber('1405/07/18');
+  const bucket = { id:'month-1', startDay, endDay:startDay + 13 };
+  const project = {
+    tasks:mdfTasks('spread'),
+    fundingReceipts:[{ id:'r1', amount:200 }],
+    fundingAllocations:[
+      { taskId:'w1', startDay, endDay:startDay + 6, amount:20, kind:'manual' },
+      { taskId:'w1', startDay:startDay + 7, endDay:startDay + 13, amount:30, kind:'manual' },
+    ],
+  };
+  project.fundingAllocations = setAllocationsForBucketTotal(project, 'w1', bucket, 10);
+  assert.equal(allocatedForBucket(project, 'w1', bucket), 10);
+  project.fundingAllocations = setAllocationsForBucketTotal(project, 'w1', bucket, 0);
+  assert.equal(allocatedForBucket(project, 'w1', bucket), 0);
+});
+
+test('editing one bucket preserves the funded amount outside that bucket', () => {
+  const startDay = jalaliDayNumber('1405/07/18');
+  const project = {
+    tasks:mdfTasks('spread'),
+    fundingReceipts:[{ id:'r1', amount:200 }],
+    fundingAllocations:[{
+      taskId:'w1', startDay, endDay:startDay + 13, amount:140, kind:'manual',
+    }],
+  };
+  project.fundingAllocations = setAllocationsForBucketTotal(
+    project,
+    'w1',
+    { id:'week-1', startDay, endDay:startDay + 6 },
+    20,
+  );
+  assert.equal(allocatedForBucket(project, 'w1', { startDay, endDay:startDay + 6 }), 20);
+  assert.equal(allocatedForBucket(project, 'w1', { startDay:startDay + 7, endDay:startDay + 13 }), 70);
 });
