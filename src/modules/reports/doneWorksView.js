@@ -1,5 +1,6 @@
 import { formatJalaliDisplay } from '../../ui/jalali.js';
 import { jalaliDayNumber } from '../../domain/wbs/costline.js';
+import { todayApi } from '../../domain/wbs/todayApi.js';
 
 const PAGE = 20;
 
@@ -9,16 +10,16 @@ export function completedWorks(project){
     if(!node || node.trashed) return;
     const next = path.concat(node.text || node.title || '').filter(Boolean);
     (node.workTasks || []).forEach(task => {
-      if(task && !task.trashed && (task.completionState === 'approved' || task.completed)) rows.push(rowOf(task, next));
+      if(task && !task.trashed && (task.completionState === 'approved' || task.completed)) rows.push(rowOf(task, next, { kind:'task', id:task.id, workId:node.id }));
     });
-    if(node.completionState === 'approved' || node.completed) rows.push(rowOf(node, path));
+    if(node.completionState === 'approved' || node.completed) rows.push(rowOf(node, path, { kind:'work', id:node.id }));
     walk(node.subtasks, next);
   });
   walk(project?.tasks || [], []);
   return rows;
 }
 
-function rowOf(entity, path){
+function rowOf(entity, path, ref){
   const plannedStart = entity.scheduleStart || '';
   const plannedEnd = entity.scheduleEnd || '';
   const actualStart = entity.actualStart || '';
@@ -27,7 +28,7 @@ function rowOf(entity, path){
   const actual = jalaliDayNumber(actualEnd);
   const delta = planned != null && actual != null ? actual - planned : null;
   return {
-    id: entity.id,
+    id: entity.id, ref,
     title: entity.title || entity.text || '',
     path: path.join(' ← '),
     plannedStart, plannedEnd, actualStart, actualEnd, delta,
@@ -46,10 +47,9 @@ function jalaliFromStamp(value){
   return new Intl.DateTimeFormat('fa-IR-u-nu-latn', { year:'numeric', month:'2-digit', day:'2-digit', timeZone:'Asia/Tehran' }).format(date).replace(/-/g, '/');
 }
 
-export function renderDoneWorks(project, documentRef = document){
+export function renderDoneWorks(project, documentRef = document, onChanged){
   const frame = documentRef.createElement('section');
   frame.className = 'wbs-view-frame wbs-delay-frame';
-  const all = completedWorks(project);
   let shown = PAGE;
   let assignee = '';
   let approver = '';
@@ -77,6 +77,7 @@ export function renderDoneWorks(project, documentRef = document){
   more.textContent = 'نمایش بیشتر';
   more.addEventListener('click', () => { shown += PAGE; paint(); });
   function paint(){
+    const all = completedWorks(project);
     const rows = all.filter(row => (!assignee || row.assignee.includes(assignee)) && (!approver || row.approver.includes(approver)));
     title.textContent = `کارهای انجام‌شده · ${new Intl.NumberFormat('fa-IR').format(rows.length)}`;
     body.innerHTML = '';
@@ -85,6 +86,18 @@ export function renderDoneWorks(project, documentRef = document){
       card.className = 'wbs-delay-row';
       const variance = row.delta == null ? '—' : row.delta > 0 ? `${row.delta} روز تأخیر` : row.delta < 0 ? `${Math.abs(row.delta)} روز زودتر` : 'به‌موقع';
       card.innerHTML = `<strong>${escapeText(row.title)}</strong><span>${escapeText(row.path || '—')}</span><span>برنامه: ${escapeText(show(row.plannedStart))} تا ${escapeText(show(row.plannedEnd))}</span><span>واقعی: ${escapeText(show(row.actualStart))} تا ${escapeText(show(row.actualEnd))}</span><span>${escapeText(variance)}</span><span>مسئول: ${escapeText(row.assignee || '—')}</span><span>تأییدکننده: ${escapeText(row.approver || '—')}</span><span>برآورد: ${money(row.estimate)}</span><span>هزینه واقعی: ${row.actualCost == null ? '—' : money(row.actualCost)}</span>`;
+      const cancel = documentRef.createElement('button');
+      cancel.type = 'button';
+      cancel.className = 'wbs-primary-action is-secondary';
+      cancel.textContent = 'لغو انجام کار';
+      cancel.addEventListener('click', () => {
+        const user = documentRef.defaultView?.firebase?.auth?.()?.currentUser;
+        const result = todayApi.cancelApproval(project.id, row.ref, { id:user?.uid || 'guest', name:user?.displayName || user?.email || 'کاربر' });
+        if(!result.ok) return;
+        onChanged?.();
+        paint();
+      });
+      card.appendChild(cancel);
       body.appendChild(card);
     });
     if(!rows.length) body.insertAdjacentHTML('beforeend', '<div class="empty-state">کار تأییدشده‌ای نیست.</div>');

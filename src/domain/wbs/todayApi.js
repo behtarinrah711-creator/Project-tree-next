@@ -107,6 +107,34 @@ export const todayApi = {
     }), { completion:true });
   },
 
+  cancelApproval(projectId, ref, actor, clock = Date.now){
+    const at = clock(); const by = actorValue(actor);
+    let code = null;
+    const result = mutate(projectId, ref, entity => {
+      if(entity.completionState !== 'approved' && !entity.completed){ code = 'not_approved'; return entity; }
+      code = 'ok';
+      return {
+        ...entity,
+        completed:false,
+        done:false,
+        completionState:'incomplete',
+        workflowStatus:entity.actualStart ? 'in_progress' : 'not_started',
+        completedAt:null,
+        completionSubmittedAt:null,
+        completionSubmittedBy:null,
+        actualFinishDay:null,
+        approvedAt:null,
+        approvedBy:null,
+        returnedToTodayOn:tehranTodayJalali(new Date(at)),
+        ...(ref.kind === 'work' ? { progress:Number(entity.progressBeforeApproval) || 0, status:'in_progress' } : {}),
+        executionHistory:[...(entity.executionHistory || []), event('approval_cancelled', by, at), event('returned_to_active', by, at)],
+        updatedAt:at,
+      };
+    }, { completion:false });
+    if(!result.ok) return result;
+    return code === 'ok' ? result : { ok:false, code };
+  },
+
 
   cancelStart(projectId, ref, actor, clock = Date.now){
     const at = clock(); const by = actorValue(actor);

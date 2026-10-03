@@ -79,7 +79,7 @@ export const reportsModule = {
       return;
     }
     if(activeReportView === 'done'){
-      body.appendChild(renderDoneWorks(project, document));
+      body.appendChild(renderDoneWorks(project, document, () => this.render(activeProjectId)));
       return;
     }
 

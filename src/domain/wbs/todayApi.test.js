@@ -73,3 +73,19 @@ test('responsible person can withdraw a pending check back to the previous tab',
   assert.equal(entity(store).executionHistory.at(-2).type,'completion_withdrawn');
   assert.equal(entity(store).executionHistory.at(-1).type,'returned_to_previous');
 });
+
+test('approved task reaches 100 percent and cancellation returns it to its active list',()=>{
+  const store=install(),actor={id:'a',name:'الف'};
+  todayApi.start('p1',ref,actor,()=>20);
+  todayApi.markComplete('p1',ref,actor,()=>30);
+  todayApi.approve('p1',ref,actor,()=>40);
+  assert.equal(entity(store).progress,100);
+  assert.equal(entity(store).completionState,'approved');
+  assert.equal(todayApi.cancelApproval('p1',ref,actor,()=>50).ok,true);
+  assert.equal(entity(store).progress,0);
+  assert.equal(entity(store).completionState,'incomplete');
+  assert.equal(entity(store).completed,false);
+  assert.equal(entity(store).approvedAt,null);
+  assert.equal(entity(store).executionHistory.at(-2).type,'approval_cancelled');
+  assert.equal(entity(store).executionHistory.at(-1).type,'returned_to_active');
+});

@@ -446,14 +446,14 @@ function tBarRow(entry, min, dayWidth){
       bar.title = `توقف مالی ${stop.duration} روز`;
     } else bar.title = `${entry.range.startDate || ''} تا ${entry.range.endDate || ''}`;
     if(entry.item.kind !== 'milestone') bar.addEventListener('click', () => task
-      ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render, readOnly:!canWritePlanning(activePlanningLevel), canDelete:canDeletePlanning(activePlanningLevel) })
+      ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render, readOnly:!canWritePlanning(activePlanningLevel) || entry.item.completionState === 'approved' || entry.item.completed, canDelete:canDeletePlanning(activePlanningLevel) })
       : openItemDetails(entry.item));
     row.appendChild(bar);
   }else if(isWork(entry.item) || entry.item.kind === 'workTask'){
     const empty = document.createElement('button');
     empty.type = 'button'; empty.className = 'wbs-gantt-unscheduled'; empty.textContent = 'بدون تاریخ';
     empty.addEventListener('click', () => entry.item.kind === 'workTask'
-      ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render, readOnly:!canWritePlanning(activePlanningLevel), canDelete:canDeletePlanning(activePlanningLevel) })
+      ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render, readOnly:!canWritePlanning(activePlanningLevel) || entry.item.completionState === 'approved' || entry.item.completed, canDelete:canDeletePlanning(activePlanningLevel) })
       : openItemDetails(entry.item));
     row.appendChild(empty);
   }
@@ -473,7 +473,8 @@ function isWorkRegistrationLevel(item){
 
 function openItemDetails(item){
   const writable=canWritePlanning(activePlanningLevel);
-  openStageEditor({projectId:projectIdOf(),stage:wbsApi.get(projectIdOf(),item.id)||item,onChanged:render,readOnly:!writable,onDelete:canDeletePlanning(activePlanningLevel)?()=>requestDelete(item):null});
+  const approved=item.completionState === 'approved' || item.completed;
+  openStageEditor({projectId:projectIdOf(),stage:wbsApi.get(projectIdOf(),item.id)||item,onChanged:render,readOnly:!writable || approved,onDelete:!approved && canDeletePlanning(activePlanningLevel)?()=>requestDelete(item):null});
 }
 
 function openWorkRegistration(itemId){
