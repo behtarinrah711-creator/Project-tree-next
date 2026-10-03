@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { allocatedForBucket, openFundingStops, setAllocationsForBucketTotal, trimFundingAllocationsToReceipts } from './fundingReceipts.js';
-import { jalaliDayNumber } from './costline.js';
+import { allocatedForBucket, openFundingStops, poolAllocated, setAllocationsForBucketTotal, trimFundingAllocationsToReceipts } from './fundingReceipts.js';
+import { collectPlannedWorks, jalaliDayNumber, sliceShare } from './costline.js';
 
 const mdfTasks = accrual => [{
   id:'s1', kind:'stage', text:'دکور MDF', subtasks:[{
@@ -181,4 +181,98 @@ test('editing one bucket preserves the funded amount outside that bucket', () =>
   );
   assert.equal(allocatedForBucket(project, 'w1', { startDay, endDay:startDay + 6 }), 20);
   assert.equal(allocatedForBucket(project, 'w1', { startDay:startDay + 7, endDay:startDay + 13 }), 70);
+});
+
+test('saving a wider chart bucket keeps the funded total on the work days only', () => {
+  const startDay = jalaliDayNumber('1405/07/18');
+  const endDay = jalaliDayNumber('1405/07/24');
+  const project = {
+    tasks:[{ id:'s1', kind:'stage', text:'مرحله', subtasks:[{
+      id:'w1', kind:'work', text:'کارت', quantity:1, unitCost:70,
+      scheduleStart:'1405/07/18', scheduleEnd:'1405/07/24', subtasks:[],
+    }] }],
+    fundingReceipts:[{ id:'r1', amount:200 }],
+    fundingAllocations:[{ taskId:'w1', startDay, endDay, amount:70, kind:'manual' }],
+  };
+  const wider = { id:'wide', startDay:startDay - 3, endDay:endDay + 4 };
+  const shown = allocatedForBucket(project, 'w1', wider);
+  project.fundingAllocations = setAllocationsForBucketTotal(project, 'w1', wider, shown);
+  let workDays = 0;
+  for(let day = startDay; day <= endDay; day += 1){
+    workDays += allocatedForBucket(project, 'w1', { startDay:day, endDay:day });
+  }
+  assert.equal(shown, 70);
+  assert.equal(workDays, 70);
+  assert.equal(poolAllocated(project), 70);
+  assert.equal(allocatedForBucket(project, 'w1', { startDay:endDay + 1, endDay:wider.endDay }), 0);
+});
+
+test('funding a slice does not leave money on days the work does not occupy', () => {
+  const startDay = jalaliDayNumber('1405/07/18');
+  const endDay = jalaliDayNumber('1405/07/20');
+  const project = {
+    tasks:[{ id:'s1', kind:'stage', text:'مرحله', subtasks:[{
+      id:'w1', kind:'work', text:'کوتاه', quantity:1, unitCost:30,
+      scheduleStart:'1405/07/18', scheduleEnd:'1405/07/20', subtasks:[],
+    }] }],
+    fundingReceipts:[{ id:'r1', amount:200 }],
+    fundingAllocations:[],
+  };
+  const week = { id:'week', startDay, endDay:startDay + 6 };
+  const work = collectPlannedWorks(project.tasks)[0];
+  const slice = sliceShare(work, week);
+  project.fundingAllocations = setAllocationsForBucketTotal(project, 'w1', week, slice);
+  let workDays = 0;
+  for(let day = startDay; day <= endDay; day += 1){
+    workDays += allocatedForBucket(project, 'w1', { startDay:day, endDay:day });
+  }
+  assert.equal(allocatedForBucket(project, 'w1', week), slice);
+  assert.equal(workDays, slice);
+  assert.equal(poolAllocated(project), slice);
+  assert.equal(allocatedForBucket(project, 'w1', { startDay:endDay + 1, endDay:week.endDay }), 0);
+});
+
+test('bucket shares of one allocation sum to the allocated total and saving the shown amount keeps it', () => {
+  const startDay = jalaliDayNumber('1405/07/18');
+  const project = {
+    tasks:mdfTasks('spread'),
+    fundingReceipts:[{ id:'r1', amount:200 }],
+    fundingAllocations:[
+      { taskId:'w1', startDay, endDay:startDay + 6, amount:20, kind:'manual' },
+      { taskId:'w1', startDay:startDay + 7, endDay:startDay + 13, amount:30, kind:'manual' },
+    ],
+  };
+  const month = { id:'mehr', startDay:jalaliDayNumber('1405/07/01'), endDay:jalaliDayNumber('1405/07/30') };
+  const nextDay = { startDay:startDay + 13, endDay:startDay + 13 };
+  const shown = allocatedForBucket(project, 'w1', month);
+  assert.equal(shown + allocatedForBucket(project, 'w1', nextDay), 50);
+  project.fundingAllocations = setAllocationsForBucketTotal(project, 'w1', month, shown);
+  assert.equal(poolAllocated(project), 50);
+  assert.equal(allocatedForBucket(project, 'w1', month), shown);
+});
+
+test('a task added under a funded work keeps that funding without changing the allocated total', () => {
+  const startDay = jalaliDayNumber('1405/07/18');
+  const endDay = jalaliDayNumber('1405/08/10');
+  const project = {
+    tasks:mdfTasks('spread'),
+    fundingReceipts:[{ id:'r1', amount:200 }],
+    fundingAllocations:[{ taskId:'w1', startDay, endDay, amount:70, kind:'manual' }],
+  };
+  const span = { startDay, endDay };
+  assert.equal(allocatedForBucket(project, 'w1', span), 70);
+  project.tasks[0].subtasks[0].workTasks = [
+    { id:'t1', workId:'w1', title:'تسک جدید', amount:90, scheduleStart:'1405/07/18', scheduleEnd:'1405/08/10' },
+  ];
+  assert.equal(collectPlannedWorks(project.tasks).map(work => work.id).join(','), 't1');
+  assert.equal(allocatedForBucket(project, 't1', span), 70);
+  assert.equal(allocatedForBucket(project, 'w1', span), 0);
+  assert.equal(poolAllocated(project), 70);
+  project.tasks[0].subtasks[0].workTasks.push(
+    { id:'t2', workId:'w1', title:'تسک دوم', amount:30, scheduleStart:'1405/07/18', scheduleEnd:'1405/08/10' },
+  );
+  const first = allocatedForBucket(project, 't1', span);
+  const second = allocatedForBucket(project, 't2', span);
+  assert.equal(first + second, 70);
+  assert.equal(first > second, true);
 });

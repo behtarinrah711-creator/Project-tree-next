@@ -89,6 +89,24 @@ export function collectPlannedWorks(tasksRoot){
   return works;
 }
 
+export function hiddenFundingCarriers(tasksRoot){
+  const hidden = new Map();
+  walkTree(tasksRoot, item => {
+    if(!canHoldWorkTasks(item)) return;
+    const tasks = activeWorkTasks(item);
+    if(!tasks.length) return;
+    const carriers = [];
+    tasks.forEach(unit => {
+      const start = scheduleStartOf(unit);
+      const amount = Math.max(0, Number(unit.amount) || 0);
+      if(!start || !amount) return;
+      carriers.push({ id:unit.id, amount });
+    });
+    if(carriers.length) hidden.set(String(item.id), carriers);
+  });
+  return hidden;
+}
+
 function alignToWeekday(dayNumber, weekday){
   const current = (new Date(dayNumber * 86400000).getUTCDay() + 1) % 7;
   return dayNumber - ((current - weekday + 7) % 7);
