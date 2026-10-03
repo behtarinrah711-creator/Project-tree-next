@@ -5,7 +5,7 @@ import { createViewToolbar } from './viewHeader.js';
 import { uid } from '../../data/projectFactories.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
-import { allocatedForBucket, allocatedForTask, allocationForInterval, fundingReceiptsOf, poolRemaining } from '../../domain/wbs/fundingReceipts.js';
+import { allocatedForBucket, allocationForInterval, fundingReceiptsOf, poolRemaining } from '../../domain/wbs/fundingReceipts.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
@@ -358,6 +358,13 @@ function receiptRemaining(receipt){
   return Math.max(0, (Number(receipt.amount) || 0) - used);
 }
 
+function intervalAllocationLimit(project, work, bucket){
+  const existing = Number(allocationForInterval(project, work.id, bucket)?.amount) || 0;
+  const covered = allocatedForBucket(project, work.id, bucket);
+  const sliceRemaining = Math.max(0, (Number(work.sliceAmount) || 0) - covered);
+  return Math.min(poolRemaining(project) + existing, existing + sliceRemaining);
+}
+
 function openBucketSheet(project, bucket, refresh){
   openWbsSheet({
     title: `برآورد · ${bucket.label}`,
@@ -407,10 +414,7 @@ function openBucketSheet(project, bucket, refresh){
           const previous = Number(allocationForInterval(live, work.id, bucket)?.amount) || 0;
           const liveCovered = allocatedForBucket(live, work.id, bucket);
           const nextAmount = previous + Math.max(0, slice - liveCovered);
-          const available = Math.min(
-            poolRemaining(live) + previous,
-            Math.max(0, (Number(work.amount) || 0) - allocatedForTask(live, work.id) + previous),
-          );
+          const available = intervalAllocationLimit(live, work, bucket);
           if(box.checked && nextAmount > available + 1){
             box.checked = false;
             window.KarhaUI?.showToast?.('مانده بودجه کافی نیست');
@@ -438,9 +442,7 @@ function openBucketSheet(project, bucket, refresh){
           openNumpadGeneric(previous?.kind === 'manual' ? previousAmount : '', value => {
             const next = Number(value) || 0;
             const latest = projectRepository.getActiveProject(project.id) || project;
-            const existing = Number(allocationForInterval(latest, work.id, bucket)?.amount) || 0;
-            const taskRemaining = Math.max(0, (Number(work.amount) || 0) - allocatedForTask(latest, work.id) + existing);
-            const allowed = Math.min(poolRemaining(latest) + existing, taskRemaining);
+            const allowed = intervalAllocationLimit(latest, work, bucket);
             if(next > allowed){
               window.KarhaUI?.showToast?.(`مبلغ نمی‌تواند بیشتر از ${money(allowed)} تومان باشد`);
               return false;
@@ -451,8 +453,7 @@ function openBucketSheet(project, bucket, refresh){
             return true;
           }, { suffix:' تومان', validate:value => {
             const latest = projectRepository.getActiveProject(project.id) || project;
-            const existing = Number(allocationForInterval(latest, work.id, bucket)?.amount) || 0;
-            const allowed = Math.min(poolRemaining(latest) + existing, Math.max(0, (Number(work.amount) || 0) - allocatedForTask(latest, work.id) + existing));
+            const allowed = intervalAllocationLimit(latest, work, bucket);
             return Number(value || 0) <= allowed ? '' : `حداکثر مبلغ مجاز ${money(allowed)} تومان است`;
           }});
         });
