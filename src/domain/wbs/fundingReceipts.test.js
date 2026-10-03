@@ -115,3 +115,33 @@ test('interval allocations aggregate consistently when switching chart scales', 
   assert.equal(allocatedForBucket(project, 'w1', { startDay, endDay:startDay + 6 }), 20);
   assert.equal(allocatedForBucket(project, 'w1', { startDay:startDay + 7, endDay:startDay + 13 }), 30);
 });
+
+
+test('adding tasks before, between, or after funded work does not move its allocation', () => {
+  const startDay = jalaliDayNumber('1405/07/18');
+  const fundedBucket = { id:'week2-funded', startDay, endDay:startDay + 10 };
+  const fundedTask = mdfTasks('spread')[0].subtasks[0];
+  const project = {
+    tasks:[{
+      id:'s1', kind:'stage', text:'دکور MDF', subtasks:[fundedTask],
+    }],
+    fundingReceipts:[{ id:'r1', amount:200 }],
+    fundingAllocations:[{
+      taskId:'w1', bucketId:fundedBucket.id, startDay, endDay:startDay + 10,
+      amount:50, kind:'manual',
+    }],
+  };
+  assert.equal(allocatedForBucket(project, 'w1', fundedBucket), 50);
+
+  project.tasks[0].subtasks = [
+    { id:'before', kind:'work', text:'کار گذشته', quantity:1, unitCost:25, scheduleStart:'1405/06/01', scheduleEnd:'1405/06/05', subtasks:[] },
+    fundedTask,
+    { id:'middle', kind:'work', text:'کار میانی', quantity:1, unitCost:30, scheduleStart:'1405/07/20', scheduleEnd:'1405/07/22', subtasks:[] },
+    { id:'after', kind:'work', text:'کار آینده', quantity:1, unitCost:40, scheduleStart:'1405/09/01', scheduleEnd:'1405/09/05', subtasks:[] },
+  ];
+
+  assert.equal(allocatedForBucket(project, 'w1', fundedBucket), 50);
+  assert.equal(allocatedForBucket(project, 'before', fundedBucket), 0);
+  assert.equal(allocatedForBucket(project, 'middle', fundedBucket), 0);
+  assert.equal(allocatedForBucket(project, 'after', fundedBucket), 0);
+});
