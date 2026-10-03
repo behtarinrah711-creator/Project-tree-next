@@ -101,6 +101,18 @@ test('valid save closes the sheet', () => {
   assert.equal(body.children.length, 0);
 });
 
+test('display-only sheet can omit the save action', () => {
+  const body = el('body');
+  globalThis.document = {
+    body,
+    getElementById(id){ return body.children.find(x => x.id === id) || null; },
+    createElement: el,
+  };
+  const overlay = openWbsSheet({ title:'جزئیات', showSave:false });
+  assert.equal(overlay.querySelector('.wbs-sheet-save').hidden, true);
+  closeWbsSheet();
+});
+
 test('live total updates when quantity or unit cost changes', () => {
   assert.equal(liveLineTotal(12, 2), 24);
   const qty = el('input'); qty.value = '2';

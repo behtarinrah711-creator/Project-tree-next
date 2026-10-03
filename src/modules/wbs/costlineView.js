@@ -385,8 +385,8 @@ function costlineDetailRow(label, value, className = ''){
 
 function openBucketSheet(project, bucket, refresh){
   openWbsSheet({
-    title: `برآورد · ${bucket.label}`,
-    saveLabel: 'بستن',
+    title: `برآورد ${bucket.label}`,
+    showSave: false,
     presentation: 'stage-create',
     onSave: () => true,
     body(host){
@@ -414,9 +414,9 @@ function openBucketSheet(project, bucket, refresh){
           costlineDetailRow('مرحله', work.path || '—'),
           costlineDetailRow('شروع', formatJalaliDisplay(work.start) || work.start || '—'),
           costlineDetailRow('پایان', formatJalaliDisplay(work.end) || work.end || '—'),
+          costlineDetailRow('کل برآورد', `${money(work.amount)} تومان`),
           costlineDetailRow('سهم این بازه', `${money(slice)} تومان`),
           costlineDetailRow('تأمین‌شده', `${money(covered)} تومان`),
-          costlineDetailRow('کل برآورد', `${money(work.amount)} تومان`),
         );
         const accrualOptions = [
           { id:'spread', name:'پخش روی مدت' },
@@ -426,7 +426,7 @@ function openBucketSheet(project, bucket, refresh){
         const modeRow = document.createElement('div');
         modeRow.className = 'wbs-costline-control-row';
         const modeLabel = document.createElement('span');
-        modeLabel.textContent = 'زمان پول';
+        modeLabel.textContent = 'زمان تأمین';
         const mode = document.createElement('button');
         mode.type = 'button';
         mode.className = 'wbs-costline-mode';
