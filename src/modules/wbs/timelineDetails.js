@@ -124,7 +124,7 @@ function paintTodayIndicator(gantt, documentRef){
 }
 
 function paintBaselineIndicator(gantt, documentRef){
-  gantt.querySelectorAll('.wbs-gantt-baseline-line,.wbs-gantt-baseline-label').forEach(node => node.remove());
+  gantt.querySelectorAll('.wbs-gantt-baseline-line,.wbs-gantt-baseline-label,.wbs-gantt-baseline-mark').forEach(node => node.remove());
   const domain = timelineDomainFromSignature(gantt.dataset.timescaleSignature);
   const baseline = Number(gantt.dataset.baselineDay);
   if(!domain || !Number.isFinite(baseline) || baseline < domain.start || baseline >= domain.endExclusive) return;
@@ -132,7 +132,19 @@ function paintBaselineIndicator(gantt, documentRef){
   const headerX = todayX(headerCanvas, domain, baseline);
   if(headerCanvas && headerX !== null){
     headerCanvas.appendChild(svgElement(documentRef, 'line', {
-      class:'wbs-gantt-baseline-line is-header', x1:headerX, x2:headerX, y1:18, y2:42,
+      class:'wbs-gantt-baseline-line is-header', x1:headerX, x2:headerX, y1:16, y2:42,
+    }));
+    const labelWidth = 46;
+    const width = Number(headerCanvas.getAttribute('width')) || labelWidth;
+    const labelX = clamp(headerX + 4, 0, Math.max(0, width - labelWidth));
+    const foreign = svgElement(documentRef, 'foreignObject', { class:'wbs-gantt-baseline-label', x:labelX, y:2, width:labelWidth, height:14 });
+    const label = documentRef.createElement('div');
+    label.textContent = 'بیس‌لاین';
+    foreign.appendChild(label);
+    headerCanvas.appendChild(foreign);
+    headerCanvas.appendChild(svgElement(documentRef, 'polygon', {
+      class:'wbs-gantt-baseline-mark',
+      points:`${headerX},30 ${headerX + 5},34 ${headerX},38 ${headerX - 5},34`,
     }));
   }
   gantt.querySelectorAll('.wbs-gantt-scale-canvas').forEach(canvas => {
@@ -168,7 +180,9 @@ export function applyTimelineDetails(gantt, entries, documentRef = document){
   }, 0);
   const domain = timelineDomainFromSignature(gantt.dataset.timescaleSignature); const today = localTodayDayNumber(); const shouldShowToday = domain && today >= domain.start && today < domain.endExclusive;
   const todayReady = shouldShowToday ? Boolean(gantt.querySelector('.wbs-gantt-today-line')) : !gantt.querySelector('.wbs-gantt-today-line');
-  if(gantt.dataset.timelineDetailsSignature === signature && gantt.querySelectorAll('.wbs-gantt-detail').length === expectedDetails && todayReady) return;
+  const shouldShowBaseline = Number.isFinite(Number(gantt.dataset.baselineDay));
+  const baselineReady = shouldShowBaseline ? Boolean(gantt.querySelector('.wbs-gantt-baseline-line')) : !gantt.querySelector('.wbs-gantt-baseline-line');
+  if(gantt.dataset.timelineDetailsSignature === signature && gantt.querySelectorAll('.wbs-gantt-detail').length === expectedDetails && todayReady && baselineReady) return;
   separatorRows(gantt, entries);
   lines.forEach((line, index) => paintRowDetails(documentRef, line, entries[index], domain, today));
   paintTodayIndicator(gantt, documentRef);
