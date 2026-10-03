@@ -40,6 +40,41 @@ function overlapAmount(item, bucket){
   return (Number(item.amount) || 0) * overlap / Math.max(1, end - start + 1);
 }
 
+export function clearAllocationsForBucket(allocations, taskId, bucket){
+  return (allocations || []).flatMap(item => {
+    if(String(item?.taskId) !== String(taskId)) return [item];
+    const start = Number(item?.startDay);
+    const end = Number(item?.endDay);
+    if(!Number.isFinite(start) || !Number.isFinite(end)) return [];
+    const overlapStart = Math.max(start, Number(bucket?.startDay));
+    const overlapEnd = Math.min(end, Number(bucket?.endDay));
+    if(overlapEnd < overlapStart) return [item];
+    const duration = Math.max(1, end - start + 1);
+    const pieces = [];
+    const beforeDays = Math.max(0, overlapStart - start);
+    const afterDays = Math.max(0, end - overlapEnd);
+    if(beforeDays){
+      pieces.push({
+        ...item,
+        bucketId:`${item.bucketId || 'allocation'}:before:${start}-${overlapStart - 1}`,
+        startDay:start,
+        endDay:overlapStart - 1,
+        amount:Math.round((Number(item.amount) || 0) * beforeDays / duration),
+      });
+    }
+    if(afterDays){
+      pieces.push({
+        ...item,
+        bucketId:`${item.bucketId || 'allocation'}:after:${overlapEnd + 1}-${end}`,
+        startDay:overlapEnd + 1,
+        endDay:end,
+        amount:Math.round((Number(item.amount) || 0) * afterDays / duration),
+      });
+    }
+    return pieces.filter(piece => piece.amount > 0);
+  });
+}
+
 function plannedWorkOf(project, taskId){
   return collectPlannedWorks(project?.tasks || [])
     .find(work => String(work.id) === String(taskId));
