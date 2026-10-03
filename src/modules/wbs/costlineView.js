@@ -5,7 +5,7 @@ import { createViewToolbar } from './viewHeader.js';
 import { uid } from '../../data/projectFactories.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
-import { allocatedForBucket, allocatedForTask, fundingReceiptsOf, poolRemaining, taskAllocationTotalForSlice, trimFundingAllocationsToReceipts } from '../../domain/wbs/fundingReceipts.js';
+import { allocatedForBucket, allocatedForTask, allocationForInterval, fundingReceiptsOf, poolRemaining, trimFundingAllocationsToReceipts } from '../../domain/wbs/fundingReceipts.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
@@ -383,10 +383,12 @@ function receiptRemaining(receipt){
 }
 
 function intervalAllocationLimit(project, work, bucket){
-  const existing = allocatedForTask(project, work.id);
+  const existing = Number(allocationForInterval(project, work.id, bucket)?.amount) || 0;
   const covered = allocatedForBucket(project, work.id, bucket);
-  const sliceRemaining = Math.max(0, (Number(work.sliceAmount) || 0) - covered);
-  return Math.min(Number(work.sliceAmount) || 0, covered + poolRemaining(project), covered + sliceRemaining);
+  const otherCovered = Math.max(0, covered - existing);
+  const sliceCapacity = Math.max(0, (Number(work.sliceAmount) || 0) - otherCovered);
+  const taskCapacity = Math.max(0, (Number(work.amount) || 0) - allocatedForTask(project, work.id) + existing);
+  return Math.min(sliceCapacity, poolRemaining(project) + existing, taskCapacity);
 }
 
 function costlineDetailRow(label, value, className = ''){
@@ -484,16 +486,15 @@ function openBucketSheet(project, bucket, refresh){
         box.checked = covered + 1 >= slice && slice > 0;
         box.addEventListener('change', () => {
           const live = projectRepository.getActiveProject(project.id) || project;
+          const previous = Number(allocationForInterval(live, work.id, bucket)?.amount) || 0;
           const liveCovered = allocatedForBucket(live, work.id, bucket);
-          const desired = box.checked ? slice : 0;
-          const currentTotal = allocatedForTask(live, work.id);
-          const nextTotal = taskAllocationTotalForSlice(live, work.id, bucket, desired);
-          if(nextTotal - currentTotal > poolRemaining(live) + 1){
+          const nextAmount = previous + Math.max(0, slice - liveCovered);
+          if(box.checked && nextAmount > intervalAllocationLimit(live, work, bucket) + 1){
             box.checked = false;
             window.KarhaUI?.showToast?.('مانده بودجه کافی نیست');
             return;
           }
-          saveTaskAllocation(project.id, work.id, nextTotal);
+          saveIntervalAllocation(project.id, work.id, bucket, box.checked ? nextAmount : 0, 'slice');
           refresh();
           paint();
         });
@@ -503,15 +504,16 @@ function openBucketSheet(project, bucket, refresh){
         manual.className = 'wbs-costline-manual';
         const paintManual = () => {
           const live = projectRepository.getActiveProject(project.id) || project;
-          const amount = allocatedForBucket(live, work.id, bucket);
-          manual.textContent = amount > 0
-            ? `${money(amount)} تومان`
+          const allocation = allocationForInterval(live, work.id, bucket);
+          manual.textContent = allocation?.kind === 'manual' && Number(allocation.amount) > 0
+            ? `${money(allocation.amount)} تومان`
             : 'وارد کردن مبلغ';
         };
         manual.addEventListener('click', () => {
           const live = projectRepository.getActiveProject(project.id) || project;
-          const previousAmount = allocatedForBucket(live, work.id, bucket);
-          openNumpadGeneric(previousAmount || '', value => {
+          const previous = allocationForInterval(live, work.id, bucket);
+          const previousAmount = Number(previous?.amount) || 0;
+          openNumpadGeneric(previous?.kind === 'manual' ? previousAmount : '', value => {
             const next = Number(value) || 0;
             const latest = projectRepository.getActiveProject(project.id) || project;
             const allowed = intervalAllocationLimit(latest, work, bucket);
@@ -519,13 +521,7 @@ function openBucketSheet(project, bucket, refresh){
               window.KarhaUI?.showToast?.(`مبلغ نمی‌تواند بیشتر از ${money(allowed)} تومان باشد`);
               return false;
             }
-            const currentTotal = allocatedForTask(latest, work.id);
-            const nextTotal = taskAllocationTotalForSlice(latest, work.id, bucket, next);
-            if(nextTotal - currentTotal > poolRemaining(latest) + 1){
-              window.KarhaUI?.showToast?.('مانده بودجه کافی نیست');
-              return false;
-            }
-            saveTaskAllocation(project.id, work.id, nextTotal);
+            saveIntervalAllocation(project.id, work.id, bucket, next, 'manual');
             refresh();
             paint();
             return true;
@@ -548,12 +544,21 @@ function openBucketSheet(project, bucket, refresh){
   });
 }
 
-function saveTaskAllocation(projectId, taskId, amount){
+function saveIntervalAllocation(projectId, taskId, bucket, amount, kind){
   projectRepository.updateProject(projectId, row => ({
     ...row,
     fundingAllocations: [
-      ...(row.fundingAllocations || []).filter(item => String(item.taskId) !== String(taskId)),
-      ...(Number(amount) > 0 ? [{ taskId, amount:Number(amount), kind:'manual' }] : []),
+      ...(row.fundingAllocations || []).filter(item => !(String(item.taskId) === String(taskId)
+        && Number(item.startDay) === Number(bucket.startDay)
+        && Number(item.endDay) === Number(bucket.endDay))),
+      ...(Number(amount) > 0 ? [{
+        taskId,
+        bucketId:bucket.id,
+        startDay:bucket.startDay,
+        endDay:bucket.endDay,
+        amount:Number(amount),
+        kind,
+      }] : []),
     ],
   }));
   markDirty(projectId);

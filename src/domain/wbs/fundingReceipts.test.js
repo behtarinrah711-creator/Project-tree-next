@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { allocatedForBucket, openFundingStops, taskAllocationTotalForSlice, trimFundingAllocationsToReceipts } from './fundingReceipts.js';
+import { allocatedForBucket, openFundingStops, trimFundingAllocationsToReceipts } from './fundingReceipts.js';
 import { jalaliDayNumber } from './costline.js';
 
 const mdfTasks = accrual => [{
@@ -63,8 +63,8 @@ test('task allocation follows the single start accrual mode in every chart scale
     tasks:mdfTasks('start'),
     fundingReceipts:[{ id:'r1', amount:150 }],
     fundingAllocations:[
-      { taskId:'w1', startDay:1, endDay:14, amount:100, kind:'manual' },
-      { taskId:'w1', startDay:1, endDay:30, amount:20, kind:'manual' },
+      { taskId:'w1', amount:100, kind:'manual' },
+      { taskId:'w1', amount:20, kind:'manual' },
     ],
   };
   const startDay = jalaliDayNumber('1405/07/18');
@@ -87,12 +87,61 @@ test('spread allocation never exceeds the planned slice and conserves the task t
   assert.ok(funded[1] <= 76);
 });
 
-test('full-slice checkbox and manual amount share one task allocation value', () => {
-  const project = {
-    tasks:mdfTasks('spread'),
-  };
+test('manual interval amount is not expanded to the full task or slice', () => {
   const startDay = jalaliDayNumber('1405/07/18');
   const bucket = { startDay, endDay:startDay + 10 };
-  const total = taskAllocationTotalForSlice(project, 'w1', bucket, 67);
-  assert.ok(total >= 139 && total <= 140);
+  const project = {
+    tasks:mdfTasks('spread'),
+    fundingReceipts:[{ id:'r1', amount:200 }],
+    fundingAllocations:[{
+      taskId:'w1', bucketId:'week2-1', startDay, endDay:startDay + 10,
+      amount:50, kind:'manual',
+    }],
+  };
+  assert.equal(allocatedForBucket(project, 'w1', bucket), 50);
+});
+
+test('interval allocations aggregate consistently when switching chart scales', () => {
+  const startDay = jalaliDayNumber('1405/07/18');
+  const project = {
+    tasks:mdfTasks('spread'),
+    fundingReceipts:[{ id:'r1', amount:200 }],
+    fundingAllocations:[
+      { taskId:'w1', startDay, endDay:startDay + 6, amount:20, kind:'manual' },
+      { taskId:'w1', startDay:startDay + 7, endDay:startDay + 13, amount:30, kind:'manual' },
+    ],
+  };
+  assert.equal(allocatedForBucket(project, 'w1', { startDay, endDay:startDay + 13 }), 50);
+  assert.equal(allocatedForBucket(project, 'w1', { startDay, endDay:startDay + 6 }), 20);
+  assert.equal(allocatedForBucket(project, 'w1', { startDay:startDay + 7, endDay:startDay + 13 }), 30);
+});
+
+
+test('adding tasks before, between, or after funded work does not move its allocation', () => {
+  const startDay = jalaliDayNumber('1405/07/18');
+  const fundedBucket = { id:'week2-funded', startDay, endDay:startDay + 10 };
+  const fundedTask = mdfTasks('spread')[0].subtasks[0];
+  const project = {
+    tasks:[{
+      id:'s1', kind:'stage', text:'دکور MDF', subtasks:[fundedTask],
+    }],
+    fundingReceipts:[{ id:'r1', amount:200 }],
+    fundingAllocations:[{
+      taskId:'w1', bucketId:fundedBucket.id, startDay, endDay:startDay + 10,
+      amount:50, kind:'manual',
+    }],
+  };
+  assert.equal(allocatedForBucket(project, 'w1', fundedBucket), 50);
+
+  project.tasks[0].subtasks = [
+    { id:'before', kind:'work', text:'کار گذشته', quantity:1, unitCost:25, scheduleStart:'1405/06/01', scheduleEnd:'1405/06/05', subtasks:[] },
+    fundedTask,
+    { id:'middle', kind:'work', text:'کار میانی', quantity:1, unitCost:30, scheduleStart:'1405/07/20', scheduleEnd:'1405/07/22', subtasks:[] },
+    { id:'after', kind:'work', text:'کار آینده', quantity:1, unitCost:40, scheduleStart:'1405/09/01', scheduleEnd:'1405/09/05', subtasks:[] },
+  ];
+
+  assert.equal(allocatedForBucket(project, 'w1', fundedBucket), 50);
+  assert.equal(allocatedForBucket(project, 'before', fundedBucket), 0);
+  assert.equal(allocatedForBucket(project, 'middle', fundedBucket), 0);
+  assert.equal(allocatedForBucket(project, 'after', fundedBucket), 0);
 });
