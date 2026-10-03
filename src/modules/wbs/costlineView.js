@@ -5,11 +5,12 @@ import { createViewToolbar } from './viewHeader.js';
 import { uid } from '../../data/projectFactories.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
-import { allocatedForBucket, allocatedForTask, allocationForInterval, fundingReceiptsOf, poolRemaining, trimFundingAllocationsToReceipts } from '../../domain/wbs/fundingReceipts.js';
+import { allocatedForBucket, fundingReceiptsOf, placeCardFunding, poolReceived, poolRemaining, receiptTotalAllowed, setBucketFunding } from '../../domain/wbs/fundingReceipts.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 
+const RECEIPT_BLOCKED = 'ابتدا مبلغ تأمین‌شده کارت‌ها را کاهش دهید. در حال حاضر این بودجه به کارها تخصیص داده شده است.';
 const money = value => new Intl.NumberFormat('fa-IR').format(Math.round(Number(value) || 0));
 const chartMoney = value => Math.trunc((Number(value) || 0) / 1000) * 1000;
 const BAR_WIDTH = 28;
@@ -192,17 +193,18 @@ function openDepositSheet(project, refresh, receipt = null){
         remove.textContent = 'حذف واریزی';
         remove.addEventListener('click', () => {
           const perform = () => {
-            projectRepository.updateProject(project.id, current => {
-              const fundingReceipts = (current.fundingReceipts || []).map(row => String(row.id) === String(receipt.id)
-                ? { ...row, trashed:true, updatedAt:Date.now() }
-                : row);
-              const activeReceipts = fundingReceipts.filter(row => row && !row.trashed);
-              return {
-                ...current,
-                fundingReceipts,
-                fundingAllocations: trimFundingAllocationsToReceipts(current, activeReceipts),
-              };
-            });
+            const current = projectRepository.getActiveProject(project.id) || project;
+            const nextReceived = poolReceived(current) - (Number(receipt.amount) || 0);
+            if(!receiptTotalAllowed(current, nextReceived)){
+              window.KarhaUI?.showToast?.(RECEIPT_BLOCKED);
+              return;
+            }
+            projectRepository.updateProject(project.id, row => ({
+              ...row,
+              fundingReceipts:(row.fundingReceipts || []).map(item => String(item.id) === String(receipt.id)
+                ? { ...item, trashed:true, updatedAt:Date.now() }
+                : item),
+            }));
             markDirty(project.id);
             persist({ local:false });
             closeWbsSheet();
@@ -224,25 +226,38 @@ function openDepositSheet(project, refresh, receipt = null){
         return false;
       }
       const partyContact = contactRepository.get(project.id, partyId);
-      const nextReceipt = {
-        ...(receipt || {}),
-        id: receipt?.id || uid(),
-        amount,
-        depositDate,
-        partyContactId: partyId,
-        party: contactName(partyContact),
-        description: host.querySelector('[name="description"]').value.trim(),
-        allocations: receipt?.allocations || [],
-        createdAt: receipt?.createdAt || Date.now(),
-        updatedAt: Date.now(),
-      };
-      projectRepository.updateProject(project.id, current => ({
-        ...current,
-        fundingAllocations: !editing && fundingReceiptsOf(current).length === 0 ? [] : (current.fundingAllocations || []),
-        fundingReceipts: editing
-          ? (current.fundingReceipts || []).map(row => String(row.id) === String(receipt.id) ? nextReceipt : row)
-          : [...(current.fundingReceipts || []), nextReceipt],
-      }));
+      let blocked = false;
+      projectRepository.updateProject(project.id, current => {
+        const without = (current.fundingReceipts || []).filter(row => !editing || String(row.id) !== String(receipt.id));
+        const nextReceived = without.filter(row => row && !row.trashed).reduce((sum, row) => sum + (Number(row.amount) || 0), 0) + amount;
+        if(!receiptTotalAllowed(current, nextReceived)){
+          blocked = true;
+          return current;
+        }
+        const nextReceipt = {
+          ...(receipt || {}),
+          id: receipt?.id || uid(),
+          amount,
+          depositDate,
+          partyContactId: partyId,
+          party: contactName(partyContact),
+          description: host.querySelector('[name="description"]').value.trim(),
+          allocations: (current.fundingReceipts || []).find(row => String(row.id) === String(receipt?.id))?.allocations || [],
+          createdAt: receipt?.createdAt || Date.now(),
+          updatedAt: Date.now(),
+        };
+        return {
+          ...current,
+          fundingAllocations: !editing && fundingReceiptsOf(current).length === 0 ? [] : (current.fundingAllocations || []),
+          fundingReceipts: editing
+            ? (current.fundingReceipts || []).map(row => String(row.id) === String(receipt.id) ? nextReceipt : row)
+            : [...(current.fundingReceipts || []), nextReceipt],
+        };
+      });
+      if(blocked){
+        window.KarhaUI?.showToast?.(RECEIPT_BLOCKED);
+        return false;
+      }
       markDirty(project.id);
       persist({ local:false });
       refresh();
@@ -382,13 +397,9 @@ function receiptRemaining(receipt){
   return Math.max(0, (Number(receipt.amount) || 0) - used);
 }
 
-function intervalAllocationLimit(project, work, bucket){
-  const existing = Number(allocationForInterval(project, work.id, bucket)?.amount) || 0;
+function bucketFundingLimit(project, work, bucket){
   const covered = allocatedForBucket(project, work.id, bucket);
-  const otherCovered = Math.max(0, covered - existing);
-  const sliceCapacity = Math.max(0, (Number(work.sliceAmount) || 0) - otherCovered);
-  const taskCapacity = Math.max(0, (Number(work.amount) || 0) - allocatedForTask(project, work.id) + existing);
-  return Math.min(sliceCapacity, poolRemaining(project) + existing, taskCapacity);
+  return Math.min(Number(work.sliceAmount) || 0, covered + poolRemaining(project));
 }
 
 function costlineDetailRow(label, value, className = ''){
@@ -486,15 +497,13 @@ function openBucketSheet(project, bucket, refresh){
         box.checked = covered + 1 >= slice && slice > 0;
         box.addEventListener('change', () => {
           const live = projectRepository.getActiveProject(project.id) || project;
-          const previous = Number(allocationForInterval(live, work.id, bucket)?.amount) || 0;
-          const liveCovered = allocatedForBucket(live, work.id, bucket);
-          const nextAmount = previous + Math.max(0, slice - liveCovered);
-          if(box.checked && nextAmount > intervalAllocationLimit(live, work, bucket) + 1){
+          const nextAmount = box.checked ? slice : 0;
+          if(nextAmount > bucketFundingLimit(live, work, bucket)){
             box.checked = false;
             window.KarhaUI?.showToast?.('مانده بودجه کافی نیست');
             return;
           }
-          saveIntervalAllocation(project.id, work.id, bucket, box.checked ? nextAmount : 0, 'slice');
+          saveBucketFunding(project.id, work.id, bucket, nextAmount);
           refresh();
           paint();
         });
@@ -515,28 +524,19 @@ function openBucketSheet(project, bucket, refresh){
           openNumpadGeneric(visibleAmount || '', value => {
             const next = Number(value) || 0;
             const latest = projectRepository.getActiveProject(project.id) || project;
-            const exact = Number(allocationForInterval(latest, work.id, bucket)?.amount) || 0;
-            const otherCovered = Math.max(0, allocatedForBucket(latest, work.id, bucket) - exact);
-            const allowed = otherCovered + intervalAllocationLimit(latest, work, bucket);
-            if(next < otherCovered){
-              window.KarhaUI?.showToast?.(`این بازه از بازه‌های کوچک‌تر ${money(otherCovered)} تومان تأمین دارد`);
-              return false;
-            }
+            const allowed = bucketFundingLimit(latest, work, bucket);
             if(next > allowed){
               window.KarhaUI?.showToast?.(`مبلغ نمی‌تواند بیشتر از ${money(allowed)} تومان باشد`);
               return false;
             }
-            saveIntervalAllocation(project.id, work.id, bucket, next - otherCovered, 'manual');
+            saveBucketFunding(project.id, work.id, bucket, next);
             refresh();
             paint();
             return true;
           }, { suffix:' تومان', validate:value => {
             const latest = projectRepository.getActiveProject(project.id) || project;
-            const exact = Number(allocationForInterval(latest, work.id, bucket)?.amount) || 0;
-            const otherCovered = Math.max(0, allocatedForBucket(latest, work.id, bucket) - exact);
-            const allowed = otherCovered + intervalAllocationLimit(latest, work, bucket);
+            const allowed = bucketFundingLimit(latest, work, bucket);
             const next = Number(value || 0);
-            if(next < otherCovered) return `حداقل مبلغ این بازه ${money(otherCovered)} تومان است`;
             return next <= allowed ? '' : `حداکثر مبلغ مجاز ${money(allowed)} تومان است`;
           }});
         });
@@ -553,23 +553,21 @@ function openBucketSheet(project, bucket, refresh){
   });
 }
 
-function saveIntervalAllocation(projectId, taskId, bucket, amount, kind){
-  projectRepository.updateProject(projectId, row => ({
-    ...row,
-    fundingAllocations: [
-      ...(row.fundingAllocations || []).filter(item => !(String(item.taskId) === String(taskId)
-        && Number(item.startDay) === Number(bucket.startDay)
-        && Number(item.endDay) === Number(bucket.endDay))),
-      ...(Number(amount) > 0 ? [{
-        taskId,
-        bucketId:bucket.id,
-        startDay:bucket.startDay,
-        endDay:bucket.endDay,
-        amount:Number(amount),
-        kind,
-      }] : []),
-    ],
-  }));
+function saveBucketFunding(projectId, taskId, bucket, amount){
+  const result = { ok:true };
+  projectRepository.updateProject(projectId, row => {
+    const saved = setBucketFunding(row, taskId, bucket, amount);
+    if(!saved.ok){
+      result.ok = false;
+      result.reason = saved.reason;
+      return row;
+    }
+    return saved.project;
+  });
+  if(!result.ok){
+    window.KarhaUI?.showToast?.(result.reason === 'budget' ? 'مانده بودجه کافی نیست' : 'مبلغ نمی‌تواند بیشتر از سهم این بازه باشد');
+    return;
+  }
   markDirty(projectId);
   persist({ local:false });
 }
@@ -581,7 +579,7 @@ function setAccrual(project, taskId, accrual){
     const self = String(node.id) === String(taskId) ? { ...node, fundingAccrual: accrual } : node;
     return { ...self, workTasks, subtasks: walk(node.subtasks) };
   });
-  return { ...project, tasks: walk(project.tasks) };
+  return placeCardFunding({ ...project, tasks: walk(project.tasks) }, taskId);
 }
 
 export function resetCostlineState(){

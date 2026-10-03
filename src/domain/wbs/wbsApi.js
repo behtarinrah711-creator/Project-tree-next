@@ -17,6 +17,7 @@ import {
 import { projectEstimateTotal, rollupEstimate, rollupProgress } from './estimate.js';
 import { validatePredecessors } from './scheduling.js';
 import { stageAddKinds, stageModeOf } from './branchingPolicy.js';
+import { cardFundingKey, placeCardFunding } from './fundingReceipts.js';
 
 function publish(projectId){
   if(typeof window !== 'undefined'){
@@ -162,8 +163,12 @@ export const wbsApi = {
     const ids = activityIdsOf(applied);
     applied.activities = ids;
     applied.activityIds = ids;
+    const beforeKey = cardFundingKey(projectRepository.find(projectId), itemId);
     const next = stampUpdate(applied, clock);
     const saved = persistNode(projectId, found, next);
+    if(saved && cardFundingKey(projectRepository.find(projectId), itemId) !== beforeKey){
+      projectRepository.updateProject(projectId, current => placeCardFunding(current, itemId));
+    }
     if(saved) publish(projectId);
     return saved;
   },
