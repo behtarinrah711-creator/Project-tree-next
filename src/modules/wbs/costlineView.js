@@ -100,6 +100,13 @@ function contactName(contact){
     || contact?.name || 'مخاطب';
 }
 
+function numericJalaliDate(value){
+  const parts = String(value || '').split(/[\/-]/).map(part => Number(part));
+  if(parts.length < 3 || parts.some(part => !Number.isFinite(part))) return String(value || '');
+  const digits = new Intl.NumberFormat('fa-IR', { useGrouping:false });
+  return `${digits.format(parts[0])}/${digits.format(parts[1])}/${digits.format(parts[2])}`;
+}
+
 function dateButton(name, value){
   const button = document.createElement('button');
   button.type = 'button';
@@ -211,7 +218,7 @@ function renderFundingPanel(project, refresh){
     .sort((a, b) => String(b.receipt.depositDate || '').localeCompare(String(a.receipt.depositDate || '')) || Number(b.receipt.createdAt || 0) - Number(a.receipt.createdAt || 0))
     .forEach(({ receipt, number }) => {
       body.appendChild(fundingRow(
-        `دریافتی شماره ${new Intl.NumberFormat('fa-IR').format(number)} | ${formatJalaliDisplay(receipt.depositDate)}`,
+        `دریافتی شماره ${new Intl.NumberFormat('fa-IR').format(number)} | ${numericJalaliDate(receipt.depositDate)}`,
         `${money(receipt.amount)} تومان`,
       ));
     });
