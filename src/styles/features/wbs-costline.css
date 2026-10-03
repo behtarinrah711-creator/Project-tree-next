@@ -6,6 +6,7 @@
 .wbs-costline-toolbar{box-sizing:border-box;height:var(--wbs-frame-header-height,42px);display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 6px 0 10px;background:var(--wbs-frame-header-bg,#f7f4ef);border-bottom:1px solid var(--wbs-frame-border,#ded7cd);color:var(--wbs-frame-title,#4d4741);}
 .wbs-costline-title{flex:0 0 auto;font-size:11px;font-weight:700;color:var(--wbs-frame-title,#4d4741);white-space:nowrap;}
 .wbs-costline-toolbar .wbs-view-actions{justify-content:flex-start;}
+.wbs-costline-toolbar .wbs-export-tool{margin-inline-end:0;}
 .wbs-costline-project{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:700;}
 .wbs-costline-controls{display:flex;align-items:center;gap:6px;flex:0 0 auto;}
 .wbs-costline-cycle{flex:0 0 44px;width:44px;height:38px;border-radius:var(--wbs-frame-radius,5px);}
@@ -25,18 +26,35 @@
 .wbs-costline-value.is-funded,.wbs-costline-value.is-funded small{color:#033E8A;}
 .wbs-costline-value.is-shortage,.wbs-costline-value.is-shortage small{color:#c62828;}
 .wbs-costline-label{box-sizing:border-box;display:block;width:100%;min-height:30px;font-size:11px;font-weight:500;line-height:15px;color:#6f675d;text-align:center;white-space:normal;direction:rtl;unicode-bidi:plaintext;}
-.wbs-costline-work{border:1px solid #e5ded3;border-radius:var(--wbs-frame-radius,5px);padding:10px;margin-bottom:8px;}
-.wbs-costline-work h4{margin:0 0 6px;}
-.wbs-costline-work p{margin:0 0 4px;}
+.wbs-costline-balance,.wbs-costline-detail-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;direction:rtl;}
+.wbs-costline-balance{min-height:44px;padding:0 2px;border-bottom:1px solid var(--divider);font-size:13px;color:#4d4741;}
+.wbs-costline-balance > span:first-child,.wbs-costline-detail-row > span:first-child{text-align:right;}
+.wbs-costline-balance > span:last-child,.wbs-costline-detail-row > span:last-child{direction:rtl;text-align:left;white-space:nowrap;}
+.wbs-costline-work{border:1px solid #e5ded3;border-radius:var(--wbs-frame-radius,5px);padding:4px 12px 12px;margin:12px 0;}
+.wbs-costline-detail-row{min-height:36px;border-bottom:1px solid #eee8df;font-size:11px;color:#4d4741;}
+.wbs-costline-detail-row.is-title{font-weight:700;}
+.wbs-costline-detail-row.is-title > span:last-child{font-size:12px;}
+.wbs-costline-detail-row:last-of-type{border-bottom:0;}
+.wbs-costline-control-row,.wbs-costline-allocation-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;direction:rtl;min-height:44px;font-size:11px;}
+.wbs-costline-control-row{position:relative;border-top:1px solid #eee8df;}
+.wbs-costline-mode{min-height:36px;padding:0;border:0;background:transparent;color:#2f2a24;font:inherit;text-align:left;cursor:pointer;}
+.wbs-costline-mode-menu{position:absolute;left:0;top:38px;z-index:2;min-width:120px;padding:4px;border:1px solid #ded7cd;border-radius:8px;background:#fff;box-shadow:0 6px 18px rgba(47,42,36,.14);}
+.wbs-costline-mode-menu[hidden]{display:none;}
+.wbs-costline-mode-menu button{display:block;width:100%;min-height:36px;padding:0 10px;border:0;border-bottom:1px solid #eee8df;background:transparent;color:#2f2a24;font:inherit;font-size:11px;text-align:right;white-space:nowrap;}
+.wbs-costline-mode-menu button:last-child{border-bottom:0;}
+.wbs-costline-allocation-row{border:0;background:transparent;}
+.wbs-costline-fund-slice{display:flex;align-items:center;gap:6px;margin:0;border:0;background:transparent;color:#4d4741;}
+.wbs-costline-fund-slice input{margin:0;}
+.wbs-costline-allocation-row .wbs-costline-manual{width:auto;min-height:36px;margin:0;padding:0;border:0;background:transparent;font-size:11px;text-align:left;}
 .wbs-funding-toolbar{direction:rtl;padding:0 6px 0 10px;}
 .wbs-funding-title{font-size:11px;font-weight:700;color:var(--wbs-frame-title,#4d4741);}
-.wbs-funding-add{width:auto;min-width:92px;height:38px;padding:0 10px;display:flex;align-items:center;justify-content:center;gap:4px;border-radius:var(--wbs-frame-radius,5px);}
+.wbs-funding-add{width:auto;min-width:92px;height:38px;padding:0 10px;display:flex;align-items:center;justify-content:center;gap:2px;border-radius:var(--wbs-frame-radius,5px);}
 .wbs-funding-add > span:first-child{font-size:21px;font-weight:400;line-height:1;}
 .wbs-funding-list{background:#fff;min-height:0;padding:0 12px;}
 .wbs-funding-row{width:100%;min-height:44px;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;direction:rtl;border-bottom:1px solid #eee8df;color:#4d4741;font-size:11px;}
+.wbs-funding-row.is-action{padding:0;border-top:0;border-right:0;border-left:0;background:transparent;font-family:inherit;cursor:pointer;}
 .wbs-funding-row > span:first-child{text-align:right;}
 .wbs-funding-row:last-child{border-bottom:0;}
 .wbs-funding-row.is-summary{font-weight:700;}
 .wbs-funding-amount{direction:rtl;text-align:left;white-space:nowrap;font-family:'IRANSansX',Tahoma,sans-serif;}
-.wbs-funding-divider{height:0;margin:10px 0;border-top:1px solid #d8d1c7;}
 .wbs-costline-manual{width:100%;min-height:38px;margin-top:6px;padding:0;border:0;background:transparent;color:#1267b2;font:inherit;text-align:right;cursor:pointer;}

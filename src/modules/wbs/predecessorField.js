@@ -21,11 +21,16 @@ function normalizeRelations(initial){
   }).filter(row => row.predecessorId);
 }
 
+export function validInitialRelations(initial, candidates = []){
+  const candidateIds = new Set(candidates.map(row => String(row.id)));
+  return normalizeRelations(initial).filter(row => candidateIds.has(row.predecessorId));
+}
+
 export function predecessorField({ documentRef = document, project, consumerId, initial = [] } = {}){
   const root = documentRef.createElement('div'); root.className = 'wbs-field wbs-predecessor-field';
   const caption = documentRef.createElement('span'); caption.className = 'wbs-field-label'; caption.textContent = 'پیش‌نیاز';
-  const relations = new Map(normalizeRelations(initial).map(row => [row.predecessorId, row]));
   const candidates = flattenDependencyCandidates(project?.tasks || []).filter(row => row.id !== String(consumerId));
+  const relations = new Map(validInitialRelations(initial, candidates).map(row => [row.predecessorId, row]));
   const chips = documentRef.createElement('div'); chips.className = 'wbs-predecessor-list';
   const add = documentRef.createElement('button'); add.type = 'button'; add.className = 'wbs-choice'; add.textContent = '+ افزودن پیش‌نیاز';
 

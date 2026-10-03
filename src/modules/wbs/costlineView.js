@@ -5,7 +5,7 @@ import { createViewToolbar } from './viewHeader.js';
 import { uid } from '../../data/projectFactories.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
-import { allocatedForBucket, allocatedForTask, allocationForInterval, fundingReceiptsOf, poolRemaining } from '../../domain/wbs/fundingReceipts.js';
+import { allocatedForBucket, allocationForInterval, fundingReceiptsOf, poolRemaining } from '../../domain/wbs/fundingReceipts.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
@@ -124,32 +124,34 @@ function dateButton(name, value){
   return button;
 }
 
-function openDepositSheet(project, refresh){
+function openDepositSheet(project, refresh, receipt = null){
+  const editing = Boolean(receipt);
   openWbsSheet({
-    title: 'ثبت بودجه',
+    title: editing ? 'ویرایش بودجه' : 'ثبت بودجه',
     saveLabel: 'ذخیره',
+    presentation: 'stage-create',
     body(host){
       const amount = document.createElement('button');
       amount.type = 'button';
       amount.className = 'wbs-input';
       amount.name = 'amount';
-      amount.dataset.value = '';
-      amount.textContent = 'مبلغ را وارد کنید';
+      amount.dataset.value = receipt?.amount ? String(receipt.amount) : '';
+      amount.textContent = amount.dataset.value ? `${money(amount.dataset.value)} تومان` : 'مبلغ را وارد کنید';
       amount.addEventListener('click', () => openNumpadGeneric(amount.dataset.value, value => {
         amount.dataset.value = String(value || '');
         amount.textContent = amount.dataset.value ? new Intl.NumberFormat('fa-IR').format(Number(amount.dataset.value)) + ' تومان' : 'مبلغ را وارد کنید';
       }, { suffix: ' تومان' }));
       host.appendChild(fieldRow('مبلغ', amount));
-      host.appendChild(fieldRow('تاریخ دریافت', dateButton('depositDate', '')));
+      host.appendChild(fieldRow('تاریخ دریافت', dateButton('depositDate', receipt?.depositDate || '')));
       const contacts = contactRepository.list(project.id).filter(contact => contact && !contact.trashed);
       const party = document.createElement('button');
       party.type = 'button';
       party.className = 'wbs-input';
       party.name = 'party';
-      party.dataset.value = '';
+      party.dataset.value = receipt?.partyContactId ? String(receipt.partyContactId) : '';
       const paintParty = () => {
         const selected = contacts.find(contact => String(contact.id) === String(party.dataset.value));
-        party.textContent = selected ? contactName(selected) : 'انتخاب واریزکننده';
+        party.textContent = selected ? contactName(selected) : (editing && party.dataset.value ? receipt.party : 'انتخاب واریزکننده');
       };
       party.addEventListener('click', () => openSearchPicker({
         title:'انتخاب واریزکننده', listTitle:'مخاطبین', selectedTitle:'واریزکننده منتخب',
@@ -163,11 +165,35 @@ function openDepositSheet(project, refresh){
       const note = document.createElement('textarea');
       note.className = 'wbs-input';
       note.name = 'description';
+      note.value = receipt?.description || '';
       host.appendChild(fieldRow('توضیح', note));
       const hint = document.createElement('div');
       hint.className = 'wbs-note';
       hint.textContent = 'تخصیص این مبلغ روی کارت همان بازهٔ برآورد تیک می‌خورد، نه اینجا.';
       host.appendChild(hint);
+      if(editing){
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'wbs-info-row is-danger';
+        remove.textContent = 'حذف واریزی';
+        remove.addEventListener('click', () => {
+          const perform = () => {
+            projectRepository.updateProject(project.id, current => ({
+              ...current,
+              fundingReceipts: (current.fundingReceipts || []).map(row => String(row.id) === String(receipt.id)
+                ? { ...row, trashed:true, updatedAt:Date.now() }
+                : row),
+            }));
+            markDirty(project.id);
+            persist({ local:false });
+            closeWbsSheet();
+            refresh();
+          };
+          if(typeof window.KarhaUI?.openConfirm === 'function') window.KarhaUI.openConfirm('این واریزی حذف شود؟', perform, 'حذف');
+          else if(window.confirm?.('این واریزی حذف شود؟')) perform();
+        });
+        host.appendChild(remove);
+      }
     },
     onSave(host){
       const amount = Number(host.querySelector('[name="amount"]').dataset.value || 0);
@@ -179,19 +205,23 @@ function openDepositSheet(project, refresh){
         return false;
       }
       const partyContact = contactRepository.get(project.id, partyId);
-      const receipt = {
-        id: uid(),
+      const nextReceipt = {
+        ...(receipt || {}),
+        id: receipt?.id || uid(),
         amount,
         depositDate,
         partyContactId: partyId,
         party: contactName(partyContact),
         description: host.querySelector('[name="description"]').value.trim(),
-        allocations: [],
-        createdAt: Date.now(),
+        allocations: receipt?.allocations || [],
+        createdAt: receipt?.createdAt || Date.now(),
+        updatedAt: Date.now(),
       };
       projectRepository.updateProject(project.id, current => ({
         ...current,
-        fundingReceipts: [...(current.fundingReceipts || []), receipt],
+        fundingReceipts: editing
+          ? (current.fundingReceipts || []).map(row => String(row.id) === String(receipt.id) ? nextReceipt : row)
+          : [...(current.fundingReceipts || []), nextReceipt],
       }));
       markDirty(project.id);
       persist({ local:false });
@@ -218,10 +248,6 @@ function renderFundingPanel(project, refresh){
     fundingRow('مجموع دریافتی تاکنون:', `${money(receipts.reduce((sum, row) => sum + (Number(row.amount) || 0), 0))} تومان`, 'is-summary'),
     fundingRow('مانده تخصیص داده نشده:', `${money(poolRemaining(project))} تومان`, 'is-summary'),
   );
-  const divider = document.createElement('div');
-  divider.className = 'wbs-funding-divider';
-  divider.setAttribute('aria-hidden', 'true');
-  body.appendChild(divider);
   receipts
     .map((receipt, index) => ({ receipt, number:index + 1 }))
     .sort((a, b) => String(b.receipt.depositDate || '').localeCompare(String(a.receipt.depositDate || '')) || Number(b.receipt.createdAt || 0) - Number(a.receipt.createdAt || 0))
@@ -229,15 +255,21 @@ function renderFundingPanel(project, refresh){
       body.appendChild(fundingRow(
         `دریافتی شماره ${new Intl.NumberFormat('fa-IR').format(number)} | ${numericJalaliDate(receipt.depositDate)}`,
         `${money(receipt.amount)} تومان`,
+        'is-action',
+        () => openDepositSheet(project, refresh, receipt),
       ));
     });
   frame.append(header, body);
   return frame;
 }
 
-function fundingRow(label, value, className = ''){
-  const row = document.createElement('div');
+function fundingRow(label, value, className = '', onClick = null){
+  const row = document.createElement(onClick ? 'button' : 'div');
   row.className = `wbs-funding-row${className ? ` ${className}` : ''}`;
+  if(onClick){
+    row.type = 'button';
+    row.addEventListener('click', onClick);
+  }
   const labelEl = document.createElement('span');
   labelEl.textContent = label;
   const valueEl = document.createElement('span');
@@ -327,18 +359,40 @@ function receiptRemaining(receipt){
   return Math.max(0, (Number(receipt.amount) || 0) - used);
 }
 
+function intervalAllocationLimit(project, work, bucket){
+  const existing = Number(allocationForInterval(project, work.id, bucket)?.amount) || 0;
+  const covered = allocatedForBucket(project, work.id, bucket);
+  const sliceRemaining = Math.max(0, (Number(work.sliceAmount) || 0) - covered);
+  return Math.min(poolRemaining(project) + existing, existing + sliceRemaining);
+}
+
+function costlineDetailRow(label, value, className = ''){
+  const row = document.createElement('div');
+  row.className = `wbs-costline-detail-row${className ? ` ${className}` : ''}`;
+  const labelEl = document.createElement('span');
+  labelEl.textContent = label;
+  const valueEl = document.createElement('span');
+  valueEl.textContent = value;
+  row.append(labelEl, valueEl);
+  return row;
+}
+
 function openBucketSheet(project, bucket, refresh){
   openWbsSheet({
     title: `برآورد · ${bucket.label}`,
     saveLabel: 'بستن',
+    presentation: 'stage-create',
     onSave: () => true,
     body(host){
       const paint = () => {
         host.replaceChildren();
-        const current = projectRepository.getActiveProject(project.id) || project;
+      const current = projectRepository.getActiveProject(project.id) || project;
       const pool = document.createElement('div');
-      pool.className = 'wbs-note wbs-delay-summary';
-      pool.textContent = `مانده بودجه: ${money(poolRemaining(current))} تومان`;
+      pool.className = 'wbs-costline-balance';
+      pool.append(
+        Object.assign(document.createElement('span'), { textContent:'مانده بودجه' }),
+        Object.assign(document.createElement('span'), { textContent:`${money(poolRemaining(current))} تومان` }),
+      );
       host.appendChild(pool);
       if(!bucket.works.length){
         host.append('کاری در این بازه نیست.');
@@ -349,25 +403,59 @@ function openBucketSheet(project, bucket, refresh){
         const covered = allocatedForBucket(current, work.id, bucket);
         const card = document.createElement('article');
         card.className = 'wbs-costline-work';
-        card.innerHTML = `<h4>${escapeText(work.text)}</h4><p>مرحله: ${escapeText(work.path || '—')}</p><p>شروع: ${escapeText(formatJalaliDisplay(work.start) || work.start || '—')}</p><p>پایان: ${escapeText(formatJalaliDisplay(work.end) || work.end || '—')}</p><p>سهم این بازه: ${escapeText(money(slice))} تومان</p><p>تأمین‌شده: ${escapeText(money(covered))} تومان</p><p>کل برآورد: ${escapeText(money(work.amount))} تومان</p>`;
-        const mode = document.createElement('select');
-        mode.className = 'wbs-input';
-        [['spread','پخش روی مدت'],['start','اول کار'],['end','آخر کار']].forEach(([value, label]) => {
-          const option = document.createElement('option');
-          option.value = value;
-          option.textContent = label;
-          option.selected = (work.accrual || 'spread') === value;
-          mode.appendChild(option);
+        card.append(
+          costlineDetailRow('عنوان کار', work.text || '—', 'is-title'),
+          costlineDetailRow('مرحله', work.path || '—'),
+          costlineDetailRow('شروع', formatJalaliDisplay(work.start) || work.start || '—'),
+          costlineDetailRow('پایان', formatJalaliDisplay(work.end) || work.end || '—'),
+          costlineDetailRow('سهم این بازه', `${money(slice)} تومان`),
+          costlineDetailRow('تأمین‌شده', `${money(covered)} تومان`),
+          costlineDetailRow('کل برآورد', `${money(work.amount)} تومان`),
+        );
+        const accrualOptions = [
+          { id:'spread', name:'پخش روی مدت' },
+          { id:'start', name:'ابتدای کار' },
+          { id:'end', name:'انتهای کار' },
+        ];
+        const modeRow = document.createElement('div');
+        modeRow.className = 'wbs-costline-control-row';
+        const modeLabel = document.createElement('span');
+        modeLabel.textContent = 'زمان پول';
+        const mode = document.createElement('button');
+        mode.type = 'button';
+        mode.className = 'wbs-costline-mode';
+        mode.dataset.value = work.accrual || 'spread';
+        const paintMode = () => {
+          mode.textContent = accrualOptions.find(option => option.id === mode.dataset.value)?.name || accrualOptions[0].name;
+        };
+        const modeMenu = document.createElement('div');
+        modeMenu.className = 'wbs-costline-mode-menu';
+        modeMenu.hidden = true;
+        accrualOptions.forEach(option => {
+          const item = document.createElement('button');
+          item.type = 'button';
+          item.textContent = option.name;
+          item.addEventListener('click', () => {
+            mode.dataset.value = option.id;
+            modeMenu.hidden = true;
+            paintMode();
+            projectRepository.updateProject(project.id, row => setAccrual(row, work.id, option.id));
+            markDirty(project.id);
+            persist({ local:false });
+            refresh();
+          });
+          modeMenu.appendChild(item);
         });
-        mode.addEventListener('change', () => {
-          projectRepository.updateProject(project.id, row => setAccrual(row, work.id, mode.value));
-          markDirty(project.id);
-          persist({ local:false });
-          refresh();
+        mode.addEventListener('click', event => {
+          event.stopPropagation();
+          modeMenu.hidden = !modeMenu.hidden;
+          if(!modeMenu.hidden) queueMicrotask(() => document.addEventListener('click', () => { modeMenu.hidden = true; }, { once:true }));
         });
-        card.appendChild(fieldRow('زمان پول', mode));
+        paintMode();
+        modeRow.append(modeLabel, mode, modeMenu);
+        card.appendChild(modeRow);
         const tick = document.createElement('label');
-        tick.className = 'wbs-note';
+        tick.className = 'wbs-costline-fund-slice';
         const box = document.createElement('input');
         box.type = 'checkbox';
         box.checked = covered + 1 >= slice && slice > 0;
@@ -376,10 +464,7 @@ function openBucketSheet(project, bucket, refresh){
           const previous = Number(allocationForInterval(live, work.id, bucket)?.amount) || 0;
           const liveCovered = allocatedForBucket(live, work.id, bucket);
           const nextAmount = previous + Math.max(0, slice - liveCovered);
-          const available = Math.min(
-            poolRemaining(live) + previous,
-            Math.max(0, (Number(work.amount) || 0) - allocatedForTask(live, work.id) + previous),
-          );
+          const available = intervalAllocationLimit(live, work, bucket);
           if(box.checked && nextAmount > available + 1){
             box.checked = false;
             window.KarhaUI?.showToast?.('مانده بودجه کافی نیست');
@@ -407,9 +492,7 @@ function openBucketSheet(project, bucket, refresh){
           openNumpadGeneric(previous?.kind === 'manual' ? previousAmount : '', value => {
             const next = Number(value) || 0;
             const latest = projectRepository.getActiveProject(project.id) || project;
-            const existing = Number(allocationForInterval(latest, work.id, bucket)?.amount) || 0;
-            const taskRemaining = Math.max(0, (Number(work.amount) || 0) - allocatedForTask(latest, work.id) + existing);
-            const allowed = Math.min(poolRemaining(latest) + existing, taskRemaining);
+            const allowed = intervalAllocationLimit(latest, work, bucket);
             if(next > allowed){
               window.KarhaUI?.showToast?.(`مبلغ نمی‌تواند بیشتر از ${money(allowed)} تومان باشد`);
               return false;
@@ -420,13 +503,15 @@ function openBucketSheet(project, bucket, refresh){
             return true;
           }, { suffix:' تومان', validate:value => {
             const latest = projectRepository.getActiveProject(project.id) || project;
-            const existing = Number(allocationForInterval(latest, work.id, bucket)?.amount) || 0;
-            const allowed = Math.min(poolRemaining(latest) + existing, Math.max(0, (Number(work.amount) || 0) - allocatedForTask(latest, work.id) + existing));
+            const allowed = intervalAllocationLimit(latest, work, bucket);
             return Number(value || 0) <= allowed ? '' : `حداکثر مبلغ مجاز ${money(allowed)} تومان است`;
           }});
         });
         paintManual();
-        card.append(tick, manual);
+        const allocationRow = document.createElement('div');
+        allocationRow.className = 'wbs-costline-allocation-row';
+        allocationRow.append(tick, manual);
+        card.appendChild(allocationRow);
         host.appendChild(card);
       });
       };
@@ -457,10 +542,6 @@ function setAccrual(project, taskId, accrual){
     return { ...self, workTasks, subtasks: walk(node.subtasks) };
   });
   return { ...project, tasks: walk(project.tasks) };
-}
-
-function escapeText(value){
-  return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&','<':'<','>':'>','"':'"',"'":'&#39;'}[char]));
 }
 
 export function resetCostlineState(){
