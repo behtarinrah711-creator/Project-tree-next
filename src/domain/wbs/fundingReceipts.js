@@ -6,6 +6,17 @@ export function fundingReceiptsOf(project){
   return (project?.fundingReceipts || []).filter(row => row && !row.trashed);
 }
 
+/** Drop allocations saved by the old model once, and keep the receipt totals. */
+export function resetLegacyFunding(project){
+  if(!project || Number(project.fundingLedgerVersion) >= 1) return false;
+  project.fundingAllocations = [];
+  (project.fundingReceipts || []).forEach(row => {
+    if(row) row.allocations = [];
+  });
+  project.fundingLedgerVersion = 1;
+  return true;
+}
+
 function splitExact(total, count){
   const amount = Math.max(0, Math.round(Number(total) || 0));
   const days = Math.max(0, Math.floor(count) || 0);
