@@ -124,13 +124,27 @@ function dateButton(name, value){
   return button;
 }
 
+function depositRow(label, control){
+  const row = document.createElement('div');
+  row.className = 'wbs-deposit-row';
+  const caption = document.createElement('span');
+  caption.textContent = label;
+  row.append(caption, control);
+  return row;
+}
+
 function openDepositSheet(project, refresh, receipt = null){
   const editing = Boolean(receipt);
   openWbsSheet({
     title: editing ? 'ویرایش بودجه' : 'ثبت بودجه',
     saveLabel: 'ذخیره',
     presentation: 'stage-create',
+    autoFocus: false,
+    historyKey: 'funding-deposit-sheet',
     body(host){
+      host.classList.add('wbs-deposit-body');
+      const fields = document.createElement('div');
+      fields.className = 'wbs-deposit-fields';
       const amount = document.createElement('button');
       amount.type = 'button';
       amount.className = 'wbs-input';
@@ -141,8 +155,8 @@ function openDepositSheet(project, refresh, receipt = null){
         amount.dataset.value = String(value || '');
         amount.textContent = amount.dataset.value ? new Intl.NumberFormat('fa-IR').format(Number(amount.dataset.value)) + ' تومان' : 'مبلغ را وارد کنید';
       }, { suffix: ' تومان' }));
-      host.appendChild(fieldRow('مبلغ', amount));
-      host.appendChild(fieldRow('تاریخ دریافت', dateButton('depositDate', receipt?.depositDate || '')));
+      fields.appendChild(depositRow('مبلغ', amount));
+      fields.appendChild(depositRow('تاریخ دریافت', dateButton('depositDate', receipt?.depositDate || '')));
       const contacts = contactRepository.list(project.id).filter(contact => contact && !contact.trashed);
       const party = document.createElement('button');
       party.type = 'button';
@@ -161,16 +175,14 @@ function openDepositSheet(project, refresh, receipt = null){
         onSelect:selected => { party.dataset.value = String(selected.id); paintParty(); },
       }));
       paintParty();
-      host.appendChild(fieldRow('واریزکننده', party));
+      fields.appendChild(depositRow('واریزکننده', party));
+      host.appendChild(fields);
       const note = document.createElement('textarea');
-      note.className = 'wbs-input';
+      note.className = 'wbs-inline-description';
       note.name = 'description';
       note.value = receipt?.description || '';
-      host.appendChild(fieldRow('توضیح', note));
-      const hint = document.createElement('div');
-      hint.className = 'wbs-note';
-      hint.textContent = 'تخصیص این مبلغ روی کارت همان بازهٔ برآورد تیک می‌خورد، نه اینجا.';
-      host.appendChild(hint);
+      note.rows = 2;
+      host.appendChild(fieldRow('توضیح اختیاری', note));
       if(editing){
         const remove = document.createElement('button');
         remove.type = 'button';

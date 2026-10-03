@@ -113,6 +113,27 @@ test('display-only sheet can omit the save action', () => {
   closeWbsSheet();
 });
 
+test('sheet history closes the sheet on browser Back', () => {
+  const body = el('body');
+  let popHandler;
+  const consumed = [];
+  globalThis.document = {
+    body,
+    getElementById(id){ return body.children.find(x => x.id === id) || null; },
+    createElement: el,
+  };
+  globalThis.window = { KarhaChildHistory:{
+    register(_key, handlers){ popHandler = handlers.onPop; },
+    open(){},
+    consume(key, options){ consumed.push([key, options]); },
+  }};
+  openWbsSheet({ title:'ثبت بودجه', historyKey:'funding-deposit-sheet', autoFocus:false });
+  popHandler();
+  assert.equal(body.children.length, 0);
+  assert.deepEqual(consumed, [['funding-deposit-sheet', { fromPopState:true }]]);
+  delete globalThis.window;
+});
+
 test('live total updates when quantity or unit cost changes', () => {
   assert.equal(liveLineTotal(12, 2), 24);
   const qty = el('input'); qty.value = '2';
