@@ -21,6 +21,7 @@ let rangeIndex = 1;
 let originWeekday = 4;
 
 export function renderCostline(project){
+  project = projectRepository.getActiveProject(project.id) || project;
   const root = document.createElement('section');
   root.className = 'wbs-costline';
   const range = COSTLINE_RANGES[rangeIndex] || COSTLINE_RANGES[1];
