@@ -40,10 +40,47 @@ function overlapAmount(item, bucket){
   return (Number(item.amount) || 0) * overlap / Math.max(1, end - start + 1);
 }
 
-/** Allocations are stored against their real date interval, so changing chart scale
- * does not make a previously funded slice disappear. Legacy bucket-only rows still
- * match their original view. */
+function plannedWorkOf(project, taskId){
+  return collectPlannedWorks(project?.tasks || [])
+    .find(work => String(work.id) === String(taskId));
+}
+
+function spreadAmountForBucket(total, work, bucket){
+  const start = jalaliDayNumber(work?.start);
+  const end = jalaliDayNumber(work?.end) ?? start;
+  if(start == null || end == null || !bucket) return 0;
+  const overlapStart = Math.max(start, Number(bucket.startDay));
+  const overlapEnd = Math.min(end, Number(bucket.endDay));
+  if(overlapEnd < overlapStart) return 0;
+  const duration = Math.max(1, end - start + 1);
+  const before = overlapStart - start;
+  const through = overlapEnd - start + 1;
+  return Math.floor(total * through / duration) - Math.floor(total * before / duration);
+}
+
+/** Pool allocations have one task-level total and follow that task's accrual mode in
+ * every scale. Legacy receipt-embedded rows retain their original interval. */
 export function allocatedForBucket(project, taskId, bucket){
+  const work = plannedWorkOf(project, taskId);
+  if(work){
+    const poolTotal = trimFundingAllocationsToReceipts(project)
+      .filter(item => String(item.taskId) === String(taskId))
+      .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+    const embedded = fundingReceiptsOf(project).flatMap(row => row.allocations || [])
+      .filter(item => String(item.taskId) === String(taskId))
+      .reduce((sum, item) => {
+        const overlap = overlapAmount(item, bucket);
+        if(overlap != null) return sum + overlap;
+        return sum + (String(item.bucketId) === String(bucket?.id) ? (Number(item.amount) || 0) : 0);
+      }, 0);
+    const total = Math.min(Number(work.amount) || 0, poolTotal);
+    if(total <= 0) return Math.round(embedded);
+    const start = jalaliDayNumber(work.start);
+    const end = jalaliDayNumber(work.end) ?? start;
+    if(work.accrual === 'start') return Math.round(embedded + (start >= bucket.startDay && start <= bucket.endDay ? total : 0));
+    if(work.accrual === 'end') return Math.round(embedded + (end >= bucket.startDay && end <= bucket.endDay ? total : 0));
+    return Math.round(embedded + spreadAmountForBucket(total, work, bucket));
+  }
   return Math.round(allocationsOf(project)
     .filter(item => String(item.taskId) === String(taskId))
     .reduce((sum, item) => {
@@ -64,6 +101,17 @@ export function allocatedForTask(project, taskId){
   return allocationsOf(project)
     .filter(item => String(item.taskId) === String(taskId))
     .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+}
+
+export function taskAllocationTotalForSlice(project, taskId, bucket, desiredAmount){
+  const work = plannedWorkOf(project, taskId);
+  const desired = Math.max(0, Number(desiredAmount) || 0);
+  if(!work) return desired;
+  const estimate = Math.max(0, Number(work.amount) || 0);
+  if(work.accrual === 'start' || work.accrual === 'end') return Math.min(estimate, desired);
+  const slice = sliceShare(work, bucket);
+  if(slice <= 0 || estimate <= 0) return 0;
+  return Math.min(estimate, Math.round(desired * estimate / slice));
 }
 
 export function fundingSlices(project, rangeId = 'month'){
