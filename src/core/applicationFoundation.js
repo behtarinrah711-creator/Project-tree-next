@@ -8,14 +8,13 @@ function normalizeProjectScopedData(project){ return foundation.normalizeProject
 function loadData(){
 const store=window.KarhaAppData;
 if(!store?.loadFromStorage||!store?.getSnapshot) throw new Error('AppDataStore must be installed before applicationFoundation');
-const hadStoredSnapshot=store.hasStoredSnapshot();
 data=store.loadFromStorage();
 foundation.runDataMigrations(data,{
 schemaVersion:DATA_SCHEMA_VERSION,activeProjectId:store.getActiveTab(),
 markDirty:projectId=>store.markProjectDirty(projectId),rememberProjectTasks,
 });
 if(store.getActiveTab()==='starred') store.setActiveTab(null);
-if(!hadStoredSnapshot) store.persistLocal();
+store.persistLocal();
 }
 function markDirty(pid){ window.KarhaAppData.markProjectDirty(pid); }
 const persistStoreSnapshot = window.KarhaApp.createPersistOrchestrator({

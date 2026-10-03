@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { allocatedForBucket, openFundingStops, placeCardFunding, poolAllocated, poolRemaining, receiptTotalAllowed, setBucketFunding } from './fundingReceipts.js';
+import { allocatedForBucket, openFundingStops, placeCardFunding, poolAllocated, poolRemaining, receiptTotalAllowed, resetLegacyFunding, setBucketFunding } from './fundingReceipts.js';
 import { jalaliDayNumber } from './costline.js';
 
 const mdfTasks = accrual => [{
@@ -198,6 +198,20 @@ test('moving dates puts start funding on the new start and respreads uniform fun
   const days = [0, 1, 2, 3].map(offset => allocatedForBucket(respread, 'w1', { startDay:startDay + offset, endDay:startDay + offset }));
   assert.deepEqual(days, [2, 3, 2, 3]);
   assert.equal(days.reduce((sum, amount) => sum + amount, 0), 10);
+});
+
+test('the old funding ledger is cleared once and later amounts stay', () => {
+  const project = {
+    fundingReceipts:[{ id:'r1', amount:350, allocations:[{ taskId:'w1', amount:150 }] }],
+    fundingAllocations:[{ taskId:'w1', day:10, amount:3571428 }],
+  };
+  assert.equal(resetLegacyFunding(project), true);
+  assert.deepEqual(project.fundingAllocations, []);
+  assert.deepEqual(project.fundingReceipts[0].allocations, []);
+  assert.equal(project.fundingReceipts[0].amount, 350);
+  project.fundingAllocations = [{ taskId:'w1', day:10, amount:20 }];
+  assert.equal(resetLegacyFunding(project), false);
+  assert.equal(project.fundingAllocations[0].amount, 20);
 });
 
 test('lowering the estimate frees the extra funded amount', () => {
