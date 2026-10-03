@@ -505,7 +505,7 @@ function openBucketSheet(project, bucket, refresh){
         const paintManual = () => {
           const live = projectRepository.getActiveProject(project.id) || project;
           const allocation = allocationForInterval(live, work.id, bucket);
-          manual.textContent = allocation?.kind === 'manual' && Number(allocation.amount) > 0
+          manual.textContent = Number(allocation?.amount) > 0
             ? `${money(allocation.amount)} تومان`
             : 'وارد کردن مبلغ';
         };
@@ -513,7 +513,7 @@ function openBucketSheet(project, bucket, refresh){
           const live = projectRepository.getActiveProject(project.id) || project;
           const previous = allocationForInterval(live, work.id, bucket);
           const previousAmount = Number(previous?.amount) || 0;
-          openNumpadGeneric(previous?.kind === 'manual' ? previousAmount : '', value => {
+          openNumpadGeneric(previousAmount || '', value => {
             const next = Number(value) || 0;
             const latest = projectRepository.getActiveProject(project.id) || project;
             const allowed = intervalAllocationLimit(latest, work, bucket);
