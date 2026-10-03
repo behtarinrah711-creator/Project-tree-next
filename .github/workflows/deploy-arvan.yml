@@ -1,10 +1,9 @@
 name: Deploy saosa.ir to Arvan
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
-  workflow_run:
-    workflows: [Deploy isolated site]
-    types: [completed]
 
 permissions:
   contents: read
@@ -15,16 +14,13 @@ concurrency:
 
 jobs:
   deploy:
-    if: >-
-      github.event_name == 'workflow_dispatch' ||
-      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main')
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
       - name: Check out tested revision
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ github.sha }}
 
       - name: Configure SSH
         env:
@@ -43,7 +39,7 @@ jobs:
       - name: Publish static site and configure Nginx
         env:
           KAVENEGAR_API_KEY: ${{ secrets.KAVENEGAR_API_KEY }}
-          DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+          DEPLOY_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
           node scripts/stampDeploymentVersion.mjs "${DEPLOY_SHA}"
