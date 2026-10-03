@@ -511,8 +511,6 @@ function openBucketSheet(project, bucket, refresh){
         };
         manual.addEventListener('click', () => {
           const live = projectRepository.getActiveProject(project.id) || project;
-          const previous = allocationForInterval(live, work.id, bucket);
-          const previousAmount = Number(previous?.amount) || 0;
           const visibleAmount = allocatedForBucket(live, work.id, bucket);
           openNumpadGeneric(visibleAmount || '', value => {
             const next = Number(value) || 0;
