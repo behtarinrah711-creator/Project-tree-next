@@ -7,6 +7,8 @@ import { projectRepository } from '../../data/projectRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
 import { allocatedFor, fundingReceiptsOf, poolRemaining } from '../../domain/wbs/fundingReceipts.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
+import { contactRepository } from '../../data/contactRepository.js';
+import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 
 const money = value => new Intl.NumberFormat('fa-IR').format(Math.round(Number(value) || 0));
 const BAR_WIDTH = 28;
@@ -20,12 +22,17 @@ let originWeekday = 4;
 
 export function renderCostline(project){
   const root = document.createElement('section');
-  root.className = 'wbs-costline wbs-view-frame is-costline-frame';
+  root.className = 'wbs-costline';
   const range = COSTLINE_RANGES[rangeIndex] || COSTLINE_RANGES[1];
   const model = plannedCostline(project.tasks || [], { rangeId: range.id, originWeekday });
-  root.append(renderToolbar(project, () => {
+  const chartFrame = document.createElement('section');
+  chartFrame.className = 'wbs-costline-frame wbs-view-frame is-costline-frame';
+  chartFrame.append(renderToolbar(() => {
     root.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project));
   }), renderChart(project, model));
+  root.append(chartFrame, renderFundingPanel(project, () => {
+    root.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project));
+  }));
   return root;
 }
 
@@ -44,7 +51,7 @@ function cycleButton({ label, ariaLabel, shade, icon, onClick }){
   return button;
 }
 
-function renderToolbar(project, refresh){
+function renderToolbar(refresh){
   const controls = document.createElement('div');
   controls.className = 'wbs-costline-controls wbs-view-actions';
   const range = COSTLINE_RANGES[rangeIndex] || COSTLINE_RANGES[1];
@@ -59,7 +66,6 @@ function renderToolbar(project, refresh){
         refresh();
       },
     }),
-    depositButton(project, refresh),
     cycleButton({
       label: WEEKDAYS[originWeekday],
       ariaLabel: `مبدأ دوره ${WEEKDAYS[originWeekday]}`,
@@ -78,15 +84,20 @@ function renderToolbar(project, refresh){
   });
 }
 
-function depositButton(project, refresh){
+function budgetButton(project, refresh){
   const button = document.createElement('button');
   button.type = 'button';
-  button.className = 'wbs-timescale-toggle wbs-costline-cycle';
-  button.setAttribute('aria-label', 'واریز');
-  button.setAttribute('title', 'واریز');
-  button.innerHTML = '<span class="wbs-timescale-label">واریز</span>';
+  button.className = 'wbs-timescale-toggle wbs-funding-add';
+  button.setAttribute('aria-label', 'ثبت بودجه');
+  button.setAttribute('title', 'ثبت بودجه');
+  button.innerHTML = '<span aria-hidden="true">+</span><span class="wbs-timescale-label">ثبت بودجه</span>';
   button.addEventListener('click', () => openDepositSheet(project, refresh));
   return button;
+}
+
+function contactName(contact){
+  return [contact?.type, contact?.firstName, contact?.lastName].filter(Boolean).join(' ').trim()
+    || contact?.name || 'مخاطب';
 }
 
 function dateButton(name, value){
@@ -103,7 +114,7 @@ function dateButton(name, value){
 
 function openDepositSheet(project, refresh){
   openWbsSheet({
-    title: 'واریز کارفرما',
+    title: 'ثبت بودجه',
     saveLabel: 'ذخیره',
     body(host){
       const amount = document.createElement('button');
@@ -117,12 +128,26 @@ function openDepositSheet(project, refresh){
         amount.textContent = amount.dataset.value ? new Intl.NumberFormat('fa-IR').format(Number(amount.dataset.value)) + ' تومان' : 'مبلغ را وارد کنید';
       }, { suffix: ' تومان' }));
       host.appendChild(fieldRow('مبلغ', amount));
-      host.appendChild(fieldRow('تاریخ واریز', dateButton('depositDate', '')));
-      const party = document.createElement('input');
+      host.appendChild(fieldRow('تاریخ دریافت', dateButton('depositDate', '')));
+      const contacts = contactRepository.list(project.id).filter(contact => contact && !contact.trashed);
+      const party = document.createElement('button');
+      party.type = 'button';
       party.className = 'wbs-input';
       party.name = 'party';
-      party.value = 'کارفرما';
-      host.appendChild(fieldRow('پرداخت‌کننده', party));
+      party.dataset.value = '';
+      const paintParty = () => {
+        const selected = contacts.find(contact => String(contact.id) === String(party.dataset.value));
+        party.textContent = selected ? contactName(selected) : 'انتخاب واریزکننده';
+      };
+      party.addEventListener('click', () => openSearchPicker({
+        title:'انتخاب واریزکننده', listTitle:'مخاطبین', selectedTitle:'واریزکننده منتخب',
+        contextKey:`wbs-funding-party:${project.id}`,
+        items:contacts.map(contact => ({ id:contact.id, name:contactName(contact) })),
+        showStar:false, showAdd:false,
+        onSelect:selected => { party.dataset.value = String(selected.id); paintParty(); },
+      }));
+      paintParty();
+      host.appendChild(fieldRow('واریزکننده', party));
       const note = document.createElement('textarea');
       note.className = 'wbs-input';
       note.name = 'description';
@@ -135,15 +160,19 @@ function openDepositSheet(project, refresh){
     onSave(host){
       const amount = Number(host.querySelector('[name="amount"]').dataset.value || 0);
       const depositDate = host.querySelector('[name="depositDate"]').dataset.value;
-      if(!amount || !depositDate){
-        window.KarhaUI?.showToast?.('مبلغ و تاریخ واریز لازم است');
+      const partyButton = host.querySelector('[name="party"]');
+      const partyId = partyButton.dataset.value;
+      if(!amount || !depositDate || !partyId){
+        window.KarhaUI?.showToast?.('مبلغ، تاریخ دریافت و واریزکننده لازم است');
         return false;
       }
+      const partyContact = contactRepository.get(project.id, partyId);
       const receipt = {
         id: uid(),
         amount,
         depositDate,
-        party: host.querySelector('[name="party"]').value.trim() || 'کارفرما',
+        partyContactId: partyId,
+        party: contactName(partyContact),
         description: host.querySelector('[name="description"]').value.trim(),
         allocations: [],
         createdAt: Date.now(),
@@ -158,6 +187,48 @@ function openDepositSheet(project, refresh){
       return true;
     },
   });
+}
+
+function renderFundingPanel(project, refresh){
+  const frame = document.createElement('section');
+  frame.className = 'wbs-funding-frame wbs-view-frame';
+  const header = document.createElement('div');
+  header.className = 'wbs-view-header wbs-view-toolbar wbs-funding-toolbar';
+  const title = document.createElement('strong');
+  title.className = 'wbs-funding-title';
+  title.textContent = 'بودجه‌های تأمین‌شده';
+  header.append(title, budgetButton(project, refresh));
+
+  const body = document.createElement('div');
+  body.className = 'wbs-funding-list wbs-view-body';
+  const receipts = fundingReceiptsOf(project);
+  body.append(
+    fundingRow('مجموع دریافتی تاکنون:', `${money(receipts.reduce((sum, row) => sum + (Number(row.amount) || 0), 0))} تومان`, 'is-summary'),
+    fundingRow('مانده تخصیص داده نشده:', `${money(poolRemaining(project))} تومان`, 'is-summary'),
+  );
+  receipts
+    .map((receipt, index) => ({ receipt, number:index + 1 }))
+    .sort((a, b) => String(b.receipt.depositDate || '').localeCompare(String(a.receipt.depositDate || '')) || Number(b.receipt.createdAt || 0) - Number(a.receipt.createdAt || 0))
+    .forEach(({ receipt, number }) => {
+      body.appendChild(fundingRow(
+        `دریافتی شماره ${new Intl.NumberFormat('fa-IR').format(number)} | ${formatJalaliDisplay(receipt.depositDate)}`,
+        `${money(receipt.amount)} تومان`,
+      ));
+    });
+  frame.append(header, body);
+  return frame;
+}
+
+function fundingRow(label, value, className = ''){
+  const row = document.createElement('div');
+  row.className = `wbs-funding-row${className ? ` ${className}` : ''}`;
+  const labelEl = document.createElement('span');
+  labelEl.textContent = label;
+  const valueEl = document.createElement('span');
+  valueEl.className = 'wbs-funding-amount';
+  valueEl.textContent = value;
+  row.append(labelEl, valueEl);
+  return row;
 }
 
 function renderBar(bucket, max){
