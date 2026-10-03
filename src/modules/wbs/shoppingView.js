@@ -1,5 +1,5 @@
 import { todayApi, COMMENT_MIN_LENGTH, REJECTION_MIN_LENGTH, REPORT_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
-import { contractorForItem, remainingLabel, tehranTodayJalali } from '../../domain/wbs/todayDomain.js';
+import { contractorForItem, remainingLabel, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
 import { SHOPPING_MODES, shoppingItemsForMode, shoppingStatusLabel } from '../../domain/wbs/shoppingDomain.js';
 import { fieldRow, openWbsSheet } from './wbsSheet.js';
 import { toPersianDigits } from '../../ui/digits.js';
@@ -30,7 +30,7 @@ function openReport(item,onChanged){
     const note=document.createElement('div');note.className='today-upload-note';note.innerHTML='<span>پیوست‌ها</span><div><button type="button" disabled>عکس<small>به‌زودی</small></button><button type="button" disabled>ویدئو<small>به‌زودی</small></button><button type="button" disabled>فایل<small>به‌زودی</small></button></div>';root.appendChild(note);
   },onSave(root){const result=todayApi.saveReport(activeProjectId,refOf(item),root.querySelector('[name="reportDescription"]').value,actor());if(!result.ok){window.KarhaUI?.showToast?.(`شرح گزارش حداقل ${toPersianDigits(REPORT_MIN_LENGTH)} حرف باشد`);return false;}onChanged?.();return true;}});
 }
-function openReject(item,onChanged){openWbsSheet({title:'رد تأیید خرید',saveLabel:'ثبت رد',body(root){root.appendChild(fieldRow('علت رد',textArea(document,'','rejectionReason')));},onSave(root){const result=todayApi.reject(activeProjectId,refOf(item),root.querySelector('[name="rejectionReason"]').value,actor());if(!result.ok){window.KarhaUI?.showToast?.(`علت رد حداقل ${toPersianDigits(REJECTION_MIN_LENGTH)} حرف باشد`);return false;}activeMode='today';onChanged?.();return true;}});}
+function openReject(item,onChanged){openWbsSheet({title:'رد تأیید خرید',saveLabel:'ثبت رد',body(root){root.appendChild(fieldRow('علت رد',textArea(document,'','rejectionReason')));},onSave(root){const result=todayApi.reject(activeProjectId,refOf(item),root.querySelector('[name="rejectionReason"]').value,actor());if(!result.ok){window.KarhaUI?.showToast?.(`علت رد حداقل ${toPersianDigits(REJECTION_MIN_LENGTH)} حرف باشد`);return false;}activeMode=timeState(result.entity, tehranTodayJalali());onChanged?.();return true;}});}
 function renderReports(documentRef,entity){const host=documentRef.createElement('div');host.className='today-reports';reportsOf(entity).forEach(report=>{const row=documentRef.createElement('article');row.className='today-report';row.innerHTML=`<p>${esc(report.description)}</p><div>${esc(report.createdBy?.name||'کاربر')} · ${esc(formatMoment(report.createdAt))}${report.updatedAt?` · <b>ویرایش‌شده ${esc(formatMoment(report.updatedAt))}</b>`:''}</div>`;host.appendChild(row);});return host;}
 function renderComments(documentRef,item,onChanged){
   const host=documentRef.createElement('div');host.className='today-comments';const comments=commentsOf(item.entity);let expanded=false;const list=documentRef.createElement('div');
@@ -60,6 +60,7 @@ function renderCard(documentRef,project,item,today,onChanged){
       if(submitter && String(submitter)!==String(actor().id)){ window.KarhaUI?.showToast?.('فقط مسئول این کار می‌تواند تیک را بردارد'); return; }
       const result=todayApi.withdrawCompletion(activeProjectId,refOf(item),actor());
       if(!result.ok){ window.KarhaUI?.showToast?.('برداشتن تیک ممکن نیست'); return; }
+      activeMode=timeState(result.entity, tehranTodayJalali());
       onChanged?.();
     });
   } else {

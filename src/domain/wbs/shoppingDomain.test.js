@@ -23,3 +23,17 @@ test('shopping groups by WBS dates and uses purchase-specific status labels',()=
   assert.deepEqual(shoppingItemsForMode(project,'future','1405/06/11').map(item=>item.id),['task-buy']);
   assert.equal(shoppingStatusLabel(project.tasks[0].subtasks[0]),'خرید شروع نشده');
 });
+
+test('overdue purchase stays overdue after it is sent back without management approval',()=>{
+  const source=structuredClone(project);
+  const purchase=source.tasks[0].subtasks[0];
+  purchase.scheduleStart='1405/06/14';
+  purchase.scheduleEnd='1405/06/14';
+  purchase.returnedToTodayOn='1405/07/11';
+  const today='1405/07/11';
+  assert.deepEqual(shoppingItemsForMode(source,'overdue',today).map(item=>item.id),['task-buy','leaf-buy']);
+  assert.equal(shoppingItemsForMode(source,'today',today).some(item=>item.id==='leaf-buy'),false);
+  purchase.scheduleStart=today;
+  purchase.scheduleEnd=today;
+  assert.equal(shoppingItemsForMode(source,'today',today).some(item=>item.id==='leaf-buy'),true);
+});
