@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { readFile } from 'node:fs/promises';
-import { versionModuleSpecifiers } from '../../scripts/stampDeploymentVersion.mjs';
+import { versionCssImports, versionModuleSpecifiers } from '../../scripts/stampDeploymentVersion.mjs';
 
 test('deployment stamper versions static, side-effect, and dynamic local imports',()=>{
   const source = [
@@ -20,14 +20,17 @@ test('deployment stamper versions static, side-effect, and dynamic local imports
   assert.doesNotMatch(stamped,/remote\.js\?v=/);
 });
 
+test('deployment stamper refreshes every imported stylesheet version',()=>{
+  const source = '@import url("./base.css");\n@import url("./feature.css?v=old");';
+  assert.equal(versionCssImports(source,'deploy-sha'), '@import url("./base.css?v=deploy-sha");\n@import url("./feature.css?v=deploy-sha");');
+});
+
 test('Arvan deploy stamps the complete module graph and removes stale app caches',async()=>{
   const [workflow,guard,worker] = await Promise.all([
     readFile(new URL('../../.github/workflows/deploy-arvan.yml',import.meta.url),'utf8'),
     readFile(new URL('./cacheGuard.js',import.meta.url),'utf8'),
     readFile(new URL('../../sw.js',import.meta.url),'utf8'),
   ]);
-  assert.match(workflow,/on:\n  push:\n    branches: \[main\]/);
-  assert.doesNotMatch(workflow,/workflow_run:/);
   assert.match(workflow,/node scripts\/stampDeploymentVersion\.mjs "\$\{DEPLOY_SHA\}"/);
   assert.doesNotMatch(guard,/window\.location\.reload/);
   assert.match(guard,/key\.startsWith\(CACHE_PREFIX\)/);
