@@ -1,5 +1,6 @@
 .is-costline-view > .wbs-toolbar.is-single-action{grid-template-columns:1fr;}
-.wbs-costline{margin:0 2px 24px;border:1px solid var(--wbs-frame-border,#ded7cd);border-radius:var(--wbs-frame-radius,5px);background:var(--wbs-frame-header-bg,#f7f4ef);overflow:hidden;}
+.wbs-costline{margin:0 2px 24px;display:flex;flex-direction:column;gap:15px;}
+.wbs-costline-frame,.wbs-funding-frame{border:1px solid var(--wbs-frame-border,#ded7cd);border-radius:var(--wbs-frame-radius,5px);background:var(--wbs-frame-header-bg,#f7f4ef);overflow:hidden;}
 .wbs-costline-toolbar{box-sizing:border-box;height:var(--wbs-frame-header-height,42px);display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 6px 0 10px;background:var(--wbs-frame-header-bg,#f7f4ef);border-bottom:1px solid var(--wbs-frame-border,#ded7cd);color:var(--wbs-frame-title,#4d4741);}
 .wbs-costline-project{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:700;}
 .wbs-costline-controls{display:flex;align-items:center;gap:6px;flex:0 0 auto;}
@@ -19,3 +20,12 @@
 .wbs-costline-work{border:1px solid #e5ded3;border-radius:var(--wbs-frame-radius,5px);padding:10px;margin-bottom:8px;}
 .wbs-costline-work h4{margin:0 0 6px;}
 .wbs-costline-work p{margin:0 0 4px;}
+.wbs-funding-toolbar{direction:rtl;padding:0 6px 0 10px;}
+.wbs-funding-title{font-size:13px;font-weight:700;color:var(--wbs-frame-title,#4d4741);}
+.wbs-funding-add{width:auto;min-width:92px;height:38px;padding:0 10px;display:flex;align-items:center;justify-content:center;gap:4px;border-radius:var(--wbs-frame-radius,5px);}
+.wbs-funding-add > span:first-child{font-size:21px;font-weight:400;line-height:1;}
+.wbs-funding-list{background:#fff;min-height:0;padding:0 12px;}
+.wbs-funding-row{min-height:44px;box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid #eee8df;color:#4d4741;font-size:12px;}
+.wbs-funding-row:last-child{border-bottom:0;}
+.wbs-funding-row.is-summary{font-weight:700;}
+.wbs-funding-amount{direction:rtl;white-space:nowrap;font-family:'IRANSansX',Tahoma,sans-serif;}
