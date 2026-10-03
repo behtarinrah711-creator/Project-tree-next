@@ -77,11 +77,16 @@ function renderToolbar(refresh){
       },
     }),
   );
-  return createViewToolbar(document, {
+  const toolbar = createViewToolbar(document, {
     className:'wbs-costline-toolbar',
     ariaLabel:'ابزارهای برآورد هزینه',
     controls:[...controls.children],
   });
+  const title = document.createElement('strong');
+  title.className = 'wbs-costline-title';
+  title.textContent = 'نمودار میله‌ای';
+  toolbar.prepend(title);
+  return toolbar;
 }
 
 function budgetButton(project, refresh){
@@ -213,6 +218,10 @@ function renderFundingPanel(project, refresh){
     fundingRow('مجموع دریافتی تاکنون:', `${money(receipts.reduce((sum, row) => sum + (Number(row.amount) || 0), 0))} تومان`, 'is-summary'),
     fundingRow('مانده تخصیص داده نشده:', `${money(poolRemaining(project))} تومان`, 'is-summary'),
   );
+  const divider = document.createElement('div');
+  divider.className = 'wbs-funding-divider';
+  divider.setAttribute('aria-hidden', 'true');
+  body.appendChild(divider);
   receipts
     .map((receipt, index) => ({ receipt, number:index + 1 }))
     .sort((a, b) => String(b.receipt.depositDate || '').localeCompare(String(a.receipt.depositDate || '')) || Number(b.receipt.createdAt || 0) - Number(a.receipt.createdAt || 0))
@@ -238,26 +247,38 @@ function fundingRow(label, value, className = ''){
   return row;
 }
 
-function renderBar(bucket, max){
+function barPath(height){
+  const safeHeight = Math.max(0, Math.min(BAR_HEIGHT, height));
+  const top = BAR_HEIGHT - safeHeight;
+  const radius = Math.min(BAR_RADIUS, safeHeight, BAR_WIDTH / 2);
+  return `M0 ${BAR_HEIGHT}V${top + radius}Q0 ${top} ${radius} ${top}H${BAR_WIDTH - radius}Q${BAR_WIDTH} ${top} ${BAR_WIDTH} ${top + radius}V${BAR_HEIGHT}Z`;
+}
+
+function renderBar(bucket, max, allocated){
   const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
   svg.classList.add('wbs-costline-bar');
   svg.setAttribute('viewBox', `0 0 ${BAR_WIDTH} ${BAR_HEIGHT}`);
   svg.setAttribute('aria-hidden', 'true');
   svg.setAttribute('focusable', 'false');
   const height = Math.max(4, (bucket.total / max) * BAR_HEIGHT);
-  const top = BAR_HEIGHT - height;
-  const radius = Math.min(BAR_RADIUS, height, BAR_WIDTH / 2);
-  const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
-  path.setAttribute('d', `M0 ${BAR_HEIGHT}V${top + radius}Q0 ${top} ${radius} ${top}H${BAR_WIDTH - radius}Q${BAR_WIDTH} ${top} ${BAR_WIDTH} ${top + radius}V${BAR_HEIGHT}Z`);
-  svg.appendChild(path);
+  const planned = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+  planned.classList.add('wbs-costline-bar-planned');
+  planned.setAttribute('d', barPath(height));
+  svg.appendChild(planned);
+  if(allocated > 0){
+    const funded = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    funded.classList.add('wbs-costline-bar-funded');
+    funded.setAttribute('d', barPath(Math.min(height, (allocated / max) * BAR_HEIGHT)));
+    svg.appendChild(funded);
+  }
   return svg;
 }
 
-function renderMoney(value){
+function renderMoney(value, { className = '', negative = false } = {}){
   const line = document.createElement('span');
-  line.className = 'wbs-costline-value';
+  line.className = `wbs-costline-value${className ? ` ${className}` : ''}`;
   const amount = document.createElement('span');
-  amount.textContent = money(value);
+  amount.textContent = `${money(value)}${negative ? '-' : ''}`;
   const unit = document.createElement('small');
   unit.textContent = 'تومان';
   line.append(amount, unit);
@@ -281,10 +302,16 @@ function renderChart(project, model){
     col.type = 'button';
     col.className = 'wbs-costline-col';
     col.setAttribute('aria-label', `${bucket.label} ${money(bucket.total)} تومان`);
+    const allocated = Math.min(bucket.total, bucket.works.reduce((sum, work) => sum + allocatedFor(project, work.id, bucket.id), 0));
+    const shortage = Math.max(0, bucket.total - allocated);
+    const values = document.createElement('span');
+    values.className = 'wbs-costline-values';
+    values.appendChild(renderMoney(bucket.total, { className:shortage <= 1 ? 'is-funded' : '' }));
+    if(shortage > 1) values.appendChild(renderMoney(shortage, { className:'is-shortage', negative:true }));
     const label = document.createElement('span');
     label.className = 'wbs-costline-label';
     label.textContent = bucket.label;
-    col.append(renderMoney(bucket.total), renderBar(bucket, max), label);
+    col.append(values, renderBar(bucket, max, allocated), label);
     col.addEventListener('click', () => openBucketSheet(project, bucket, () => {
       wrap.closest('.wbs-costline')?.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project));
     }));
