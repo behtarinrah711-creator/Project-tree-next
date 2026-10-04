@@ -5,7 +5,7 @@ import { createViewToolbar } from './viewHeader.js';
 import { uid } from '../../data/projectFactories.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
-import { allocatedForBucket, fundingReceiptsOf, placeCardFunding, poolReceived, poolRemaining, receiptTotalAllowed, setBucketFunding } from '../../domain/wbs/fundingReceipts.js';
+import { allocatedForBucket, allocatedForTask, fundingReceiptsOf, placeCardFunding, poolReceived, poolRemaining, receiptTotalAllowed, setBucketFunding } from '../../domain/wbs/fundingReceipts.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
@@ -472,13 +472,23 @@ function openBucketSheet(project, bucket, refresh){
           item.type = 'button';
           item.textContent = option.name;
           item.addEventListener('click', () => {
-            mode.dataset.value = option.id;
             modeMenu.hidden = true;
-            paintMode();
-            projectRepository.updateProject(project.id, row => setAccrual(row, work.id, option.id));
-            markDirty(project.id);
-            persist({ local:false });
-            refresh();
+            if(option.id === mode.dataset.value) return;
+            const live = projectRepository.getActiveProject(project.id) || project;
+            const funded = allocatedForTask(live, work.id);
+            const apply = () => {
+              projectRepository.updateProject(project.id, row => setAccrual(row, work.id, option.id));
+              markDirty(project.id);
+              persist({ local:false });
+              closeWbsSheet();
+              refresh();
+            };
+            if(funded > 0 && typeof window.KarhaUI?.openConfirm === 'function'){
+              const [message, label] = accrualChangeCopy(mode.dataset.value, option.id, funded, work);
+              window.KarhaUI.openConfirm(message, apply, label);
+              return;
+            }
+            apply();
           });
           modeMenu.appendChild(item);
         });
@@ -551,6 +561,22 @@ function openBucketSheet(project, bucket, refresh){
       paint();
     },
   });
+}
+
+
+function accrualChangeCopy(from, to, amount, work){
+  const funded = `${money(amount)} تومان`;
+  const range = `${formatJalaliDisplay(work.start) || work.start || '—'} تا ${formatJalaliDisplay(work.end) || work.end || '—'}`;
+  const share = 'سهم بازه‌ها از نو حساب می‌شود.';
+  const copy = {
+    'start->end': [`${funded} از ابتدای کار برداشته می‌شود و یکجا به انتهای کار منتقل می‌شود. ${share}`, 'انتقال به انتها'],
+    'end->start': [`${funded} از انتهای کار برداشته می‌شود و یکجا به ابتدای کار منتقل می‌شود. ${share}`, 'انتقال به ابتدا'],
+    'start->spread': [`${funded} از ابتدای کار خارج می‌شود و روی روزهای ${range} پخش می‌شود. ${share}`, 'پخش روی مدت'],
+    'spread->start': [`${funded} از پخش روزانه جمع می‌شود و یکجا به ابتدای کار منتقل می‌شود. ${share}`, 'انتقال به ابتدا'],
+    'end->spread': [`${funded} از انتهای کار خارج می‌شود و روی روزهای ${range} پخش می‌شود. ${share}`, 'پخش روی مدت'],
+    'spread->end': [`${funded} از پخش روزانه جمع می‌شود و یکجا به انتهای کار منتقل می‌شود. ${share}`, 'انتقال به انتها'],
+  };
+  return copy[`${from}->${to}`] || [`زمان تأمین عوض می‌شود. ${share}`, 'تأیید'];
 }
 
 function saveBucketFunding(projectId, taskId, bucket, amount){
