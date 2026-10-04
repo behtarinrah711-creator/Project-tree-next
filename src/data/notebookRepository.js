@@ -177,6 +177,15 @@ export function restoreNotebookFamily(item){
   return item;
 }
 
+export function restoreNotebookItem(item,parents=[]){
+  for(const parent of parents){
+    if(parent.done){parent.done=false;parent.completedAt=null;}
+  }
+  item.done=false;
+  item.completedAt=null;
+  return item;
+}
+
 export function trashCompletedItems(items,{starredOnly=false,timestamp=now()}={}){
   let count=0;
   const visit=item=>{
