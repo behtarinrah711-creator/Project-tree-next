@@ -462,7 +462,7 @@ function openBucketSheet(project, bucket, refresh){
         const modeRow = document.createElement('div');
         modeRow.className = 'wbs-costline-control-row';
         const modeLabel = document.createElement('span');
-        modeLabel.textContent = 'زمان تأمین';
+        modeLabel.textContent = 'نحوه تأمین';
         const mode = document.createElement('button');
         mode.type = 'button';
         mode.className = 'wbs-costline-mode';
