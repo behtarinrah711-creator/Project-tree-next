@@ -92,7 +92,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     const empty=!content;
     const addRootButton='<button type="button" data-add-root class="nb-add-root">＋ افزودن مورد جدید</button>';
     const doneTree=(item,depth=0)=>`<div class="nb-row nb-done-row" data-depth="${depth}" style="--nb-depth:${depth}"><span class="nb-check done" aria-hidden="true"></span><span class="nb-title">${esc(item.text)}${depth===0&&item.listTitle?`<small>${esc(item.listTitle)}</small>`:''}</span>${depth===0?`<button type="button" class="nb-restore" data-restore="${esc(item.id)}">بازگردانی</button>`:''}</div>${(item.children||[]).filter(child=>child.done&&!child.trashed).map(child=>doneTree(child,depth+1)).join('')}`;
-    const completedRows=completed.map(entry=>doneTree({...entry.item,listTitle:entry.listTitle})).join('');
+    const completedRows=completed.map(entry=>`<div class="nb-done-family">${doneTree({...entry.item,listTitle:entry.listTitle})}</div>`).join('');
     body.innerHTML=`<div class="nb-workspace"><nav class="nb-tabs" aria-label="دفترها"><button type="button" data-starred class="nb-tab nb-star-tab ${starredMode?'active':''}">${star}</button>
       ${available(nb).map(item=>`<button type="button" data-list="${esc(item.id)}" class="nb-tab ${!starredMode&&item.id===list.id?'active':''}"><span>${esc(item.title)}</span><small>${(item.items||[]).filter(entry=>!entry.done&&!entry.trashed).length.toLocaleString('fa-IR')}</small></button>`).join('')}
       <button type="button" data-add-list class="nb-tab nb-add-tab" aria-label="افزودن دفتر">＋</button></nav>
