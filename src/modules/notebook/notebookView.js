@@ -17,10 +17,21 @@ const formatCost=value=>new Intl.NumberFormat('fa-IR').format(Number(value)||0);
 
 export function installNotebookWorkspace({documentRef=globalThis.document,windowRef=globalThis.window,repository=createNotebookRepository()}={}){
   const page=documentRef?.getElementById?.('notebookPage');
+  const topbar=documentRef.getElementById('topbar');
+  if(topbar && !topbar.querySelector('[data-nb-order]')){
+    const entry=documentRef.createElement('button');
+    entry.type='button';
+    entry.className='nb-order-entry';
+    entry.dataset.nbOrder='1';
+    entry.setAttribute('aria-label','ترتیب نمایش دفترچه‌ها');
+    entry.innerHTML=more;
+    entry.addEventListener('click',()=>{orderOpen=true;render();});
+    topbar.appendChild(entry);
+  }
   if(!page)return null;
   repository.load();
   const exportView=installNotebookExportView({documentRef,windowRef});
-  let editor=null, sheetItemId=null, menuOpen=false, trashOpen=false, listPrompt=null;
+  let editor=null, sheetItemId=null, menuOpen=false, trashOpen=false, listPrompt=null, orderOpen=false, orderDrag=null;
   let notebookDrag=null;
   const onRoute=()=>/^#\/notebook/i.test(String(windowRef.location.hash||''));
   const available=nb=>(nb.lists||[]).filter(list=>!list.trashed);
@@ -98,8 +109,8 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
       <button type="button" data-add-list class="nb-tab nb-add-tab" aria-label="افزودن دفتر">＋</button></nav>
       ${actionsHtml(list,starredMode)}<main class="nb-list">${empty&&!starredMode?addRootButton:''}${content||`<div class="nb-empty">${starredMode?'هنوز چیزی ستاره‌دار نشده است.':'هنوز موردی در این دفتر نیست.'}</div>`}${editor?.mode==='item'&&!editor.parentId?editorHtml():''}</main>
       ${!starredMode&&!empty?addRootButton:''}<details class="nb-completed"><summary><span>انجام‌شده‌ها (${completed.length.toLocaleString('fa-IR')})</span><span class="nb-completed-chevron" aria-hidden="true">${chev}</span></summary>${completed.length?'<button type="button" class="nb-clear-completed" data-clear-completed>حذف همه</button>':''}${completedRows}</details>
-      ${editor?.mode!=='item'?editorHtml():''}${sheetHtml()}${listPromptHtml()}</div>`;
-    bind(body,{starredMode});queueMicrotask(()=>{if(editor)body.querySelector('#nbInput')?.focus();if(listPrompt)body.querySelector('#nbPromptInput')?.focus();centerActiveTab({smooth:false});});
+      ${editor?.mode!=='item'?editorHtml():''}${sheetHtml()}${listPromptHtml()}${orderHtml()}</div>`;
+    bind(body,{starredMode}); bindOrder(body);queueMicrotask(()=>{if(editor)body.querySelector('#nbInput')?.focus();if(listPrompt)body.querySelector('#nbPromptInput')?.focus();centerActiveTab({smooth:false});});
   }
   function saveInline(body,{continueEntry=false}={}){
     const value=body.querySelector('#nbInput')?.value.trim();if(!value)return;
@@ -121,6 +132,62 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
   }
   function moveNotebookDrag(event){if(!notebookDrag)return;const others=notebookDrag.siblings.filter(item=>item!==notebookDrag.wrapper);let target=null,position=null;for(const wrapper of others){const rect=wrapper.firstElementChild.getBoundingClientRect();if(event.clientY<rect.top+rect.height/2){target=wrapper;position='before';break;}}if(!target&&others.length){target=others.at(-1);position='after';}notebookDrag.siblings.forEach(item=>item.classList.remove('nb-drop-before','nb-drop-after'));target?.classList.add(position==='before'?'nb-drop-before':'nb-drop-after');notebookDrag.target=target;notebookDrag.position=position;}
   function endNotebookDrag(){if(!notebookDrag)return;document.removeEventListener('pointermove',moveNotebookDrag);document.removeEventListener('pointercancel',endNotebookDrag);const state=notebookDrag;notebookDrag=null;state.wrapper.classList.remove('nb-row-dragging');state.siblings.forEach(item=>item.classList.remove('nb-drop-before','nb-drop-after'));if(!state.target)return;const ids=state.siblings.map(item=>item.dataset.id),ordered=reorderedIds(ids,state.id,state.target.dataset.id,state.position);if(!ordered)return;repository.mutate(nb=>{const hit=locate(nb,state.id);if(hit)hit.siblings.splice(0,hit.siblings.length,...reorderNotebookSiblings(hit.siblings,ordered));});render();}
+
+  function orderHtml(){
+    if(!orderOpen) return '';
+    const lists=available(repository.get());
+    return `<section class="nb-order-page" aria-label="ترتیب نمایش"><header class="nb-order-head"><h1>ترتیب نمایش</h1><button type="button" class="nb-order-back" data-order-back aria-label="بازگشت">&#x2039;</button></header><div class="nb-order-list">${lists.map(list=>`<div class="nb-order-row" data-id="${esc(list.id)}"><span>${esc(list.title)}</span><span class="nb-grip" aria-label="جابه‌جایی">${grip}</span></div>`).join('')}</div></section>`;
+  }
+  function bindOrder(body){
+    body.querySelector('[data-order-back]')?.addEventListener('click',()=>{orderOpen=false;render();});
+    body.querySelectorAll('.nb-order-row').forEach(row=>{
+      const gripEl=row.querySelector('.nb-grip'); if(!gripEl) return;
+      gripEl.onpointerdown=event=>{
+        if(event.button===2) return;
+        event.preventDefault(); event.stopPropagation();
+        const siblings=Array.from(row.parentElement?.children||[]).filter(item=>item.classList.contains('nb-order-row'));
+        if(siblings.length<2) return;
+        orderDrag={id:row.dataset.id,row,siblings,target:null,position:null};
+        row.classList.add('nb-row-dragging');
+        try{gripEl.setPointerCapture(event.pointerId);}catch(_error){}
+        document.addEventListener('pointermove',moveOrderDrag);
+        document.addEventListener('pointerup',endOrderDrag,{once:true});
+        document.addEventListener('pointercancel',endOrderDrag,{once:true});
+      };
+    });
+  }
+  function moveOrderDrag(event){
+    if(!orderDrag) return;
+    const others=orderDrag.siblings.filter(item=>item!==orderDrag.row);
+    let target=null, position=null;
+    for(const item of others){
+      const rect=item.getBoundingClientRect();
+      if(event.clientY<rect.top+rect.height/2){target=item; position='before'; break;}
+    }
+    if(!target&&others.length){target=others.at(-1); position='after';}
+    orderDrag.siblings.forEach(item=>item.classList.remove('nb-drop-before','nb-drop-after'));
+    target?.classList.add(position==='before'?'nb-drop-before':'nb-drop-after');
+    orderDrag.target=target; orderDrag.position=position;
+  }
+  function endOrderDrag(){
+    if(!orderDrag) return;
+    document.removeEventListener('pointermove',moveOrderDrag);
+    document.removeEventListener('pointercancel',endOrderDrag);
+    const state=orderDrag; orderDrag=null;
+    state.row.classList.remove('nb-row-dragging');
+    state.siblings.forEach(item=>item.classList.remove('nb-drop-before','nb-drop-after'));
+    if(!state.target) return;
+    const ordered=reorderedIds(state.siblings.map(item=>item.dataset.id), state.id, state.target.dataset.id, state.position);
+    if(!ordered) return;
+    repository.mutate(nb=>{
+      const visible=available(nb), map=new Map(visible.map(list=>[String(list.id),list]));
+      const next=ordered.map(id=>map.get(String(id))).filter(Boolean);
+      let cursor=0;
+      nb.lists=nb.lists.map(list=>list.trashed?list:next[cursor++]);
+    });
+    render();
+  }
+
   function bind(body,{starredMode=false}={}){
     body.querySelectorAll('[data-list]').forEach(button=>button.onclick=()=>{repository.mutate(nb=>{nb.activeListId=button.dataset.list;});editor=null;sheetItemId=null;render();});
     body.querySelector('[data-starred]')?.addEventListener('click',()=>{repository.mutate(nb=>{nb.activeListId='__starred__';});editor=null;sheetItemId=null;render();});
