@@ -14,3 +14,11 @@
 .nb-subpage-title{min-height:62px!important;display:flex!important;align-items:center;justify-content:center;border-bottom:1px solid var(--divider);background:var(--surface)}.nb-subpage-title h1{font-size:18px;margin:0;text-align:center}.nb-trash{min-height:100%;background:var(--surface)}.nb-trash-section{padding:0 16px}.nb-trash-section>p{text-align:center;color:var(--text-dim);padding:50px 0}.nb-trash-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:13px 0;border-bottom:1px solid var(--divider)}.nb-trash-row>div:first-child{flex:1;min-width:0}.nb-trash-row small{display:block;color:var(--green);font-size:12px;margin-top:4px}.nb-trash-actions{display:flex;flex-direction:column;align-items:flex-start;gap:7px}.nb-trash-actions button{border:0;background:transparent;color:var(--green);font:inherit}.nb-trash-actions button.danger{color:var(--danger)}.nb-trash-node{padding-right:calc(var(--nb-depth)*16px);line-height:2}.nb-trash-node .nb-trash-node{color:var(--text-dim);font-size:13px}.nb-export-capture{position:fixed;left:-10000px;top:0;width:800px;min-height:1132px;padding:28px 24px;background:#fff;z-index:-1;box-sizing:border-box}
 @keyframes nb-sheet-in{from{transform:translateY(24px);opacity:.7}to{transform:none;opacity:1}}
 @media(max-width:560px){.nb-actions>strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.nb-cost-mode b{font-size:11px}.nb-project-menu{right:0}.nb-item-sheet header{grid-template-columns:56px 1fr 56px}}
+
+#notebookExportPage .page-body{padding:0 0 40px}
+#notebookExportPage .export-note-wrap{margin:0 0 14px;border-bottom:0}
+#notebookExportPage .export-row{display:grid;grid-template-columns:auto minmax(0,1fr) minmax(132px,34%);align-items:center;column-gap:12px}
+#notebookExportPage .export-row.sub{padding-right:16px}
+#notebookExportPage .export-title{min-width:0;padding-right:calc(var(--export-depth,0) * 18px);text-align:right}
+#notebookExportPage .row-cost{display:flex;direction:rtl;justify-content:flex-end;align-items:baseline;gap:4px;font-size:13px;white-space:nowrap}
+#notebookExportPage .row-cost small{font-size:11px;color:var(--text-dim)}
