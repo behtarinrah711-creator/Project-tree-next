@@ -55,8 +55,8 @@
 .wbs-deposit-body>.wbs-field .wbs-inline-description{min-height:52px;}
 .wbs-funding-toolbar{direction:rtl;padding:0 6px 0 10px;}
 .wbs-funding-title{font-size:11px;font-weight:700;color:var(--wbs-frame-title,#4d4741);}
-.wbs-funding-add{width:auto;min-width:92px;height:38px;padding:0 10px;display:flex;align-items:center;justify-content:center;gap:2px;border-radius:var(--wbs-frame-radius,5px);}
-.wbs-funding-add > span:first-child{font-size:21px;font-weight:400;line-height:1;}
+.wbs-funding-add{width:auto;min-width:0;height:38px;padding:0 10px;display:flex;flex-direction:row;direction:rtl;align-items:center;justify-content:center;gap:6px;border-radius:var(--wbs-frame-radius,5px);}
+.wbs-funding-add > span:first-child{font-size:18px;font-weight:400;line-height:1;}
 .wbs-funding-list{background:#fff;min-height:0;padding:0 12px;}
 .wbs-funding-row{width:100%;min-height:44px;box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:12px;direction:rtl;border-bottom:1px solid #eee8df;color:#4d4741;font-size:11px;}
 .wbs-funding-row.is-action{padding:0;border-top:0;border-right:0;border-left:0;background:transparent;font-family:inherit;cursor:pointer;}

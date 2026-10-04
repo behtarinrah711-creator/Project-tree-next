@@ -96,9 +96,9 @@ function budgetButton(project, refresh){
   const button = document.createElement('button');
   button.type = 'button';
   button.className = 'wbs-timescale-toggle wbs-funding-add';
-  button.setAttribute('aria-label', 'ثبت بودجه');
-  button.setAttribute('title', 'ثبت بودجه');
-  button.innerHTML = '<span aria-hidden="true">+</span><span class="wbs-timescale-label">ثبت بودجه</span>';
+  button.setAttribute('aria-label', 'دریافتی');
+  button.setAttribute('title', 'دریافتی');
+  button.innerHTML = '<span aria-hidden="true">+</span><span class="wbs-timescale-label">دریافتی</span>';
   button.addEventListener('click', () => openDepositSheet(project, refresh));
   return button;
 }
