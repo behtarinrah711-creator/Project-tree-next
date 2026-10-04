@@ -1,5 +1,6 @@
 import { COSTLINE_RANGES, WEEKDAYS, plannedCostline } from '../../domain/wbs/costline.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
+import { toPersianDigits } from '../../ui/digits.js';
 import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
 import { createViewToolbar } from './viewHeader.js';
 import { uid } from '../../data/projectFactories.js';
@@ -447,7 +448,7 @@ function openBucketSheet(project, bucket, refresh){
         const stage = document.createElement('span');
         stage.textContent = `مرحله ${work.text || '—'}`;
         heading.append(parent, stage);
-        const dateRow = costlineDetailRow('تاریخ', `از ${formatJalaliDisplay(work.start) || work.start || '—'} تا ${formatJalaliDisplay(work.end) || work.end || '—'}`);
+        const dateRow = costlineDetailRow('تاریخ', `${slashDate(work.start)} تا ${slashDate(work.end)}`);
         const totalRow = costlineDetailRow('برآورد کل', `${money(work.amount)} تومان`);
         const needRow = costlineDetailRow(sliceNeedLabel(), `${money(slice)} تومان`);
         const accrualOptions = [
@@ -501,7 +502,7 @@ function openBucketSheet(project, bucket, refresh){
         });
         paintMode();
         modeRow.append(modeLabel, mode, modeMenu);
-        card.append(heading, dateRow, modeRow, totalRow, needRow);
+        card.append(heading, modeRow, dateRow, totalRow, needRow);
         const assignLabel = document.createElement('span');
         assignLabel.className = 'wbs-costline-fund-slice';
         assignLabel.textContent = 'وجه اختصاص داده شده';
@@ -551,6 +552,13 @@ function openBucketSheet(project, bucket, refresh){
 }
 
 
+
+
+function slashDate(value){
+  const parts = String(value || '').split(/[\/\-]/);
+  if(parts.length < 3) return value || '—';
+  return parts.slice(0, 3).map(part => toPersianDigits(String(Number(part)))).join('/');
+}
 
 function sliceNeedLabel(){
   const range = COSTLINE_RANGES[rangeIndex] || COSTLINE_RANGES[1];
