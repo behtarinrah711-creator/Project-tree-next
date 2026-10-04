@@ -416,7 +416,7 @@ function costlineDetailRow(label, value, className = ''){
 
 function openBucketSheet(project, bucket, refresh){
   openWbsSheet({
-    title: `برآورد ${bucket.label}`,
+    title: `برآورد هزینه ${bucket.label}`,
     showSave: false,
     presentation: 'stage-create',
     onSave: () => true,
