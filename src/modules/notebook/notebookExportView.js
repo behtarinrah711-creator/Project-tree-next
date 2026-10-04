@@ -1,6 +1,7 @@
 import { loadProfile } from '../profile/profileStore.js';
 import { showToast } from '../../ui/toast.js';
 import { notebookItemCost } from '../../data/notebookRepository.js';
+import { toPersianDigits } from '../../ui/digits.js';
 
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const money = value => new Intl.NumberFormat('fa-IR').format(Number(value) || 0);
@@ -51,7 +52,7 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
     const body=chosen.map(row=>{
       const amount=notebookItemCost(row.item); total+=showCost?amount:0;
       const numbered=!!e.numbered?.checked;
-      const mark=numbered?`<td class="mark">${esc(nums.get(row.key))}</td>`:'';
+      const mark=numbered?`<td class="mark">${esc(toPersianDigits(nums.get(row.key)))}</td>`:'';
       const box=numbered?'':`<span class="box ${row.depth?'empty':'filled'}"></span>`;
       return `<tr>${mark}<td class="title ${row.depth?'child':'parent'}" style="padding-right:${row.depth*18+1}px">${box}${esc(row.item.text)}</td>${showCost?`<td class="cost">${money(amount)} <small>تومان</small></td>`:''}</tr>`;
     }).join('');
