@@ -135,6 +135,7 @@ export function installWorkspaceChrome({
     const menuTitle = MENU_TITLES[state.menuRootMode] || (profileVisible ? MENU_TITLES.profile : managementVisible ? MENU_TITLES.projects : '');
     const rootTitle = menuTitle || globalRouteTitle;
     documentRef.body?.classList?.toggle?.('global-surface', !!rootTitle);
+    documentRef.documentElement?.classList?.toggle?.('saosa-notebook-route', routeModuleId === 'notebook' || routeModuleId === 'notebook-export' || /^#\/notebook/i.test(windowRef.location?.hash || ''));
     if(rootTitle){
       setProjectChromeMounted(false);
       topbar?.classList?.remove?.('workspace-context');

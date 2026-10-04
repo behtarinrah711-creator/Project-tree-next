@@ -253,13 +253,17 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     }
     title?.classList.toggle('notebook-context', notebook);
     if(notebook){
+      documentRef.documentElement?.classList?.add?.('saosa-notebook-route');
+      documentRef.body?.classList?.add?.('global-surface');
+      title?.classList.add('global-menu-context');
+      title?.classList.remove('has-active-project');
       if(main) main.textContent = 'دفترچه یادداشت';
       if(projectLabel) projectLabel.textContent = '';
-      title?.classList.remove('has-active-project');
       title?.setAttribute('aria-haspopup', 'true');
       title?.setAttribute('aria-label', 'باز کردن منو از دفترچه یادداشت');
       return;
     }
+    documentRef.documentElement?.classList?.remove?.('saosa-notebook-route');
     title?.setAttribute('aria-haspopup', 'true');
     title?.setAttribute('aria-label', 'فهرست پروژه‌ها');
     if(moduleId !== 'dashboard' && moduleId !== 'tasks') return;
