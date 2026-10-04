@@ -433,7 +433,10 @@ function openBucketSheet(project, bucket, refresh){
       );
       host.appendChild(pool);
       if(!bucket.works.length){
-        host.append('کاری در این بازه نیست.');
+        const empty = document.createElement('p');
+        empty.className = 'wbs-costline-empty';
+        empty.textContent = 'کاری در این بازه نیست';
+        host.append(empty);
         return;
       }
       bucket.works.forEach(work => {
