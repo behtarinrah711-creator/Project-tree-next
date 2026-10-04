@@ -50,7 +50,7 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
     let total=0;
     const body=chosen.map(row=>{
       const amount=notebookItemCost(row.item); total+=showCost?amount:0;
-      const mark=e.numbered?.checked?esc(nums.get(row.key)):'□';
+      const mark=e.numbered?.checked?esc(nums.get(row.key)):`<span class="box ${row.depth?'empty':'filled'}"></span>`;
       return `<tr><td class="mark">${mark}</td><td class="title" style="padding-right:${row.depth*18+6}px">${esc(row.item.text)}</td>${showCost?`<td class="cost">${money(amount)} <small>تومان</small></td>`:''}</tr>`;
     }).join('');
     const profile=loadProfile(), includeSignature=!!e.signature?.checked;
@@ -58,7 +58,7 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
     const note=String(e.note?.value||'').trim();
     return `<section class="nb-export-document" dir="rtl"><header><h1>${esc(list.title)}</h1><time>${new Intl.DateTimeFormat('fa-IR').format(new Date())}</time></header><table><thead><tr><th></th><th>مورد</th>${showCost?'<th class="cost">هزینه</th>':''}</tr></thead><tbody>${body}${showCost?`<tr class="total"><td></td><td>جمع کل</td><td class="cost">${money(total)} <small>تومان</small></td></tr>`:''}</tbody></table>${note?`<p class="note">${esc(note)}</p>`:''}${signature}</section>`;
   }
-  const documentStyles=`body{font-family:Vazirmatn,Tahoma,sans-serif;color:#202124;margin:0;padding:14mm;direction:rtl}.nb-export-document header{display:flex;justify-content:space-between;align-items:start;margin-bottom:18px}.nb-export-document h1{font-size:21px;margin:0}.nb-export-document time{font-size:12px;color:#666}.nb-export-document table{width:100%;border-collapse:collapse}.nb-export-document th,.nb-export-document td{padding:8px 6px;border-bottom:1px solid #ddd;text-align:right}.nb-export-document th{border-bottom:2px solid #333;color:#666;font-size:12px}.nb-export-document .mark{width:42px;text-align:center}.nb-export-document .cost{text-align:left;white-space:nowrap}.nb-export-document small{font-size:10px;color:#666}.nb-export-document .total td{font-weight:700;border-top:2px solid #333}.nb-export-document .note{white-space:pre-wrap;margin-top:24px;padding-top:14px;border-top:1px solid #ddd}.nb-export-document .signature{margin-top:30px;text-align:left;display:flex;flex-direction:column;align-items:flex-start}.nb-export-document .signature img{max-width:180px;max-height:75px;object-fit:contain}.nb-export-document .signature span{font-size:11px;color:#666}`;
+  const documentStyles=`body{font-family:Vazirmatn,Tahoma,sans-serif;color:#202124;margin:0;padding:14mm;direction:rtl}.nb-export-document header{display:flex;justify-content:space-between;align-items:start;margin-bottom:18px}.nb-export-document h1{font-size:21px;margin:0}.nb-export-document time{font-size:12px;color:#666}.nb-export-document table{width:100%;border-collapse:collapse}.nb-export-document th,.nb-export-document td{padding:8px 6px;border-bottom:1px solid #ddd;text-align:right}.nb-export-document th{border-bottom:2px solid #333;color:#666;font-size:12px}.nb-export-document .mark{width:42px;text-align:center}.nb-export-document .box{display:inline-block;width:11px;height:11px;border:1.5px solid #000;box-sizing:border-box;vertical-align:middle}.nb-export-document .box.filled{background:#000}.nb-export-document .cost{text-align:left;white-space:nowrap}.nb-export-document small{font-size:10px;color:#666}.nb-export-document .total td{font-weight:700;border-top:2px solid #333}.nb-export-document .note{white-space:pre-wrap;margin-top:24px;padding-top:14px;border-top:1px solid #ddd}.nb-export-document .signature{margin-top:30px;text-align:left;display:flex;flex-direction:column;align-items:flex-start}.nb-export-document .signature img{max-width:180px;max-height:75px;object-fit:contain}.nb-export-document .signature span{font-size:11px;color:#666}`;
 
   function printPdf(){
     if(!selected.size){notify('حداقل یک مورد را انتخاب کنید');return;}
@@ -90,7 +90,17 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
     const jpeg=documentRef.createElement('button');jpeg.className='export-jpg-btn';jpeg.textContent='JPEG';jpeg.onclick=saveJpeg;
     actions.append(pdf,jpeg);e.toolbar.append(selectAll,actions);
     e.body.innerHTML=all.length?all.map(row=>`<label class="export-row ${row.depth?'sub':''}" style="--export-depth:${row.depth}"><input type="checkbox" data-export-key="${esc(row.key)}" ${selected.has(row.key)?'checked':''}><span>${esc(row.item.text)}</span>${e.cost.checked?`<span class="row-cost">${money(notebookItemCost(row.item))} <small>تومان</small></span>`:''}</label>`).join(''):'<div class="mgmt-empty">مورد بازی برای خروجی وجود ندارد.</div>';
-    e.body.querySelectorAll('[data-export-key]').forEach(input=>input.onchange=()=>{input.checked?selected.add(input.dataset.exportKey):selected.delete(input.dataset.exportKey);render();});
+    e.body.querySelectorAll('[data-export-key]').forEach(input=>input.onchange=()=>{
+      const key=input.dataset.exportKey;
+      const row=all.find(item=>item.key===key);
+      if(input.checked) selected.add(key);
+      else {
+        selected.delete(key);
+        const drop=item=>{for(const child of item?.children||[]){if(child.trashed||child.done)continue;selected.delete(child.id);drop(child);}};
+        drop(row?.item);
+      }
+      render();
+    });
   }
   function open(nextList,{trigger=null}={}){
     if(!nextList)return false; list=nextList;returnFocus=trigger;selected=new Set(rows().map(row=>row.key));
