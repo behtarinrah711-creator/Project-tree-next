@@ -105,6 +105,7 @@
     width:38px;height:38px;border-radius:50%;border:none;background:transparent;
     color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;
   }
+  #projectSettingsTrigger[hidden],html.saosa-notebook-route #projectSettingsTrigger{display:none!important}
   .icon-btn:active{background:var(--divider);}
   .account-trigger{
     display:flex;align-items:center;gap:4px;color:var(--text-dim);cursor:pointer;

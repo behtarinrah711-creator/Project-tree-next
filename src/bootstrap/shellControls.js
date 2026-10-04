@@ -243,8 +243,9 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     const project = windowRef.KarhaApp?.projectWorkspace?.getActiveProject?.();
     const projectScoped = /^#\/?projects?\//i.test(windowRef.location?.hash || '')
       && !!windowRef.KarhaRoute?.projectId;
-    setSettingsMounted(!notebook && projectScoped && !!project);
-    if(settingsTrigger) settingsTrigger.hidden = false;
+    const showSettings=!notebook && projectScoped && !!project;
+    setSettingsMounted(showSettings);
+    if(settingsTrigger) settingsTrigger.hidden = !showSettings;
     settingsTrigger?.classList?.toggle?.('active',settingsModules.has(moduleId));
     settingsTrigger?.setAttribute?.('aria-pressed',settingsModules.has(moduleId)?'true':'false');
     if(windowRef.KarhaWorkspaceChrome){
