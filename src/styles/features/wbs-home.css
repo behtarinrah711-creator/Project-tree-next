@@ -2,7 +2,7 @@ body:has(.wbs-home-root) #workspaceProjectContext,
 body:has(.wbs-home-root) #tabbar{display:none;}
 body:has(.wbs-home-root) .content{padding-top:0;background:#fff;}
 body:has(.wbs-home-root){background:#fff;}
-.wbs-home-root{padding-top:10px;background:#fff;--wbs-frame-border:#ded7cd;--wbs-frame-header-bg:#f7f4ef;--wbs-frame-title:#4d4741;--wbs-frame-radius:5px;--wbs-frame-header-height:42px;}
+.wbs-home-root{padding-top:10px;background:#fff;--wbs-frame-border:#ded7cd;--wbs-frame-header-bg:#f7f4ef;--wbs-frame-title:#4d4741;--wbs-frame-radius:5px;--wbs-frame-header-height:55px;}
 .wbs-card.wbs-row-dragging,.wbs-branch.wbs-row-dragging{opacity:.4;}
 .wbs-card,.wbs-branch{position:relative;}
 .wbs-card.wbs-drop-before,.wbs-card.wbs-drop-after{overflow:visible;}
@@ -224,7 +224,7 @@ body:has(.wbs-home-root){background:#fff;}
 .wbs-gantt.is-scale-enhanced .wbs-gantt-header{display:block;min-width:100%;}
 .wbs-gantt-header span{box-sizing:border-box;flex:0 0 auto;display:flex;align-items:center;justify-content:center;border-inline-end:1px solid #ded7cd;font-size:11px;color:#000;scroll-snap-align:start;transform:scaleX(-1);direction:rtl;unicode-bidi:plaintext;}
 .wbs-gantt-scale-header-canvas,.wbs-gantt-scale-canvas{display:block;overflow:visible;}
-.wbs-gantt-scale-label{box-sizing:border-box;width:100%;height:42px;display:flex;align-items:center;justify-content:center;padding:0 3px;border-inline-end:1px solid #ded7cd;font-size:11px;font-weight:500;color:#6f675d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transform:scaleX(-1);direction:rtl;unicode-bidi:plaintext;}
+.wbs-gantt-scale-label{box-sizing:border-box;width:100%;height:var(--wbs-frame-header-height,55px);display:flex;align-items:center;justify-content:center;padding:0 3px;border-inline-end:1px solid #ded7cd;font-size:11px;font-weight:500;color:#6f675d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transform:scaleX(-1);direction:rtl;unicode-bidi:plaintext;}
 .wbs-gantt-scale-gridline{stroke:#e7e2db;stroke-width:1;vector-effect:non-scaling-stroke;}
 .wbs-gantt-line{position:relative;overflow:visible;}
 .wbs-gantt.is-scale-enhanced .wbs-gantt-line{width:max-content;min-width:100%;}
