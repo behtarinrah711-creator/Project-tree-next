@@ -428,7 +428,7 @@ function openBucketSheet(project, bucket, refresh){
       const pool = document.createElement('div');
       pool.className = 'wbs-costline-balance';
       pool.append(
-        Object.assign(document.createElement('span'), { textContent:'مانده بودجه' }),
+        Object.assign(document.createElement('span'), { textContent:'مانده دریافتی' }),
         Object.assign(document.createElement('span'), { textContent:`${money(poolRemaining(current))} تومان` }),
       );
       host.appendChild(pool);
