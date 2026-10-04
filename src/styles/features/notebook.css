@@ -17,9 +17,9 @@
 
 #notebookExportPage .page-body{padding:0 0 40px}
 #notebookExportPage .export-note-wrap{margin:0 0 14px;border-bottom:0}
-#notebookExportPage .export-row{display:grid;grid-template-columns:auto minmax(0,1fr) max-content;align-items:center;column-gap:10px}
-#notebookExportPage .export-row.sub{padding-right:16px}
-#notebookExportPage .export-title{min-width:0;padding-right:calc(var(--export-depth,0) * 18px);text-align:right;font-size:13px;line-height:1.45;font-weight:400}
+#notebookExportPage .export-row{display:grid;grid-template-columns:auto minmax(0,1fr) max-content;align-items:center;column-gap:10px;padding-right:calc(16px + var(--export-depth,0) * 18px)}
+#notebookExportPage .export-row.sub{padding-right:calc(16px + var(--export-depth,0) * 18px)}
+#notebookExportPage .export-title{min-width:0;text-align:right;font-size:13px;line-height:1.45;font-weight:400}
 #notebookExportPage .export-row:not(.sub) .export-title{font-weight:700}
 #notebookExportPage .row-cost{display:flex;direction:rtl;justify-content:flex-end;align-items:baseline;gap:4px;font-size:13px;white-space:nowrap}
 #notebookExportPage .row-cost small{font-size:11px;color:var(--text-dim)}
