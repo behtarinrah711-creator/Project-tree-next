@@ -68,4 +68,4 @@
 .wbs-funding-row:last-child{border-bottom:0;}
 .wbs-funding-row.is-summary{font-weight:700;}
 .wbs-funding-amount{direction:rtl;text-align:left;white-space:nowrap;font-family:'IRANSansX',Tahoma,sans-serif;}
-.wbs-costline-manual{width:100%;min-height:30px;margin-top:6px;padding:0;border:0;background:transparent;color:#1267b2;font:inherit;font-weight:700;text-align:right;cursor:pointer;}
+.wbs-costline-manual{width:100%;min-height:30px;margin-top:6px;padding:0;border:0;background:transparent;color:#033E8A;font:inherit;font-weight:700;text-align:right;cursor:pointer;}
