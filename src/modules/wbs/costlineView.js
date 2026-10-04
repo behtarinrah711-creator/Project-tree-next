@@ -447,12 +447,9 @@ function openBucketSheet(project, bucket, refresh){
         const stage = document.createElement('span');
         stage.textContent = `مرحله ${work.text || '—'}`;
         heading.append(parent, stage);
-        card.append(
-          heading,
-          costlineDetailRow('تاریخ', `از ${formatJalaliDisplay(work.start) || work.start || '—'} تا ${formatJalaliDisplay(work.end) || work.end || '—'}`),
-          costlineDetailRow('برآورد کل', `${money(work.amount)} تومان`),
-          costlineDetailRow(sliceNeedLabel(), `${money(slice)} تومان`),
-        );
+        const dateRow = costlineDetailRow('تاریخ', `از ${formatJalaliDisplay(work.start) || work.start || '—'} تا ${formatJalaliDisplay(work.end) || work.end || '—'}`);
+        const totalRow = costlineDetailRow('برآورد کل', `${money(work.amount)} تومان`);
+        const needRow = costlineDetailRow(sliceNeedLabel(), `${money(slice)} تومان`);
         const accrualOptions = [
           { id:'spread', name:'پخش روی مدت' },
           { id:'start', name:'ابتدای کار' },
@@ -504,10 +501,10 @@ function openBucketSheet(project, bucket, refresh){
         });
         paintMode();
         modeRow.append(modeLabel, mode, modeMenu);
-        card.appendChild(modeRow);
+        card.append(heading, dateRow, modeRow, totalRow, needRow);
         const assignLabel = document.createElement('span');
         assignLabel.className = 'wbs-costline-fund-slice';
-        assignLabel.textContent = 'اختصاص وجه';
+        assignLabel.textContent = 'وجه اختصاص داده شده';
         const manual = document.createElement('button');
         manual.type = 'button';
         manual.className = 'wbs-costline-manual';
