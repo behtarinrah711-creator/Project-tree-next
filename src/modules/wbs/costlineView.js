@@ -140,7 +140,7 @@ function depositRow(label, control){
 function openDepositSheet(project, refresh, receipt = null){
   const editing = Boolean(receipt);
   openWbsSheet({
-    title: editing ? 'ویرایش بودجه' : 'ثبت بودجه',
+    title: editing ? 'ویرایش دریافتی' : 'ثبت دریافتی',
     saveLabel: 'ذخیره',
     presentation: 'stage-create',
     autoFocus: false,
