@@ -52,7 +52,7 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
       const amount=notebookItemCost(row.item); total+=showCost?amount:0;
       const mark=e.numbered?.checked?esc(nums.get(row.key)):'';
       const box=e.numbered?.checked?'':`<span class="box ${row.depth?'empty':'filled'}"></span>`;
-      return `<tr><td class="mark">${mark}</td><td class="title ${row.depth?'child':'parent'}" style="padding-right:${row.depth*18+6}px">${box}${esc(row.item.text)}</td>${showCost?`<td class="cost">${money(amount)} <small>تومان</small></td>`:''}</tr>`;
+      return `<tr><td class="mark">${mark}</td><td class="title ${row.depth?'child':'parent'}" style="padding-right:${row.depth*18+1}px">${box}${esc(row.item.text)}</td>${showCost?`<td class="cost">${money(amount)} <small>تومان</small></td>`:''}</tr>`;
     }).join('');
     const profile=loadProfile(), includeSignature=!!e.signature?.checked;
     const signature=includeSignature&&profile.name&&profile.signature?`<div class="signature"><img src="${profile.signature}" alt="امضا"><span>${esc(profile.name)}</span></div>`:'';
