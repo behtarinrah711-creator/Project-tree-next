@@ -60,7 +60,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
   }
   function actionButton(action,label,icon,danger=false){return `<button type="button" class="nb-action-icon ${danger?'danger':''}" data-project-action="${action}" title="${label}" aria-label="${label}">${icon}</button>`;}
   function actionsHtml(list,starredMode){
-    if(starredMode)return'<div class="nb-actions"><strong>ستاره‌دارها</strong></div>';
+    if(starredMode)return'';
     const total=sumCost(list.items);
     return `<div class="nb-actions">${menuOpen?'<button type="button" class="nb-menu-dismiss" data-menu-dismiss aria-label="بستن منو"></button>':''}<div class="nb-project-menu-wrap"><button type="button" class="nb-more" data-menu-toggle aria-label="${menuOpen?'بستن منو':'عملیات بیشتر'}" aria-expanded="${menuOpen}">${menuOpen?closeMenu:more}</button>${menuOpen?`<div class="nb-project-menu">
       ${actionButton('rename','ویرایش نام',notebookIcons.edit)}${actionButton('export','خروجی',notebookIcons.export)}${actionButton('trash','حذف‌شده‌ها',notebookIcons.deleted)}${actionButton('delete','حذف',notebookIcons.trash,true)}
