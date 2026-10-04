@@ -420,6 +420,7 @@ function openBucketSheet(project, bucket, refresh){
     presentation: 'stage-create',
     onSave: () => true,
     body(host){
+      host.classList.add('wbs-costline-sheet');
       const paint = () => {
         host.replaceChildren();
       const current = projectRepository.getActiveProject(project.id) || project;
