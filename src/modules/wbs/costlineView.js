@@ -273,15 +273,15 @@ function renderFundingPanel(project, refresh){
   header.className = 'wbs-view-header wbs-view-toolbar wbs-funding-toolbar';
   const title = document.createElement('strong');
   title.className = 'wbs-funding-title';
-  title.textContent = 'بودجه‌های تأمین‌شده';
+  title.textContent = 'دریافتی‌ها';
   header.append(title, budgetButton(project, refresh));
 
   const body = document.createElement('div');
   body.className = 'wbs-funding-list wbs-view-body';
   const receipts = fundingReceiptsOf(project);
   body.append(
-    fundingRow('مجموع دریافتی تاکنون:', `${money(receipts.reduce((sum, row) => sum + (Number(row.amount) || 0), 0))} تومان`, 'is-summary'),
-    fundingRow('مانده تخصیص داده نشده:', `${money(poolRemaining(project))} تومان`, 'is-summary'),
+    fundingRow('مجموع دریافتی:', `${money(receipts.reduce((sum, row) => sum + (Number(row.amount) || 0), 0))} تومان`, 'is-summary'),
+    fundingRow('مانده:', `${money(poolRemaining(project))} تومان`, 'is-summary'),
   );
   receipts
     .map((receipt, index) => ({ receipt, number:index + 1 }))
