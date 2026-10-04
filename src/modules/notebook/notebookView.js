@@ -70,7 +70,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     if(!sheetItemId)return'';const hit=locate(repository.get(),sheetItemId);if(!hit)return'';
     const cost=notebookItemCost(hit.item),locked=notebookItemCostLocked(hit.item);
     return `<div class="nb-sheet-backdrop" data-sheet-close><section class="nb-item-sheet" role="dialog" aria-modal="true" aria-labelledby="nbSheetTitle" data-sheet-panel>
-      <header><button type="button" data-sheet-close aria-label="بستن">×</button><h2 id="nbSheetTitle">ویرایش: <span id="nbSheetName" contenteditable="true" role="textbox" aria-label="عنوان">${esc(hit.item.text)}</span></h2><button type="button" data-sheet-save>ذخیره</button></header>
+      <header><button type="button" data-sheet-close aria-label="بستن">×</button><h2 id="nbSheetTitle"><span id="nbSheetName" contenteditable="true" role="textbox" aria-label="عنوان">${esc(hit.item.text)}</span></h2><button type="button" data-sheet-save>ذخیره</button></header>
       <label>هزینه<button type="button" id="nbSheetCost" data-value="${esc(hit.item.cost??'')}" ${locked?'disabled':''}>${formatCost(cost)} <small>تومان</small></button>${locked?'<em>هزینه از مجموع زیردسته‌ها محاسبه شده است.</em>':''}</label>
       <button type="button" class="nb-sheet-child" data-sheet-child>${notebookIcons.child}<span>افزودن زیردسته</span></button>
       <button type="button" class="nb-sheet-delete" data-sheet-delete>حذف</button>
