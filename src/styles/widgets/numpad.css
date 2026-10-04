@@ -9,7 +9,11 @@
   .detail-cost-display:active{border-color:var(--green);background:var(--green-soft);}
 
   .numpad-dialog{
-    background:var(--surface);border-radius:16px;padding:18px;width:100%;max-width:320px;
+    position:relative;background:var(--surface);border-radius:16px;padding:28px 18px 18px;width:100%;max-width:320px;
+  }
+  .numpad-close{
+    position:absolute;top:8px;left:12px;border:0;background:transparent;color:var(--danger);
+    font-size:28px;font-weight:700;line-height:1;cursor:pointer;
   }
   .numpad-display{
     font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:var(--text);
@@ -31,10 +35,6 @@
   .numpad-key.numpad-done{background:var(--green);color:#fff;}
   .numpad-key.numpad-done:active{background:#00075D;}
   .numpad-key.numpad-backspace{color:var(--text-dim);}
-  .numpad-cancel{
-    width:100%;margin-top:12px;padding:10px;border:none;background:transparent;
-    color:var(--text-dim);font-family:inherit;font-size:14px;cursor:pointer;
-  }
 
   .detail-star-row{
     display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:14px;color:var(--text-dim);cursor:pointer;
