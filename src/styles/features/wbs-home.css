@@ -141,6 +141,7 @@ body:has(.wbs-home-root){background:#fff;}
 /* Shared WBS view frame. All six views use the same header/body surface tokens. */
 .wbs-view-frame{box-sizing:border-box;border:1px solid var(--wbs-frame-border);border-radius:var(--wbs-frame-radius);overflow:hidden;background:#fff;}
 .wbs-view-frame.is-standard-view{margin:0 10px 24px;}
+.wbs-view-frame.is-standard-view > .wbs-view-header{border:1px solid var(--wbs-frame-border);border-radius:var(--wbs-frame-radius);}
 .wbs-view-header,.wbs-view-header-surface{box-sizing:border-box;height:var(--wbs-frame-header-height);background:var(--wbs-frame-header-bg);border-bottom:1px solid var(--wbs-frame-border);color:var(--wbs-frame-title);}
 .wbs-view-header{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:0 6px 0 10px;}
 .wbs-view-title{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:700;color:var(--wbs-frame-title);}
