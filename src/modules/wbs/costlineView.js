@@ -452,7 +452,6 @@ function openBucketSheet(project, bucket, refresh){
           costlineDetailRow('تاریخ', `از ${formatJalaliDisplay(work.start) || work.start || '—'} تا ${formatJalaliDisplay(work.end) || work.end || '—'}`),
           costlineDetailRow('برآورد کل', `${money(work.amount)} تومان`),
           costlineDetailRow(sliceNeedLabel(), `${money(slice)} تومان`),
-          costlineDetailRow('وجه اختصاص داده شده', `${money(covered)} تومان`),
         );
         const accrualOptions = [
           { id:'spread', name:'پخش روی مدت' },
