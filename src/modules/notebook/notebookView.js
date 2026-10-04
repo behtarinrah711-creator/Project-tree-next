@@ -64,7 +64,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     const total=sumCost(list.items);
     return `<div class="nb-actions">${menuOpen?'<button type="button" class="nb-menu-dismiss" data-menu-dismiss aria-label="بستن منو"></button>':''}<div class="nb-project-menu-wrap"><button type="button" class="nb-more" data-menu-toggle aria-label="${menuOpen?'بستن منو':'عملیات بیشتر'}" aria-expanded="${menuOpen}">${menuOpen?closeMenu:more}</button>${menuOpen?`<div class="nb-project-menu">
       ${actionButton('rename','ویرایش نام',notebookIcons.edit)}${actionButton('export','خروجی',notebookIcons.export)}${actionButton('trash','حذف‌شده‌ها',notebookIcons.deleted)}${actionButton('delete','حذف',notebookIcons.trash,true)}
-    </div>`:''}</div><strong>${esc(list.title)}</strong><label class="nb-cost-mode ${list.showCost?'active':''}" title="نمایش هزینه"><input type="checkbox" data-cost-toggle ${list.showCost?'checked':''}><span>${dollar}</span>${list.showCost?`<b>${formatCost(total)} <small>تومان</small></b>`:''}</label></div>`;
+    </div>`:''}</div><label class="nb-cost-mode ${list.showCost?'active':''}" title="نمایش هزینه"><input type="checkbox" data-cost-toggle ${list.showCost?'checked':''}><span>${dollar}</span>${list.showCost?`<b>${formatCost(total)} <small>تومان</small></b>`:''}</label></div>`;
   }
   function sheetHtml(){
     if(!sheetItemId)return'';const hit=locate(repository.get(),sheetItemId);if(!hit)return'';
