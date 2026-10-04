@@ -21,7 +21,7 @@ export function createViewToolbar(documentRef, {
   includeExport = true,
 } = {}){
   const header = documentRef.createElement('div');
-  header.className = `wbs-view-header wbs-view-toolbar${className ? ` ${className}` : ''}`;
+  header.className = `wbs-view-header wbs-view-toolbar wbs-frame-header${className ? ` ${className}` : ''}`;
 
   const actions = documentRef.createElement('div');
   actions.className = 'wbs-view-actions';

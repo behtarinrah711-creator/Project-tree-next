@@ -271,7 +271,7 @@ function renderFundingPanel(project, refresh){
   const frame = document.createElement('section');
   frame.className = 'wbs-funding-frame wbs-view-frame';
   const header = document.createElement('div');
-  header.className = 'wbs-view-header wbs-view-toolbar wbs-funding-toolbar';
+  header.className = 'wbs-view-header wbs-view-toolbar wbs-frame-header wbs-funding-toolbar';
   const title = document.createElement('strong');
   title.className = 'wbs-funding-title';
   title.textContent = 'دریافتی‌ها';
