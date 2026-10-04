@@ -505,24 +505,9 @@ function openBucketSheet(project, bucket, refresh){
         paintMode();
         modeRow.append(modeLabel, mode, modeMenu);
         card.appendChild(modeRow);
-        const tick = document.createElement('label');
-        tick.className = 'wbs-costline-fund-slice';
-        const box = document.createElement('input');
-        box.type = 'checkbox';
-        box.checked = covered + 1 >= slice && slice > 0;
-        box.addEventListener('change', () => {
-          const live = projectRepository.getActiveProject(project.id) || project;
-          const nextAmount = box.checked ? slice : 0;
-          if(nextAmount > bucketFundingLimit(live, work, bucket)){
-            box.checked = false;
-            window.KarhaUI?.showToast?.('مانده بودجه کافی نیست');
-            return;
-          }
-          saveBucketFunding(project.id, work.id, bucket, nextAmount);
-          refresh();
-          paint();
-        });
-        tick.append(box, document.createTextNode(' تأمین وجه کامل این بازه'));
+        const assignLabel = document.createElement('span');
+        assignLabel.className = 'wbs-costline-fund-slice';
+        assignLabel.textContent = 'اختصاص وجه';
         const manual = document.createElement('button');
         manual.type = 'button';
         manual.className = 'wbs-costline-manual';
@@ -558,7 +543,7 @@ function openBucketSheet(project, bucket, refresh){
         paintManual();
         const allocationRow = document.createElement('div');
         allocationRow.className = 'wbs-costline-allocation-row';
-        allocationRow.append(tick, manual);
+        allocationRow.append(assignLabel, manual);
         card.appendChild(allocationRow);
         host.appendChild(card);
       });
