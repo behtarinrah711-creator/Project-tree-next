@@ -93,9 +93,11 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
     const pdf=documentRef.createElement('button');pdf.className='export-pdf-btn';pdf.textContent='PDF';pdf.onclick=printPdf;
     const jpeg=documentRef.createElement('button');jpeg.className='export-jpg-btn';jpeg.textContent='JPEG';jpeg.onclick=saveJpeg;
     actions.append(pdf,jpeg);e.toolbar.append(selectAll,actions);
+    const noteValue=e.note?.value||'';
     const note=e.note?.closest?.('.export-note-wrap')?.outerHTML||'';
     e.body.innerHTML=`${note}${all.length?all.map(row=>`<label class="export-row ${row.depth?'sub':''}" style="--export-depth:${row.depth}"><input type="checkbox" data-export-key="${esc(row.key)}" ${selected.has(row.key)?'checked':''}><span class="export-title">${esc(row.item.text)}</span>${e.cost.checked?`<span class="row-cost"><b>${money(notebookItemCost(row.item))}</b><small>تومان</small></span>`:'<span class="row-cost"></span>'}</label>`).join(''):'<div class="mgmt-empty">مورد بازی برای خروجی وجود ندارد.</div>'}`;
-    if(e.note) e.note=documentRef.getElementById('notebookExportNote');
+    const noteInput=documentRef.getElementById('notebookExportNote');
+    if(noteInput) noteInput.value=noteValue;
     e.body.querySelectorAll('[data-export-key]').forEach(input=>input.onchange=()=>{
       const key=input.dataset.exportKey;
       const row=all.find(item=>item.key===key);
