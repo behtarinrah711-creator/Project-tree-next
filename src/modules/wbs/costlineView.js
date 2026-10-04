@@ -439,14 +439,19 @@ function openBucketSheet(project, bucket, refresh){
         const covered = allocatedForBucket(current, work.id, bucket);
         const card = document.createElement('article');
         card.className = 'wbs-costline-work';
+        const heading = document.createElement('div');
+        heading.className = 'wbs-costline-work-heading';
+        const parent = document.createElement('strong');
+        parent.textContent = work.path || work.text || '—';
+        const stage = document.createElement('span');
+        stage.textContent = `مرحله ${work.text || '—'}`;
+        heading.append(parent, stage);
         card.append(
-          costlineDetailRow('عنوان کار', work.text || '—', 'is-title'),
-          costlineDetailRow('مرحله', work.path || '—'),
-          costlineDetailRow('شروع', formatJalaliDisplay(work.start) || work.start || '—'),
-          costlineDetailRow('پایان', formatJalaliDisplay(work.end) || work.end || '—'),
-          costlineDetailRow('کل برآورد', `${money(work.amount)} تومان`),
-          costlineDetailRow('سهم این بازه', `${money(slice)} تومان`),
-          costlineDetailRow('تأمین‌شده', `${money(covered)} تومان`),
+          heading,
+          costlineDetailRow('تاریخ', `از ${formatJalaliDisplay(work.start) || work.start || '—'} تا ${formatJalaliDisplay(work.end) || work.end || '—'}`),
+          costlineDetailRow('برآورد کل', `${money(work.amount)} تومان`),
+          costlineDetailRow(sliceNeedLabel(), `${money(slice)} تومان`),
+          costlineDetailRow('وجه اختصاص داده شده', `${money(covered)} تومان`),
         );
         const accrualOptions = [
           { id:'spread', name:'پخش روی مدت' },
@@ -517,7 +522,7 @@ function openBucketSheet(project, bucket, refresh){
           refresh();
           paint();
         });
-        tick.append(box, document.createTextNode(' تأمین همین برش'));
+        tick.append(box, document.createTextNode(' تأمین وجه کامل این بازه'));
         const manual = document.createElement('button');
         manual.type = 'button';
         manual.className = 'wbs-costline-manual';
@@ -563,6 +568,13 @@ function openBucketSheet(project, bucket, refresh){
   });
 }
 
+
+
+function sliceNeedLabel(){
+  const range = COSTLINE_RANGES[rangeIndex] || COSTLINE_RANGES[1];
+  const period = { day:'این تاریخ', week:'این هفته', week2:'این دوهفته', month:'این ماه', quarter:'این فصل', year:'این سال' }[range.id] || 'این بازه';
+  return `وجه مورد نیاز ${period}`;
+}
 
 function accrualChangeCopy(from, to, amount, work){
   const funded = `${money(amount)} تومان`;
