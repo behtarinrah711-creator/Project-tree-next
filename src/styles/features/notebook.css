@@ -28,10 +28,11 @@
 html.saosa-notebook-route .nb-order-entry{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;margin-inline-start:auto;border:0;background:transparent;color:#4d4741;cursor:pointer}
 html.saosa-notebook-route .nb-order-entry svg{width:22px;height:22px;fill:currentColor}
 .nb-order-page{position:fixed;inset:0;z-index:80;background:#fff;display:flex;flex-direction:column}
-.nb-order-head{display:flex;align-items:center;direction:rtl;min-height:56px;padding:0 16px;background:#fff;border-bottom:1px solid var(--divider)}
+.nb-order-head{display:flex;align-items:center;direction:rtl;min-height:56px;padding:0 16px;background:var(--bg);border-bottom:1px solid var(--divider)}
 .nb-order-head h1{margin:0;font-size:16px;font-weight:700;color:#111}
-.nb-order-back{margin-inline-start:auto;border:0;background:transparent;color:#111;font-size:32px;line-height:1;cursor:pointer}
+.nb-order-back{margin-inline-start:auto;width:36px;height:36px;border:0;background:transparent;color:#111;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.nb-order-back svg{width:22px;height:22px;display:block}
 .nb-order-list{overflow:auto}
 .nb-order-row{display:flex;align-items:center;direction:rtl;min-height:48px;padding:0 16px;border-bottom:1px solid var(--divider);background:#fff}
-.nb-order-row span{flex:1;font-size:13px;font-weight:400;text-align:right}
+.nb-order-row span{flex:1;font-size:15px;font-weight:400;text-align:right}
 .nb-order-row .nb-grip{width:20px;height:20px;flex:none}

@@ -136,7 +136,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
   function orderHtml(){
     if(!orderOpen) return '';
     const lists=available(repository.get());
-    return `<section class="nb-order-page" aria-label="ترتیب نمایش"><header class="nb-order-head"><h1>ترتیب نمایش</h1><button type="button" class="nb-order-back" data-order-back aria-label="بازگشت">&#x2039;</button></header><div class="nb-order-list">${lists.map(list=>`<div class="nb-order-row" data-id="${esc(list.id)}"><span>${esc(list.title)}</span><span class="nb-grip" aria-label="جابه‌جایی">${grip}</span></div>`).join('')}</div></section>`;
+    return `<section class="nb-order-page" aria-label="ترتیب نمایش"><header class="nb-order-head"><h1>ترتیب نمایش</h1><button type="button" class="nb-order-back" data-order-back aria-label="بازگشت"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></header><div class="nb-order-list">${lists.map(list=>`<div class="nb-order-row" data-id="${esc(list.id)}"><span>${esc(list.title)}</span><span class="nb-grip" aria-label="جابه‌جایی">${grip}</span></div>`).join('')}</div></section>`;
   }
   function bindOrder(body){
     body.querySelector('[data-order-back]')?.addEventListener('click',()=>{orderOpen=false;render();});
