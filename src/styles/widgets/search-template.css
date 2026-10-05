@@ -44,7 +44,7 @@
   order:3;
 }
 .stpl-title{
-  margin:0;font-size:17px;font-weight:500;color:#fff;
+  margin:0;font-size:17px;font-weight:600;color:#fff;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
   direction:rtl;
 }
@@ -76,7 +76,7 @@
 .stpl-section-label{
   position:sticky;top:0;z-index:2;
   padding:12px 18px 8px;
-  font-size:13px;font-weight:500;color:var(--text-dim,#5f6368);
+  font-size:13px;font-weight:600;color:var(--text-dim,#5f6368);
   background:#fff;text-align:right;
   border-bottom:1px solid var(--divider,#e8eaed);
 }
@@ -100,7 +100,7 @@
 .stpl-avatar{
   width:44px;height:44px;border-radius:50%;flex-shrink:0;
   display:flex;align-items:center;justify-content:center;
-  color:#fff;font-size:15px;font-weight:500;
+  color:#fff;font-size:15px;font-weight:600;
   background:var(--primary,#00075D);
 }
 .stpl-avatar.c0{background:#3b5bdb;}
@@ -110,7 +110,7 @@
 .stpl-avatar.c4{background:#e67700;}
 .stpl-avatar.c5{background:#2b8a3e;}
 .stpl-name{
-  flex:1;min-width:0;font-size:15px;font-weight:500;color:var(--text,#202124);
+  flex:1;min-width:0;font-size:15px;font-weight:600;color:var(--text,#202124);
   text-align:right;line-height:1.45;overflow-wrap:anywhere;
 }
 .stpl-star{

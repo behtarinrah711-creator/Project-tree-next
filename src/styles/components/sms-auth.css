@@ -3,7 +3,7 @@
 .sms-auth-header{min-height:78px;padding:env(safe-area-inset-top) 16px 0;display:grid;grid-template-columns:44px 1fr 44px;align-items:center;background:#f1f3f4;border-bottom:1px solid #ececec;text-align:center;box-sizing:content-box;}
 .sms-auth-screen[data-step='code'] .sms-auth-header{background:#f1f3f4;}
 .sms-auth-title-brand{display:flex;flex-direction:column;align-items:center;font-size:14px;line-height:1.4;}
-.sms-auth-title-brand strong{font-size:14px;font-weight:500;}
+.sms-auth-title-brand strong{font-size:14px;font-weight:600;}
 .sms-auth-title-brand span{font-size:14px;font-weight:400;}
 .sms-auth-back{border:0;background:transparent;font:inherit;font-size:26px;width:44px;height:44px;color:inherit;cursor:pointer;}
 .sms-auth-form{width:auto;min-width:0;min-height:0;margin:12px 16px;padding:clamp(20px,5vw,32px);box-sizing:border-box;border-radius:18px;background:#fff;display:flex;flex:1 1 auto;flex-direction:column;justify-content:center;overflow:hidden;}
@@ -14,7 +14,7 @@
 .sms-auth-input.invalid,.sms-auth-input.invalid:focus{border-color:#c62828;box-shadow:0 0 0 2px rgba(198,40,40,.12);}
 .sms-auth-input.sms-code{font-size:25px;letter-spacing:7px;}
 .sms-auth-error{min-height:14px!important;margin:8px 2px 6px!important;color:#c62828!important;font-size:12px!important;text-align:right!important;}
-.sms-auth-submit{height:54px;border:0;border-radius:12px;background:#00075d;color:#fff;font:inherit;font-weight:500;cursor:pointer;}
+.sms-auth-submit{height:54px;border:0;border-radius:12px;background:#00075d;color:#fff;font:inherit;font-weight:600;cursor:pointer;}
 .sms-auth-submit:disabled,.sms-auth-resend:disabled{opacity:.55;cursor:default;}
-.sms-auth-resend{align-self:center;margin-top:18px;border:0;background:transparent;color:#00075d;font:inherit;font-size:13px;font-weight:500;cursor:pointer;}
+.sms-auth-resend{align-self:center;margin-top:18px;border:0;background:transparent;color:#00075d;font:inherit;font-size:13px;font-weight:600;cursor:pointer;}
 body.sms-auth-open{overflow:hidden;}

@@ -350,27 +350,27 @@ function generateProjectPdf(){
   @page { margin: 14mm; }
   body { font-family:'IRANSansX'; color: #202124; margin: 0; padding: 8px 4px; }
   .pdf-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
-  h1 { font-size: 20px; margin: 0; font-weight:500; flex: 1; text-align: right; }
+  h1 { font-size: 20px; margin: 0; font-weight:600; flex: 1; text-align: right; }
   .meta { font-size: 12px; color: #5f6368; margin: 0; flex-shrink: 0; text-align: left; direction: rtl; white-space: nowrap; }
   .pdf-note { margin-top: 22px; padding-top: 14px; border-top: 1px solid #e8eaed; font-size: 13.5px; line-height: 1.7; color: #00075D; white-space: pre-wrap; }
   .pdf-sig { margin-top: 28px; text-align: left; direction: ltr; }
   .pdf-sig img { max-width: 180px; max-height: 70px; object-fit: contain; display: block; margin-left: 0; }
-  .pdf-sig-name { margin-top: 4px; font-size: 11px; font-weight: 500; color: #5f6368; text-align: left; direction: rtl; unicode-bidi: isolate; }
+  .pdf-sig-name { margin-top: 4px; font-size: 11px; font-weight:600; color: #5f6368; text-align: left; direction: rtl; unicode-bidi: isolate; }
   table { width: 100%; border-collapse: collapse; }
   th { text-align: right; padding: 8px 6px; border-bottom: 2px solid #202124; font-size: 12px; color: #5f6368; font-weight: 600; }
   th.cost-head { text-align: left; direction: ltr; unicode-bidi: isolate; }
-  th.cost-head .unit { font-weight: 500; margin-right: 4px; }
+  th.cost-head .unit { font-weight:600; margin-right: 4px; }
   td { padding: 7px 6px; vertical-align: top; border-bottom: 1px solid #e8eaed; }
   td.mark { width: 36px; text-align: center; font-size: 14px; line-height: 1.4; color: #202124; }
   td.parent-mark { font-size: 13px; }
   td.parent-num {
     font-family:'IRANSansX';
-    font-size: 16px; font-weight:500; color: #202124;
+    font-size: 16px; font-weight:600; color: #202124;
     text-align: center; width: 40px;
   }
   td.child-mark { font-size: 14px; color: #5f6368; padding-right: 28px; }
   td.title { font-size: 14px; line-height: 1.45; }
-  td.parent-title { font-weight:500; }
+  td.parent-title { font-weight:600; }
   td.child-title { font-size: 13.5px; padding-right: 28px; color: #3c4043; }
   td.cost-cell { text-align: left; white-space: nowrap; }
   .row-cost {
@@ -387,7 +387,7 @@ function generateProjectPdf(){
   .row-cost .cost-unit {
     font-family:'IRANSansX';
     font-size: 10px;
-    font-weight: 500;
+    font-weight:600;
     color: #5f6368;
   }
   tr.total-row .row-cost { font-size: 14px; }
@@ -397,7 +397,7 @@ function generateProjectPdf(){
     border-bottom: none;
     border-top: 2px solid #202124;
     padding-top: 12px;
-    font-weight:500;
+    font-weight:600;
   }
   tr.total-row .amount { font-size: 16px; color: #202124; }
   @media print {
@@ -433,7 +433,7 @@ function generateProjectPdf(){
     border-top:1px solid var(--divider);display:flex;gap:10px;
   }
   .st-save-bar button{
-    flex:1;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:15px;font-weight:500;cursor:pointer;
+    flex:1;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;
   }
   .st-save-bar .st-save{background:var(--green);color:#fff;}
   .st-save-bar .st-export{background:#202124;color:#fff;}
@@ -445,14 +445,14 @@ function generateProjectPdf(){
     background:#fff;border-radius:14px;padding:14px 12px 16px;width:min(320px,100%);
     box-shadow:0 12px 40px rgba(0,0,0,.18);
   }
-  .jalali-head{display:flex;align-items:center;justify-content:space-between;direction:ltr;margin-bottom:10px;color:var(--green);font-weight:500;font-size:15px;} .jalali-head span{direction:rtl;}
+  .jalali-head{display:flex;align-items:center;justify-content:space-between;direction:ltr;margin-bottom:10px;color:var(--green);font-weight:600;font-size:15px;} .jalali-head span{direction:rtl;}
   .jalali-head button{border:none;background:transparent;color:var(--green);font-size:18px;cursor:pointer;padding:4px 10px;}
   .jalali-week{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:12px;color:var(--text-dim);margin-bottom:6px;}
   .jalali-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;}
   .jalali-days button{
     border:none;background:transparent;font-family:inherit;font-size:14px;padding:8px 0;border-radius:50%;cursor:pointer;color:var(--text);
   }
-  .jalali-days button.today{font-weight:500;}
+  .jalali-days button.today{font-weight:600;}
   .jalali-days button.selected{background:var(--green);color:#fff;}
   .jalali-days button.muted{color:#c4c7c5;pointer-events:none;}
   .st-list-row{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--divider);background:var(--surface);}
@@ -573,24 +573,24 @@ async function generateProjectJpeg(){
   wrap.innerHTML = `
     <style>
       #jpegExportCapture .pdf-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;}
-      #jpegExportCapture h1{font-size:22px;margin:0;font-weight:500;flex:1;text-align:right;}
+      #jpegExportCapture h1{font-size:22px;margin:0;font-weight:600;flex:1;text-align:right;}
       #jpegExportCapture .meta{font-size:13px;color:#5f6368;margin:0;white-space:nowrap;}
       #jpegExportCapture table{width:100%;border-collapse:collapse;}
       #jpegExportCapture th{text-align:right;padding:8px 6px;border-bottom:2px solid #202124;font-size:12px;color:#5f6368;}
       #jpegExportCapture th.cost-head{text-align:left;}
       #jpegExportCapture td{padding:8px 6px;vertical-align:top;border-bottom:1px solid #e8eaed;font-size:14px;}
       #jpegExportCapture td.mark{width:40px;text-align:center;}
-      #jpegExportCapture td.parent-num{font-size:16px;font-weight:500;}
-      #jpegExportCapture td.parent-title{font-weight:500;}
+      #jpegExportCapture td.parent-num{font-size:16px;font-weight:600;}
+      #jpegExportCapture td.parent-title{font-weight:600;}
       #jpegExportCapture td.child-title{font-size:13.5px;padding-right:28px;color:#3c4043;}
       #jpegExportCapture td.cost-cell{text-align:left;white-space:nowrap;}
       #jpegExportCapture .row-cost{font-family:JetBrains Mono,monospace;font-size:12.5px;font-weight:600;direction:ltr;unicode-bidi:isolate;display:inline-flex;gap:4px;align-items:baseline;}
-      #jpegExportCapture .cost-unit{font-family:'IRANSansX',Tahoma,sans-serif;font-size:10px;font-weight:500;color:#5f6368;}
-      #jpegExportCapture tr.total-row td{border-bottom:none;border-top:2px solid #202124;padding-top:12px;font-weight:500;}
+      #jpegExportCapture .cost-unit{font-family:'IRANSansX',Tahoma,sans-serif;font-size:10px;font-weight:600;color:#5f6368;}
+      #jpegExportCapture tr.total-row td{border-bottom:none;border-top:2px solid #202124;padding-top:12px;font-weight:600;}
       #jpegExportCapture .pdf-note{margin-top:22px;padding-top:14px;border-top:1px solid #e8eaed;font-size:13.5px;line-height:1.7;color:#00075D;white-space:pre-wrap;}
       #jpegExportCapture .pdf-sig{margin-top:28px;text-align:left;direction:ltr;}
       #jpegExportCapture .pdf-sig img{max-width:180px;max-height:70px;object-fit:contain;display:block;}
-      #jpegExportCapture .pdf-sig-name{margin-top:4px;font-size:11px;font-weight:500;color:#5f6368;text-align:left;direction:rtl;unicode-bidi:isolate;}
+      #jpegExportCapture .pdf-sig-name{margin-top:4px;font-size:11px;font-weight:600;color:#5f6368;text-align:left;direction:rtl;unicode-bidi:isolate;}
     
   /* ---------- صورت وضعیت ---------- */
   .st-form{padding:0 0 90px;}
@@ -621,7 +621,7 @@ async function generateProjectJpeg(){
     border-top:1px solid var(--divider);display:flex;gap:10px;
   }
   .st-save-bar button{
-    flex:1;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:15px;font-weight:500;cursor:pointer;
+    flex:1;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:15px;font-weight:600;cursor:pointer;
   }
   .st-save-bar .st-save{background:var(--green);color:#fff;}
   .st-save-bar .st-export{background:#202124;color:#fff;}
@@ -633,14 +633,14 @@ async function generateProjectJpeg(){
     background:#fff;border-radius:14px;padding:14px 12px 16px;width:min(320px,100%);
     box-shadow:0 12px 40px rgba(0,0,0,.18);
   }
-  .jalali-head{display:flex;align-items:center;justify-content:space-between;direction:ltr;margin-bottom:10px;color:var(--green);font-weight:500;font-size:15px;} .jalali-head span{direction:rtl;}
+  .jalali-head{display:flex;align-items:center;justify-content:space-between;direction:ltr;margin-bottom:10px;color:var(--green);font-weight:600;font-size:15px;} .jalali-head span{direction:rtl;}
   .jalali-head button{border:none;background:transparent;color:var(--green);font-size:18px;cursor:pointer;padding:4px 10px;}
   .jalali-week{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:12px;color:var(--text-dim);margin-bottom:6px;}
   .jalali-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;}
   .jalali-days button{
     border:none;background:transparent;font-family:inherit;font-size:14px;padding:8px 0;border-radius:50%;cursor:pointer;color:var(--text);
   }
-  .jalali-days button.today{font-weight:500;}
+  .jalali-days button.today{font-weight:600;}
   .jalali-days button.selected{background:var(--green);color:#fff;}
   .jalali-days button.muted{color:#c4c7c5;pointer-events:none;}
   .st-list-row{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--divider);background:var(--surface);}

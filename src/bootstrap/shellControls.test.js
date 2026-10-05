@@ -247,7 +247,7 @@ test('Saosa guest brand is resolved before first paint without a temporary gener
   ]);
   assert.ok(html.indexOf("saosa-initial-logged-out") < html.indexOf('src/styles/index.css'));
   assert.match(html, /class="saosa-public-brand"[\s\S]*?<strong>ساُسا<\/strong>[\s\S]*?<span>مدیریت ساخت و ساز<\/span>/);
-  assert.match(css, /\.saosa-public-brand strong\{font-size:14px;font-weight:500;\}/);
+  assert.match(css, /\.saosa-public-brand strong\{font-size:14px;font-weight:600;\}/);
   assert.match(css, /\.saosa-public-brand span\{font-size:14px;font-weight:400;\}/);
   assert.match(css, /font-size:14px;\s*line-height:1\.4;/);
   assert.match(css, /\.topbar::before\{content:none;\}/);

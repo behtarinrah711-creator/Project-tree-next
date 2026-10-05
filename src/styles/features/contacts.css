@@ -25,11 +25,11 @@
     background:var(--surface);
   }
   .contact-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:5px;text-align:right;}
-  .contact-name{font-size:15px;font-weight:500;color:var(--text);line-height:1.5;overflow-wrap:anywhere;}
+  .contact-name{font-size:15px;font-weight:600;color:var(--text);line-height:1.5;overflow-wrap:anywhere;}
   .contact-activities{font-size:12px;color:var(--text-dim);line-height:1.5;overflow-wrap:anywhere;}
   .contact-status{font-size:11px;color:var(--danger);margin-top:1px;}
   .contact-actions{display:flex;align-items:center;gap:10px;flex-shrink:0;}
-  .contact-action-btn{border:0;background:transparent;font:inherit;font-size:12px;font-weight:500;color:var(--text-dim);padding:7px 3px;cursor:pointer;white-space:nowrap;}
+  .contact-action-btn{border:0;background:transparent;font:inherit;font-size:12px;font-weight:600;color:var(--text-dim);padding:7px 3px;cursor:pointer;white-space:nowrap;}
   .contact-action-btn.danger{color:var(--danger);}
   .contact-action-btn:active{opacity:.65;}
 
@@ -41,7 +41,7 @@
   .contact-form-head{display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:0;background:var(--surface);z-index:2;padding-bottom:4px;}
   .contact-form-title{font-size:17px;font-weight:800;color:var(--text);}
   .contact-field{display:flex;flex-direction:column;gap:6px;}
-  .contact-field>label,.repeat-title{font-size:13px;font-weight:500;color:var(--text);}
+  .contact-field>label,.repeat-title{font-size:13px;font-weight:600;color:var(--text);}
   .contact-input,.contact-select{width:100%;box-sizing:border-box;height:44px;border:1px solid var(--divider);border-radius:9px;background:var(--surface);color:var(--text);font-family:inherit;font-size:14px;padding:0 12px;outline:none;text-align:right;}
   .contact-input:focus,.contact-select:focus{border-color:var(--green);box-shadow:0 0 0 2px var(--green-soft);}
   .contact-input.numeric-field{cursor:pointer;}
@@ -50,11 +50,11 @@
   .contact-radio-row{display:flex;gap:8px;}
   .contact-radio{flex:1;position:relative;}
   .contact-radio input{position:absolute;opacity:0;pointer-events:none;}
-  .contact-radio span{display:flex;align-items:center;justify-content:center;height:42px;border:1px solid var(--divider);border-radius:9px;background:var(--surface);color:var(--text-dim);font:inherit;font-size:13px;font-weight:500;cursor:pointer;}
+  .contact-radio span{display:flex;align-items:center;justify-content:center;height:42px;border:1px solid var(--divider);border-radius:9px;background:var(--surface);color:var(--text-dim);font:inherit;font-size:13px;font-weight:600;cursor:pointer;}
   .contact-radio input:checked+span{background:var(--green-soft);border-color:var(--green);color:var(--green);}
   .contact-hint{font-size:11px;color:var(--text-dim);line-height:1.6;}
   .contact-upload{display:flex;flex-direction:column;gap:8px;}
-  .contact-upload-btn{display:flex;align-items:center;justify-content:center;min-height:42px;border:1px dashed var(--divider);border-radius:9px;background:var(--surface);color:var(--green);font:inherit;font-size:13px;font-weight:500;cursor:pointer;}
+  .contact-upload-btn{display:flex;align-items:center;justify-content:center;min-height:42px;border:1px dashed var(--divider);border-radius:9px;background:var(--surface);color:var(--green);font:inherit;font-size:13px;font-weight:600;cursor:pointer;}
   .contact-upload input{display:none;}
   .contact-upload-preview{display:none;max-height:150px;max-width:100%;object-fit:contain;border:1px solid var(--divider);border-radius:8px;background:#fff;}
   .repeat-section{display:flex;flex-direction:column;gap:8px;}
@@ -62,12 +62,12 @@
   .repeat-add{width:34px;height:34px;border:1px solid var(--green);border-radius:50%;background:var(--green-soft);color:var(--green);font:inherit;font-size:22px;line-height:1;cursor:pointer;}
   .repeat-row{display:flex;align-items:center;gap:7px;}
   .repeat-row .contact-input{flex:1;}
-  .repeat-remove{height:34px;padding:0 9px;border:none;border-radius:8px;background:var(--danger-soft);color:var(--danger);font:inherit;font-size:11px;font-weight:500;cursor:pointer;}
+  .repeat-remove{height:34px;padding:0 9px;border:none;border-radius:8px;background:var(--danger-soft);color:var(--danger);font:inherit;font-size:11px;font-weight:600;cursor:pointer;}
   .bank-list{display:flex;flex-direction:column;gap:10px;}
   .bank-entry{padding:11px;border:1px solid var(--divider);border-radius:10px;background:var(--surface);display:flex;flex-direction:column;gap:9px;}
   .bank-entry-head{display:flex;align-items:center;justify-content:space-between;gap:8px;}
   .bank-entry-title{font-size:13px;font-weight:800;color:var(--text);}
-  .bank-remove{border:none;background:transparent;color:var(--danger);font:inherit;font-size:11px;font-weight:500;cursor:pointer;}
+  .bank-remove{border:none;background:transparent;color:var(--danger);font:inherit;font-size:11px;font-weight:600;cursor:pointer;}
   .bank-grid{display:grid;grid-template-columns:1fr;gap:9px;}
   .contact-savebar{display:flex;flex-direction:row;direction:ltr;gap:9px;padding:10px 0 max(10px, env(safe-area-inset-bottom));position:sticky;bottom:0;background:var(--surface);z-index:20;border-top:1px solid var(--divider);}
   .contact-savebar .mini-btn{flex:1;height:44px;direction:rtl;}
@@ -78,7 +78,7 @@
   .confirm-overlay.hidden{display:none;}
   .confirm-box{background:var(--surface);border-radius:14px;padding:20px;width:100%;max-width:320px;}
   .confirm-box p{margin:0 0 16px;font-size:15px;line-height:1.6;text-align:right;}
-  .perm-del-btn{flex-shrink:0;font-family:inherit;font-size:12px;font-weight:500;color:var(--danger);background:var(--danger-soft);border:none;border-radius:8px;padding:7px 10px;cursor:pointer;}
+  .perm-del-btn{flex-shrink:0;font-family:inherit;font-size:12px;font-weight:600;color:var(--danger);background:var(--danger-soft);border:none;border-radius:8px;padding:7px 10px;cursor:pointer;}
 
   .export-toolbar{
     display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px;align-items:center;
@@ -137,7 +137,7 @@
     font-family:inherit;font-size:13px;font-weight:600;color:var(--green);
     background:var(--green-soft);border:none;border-radius:8px;padding:8px 12px;cursor:pointer;
   }
-  .export-pdf-btn,.export-jpg-btn{border:none;border-radius:18px;padding:7px 16px;font-family:inherit;font-size:13px;font-weight:500;cursor:pointer;}
+  .export-pdf-btn,.export-jpg-btn{border:none;border-radius:18px;padding:7px 16px;font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;}
   .export-pdf-btn{background:var(--green);color:#fff;}
   .export-pdf-btn:active{background:#00075D;}
   .export-jpg-btn{background:#202124;color:#fff;}

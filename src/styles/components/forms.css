@@ -23,7 +23,7 @@
     margin:0;
     color:var(--text);
     font-size:15px;
-    font-weight:500;
+    font-weight:600;
     line-height:1.5;
     text-align:right;
   }
@@ -95,7 +95,7 @@
     border-radius:11px;
     font-family:inherit;
     font-size:14px;
-    font-weight:500;
+    font-weight:600;
     line-height:1;
     cursor:pointer;
     appearance:none;
@@ -140,7 +140,7 @@
   #projectTrashPage .project-trash-inline-actions .perm-del-btn{
     background:transparent !important;border:0 !important;box-shadow:none !important;
     padding:4px 0 !important;min-height:0 !important;height:auto !important;border-radius:0 !important;
-    font-size:11px !important;font-weight:500 !important;line-height:1.4 !important;white-space:nowrap;
+    font-size:11px !important;font-weight:600 !important;line-height:1.4 !important;white-space:nowrap;
   }
   #projectTrashPage .project-trash-inline-actions .restore-btn{color:#00075D !important;}
   #projectTrashPage .project-trash-inline-actions .perm-del-btn{color:#DC2626 !important;}

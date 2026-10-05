@@ -25,7 +25,7 @@
   }
   .confirm-btn{
     width:100%;margin-top:8px;padding:13px;border-radius:8px;border:none;
-    background:#00075D;color:#fff;font-family:inherit;font-size:15px;font-weight:500;
+    background:#00075D;color:#fff;font-family:inherit;font-size:15px;font-weight:600;
     cursor:pointer;display:flex;align-items:center;justify-content:center;touch-action:manipulation;
   }
   .confirm-btn:active{background:#00075D;}

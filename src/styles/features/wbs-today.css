@@ -7,12 +7,12 @@
 .wbs-today-frame .today-task-card.wbs-costline-work{margin:12px 0;padding:0 12px;border:1px solid #e5ded3;border-radius:var(--wbs-frame-radius,5px);background:#f4f1ec}
 .wbs-today-frame .today-card-heading{position:relative;align-items:center}
 .wbs-today-frame .today-card-titles{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;padding:0 28px}
-.wbs-today-frame .today-card-titles strong{font-size:13px;font-weight:500;color:#4d4741;text-align:center;overflow-wrap:anywhere}
+.wbs-today-frame .today-card-titles strong{font-size:13px;font-weight:600;color:#4d4741;text-align:center;overflow-wrap:anywhere}
 .wbs-today-frame .today-card-titles span{font-size:11px;color:#4d4741;text-align:center}
 .wbs-today-frame .today-card-heading .wbs-type-chip{position:absolute;inset-inline-start:0;top:10px}
 .wbs-today-frame .today-card-heading .today-complete{position:absolute;inset-inline-end:0;top:6px}
 .wbs-today-frame .wbs-costline-detail-row{font-size:11px;color:#4d4741}
-.wbs-today-frame .wbs-costline-manual{width:auto;min-height:0;margin:0;padding:0;font-size:11px;font-weight:500;text-align:left}
+.wbs-today-frame .wbs-costline-manual{width:auto;min-height:0;margin:0;padding:0;font-size:11px;font-weight:600;text-align:left}
 .wbs-today-frame .wbs-costline-manual.is-danger,.wbs-today-frame .today-cancel-start{color:#b42318}
 .wbs-today-frame .today-status-action{border:0;background:transparent;padding:0}
 .wbs-today-frame .today-task-actions{margin:0;justify-content:flex-end}
@@ -23,5 +23,5 @@
 .wbs-today-frame .today-comment-form .wbs-input{border:1px solid #e5ded3;border-radius:6px;background:#fff}
 .wbs-today-frame .today-comment-form button{border:0;background:transparent;color:#033E8A;padding:0 2px}
 .wbs-today-frame .today-history{margin:0;border-top:0;padding:0}
-.wbs-today-frame .today-history summary{min-height:40px;display:flex;align-items:center;color:#033E8A;font-size:11px;font-weight:500}
+.wbs-today-frame .today-history summary{min-height:40px;display:flex;align-items:center;color:#033E8A;font-size:11px;font-weight:600}
 .wbs-today-frame .today-history div{padding:4px 0 8px}

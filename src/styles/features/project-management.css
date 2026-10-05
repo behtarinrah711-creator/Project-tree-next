@@ -62,7 +62,7 @@ body:has(#profilePage:not(.hidden)) .content {
   background:var(--primary-navy);
   color:#fff;
   font:inherit;
-  font-weight:500;
+  font-weight:600;
   cursor:pointer;
 }
 
@@ -91,7 +91,7 @@ body:has(#profilePage:not(.hidden)) .content {
   text-overflow:ellipsis;
   white-space:nowrap;
   font-size:14px;
-  font-weight:500;
+  font-weight:600;
   line-height:1.2;
   color:var(--on-primary);
   text-align:center;
