@@ -1,6 +1,27 @@
 /* C5 owner module: base.css */
   @font-face{
     font-family:'IRANSansX';
+    src:url('../assets/fonts/IRANSansX-Thin.woff2') format('woff2');
+    font-style:normal;
+    font-weight:100;
+    font-display:swap;
+  }
+  @font-face{
+    font-family:'IRANSansX';
+    src:url('../assets/fonts/IRANSansX-UltraLight.woff2') format('woff2');
+    font-style:normal;
+    font-weight:200;
+    font-display:swap;
+  }
+  @font-face{
+    font-family:'IRANSansX';
+    src:url('../assets/fonts/IRANSansX-Light.woff2') format('woff2');
+    font-style:normal;
+    font-weight:300;
+    font-display:swap;
+  }
+  @font-face{
+    font-family:'IRANSansX';
     src:url('../assets/fonts/IRANSansX-Regular.woff2') format('woff2');
     font-style:normal;
     font-weight:400;
@@ -8,9 +29,51 @@
   }
   @font-face{
     font-family:'IRANSansX';
+    src:url('../assets/fonts/IRANSansX-Medium.woff2') format('woff2');
+    font-style:normal;
+    font-weight:500;
+    font-display:swap;
+  }
+  @font-face{
+    font-family:'IRANSansX';
+    src:url('../assets/fonts/IRANSansX-DemiBold.woff2') format('woff2');
+    font-style:normal;
+    font-weight:600;
+    font-display:swap;
+  }
+  @font-face{
+    font-family:'IRANSansX';
     src:url('../assets/fonts/IRANSansX-Bold.woff2') format('woff2');
     font-style:normal;
     font-weight:700;
+    font-display:swap;
+  }
+  @font-face{
+    font-family:'IRANSansX';
+    src:url('../assets/fonts/IRANSansX-ExtraBold.woff2') format('woff2');
+    font-style:normal;
+    font-weight:800;
+    font-display:swap;
+  }
+  @font-face{
+    font-family:'IRANSansX';
+    src:url('../assets/fonts/IRANSansX-Black.woff2') format('woff2');
+    font-style:normal;
+    font-weight:900;
+    font-display:swap;
+  }
+  @font-face{
+    font-family:'IRANSansX';
+    src:url('../assets/fonts/IRANSansX-ExtraBlack.woff2') format('woff2');
+    font-style:normal;
+    font-weight:950;
+    font-display:swap;
+  }
+  @font-face{
+    font-family:'IRANSansX';
+    src:url('../assets/fonts/IRANSansX-Heavy.woff2') format('woff2');
+    font-style:normal;
+    font-weight:1000;
     font-display:swap;
   }
   html,body{height:100%;}

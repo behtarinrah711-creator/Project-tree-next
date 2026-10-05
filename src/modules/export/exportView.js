@@ -1,4 +1,5 @@
 import { STORAGE_KEYS } from '../../config/deploymentConfig.js';
+import { iranSansFaceCss, iranSansFontBase } from '../../ui/iranSansFont.js';
 /** Export / PDF / JPEG UI extracted from legacyApp. Notes store: exportNotesStore.js */
 import { loadExportNotes, saveExportNote, getExportNote } from './exportNotesStore.js';
 
@@ -345,8 +346,7 @@ function generateProjectPdf(){
 
   const doc = `<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"><title>${escapeHtml(p.name)}</title>
 <style>
-  @font-face { font-family:'IRANSansX'; src:url('src/assets/fonts/IRANSansX-Regular.woff2') format('woff2'); font-weight:400; font-display:swap; }
-  @font-face { font-family:'IRANSansX'; src:url('src/assets/fonts/IRANSansX-Bold.woff2') format('woff2'); font-weight:700; font-display:swap; }
+  ${iranSansFaceCss(iranSansFontBase(windowRef))}
   @page { margin: 14mm; }
   body { font-family:'IRANSansX'; color: #202124; margin: 0; padding: 8px 4px; }
   .pdf-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
@@ -478,7 +478,9 @@ function generateProjectPdf(){
   ${sigHtml}
   <script>
     window.onload = function(){
-      setTimeout(function(){ window.print(); }, 450);
+      var start = function(){ setTimeout(function(){ window.print(); }, 80); };
+      if(document.fonts && document.fonts.ready) document.fonts.ready.then(start);
+      else start();
     };
   <\/script>
 
@@ -567,7 +569,7 @@ async function generateProjectJpeg(){
   const wrap = documentRef.createElement('div');
   wrap.id = 'jpegExportCapture';
   wrap.setAttribute('dir', 'rtl');
-  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;width:800px;padding:28px 24px;background:#fff;color:#202124;font-family:Vazirmatn,Tahoma,sans-serif;box-sizing:border-box;z-index:-1;';
+  wrap.style.cssText = 'position:fixed;left:-9999px;top:0;width:800px;padding:28px 24px;background:#fff;color:#202124;font-family:IRANSansX,Tahoma,sans-serif;box-sizing:border-box;z-index:-1;';
   wrap.innerHTML = `
     <style>
       #jpegExportCapture .pdf-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:16px;}
@@ -583,7 +585,7 @@ async function generateProjectJpeg(){
       #jpegExportCapture td.child-title{font-size:13.5px;padding-right:28px;color:#3c4043;}
       #jpegExportCapture td.cost-cell{text-align:left;white-space:nowrap;}
       #jpegExportCapture .row-cost{font-family:JetBrains Mono,monospace;font-size:12.5px;font-weight:600;direction:ltr;unicode-bidi:isolate;display:inline-flex;gap:4px;align-items:baseline;}
-      #jpegExportCapture .cost-unit{font-family:Vazirmatn,Tahoma,sans-serif;font-size:10px;font-weight:500;color:#5f6368;}
+      #jpegExportCapture .cost-unit{font-family:'IRANSansX',Tahoma,sans-serif;font-size:10px;font-weight:500;color:#5f6368;}
       #jpegExportCapture tr.total-row td{border-bottom:none;border-top:2px solid #202124;padding-top:12px;font-weight:700;}
       #jpegExportCapture .pdf-note{margin-top:22px;padding-top:14px;border-top:1px solid #e8eaed;font-size:13.5px;line-height:1.7;color:#00075D;white-space:pre-wrap;}
       #jpegExportCapture .pdf-sig{margin-top:28px;text-align:left;direction:ltr;}
@@ -655,8 +657,14 @@ async function generateProjectJpeg(){
 
   toast('در حال ساخت تصویر…');
   try{
-    // صبر کوتاه برای لود فونت/تصویر امضا
-    await new Promise(r => setTimeout(r, 200));
+    try{
+      if(documentRef.fonts?.load){
+        await documentRef.fonts.load("400 16px 'IRANSansX'");
+        await documentRef.fonts.load("700 16px 'IRANSansX'");
+      }
+      await documentRef.fonts?.ready;
+    }catch(e){}
+    await new Promise(r => setTimeout(r, 80));
     const canvas = await windowRef.html2canvas(wrap, {
       scale: 2,
       backgroundColor: '#ffffff',
