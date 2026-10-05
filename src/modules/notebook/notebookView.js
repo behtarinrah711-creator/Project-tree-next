@@ -25,7 +25,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     entry.dataset.nbOrder='1';
     entry.setAttribute('aria-label','ترتیب نمایش دفترچه‌ها');
     entry.innerHTML=more;
-    entry.addEventListener('click',()=>{orderOpen=true;render();});
+    entry.addEventListener('click',()=>{orderOpen=true;windowRef.KarhaChildHistory?.open?.('notebook-order');render();});
     topbar.appendChild(entry);
   }
   if(!page)return null;
@@ -139,7 +139,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     return `<section class="nb-order-page" aria-label="ترتیب نمایش"><header class="nb-order-head"><h1>ترتیب نمایش</h1><button type="button" class="nb-order-back" data-order-back aria-label="بازگشت"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button></header><div class="nb-order-list">${lists.map(list=>`<div class="nb-order-row" data-id="${esc(list.id)}"><span>${esc(list.title)}</span><span class="nb-grip" aria-label="جابه‌جایی">${grip}</span></div>`).join('')}</div></section>`;
   }
   function bindOrder(body){
-    body.querySelector('[data-order-back]')?.addEventListener('click',()=>{orderOpen=false;render();});
+    body.querySelector('[data-order-back]')?.addEventListener('click',()=>{orderOpen=false;windowRef.KarhaChildHistory?.consume?.('notebook-order');render();});
     body.querySelectorAll('.nb-order-row').forEach(row=>{
       const gripEl=row.querySelector('.nb-grip'); if(!gripEl) return;
       gripEl.onpointerdown=event=>{
@@ -240,6 +240,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
   }
   const openNotebook=()=>windowRef.location.hash='#/notebook';
   windowRef.KarhaChildHistory?.register?.('notebook-trash',{onPop:()=>{trashOpen=false;render();}});
+  windowRef.KarhaChildHistory?.register?.('notebook-order',{onPop:()=>{orderOpen=false;render();}});
   windowRef.addEventListener('karha:open-notebook',()=>{windowRef.KarhaWorkspaceChrome?.closeBottomPages?.();const route='#/notebook';windowRef.KarhaBrowserHistory?.push?.(windowRef.KarhaBrowserHistory.stateForRoute?.({projectId:null,moduleId:'notebook',hash:route})||{hash:route},route)||(windowRef.location.hash=route);applySurface();});
   repository.subscribe?.(()=>{if(onRoute())render();});
   windowRef.addEventListener('karha:close-notebook',()=>{windowRef.KarhaBrowserHistory?.back?.();applySurface();});windowRef.addEventListener('hashchange',applySurface);windowRef.addEventListener('karha:workspace-route-synced',applySurface);applySurface();
