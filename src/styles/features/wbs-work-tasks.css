@@ -16,7 +16,7 @@
 .wbs-work-task.is-complete .wbs-task-title{text-decoration:line-through;text-decoration-color:color-mix(in srgb,var(--text-dim,#8a8176) 65%,transparent);}
 .wbs-task-secondary{font-size:11px;color:var(--text-dim,#77706a);flex-wrap:nowrap;overflow:hidden;}
 .wbs-task-assignee{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.wbs-task-priority{flex:0 0 auto;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:700;line-height:16px;}
+.wbs-task-priority{flex:0 0 auto;padding:1px 6px;border-radius:10px;font-size:9px;font-weight:500;line-height:16px;}
 .wbs-task-priority.priority-low{background:var(--surface-2,#f1f3f5);color:var(--text-dim,#77706a);}
 .wbs-task-priority.priority-normal{background:var(--green-soft);color:var(--green);}
 .wbs-task-priority.priority-high{background:color-mix(in srgb,var(--success) 18%,white);color:color-mix(in srgb,var(--success) 70%,black);}

@@ -57,7 +57,7 @@ body:not(.global-surface){background:#f2f3f5;}
   transform:translate(-50%,-50%);
   font-family:'IRANSansX',Tahoma,sans-serif;
   font-size:16px;
-  font-weight:700;
+  font-weight:500;
   color:var(--text);
   pointer-events:none;
   white-space:nowrap;
@@ -257,7 +257,7 @@ body.saosa-no-project .saosa-empty-project-create{
   background:var(--primary-navy);
   color:#fff;
   font:inherit;
-  font-weight:700;
+  font-weight:500;
   cursor:pointer;
 }
 
@@ -287,7 +287,7 @@ body.saosa-no-project .saosa-empty-project-create{
   line-height:1.4;
   color:var(--text);
 }
-.saosa-public-brand strong{font-size:14px;font-weight:700;}
+.saosa-public-brand strong{font-size:14px;font-weight:500;}
 .saosa-public-brand span{font-size:14px;font-weight:400;}
 body.saosa-logged-out .content{
   min-height:0;
@@ -329,6 +329,6 @@ body.saosa-logged-out .saosa-guest-login{
   background:var(--primary-navy);
   color:#fff;
   font:inherit;
-  font-weight:700;
+  font-weight:500;
   cursor:pointer;
 }

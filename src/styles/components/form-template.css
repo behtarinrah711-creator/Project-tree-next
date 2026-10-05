@@ -83,7 +83,7 @@
 .form-template .ft-calc{
   padding:12px 0 !important;
   font-size:13px !important;
-  font-weight:700 !important;
+  font-weight:500 !important;
   color:var(--primary,#00075D) !important;
   text-align:right !important;
   border-bottom:1px solid #e6e8eb !important;

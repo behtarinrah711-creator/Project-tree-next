@@ -15,7 +15,7 @@
   }
   .sheet-head .close-btn{
     width:34px;height:34px;margin-inline-end:auto;border-radius:50%;border:none;background:transparent;color:var(--danger);
-    display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:700;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:500;cursor:pointer;
   }
   .sheet-head .close-btn:active{background:var(--divider);}
   .sheet-caption{font-size:13px;color:var(--text-dim);}

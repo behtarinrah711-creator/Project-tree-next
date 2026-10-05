@@ -5,12 +5,12 @@
     padding:10px 10px 8px;flex-shrink:0;background:var(--bg);
   }
   .topbar-title{
-    font-family:'IRANSansX',Tahoma,sans-serif;font-size:18px;font-weight:700;
+    font-family:'IRANSansX',Tahoma,sans-serif;font-size:18px;font-weight:500;
     color:var(--text);padding-inline-start:4px;flex-shrink:0;
   }
   .topbar-title{display:flex;align-items:baseline;gap:5px;line-height:1.2;}
   .topbar-title .app-title-lockup{position:relative;display:inline-flex;align-items:baseline;}
-  .topbar-title .app-title-main{font-size:18px;font-weight:700;color:var(--text);}
+  .topbar-title .app-title-main{font-size:18px;font-weight:500;color:var(--text);}
   .topbar-title .app-title-project{font-size:13px;font-weight:500;color:var(--text-dim);white-space:nowrap;}
 
   .topbar-search{
@@ -47,7 +47,7 @@
     flex:1 1 auto;min-width:0;max-width:100%;
     padding-inline-start:4px;
   }
-  .topbar.workspace-context .topbar-title .app-title-main{font-size:18px;font-weight:700;}
+  .topbar.workspace-context .topbar-title .app-title-main{font-size:18px;font-weight:500;}
   .topbar.workspace-context .topbar-title .app-title-project{
     font-size:13px;font-weight:500;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
   }
@@ -68,7 +68,7 @@
     border-bottom:1px solid rgba(0,0,0,.08);flex-shrink:0;box-sizing:border-box;
   }
   .workspace-project-context .workspace-project-name{
-    font-size:14px;font-weight:700;color:#fff;white-space:nowrap;
+    font-size:14px;font-weight:500;color:#fff;white-space:nowrap;
     overflow:hidden;text-overflow:ellipsis;max-width:100%;text-align:center;
     direction:rtl;display:block;line-height:1.2;
   }
@@ -114,7 +114,7 @@
   .account-trigger:active{background:var(--divider);}
   .avatar-circle{
     width:32px;height:32px;border-radius:50%;background:#000;color:#fff;flex-shrink:0;
-    display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:500;
   }
   .avatar-image{width:100%;height:100%;border-radius:50%;object-fit:cover;}
   .avatar-image.hidden{display:none;}
@@ -146,7 +146,7 @@
     padding:1px 6px;
   }
   .tab.star-tab{color:var(--star);}
-  .tab.add-tab{color:var(--text-dim);font-weight:700;font-size:24px;padding:8px 10px;line-height:1;}
+  .tab.add-tab{color:var(--text-dim);font-weight:500;font-size:24px;padding:8px 10px;line-height:1;}
 
   /* ---------- content ---------- */
   .content{flex:1;overflow-y:auto;padding:8px 0 100px;-webkit-overflow-scrolling:touch;}

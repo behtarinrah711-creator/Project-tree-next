@@ -45,7 +45,7 @@
   .st-item-block:nth-child(even){background:#f1f3f4;border-color:var(--border);}
   .st-item-head{
     display:flex;align-items:center;justify-content:space-between;padding:10px 12px;
-    font-size:13px;font-weight:700;color:var(--text);
+    font-size:13px;font-weight:500;color:var(--text);
   }
   .st-item-head button{
     border:none;background:transparent;color:var(--danger);font-size:12px;cursor:pointer;font-family:inherit;
@@ -75,7 +75,7 @@
     display:flex;gap:10px;width:100%;
   }
   .st-save-bar button{
-    flex:1;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:15px;font-weight:700;cursor:pointer;
+    flex:1;border:none;border-radius:12px;padding:14px;font-family:inherit;font-size:15px;font-weight:500;cursor:pointer;
   }
   .st-save-bar .st-save{background:var(--green);color:#fff;}
   .st-save-bar .st-export{background:#202124;color:#fff;}
@@ -87,14 +87,14 @@
     background:var(--surface);border-radius:14px;padding:14px 12px 16px;width:min(320px,100%);
     box-shadow:0 12px 40px rgba(0,0,0,.18);
   }
-  .jalali-head{display:flex;align-items:center;justify-content:space-between;direction:ltr;margin-bottom:10px;color:var(--green);font-weight:700;font-size:15px;} .jalali-head span{direction:rtl;}
+  .jalali-head{display:flex;align-items:center;justify-content:space-between;direction:ltr;margin-bottom:10px;color:var(--green);font-weight:500;font-size:15px;} .jalali-head span{direction:rtl;}
   .jalali-head button{border:none;background:transparent;color:var(--green);font-size:18px;cursor:pointer;padding:4px 10px;}
   .jalali-week{display:grid;grid-template-columns:repeat(7,1fr);text-align:center;font-size:12px;color:var(--text-dim);margin-bottom:6px;}
   .jalali-days{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center;}
   .jalali-days button{
     border:none;background:transparent;font-family:inherit;font-size:14px;padding:8px 0;border-radius:50%;cursor:pointer;color:var(--text);
   }
-  .jalali-days button.today{font-weight:700;}
+  .jalali-days button.today{font-weight:500;}
   .jalali-days button.selected{background:var(--green);color:#fff;}
   .jalali-days button.muted{color:#c4c7c5;pointer-events:none;}
   .st-list-row{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid var(--divider);background:var(--surface);}
@@ -130,7 +130,7 @@
     font-family:inherit;
     font-size:15px;
     line-height:1.4;
-    font-weight:700;
+    font-weight:500;
     text-align:center;
     white-space:nowrap;
   }
@@ -160,7 +160,7 @@
     height:auto !important;
     border-radius:0 !important;
     font-size:11px !important;
-    font-weight:700 !important;
+    font-weight:500 !important;
     line-height:1.4 !important;
     white-space:nowrap;
   }

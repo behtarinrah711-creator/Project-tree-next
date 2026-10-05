@@ -60,7 +60,7 @@
   .completed-header .chev.collapsed{transform:rotate(-90deg);}
   .completed-header .completed-title{flex:1;}
   .completed-clear-btn{
-    flex-shrink:0;font-family:inherit;font-size:12px;font-weight:700;color:var(--danger);
+    flex-shrink:0;font-family:inherit;font-size:12px;font-weight:500;color:var(--danger);
     background:var(--danger-soft);border:none;border-radius:8px;padding:6px 10px;cursor:pointer;
   }
   .completed-list.hidden{display:none;}
