@@ -23,6 +23,25 @@ function reportsOf(entity){ return (entity.executionReports || []).filter(report
 function commentsOf(entity){ return (entity.executionComments || []).filter(comment => comment && !comment.trashed).slice().sort((a,b) => Number(b.createdAt) - Number(a.createdAt)); }
 function ownLatestReport(entity){ const latest = reportsOf(entity)[0]; return latest && String(latest.createdBy?.id) === String(actor().id) ? latest : null; }
 function textArea(documentRef, value, name){ const field = documentRef.createElement('textarea'); field.className='wbs-input today-textarea'; field.name=name; field.value=value || ''; return field; }
+function detailRow(documentRef, label, value){
+  const row = documentRef.createElement('div');
+  row.className = 'wbs-costline-detail-row';
+  const name = documentRef.createElement('span');
+  name.textContent = label;
+  const cell = documentRef.createElement('span');
+  if(value instanceof Node) cell.appendChild(value);
+  else cell.textContent = value || '—';
+  row.append(name, cell);
+  return row;
+}
+function linkButton(documentRef, className, text, label){
+  const button = documentRef.createElement('button');
+  button.type = 'button';
+  button.className = className;
+  button.textContent = text;
+  if(label) button.setAttribute('aria-label', label);
+  return button;
+}
 
 function openReport(item, onChanged){
   const own = ownLatestReport(item.entity);
@@ -43,22 +62,35 @@ function historyLabel(type){ return ({started:'شروع شد',start_cancelled:'�
 function renderHistory(documentRef,entity){ const history=(entity.executionHistory||[]).slice().sort((a,b)=>Number(b.at)-Number(a.at)); if(!history.length)return null; const details=documentRef.createElement('details'); details.className='today-history'; details.innerHTML='<summary>تاریخچه</summary>'; history.forEach(entry=>{ const row=documentRef.createElement('div'); row.textContent=`${historyLabel(entry.type)} · ${entry.actor?.name||'کاربر'} · ${formatMoment(entry.at)}`; details.appendChild(row); }); return details; }
 function renderCard(documentRef,project,item,today,onChanged){
   const entity=item.entity,status=executionStatus(entity),assignee=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.assigneeContactId||'')),contractor=contractorForItem(project,item).contact;
-  const card=documentRef.createElement('article'); card.className='today-task-card'; card.dataset.entityId=item.id; card.dataset.entityKind=item.kind;
-  const dateText=entity.scheduleStart===entity.scheduleEnd?formatDate(entity.scheduleStart):`${formatDate(entity.scheduleStart)} ← ${formatDate(entity.scheduleEnd)}`;
+  const card=documentRef.createElement('article'); card.className='today-task-card wbs-costline-work'; card.dataset.entityId=item.id; card.dataset.entityKind=item.kind;
+  const dateText=entity.scheduleStart ? (entity.scheduleStart===entity.scheduleEnd?formatDate(entity.scheduleStart):`${formatDate(entity.scheduleStart)} تا ${formatDate(entity.scheduleEnd)}`) : '';
   const type=entity.type||item.work.type||'کار';
   const pending = item.mode==='pending';
-  const statusText = pending
-    ? `<span class="today-status-slot">وضعیت: ${esc(statusLabel(status))}</span>`
-    : (entity.actualStart
-      ? `<span class="today-status-slot">وضعیت: ${esc(statusLabel(status))} <button type="button" class="today-cancel-start today-status-action" aria-label="لغو شروع">لغو شروع</button></span>`
-      : '<span class="today-status-slot">وضعیت: <button type="button" class="today-start today-status-action" aria-label="شروع">شروع</button></span>');
-  card.innerHTML=`<div class="today-task-primary"><button type="button" class="today-complete" aria-label="اعلام انجام‌شدن" ${entity.actualStart || pending ? '' : 'disabled'}>${pending?'✓':'□'}</button><span class="wbs-type-chip ${TYPE_CLASSES.get(type)||'type-7'}">${esc(type)}</span><strong>${esc(entity.title||entity.text||'')}</strong></div><div class="today-task-meta"><span>${esc(item.path.join(' ← '))}</span>${contractor?`<span>پیمانکار: ${esc(contactName(contractor))}</span>`:''}</div><div class="today-task-meta"><span>${esc(dateText)}</span><span>${esc(remainingLabel(entity,today))}</span></div><div class="today-task-meta"><span>${assignee?`مسئول: ${esc(contactName(assignee))}`:''}</span>${statusText}</div>`;
+  const heading=documentRef.createElement('div'); heading.className='wbs-costline-work-heading today-card-heading';
+  const complete=documentRef.createElement('button'); complete.type='button'; complete.className='today-complete'; complete.setAttribute('aria-label','اعلام انجام‌شدن'); complete.textContent=pending?'✓':'□'; if(!(entity.actualStart || pending)) complete.disabled=true;
+  const titles=documentRef.createElement('div'); titles.className='today-card-titles'; titles.innerHTML=`<strong>${esc(entity.title||entity.text||'')}</strong><span>${esc(item.path.join(' · '))}</span>`;
+  const chip=documentRef.createElement('span'); chip.className=`wbs-type-chip ${TYPE_CLASSES.get(type)||'type-7'}`; chip.textContent=type;
+  heading.append(chip, titles, complete); card.appendChild(heading);
+  card.appendChild(detailRow(documentRef, 'تاریخ', dateText));
+  card.appendChild(detailRow(documentRef, 'باقی‌مانده', remainingLabel(entity, today)));
+  if(assignee) card.appendChild(detailRow(documentRef, 'مسئول', contactName(assignee)));
+  if(contractor) card.appendChild(detailRow(documentRef, 'پیمانکار', contactName(contractor)));
+  const statusValue=documentRef.createElement('span'); statusValue.className='today-status-slot';
+  if(pending) statusValue.textContent=statusLabel(status);
+  else if(entity.actualStart){
+    statusValue.append(documentRef.createTextNode(statusLabel(status)));
+    const cancel=linkButton(documentRef, 'today-cancel-start today-status-action wbs-costline-manual', 'لغو شروع', 'لغو شروع');
+    statusValue.appendChild(cancel);
+  } else {
+    statusValue.appendChild(linkButton(documentRef, 'today-start today-status-action wbs-costline-manual', 'شروع', 'شروع'));
+  }
+  card.appendChild(detailRow(documentRef, 'وضعیت', statusValue));
   const actions=documentRef.createElement('div'); actions.className='today-task-actions';
   if(pending){
-    const approve=documentRef.createElement('button'); approve.type='button'; approve.textContent='تأیید'; approve.addEventListener('click',()=>{todayApi.approve(activeProjectId,refOf(item),actor());onChanged?.();});
-    const reject=documentRef.createElement('button'); reject.type='button'; reject.className='is-danger'; reject.textContent='رد'; reject.addEventListener('click',()=>openReject(item,onChanged));
+    const approve=linkButton(documentRef, 'wbs-costline-manual', 'تأیید'); approve.addEventListener('click',()=>{todayApi.approve(activeProjectId,refOf(item),actor());onChanged?.();});
+    const reject=linkButton(documentRef, 'wbs-costline-manual is-danger', 'رد'); reject.addEventListener('click',()=>openReject(item,onChanged));
     actions.append(approve,reject);
-    card.querySelector('.today-complete').addEventListener('click',()=>{
+    complete.addEventListener('click',()=>{
       const submitter = entity.completionSubmittedBy?.id;
       if(submitter && String(submitter)!==String(actor().id)){ window.KarhaUI?.showToast?.('فقط مسئول این کار می‌تواند تیک را بردارد'); return; }
       const result=todayApi.withdrawCompletion(activeProjectId,refOf(item),actor());
@@ -67,12 +99,16 @@ function renderCard(documentRef,project,item,today,onChanged){
       onChanged?.();
     });
   } else {
-    card.querySelector('.today-complete').addEventListener('click',()=>{ if(!entity.actualStart){ window.KarhaUI?.showToast?.('اول شروع را بزن'); return; } todayApi.markComplete(activeProjectId,refOf(item),actor());activeMode='pending';onChanged?.();});
+    complete.addEventListener('click',()=>{ if(!entity.actualStart){ window.KarhaUI?.showToast?.('اول شروع را بزن'); return; } todayApi.markComplete(activeProjectId,refOf(item),actor());activeMode='pending';onChanged?.();});
     card.querySelector('.today-start')?.addEventListener('click',()=>{todayApi.start(activeProjectId,refOf(item),actor());onChanged?.();});
     card.querySelector('.today-cancel-start')?.addEventListener('click',()=>{todayApi.cancelStart(activeProjectId,refOf(item),actor());onChanged?.();});
   }
-  const report=documentRef.createElement('button'); report.type='button'; report.textContent=ownLatestReport(entity)?'ویرایش گزارش':'ثبت گزارش'; report.addEventListener('click',()=>openReport(item,onChanged)); actions.appendChild(report);
-  card.append(actions,renderReports(documentRef,entity),renderComments(documentRef,item,onChanged)); const history=renderHistory(documentRef,entity); if(history)card.appendChild(history); return card;
+  const report=linkButton(documentRef, 'wbs-costline-manual', ownLatestReport(entity)?'ویرایش گزارش':'ثبت گزارش'); report.addEventListener('click',()=>openReport(item,onChanged));
+  card.appendChild(detailRow(documentRef, 'گزارش', report));
+  if(actions.childElementCount) card.appendChild(detailRow(documentRef, 'تأیید', actions));
+  card.append(renderReports(documentRef,entity), renderComments(documentRef,item,onChanged));
+  const history=renderHistory(documentRef,entity); if(history) card.appendChild(history);
+  return card;
 }
 export function renderTodayView(project,documentRef=document,onChanged){
   if(activeProjectId!==String(project?.id||'')){activeProjectId=String(project?.id||'');activeMode='today';} const today=tehranTodayJalali(); const modes=['overdue','today','future','pending','unscheduled']; const byMode=Object.fromEntries(modes.map(mode=>[mode,itemsForMode(project,mode,today)])); const available=byMode.unscheduled.length?modes:modes.filter(mode=>mode!=='unscheduled'); if(!available.includes(activeMode))activeMode='today';
