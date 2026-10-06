@@ -6,12 +6,17 @@ import { projectRepository } from '../../data/projectRepository.js';
 import { wbsApi } from './wbsApi.js';
 
 const stage = (id, subtasks=[]) => ({ id, kind:'stage', subtasks });
-test('single mode uses package → stage → work without a choice', () => {
-  const project={settings:{stageMode:'single'},tasks:[stage('package',[stage('phase')])]};
+test('single mode uses package → stage → stage → work without a choice', () => {
+  const project={settings:{stageMode:'single'},tasks:[stage('package',[stage('phase',[stage('detail')])])]};
   assert.equal(allowsNestedStages(project), false);
   assert.deepEqual(stageAddKinds(project,'package'),['stage']);
-  assert.deepEqual(stageAddKinds(project,'phase'),['work']);
-  project.settings={allowNestedStages:false};
+  assert.deepEqual(stageAddKinds(project,'phase'),['stage']);
+  assert.deepEqual(stageAddKinds(project,'detail'),['work']);
+});
+test('two-stage mode allows the second stage, then work, with the same add permission', () => {
+  const project={settings:{stageMode:'none'},tasks:[stage('package')]};
+  assert.deepEqual(stageAddKinds(project,'package'),['stage']);
+  project.tasks=[stage('package',[stage('phase')])];
   assert.deepEqual(stageAddKinds(project,'phase'),['work']);
 });
 test('only explicit true enables deeper stages; works never accept stages', () => {
@@ -36,8 +41,9 @@ test('domain rejects deeper stages by default, and setting is isolated per proje
     const root=wbsApi.createStage(id,'package');
     const phase=wbsApi.createStage(id,'phase',root.id);
     const nested=wbsApi.createStage(id,'nested',phase.id);
-    assert.equal(!!nested,id==='on');
-    if(id==='off') assert.ok(wbsApi.createWorkItem(id,'work',phase.id));
+    assert.ok(nested);
+    assert.equal(!!wbsApi.createStage(id,'deeper',nested.id),id==='on');
+    if(id==='off') assert.ok(wbsApi.createWorkItem(id,'work',nested.id));
   }
   assert.equal(projectRepository.find('off').settings.stageMode,'single');
   delete globalThis.KarhaAppData;
@@ -46,7 +52,7 @@ test('none is the default; explicit mode takes precedence over the legacy boolea
   for(const settings of [undefined,{}, {stageMode:'invalid'},{allowNestedStages:false}]){
     const project={settings,tasks:[stage('package')]};
     assert.equal(stageModeOf(project),'none');
-    assert.deepEqual(stageAddKinds(project,'package'),['work']);
+    assert.deepEqual(stageAddKinds(project,'package'),['stage']);
   }
   assert.equal(stageModeOf({settings:{stageMode:'none',allowNestedStages:true}}),'none');
   assert.equal(stageModeOf({settings:{allowNestedStages:true}}),'multiple');
@@ -60,8 +66,10 @@ test('no-stage project creates work directly and cannot create a phase', () => {
   store.replaceSnapshot({projects:[{id:'none',tasks:[]}]});
   globalThis.KarhaAppData=store;
   const root=wbsApi.createStage('none','package');
-  assert.equal(wbsApi.createStage('none','phase',root.id),null);
-  assert.ok(wbsApi.createWorkItem('none','work',root.id));
+  const phase=wbsApi.createStage('none','phase',root.id);
+  assert.ok(phase);
+  assert.equal(wbsApi.createStage('none','deeper',phase.id),null);
+  assert.ok(wbsApi.createWorkItem('none','work',phase.id));
   delete globalThis.KarhaAppData;
 });
 
