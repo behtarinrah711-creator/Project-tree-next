@@ -37,7 +37,7 @@ export function createRoleManagementModule({
     const overlay=documentRef.createElement('div');overlay.className='role-sheet-backdrop';overlay.dataset.roleSheet='';
     const sheet=documentRef.createElement('section');sheet.className='role-sheet';sheet.setAttribute('role','dialog');sheet.setAttribute('aria-modal','true');sheet.setAttribute('aria-labelledby','roleSheetTitle');
     const form=documentRef.createElement('form');form.className='role-member-form';form.noValidate=true;
-    form.innerHTML=`<header><button type="button" data-close aria-label="بستن">×</button><h2 id="roleSheetTitle">${existing?'ویرایش عضو':'افزودن عضو'}</h2><button type="submit">ذخیره</button></header>`;
+    form.innerHTML=`<header><button type="button" data-close aria-label="بستن">×</button><h2 id="roleSheetTitle">${existing?'ویرایش عضو':'افزودن عضو'}</h2><button type="submit">${existing?'ذخیره':'دعوت'}</button></header>`;
     const fields=documentRef.createElement('div');fields.className='role-form-fields';
     const field=(label,name,type='text',required=false)=>{const wrap=documentRef.createElement('label');wrap.textContent=label;wrap.dataset.field=name;const input=documentRef.createElement('input');input.name=name;input.type=type;input.required=required;input.value=existing?.[name] || '';wrap.appendChild(input);fields.appendChild(wrap);return input;};
     const mobile=field('شماره موبایل','mobile','tel',true);mobile.inputMode='numeric';mobile.dir='ltr';mobile.placeholder='09123456789';
