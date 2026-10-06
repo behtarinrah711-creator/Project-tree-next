@@ -311,7 +311,7 @@ export function openProjectFinishSheet(){
 }
 
 function openAddMenu(stageId){
-  const kinds = stageAddKinds(projectOf(), stageId);
+  const kinds = stageAddKinds(projectOf(), stageId, { strict:true });
   if(kinds.length === 1){
     if(kinds[0] === 'stage') openCreateStageSheet(stageId);
     else if(stageModeOf(projectOf()) === 'multiple') openWorkRegistration(stageId);
@@ -468,7 +468,7 @@ function isWorkRegistrationLevel(item){
   if(isWork(item)) return true;
   if(stageModeOf(projectOf()) === 'multiple') return false;
   const children = (item.subtasks || []).filter(child => !child.trashed);
-  return !children.length && (item.registrationLevel === 'work' || stageAddKinds(projectOf(), item.id).length === 0);
+  return !children.length && (item.registrationLevel === 'work' || stageAddKinds(projectOf(), item.id, { strict:true }).length === 0);
 }
 
 function openItemDetails(item){
@@ -544,7 +544,7 @@ function renderRow(item, codes, view, depth){
   const permissionReadOnly = !canWritePlanning(activePlanningLevel);
   const readOnlyView = view === 'estimate' || view === 'progress' || permissionReadOnly;
   const registrationLevel = isWorkRegistrationLevel(item);
-  const mayAdd = registrationLevel || stageAddKinds(projectOf(), item.id).length > 0;
+  const mayAdd = registrationLevel || stageAddKinds(projectOf(), item.id, { strict:true }).length > 0;
   const meta = [];
   if(view === 'estimate' && isWork(item)){
     meta.push(new Intl.NumberFormat('fa-IR').format(lineTotal(item)));
