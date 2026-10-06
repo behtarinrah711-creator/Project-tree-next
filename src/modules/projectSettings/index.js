@@ -3,6 +3,14 @@ import { projectRepository } from '../../data/projectRepository.js';
 import { appRouter } from '../../core/router.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
 import { stageModeOf } from '../../domain/wbs/branchingPolicy.js';
+import { canWritePermission, projectPermissionState } from '../roleManagement/permissionState.js';
+
+export const PROJECT_STAGE_MODES = Object.freeze(['base','none','single','multiple']);
+
+export function canEditProjectStageMode(projectId, windowRef){
+  const level = projectPermissionState(projectId, ['project-settings'], windowRef).levels['project-settings'];
+  return canWritePermission(level);
+}
 
 export default {
   id:'project-settings',
@@ -28,6 +36,7 @@ export default {
       ['single', 'سه‌مرحله‌ای', 'مرحله ← مرحله ← مرحله ← کار'],
       ['multiple', 'چندمرحله‌ای', 'مرحله ← مرحله ← مرحله ← مراحل دلخواه ← کار'],
     ];
+    const canEditStageMode = canEditProjectStageMode(projectId);
     options.forEach(([value, label, description]) => {
       const row = document.createElement('label');
       row.className = 'workspace-option';
@@ -50,8 +59,9 @@ export default {
       input.className = 'project-stage-mode';
       input.setAttribute('aria-label', label);
       input.checked = stageModeOf(project) === value;
+      input.disabled = !canEditStageMode;
       input.addEventListener('change', () => {
-        if(!input.checked) return;
+        if(!input.checked || !canEditProjectStageMode(projectId)) return;
         projectRepository.updateProject(projectId, current => {
           const { allowNestedStages, ...settings } = current.settings || {};
           return { ...current, settings:{ ...settings, stageMode:value } };
