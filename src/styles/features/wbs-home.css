@@ -309,6 +309,6 @@ body:has(.wbs-home-root){background:#fff;}
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-head button{flex-shrink:0;}
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-head{position:relative;box-sizing:border-box;min-height:86px;padding-block:0;align-items:center;}
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-caption{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;pointer-events:none;}
-:is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-head .close-btn{position:relative;z-index:1;}
+:is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-head .close-btn{position:relative;z-index:1;font-size:calc(19.333px + 3px);}
 
 .wbs-row .wbs-title{font-weight:700;}
