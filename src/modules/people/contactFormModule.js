@@ -27,7 +27,7 @@ export function openContactForm(contact=null,{activityId=null}={}){
     phones:[], type:'', activities:[], bankAccounts:[], pending:true
   };
   if(!contact){
-    const existingDraft=contactApi.listPage(projectId,{ limit:200 }).items.find(x=>x.pending===true);
+    const existingDraft=contactApi.listPage(projectId,{ limit:200 }).items.find(x=>x.pending===true && x.source!=='member-invitation');
     if(existingDraft) Object.assign(c,existingDraft);
   }
   if(!contact && activityId) c.activities=[String(activityId)];
