@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { ModuleRegistry } from '../../core/moduleRegistry.js';
 import {
   ACCESS_LEVELS, PROJECT_ROLES, canDeleteWithAccess, canManageProjectRoles,
-  createMember, isValidIranianMobile, normalizeMobile, permissionGroups, permissionModules,
+  createMember, ensureInvitationContact, isValidIranianMobile, normalizeMobile, permissionGroups, permissionModules,
 } from './roleManagementDomain.js';
 
 function registry(){
@@ -49,10 +49,10 @@ test('only owner or local creator can manage roles',()=>{
 });
 
 test('member creation accepts only the exact 09xxxxxxxxx mobile format',()=>{
-  const member=createMember({mobile:'09123456789',email:'USER@Example.com ',role:'accountant',status:'active',permissions:{dashboard:'view'}},{registry:registry(),now:()=>10,random:()=>0.5});
+  const member=createMember({mobile:'09123456789',permissions:{dashboard:'view'}},{registry:registry(),now:()=>10,random:()=>0.5});
   assert.equal(normalizeMobile('09123456789'),'09123456789');
   assert.equal(member.mobile,'09123456789');
-  assert.equal(member.email,'user@example.com');
+  assert.equal(member.role,'member');
   assert.equal(member.status,'invited');
   assert.deepEqual(member.permissions,{
     dashboard:'view',
@@ -65,4 +65,18 @@ test('member creation accepts only the exact 09xxxxxxxxx mobile format',()=>{
   assert.equal(isValidIranianMobile('+989123456789'),false);
   assert.equal(isValidIranianMobile('9123456789'),false);
   assert.equal(isValidIranianMobile('۰۹۱۲۳۴۵۶۷۸۹'),false);
+});
+
+test('inviting a member creates one incomplete contact and reuses a real contact with the same mobile',()=>{
+  const created=ensureInvitationContact({contacts:[]},'09123456789',{now:()=>10,random:()=>0.5});
+  assert.equal(created.created,true);
+  assert.equal(created.contacts[0].phone,'09123456789');
+  assert.equal(created.contacts[0].pending,true);
+  assert.equal(created.contacts[0].source,'member-invitation');
+
+  const real={id:'contact-real',firstName:'علی',phones:['09123456789']};
+  const reused=ensureInvitationContact({contacts:[real]},'09123456789');
+  assert.equal(reused.created,false);
+  assert.equal(reused.contactId,'contact-real');
+  assert.deepEqual(reused.contacts,[real]);
 });

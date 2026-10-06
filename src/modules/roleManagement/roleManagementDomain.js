@@ -110,17 +110,32 @@ export function normalizePermissions(permissions, registry){
 
 export function canDeleteWithAccess(level){ return level === 'full'; }
 
+function contactHasMobile(contact,mobile){
+  const phones=Array.isArray(contact?.phones) ? contact.phones : [contact?.phone];
+  return phones.some(value=>normalizeMobile(value)===mobile);
+}
+
+export function ensureInvitationContact(project,mobile,{now=Date.now,random=Math.random}={}){
+  const normalized=normalizeMobile(mobile);
+  if(!isValidIranianMobile(normalized)) throw new TypeError('شماره موبایل معتبر نیست.');
+  const contacts=Array.isArray(project?.contacts) ? project.contacts : [];
+  const existing=contacts.find(contact=>!contact?.trashed && contactHasMobile(contact,normalized));
+  if(existing) return {contacts,contactId:existing.id,created:false};
+  const contact={
+    id:`contact-${now()}-${random().toString(36).slice(2,8)}`,
+    firstName:'',lastName:'',name:'',phones:[normalized],phone:normalized,
+    type:'',activities:[],bankAccounts:[],pending:true,source:'member-invitation',createdAt:now(),
+  };
+  return {contacts:[...contacts,contact],contactId:contact.id,created:true};
+}
+
 export function createMember(input, { registry, now=Date.now, random=Math.random } = {}){
   const mobile=normalizeMobile(input?.mobile);
   if(!isValidIranianMobile(mobile)) throw new TypeError('شماره موبایل معتبر نیست.');
-  const role=PROJECT_ROLES.some(item=>item.id===input?.role) ? input.role : PROJECT_ROLES[0].id;
   return {
     id:`member-${now()}-${random().toString(36).slice(2,8)}`,
     mobile,
-    email:normalizeInvitationEmail(input?.email),
-    firstName:String(input?.firstName || '').trim(),
-    lastName:String(input?.lastName || '').trim(),
-    role,
+    role:'member',
     status:'invited',
     permissions:normalizePermissions(input?.permissions, registry),
     invitedAt:now(),

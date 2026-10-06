@@ -21,8 +21,7 @@ export function createSmsInvitationAdapter({windowRef=globalThis.window}={}){
       if(!configured) return Object.freeze({sent:false,reason:'provider-not-configured'});
       return request(windowRef,`/api/v1/projects/${encodeURIComponent(projectId)}/invitations`,{
         method:'POST',body:JSON.stringify({
-          phone:member.mobile,email:member.email || null,firstName:member.firstName,lastName:member.lastName,
-          role:member.role,permissions:member.permissions,projectName,
+          phone:member.mobile,permissions:member.permissions,projectName,
         }),
       });
     },
