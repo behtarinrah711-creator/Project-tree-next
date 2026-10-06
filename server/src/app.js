@@ -9,6 +9,14 @@ const IRAN_PHONE_PATTERN = /^09\d{9}$/;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const OTP_LIFETIME_SECONDS = 180;
 export const INVITATION_LIFETIME_DAYS = 7;
+export const INVITATION_RESEND_COOLDOWN_SECONDS = 300;
+
+export function invitationResendRetryAfter(sentAt, now=Date.now()){
+  if(!sentAt) return 0;
+  const elapsed=Math.floor((now-new Date(sentAt).getTime())/1000);
+  if(!Number.isFinite(elapsed)) return 0;
+  return Math.max(0,INVITATION_RESEND_COOLDOWN_SECONDS-elapsed);
+}
 
 export function normalizeIranPhone(value){
   const phone = String(value || '');
@@ -448,6 +456,11 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
         );
         if(!invitation.rowCount) return sendJson(response,404,{error:'invitation_not_found'});
         const item=invitation.rows[0];const rawToken=randomBytes(32).toString('base64url');
+        const retryAfter=invitationResendRetryAfter(item.sms_sent_at);
+        if(retryAfter>0){
+          response.setHeader('Retry-After',String(retryAfter));
+          return sendJson(response,429,{error:'invitation_recently_sent',retryAfter});
+        }
         const projectName=String(owner.rows[0].payload?.name || owner.rows[0].payload?.title || 'پروژه').slice(0,100);
         const acceptUrl=`${invitationBaseUrl.replace(/\/$/,'')}/#/invite/${encodeURIComponent(rawToken)}`;
         let smsSent=false;let emailSent=false;
