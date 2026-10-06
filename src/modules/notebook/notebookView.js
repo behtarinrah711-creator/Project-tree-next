@@ -17,7 +17,7 @@ const formatCost=value=>new Intl.NumberFormat('fa-IR').format(Number(value)||0);
 
 export function installNotebookWorkspace({documentRef=globalThis.document,windowRef=globalThis.window,repository=createNotebookRepository()}={}){
   const page=documentRef?.getElementById?.('notebookPage');
-  const topbar=documentRef.getElementById('topbar');
+  const topbar=documentRef?.getElementById?.('topbar');
   if(topbar && !topbar.querySelector('[data-nb-order]')){
     const entry=documentRef.createElement('button');
     entry.type='button';
