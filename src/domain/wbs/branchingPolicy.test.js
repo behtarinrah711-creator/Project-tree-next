@@ -15,7 +15,7 @@ test('single mode uses package → stage → stage → work without a choice', (
 });
 test('two-stage mode allows the second stage, then work, with the same add permission', () => {
   const project={settings:{stageMode:'none'},tasks:[stage('package')]};
-  assert.deepEqual(stageAddKinds(project,'package'),['stage']);
+  assert.deepEqual(stageAddKinds(project,'package'),['stage','work']);
   project.tasks=[stage('package',[stage('phase')])];
   assert.deepEqual(stageAddKinds(project,'phase'),['work']);
 });
@@ -52,7 +52,7 @@ test('none is the default; explicit mode takes precedence over the legacy boolea
   for(const settings of [undefined,{}, {stageMode:'invalid'},{allowNestedStages:false}]){
     const project={settings,tasks:[stage('package')]};
     assert.equal(stageModeOf(project),'none');
-    assert.deepEqual(stageAddKinds(project,'package'),['stage']);
+    assert.deepEqual(stageAddKinds(project,'package'),['stage','work']);
   }
   assert.equal(stageModeOf({settings:{stageMode:'none',allowNestedStages:true}}),'none');
   assert.equal(stageModeOf({settings:{allowNestedStages:true}}),'multiple');
