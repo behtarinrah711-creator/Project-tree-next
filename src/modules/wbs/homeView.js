@@ -311,7 +311,7 @@ export function openProjectFinishSheet(){
 }
 
 function openAddMenu(stageId){
-  const kinds = stageAddKinds(projectOf(), stageId);
+  const kinds = treeAddKinds(wbsApi.get(projectIdOf(), stageId));
   if(kinds.length === 1){
     if(kinds[0] === 'stage') openCreateStageSheet(stageId);
     else if(stageModeOf(projectOf()) === 'multiple') openWorkRegistration(stageId);
@@ -464,11 +464,23 @@ function renderTimelineRows(rows, names, timeline, min, dayWidth){
   rows.forEach(entry => { names.appendChild(tNameRow(entry)); timeline.appendChild(tBarRow(entry, min, dayWidth)); });
 }
 
+function treeAddKinds(item){
+  const mode = stageModeOf(projectOf());
+  const kinds = stageAddKinds(projectOf(), item.id, { strict:true });
+  const legacyFixedStage = mode !== 'base' && mode !== 'multiple' && !item.createdAt && item.registrationLevel == null;
+  if(legacyFixedStage && kinds.length === 1 && kinds[0] === 'work') return ['stage'];
+  if(mode === 'multiple' || !kinds.includes('stage')) return kinds;
+  const childStages = (item.subtasks || []).filter(child => !child.trashed && isStage(child));
+  const alreadyTooDeep = childStages.some(child => (child.subtasks || []).some(grandchild => !grandchild.trashed && isStage(grandchild)));
+  return alreadyTooDeep ? [] : kinds;
+}
+
 function isWorkRegistrationLevel(item){
   if(isWork(item)) return true;
   if(stageModeOf(projectOf()) === 'multiple') return false;
   const children = (item.subtasks || []).filter(child => !child.trashed);
-  return !children.length && (item.registrationLevel === 'work' || stageAddKinds(projectOf(), item.id).length === 0);
+  const kinds = treeAddKinds(item);
+  return !children.length && (item.registrationLevel === 'work' || (kinds.length === 1 && kinds[0] === 'work'));
 }
 
 function openItemDetails(item){
@@ -544,7 +556,7 @@ function renderRow(item, codes, view, depth){
   const permissionReadOnly = !canWritePlanning(activePlanningLevel);
   const readOnlyView = view === 'estimate' || view === 'progress' || permissionReadOnly;
   const registrationLevel = isWorkRegistrationLevel(item);
-  const mayAdd = registrationLevel || stageAddKinds(projectOf(), item.id).length > 0;
+  const mayAdd = registrationLevel || treeAddKinds(item).length > 0;
   const meta = [];
   if(view === 'estimate' && isWork(item)){
     meta.push(new Intl.NumberFormat('fa-IR').format(lineTotal(item)));

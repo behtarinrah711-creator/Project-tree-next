@@ -77,13 +77,18 @@ export async function refreshSaosaWorkspace({windowRef = window, store} = {}){
   return {enabled:true,authenticated:true,changed,accountId:remote.accountId};
 }
 
+let persistBusy = false;
+export function isSaosaPersistBusy(){ return persistBusy; }
+
 function createPersistAttach(windowRef, session, store, initialSnapshot = null){
   let timer = null;
   let queuedSnapshot = initialSnapshot;
   let saving = false;
+  let applyingRemote = false;
   const flush = async () => {
     if(saving || !queuedSnapshot) return;
     saving = true;
+    persistBusy = true;
     const next = queuedSnapshot;
     queuedSnapshot = null;
     try{
@@ -92,16 +97,26 @@ function createPersistAttach(windowRef, session, store, initialSnapshot = null){
         body:JSON.stringify({snapshot:next}),
       });
       windowRef.KarhaSaosaWorkspaceAccess = saved.access || windowRef.KarhaSaosaWorkspaceAccess || {};
+      if(saved.snapshot){
+        applyingRemote = true;
+        applySnapshotInPlace(store, saved.snapshot);
+        store?.persistLocal?.();
+        applyingRemote = false;
+        windowRef.KarhaLegacy?.renderDrawerProjectList?.();
+        windowRef.dispatchEvent(new windowRef.CustomEvent('karha:projects-recovered'));
+      }
     }catch(error){
       // Never replace a newer edit with the older failed request.
       if(!queuedSnapshot) queuedSnapshot = next;
     }finally{
       saving = false;
+      persistBusy = false;
       if(queuedSnapshot) timer = (windowRef.setTimeout || setTimeout)(flush, 500);
     }
   };
   return () => {
     const unsubscribe = store?.subscribePersist?.(next => {
+      if(applyingRemote) return;
       queuedSnapshot = JSON.parse(JSON.stringify(next));
       (windowRef.clearTimeout || clearTimeout)(timer);
       timer = (windowRef.setTimeout || setTimeout)(flush, 250);
@@ -165,6 +180,22 @@ export async function prepareSaosaWorkspace({windowRef = window, store} = {}){
 
   const attach = createPersistAttach(windowRef, session, store);
   return {enabled:true, authenticated:true, accountId:remote.accountId, attach};
+}
+
+export function startSaosaWorkspacePolling({windowRef = window, store, refresh} = {}){
+  const timer = (windowRef.setInterval || setInterval)(async () => {
+    if(windowRef.document?.hidden || persistBusy) return;
+    try{
+      const result = await (refresh || refreshSaosaWorkspace)({windowRef, store});
+      if(!result?.changed) return;
+      windowRef.KarhaLegacy?.renderDrawerProjectList?.();
+      windowRef.KarhaApp?.router?.sync?.();
+      windowRef.dispatchEvent(new windowRef.CustomEvent('karha:projects-recovered'));
+    }catch(error){
+      console.warn('Saosa workspace refresh failed', error);
+    }
+  }, 4000);
+  return () => (windowRef.clearInterval || clearInterval)(timer);
 }
 
 export function clearSaosaWorkspaceSession(windowRef = window){

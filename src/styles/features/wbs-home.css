@@ -290,9 +290,9 @@ body:has(.wbs-home-root){background:#fff;}
 .wbs-depth-6{--wbs-parent-indent:80px;}
 
 /* Base-mode grouping stage creation. Native buttons previously used 13.333px. */
-:is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .wbs-sheet-save{font-size:calc(13.333px + 3px);font-weight:600;}
+:is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .wbs-sheet-save{font-size:calc(13.333px + 3px);font-weight:700;}
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay){bottom:auto;}
-:is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-caption{font-size:15px;font-weight:600;}
+:is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-caption{font-size:15px;font-weight:700;}
 /* Mobile keyboard scrolling can leave space below the visual viewport. */
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay)::after{content:"";position:absolute;top:100%;left:0;right:0;height:100vh;background:#fff;pointer-events:none;}
 
@@ -309,6 +309,6 @@ body:has(.wbs-home-root){background:#fff;}
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-head button{flex-shrink:0;}
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-head{position:relative;box-sizing:border-box;min-height:86px;padding-block:0;align-items:center;}
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-caption{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;pointer-events:none;}
-:is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-head .close-btn{position:relative;z-index:1;}
+:is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-head .close-btn{position:relative;z-index:1;font-size:calc(19.333px + 3px);}
 
-.wbs-row .wbs-title{font-weight:600;}
+.wbs-row .wbs-title{font-weight:700;}

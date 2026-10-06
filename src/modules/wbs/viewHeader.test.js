@@ -25,7 +25,7 @@ test('shared planning toolbar includes export before view-specific controls', ()
     controls:[control],
   });
 
-  assert.equal(header.className, 'wbs-view-header wbs-view-toolbar example-toolbar');
+  assert.equal(header.className, 'wbs-view-header wbs-view-toolbar wbs-frame-header example-toolbar');
   const actions = header.children[0];
   assert.equal(actions.attributes['aria-label'], 'ابزارهای آزمایشی');
   assert.match(actions.children[0].className, /wbs-export-tool/);

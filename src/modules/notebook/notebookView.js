@@ -1,4 +1,4 @@
-import { canCompleteNotebookItem, collectCompletedFamilies, collectStarredFamilies, collectTrashed, createNotebookItem, createNotebookRepository, findNotebookItem, notebookItemCost, notebookItemCostLocked, reorderNotebookSiblings, restoreNotebookFamily, restoreNotebookItem, sumCost, toggleNotebookStar, trashCompletedItems } from '../../data/notebookRepository.js';
+import { canCompleteNotebookItem, collectCompletedFamilies, collectStarredFamilies, collectTrashed, createNotebookItem, createNotebookRepository, findNotebookItem, notebookItemCost, notebookItemCostLocked, reorderNotebookSiblings, restoreNotebookFamily, sumCost, toggleNotebookStar, trashCompletedItems } from '../../data/notebookRepository.js';
 import { notebookIcons } from './notebookIcons.js';
 import { reorderedIds } from '../wbs/wbsDrag.js';
 import { installNotebookExportView } from './notebookExportView.js';
@@ -17,7 +17,7 @@ const formatCost=value=>new Intl.NumberFormat('fa-IR').format(Number(value)||0);
 
 export function installNotebookWorkspace({documentRef=globalThis.document,windowRef=globalThis.window,repository=createNotebookRepository()}={}){
   const page=documentRef?.getElementById?.('notebookPage');
-  const topbar=documentRef.getElementById('topbar');
+  const topbar=documentRef?.getElementById?.('topbar');
   if(topbar && !topbar.querySelector('[data-nb-order]')){
     const entry=documentRef.createElement('button');
     entry.type='button';
@@ -102,8 +102,8 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     const content=starredMode?activeFamilies.map(entry=>rows([entry.item],{source:entry.listTitle,showCost:false})).join(''):rows(list.items,{showCost:!!list.showCost});
     const empty=!content;
     const addRootButton='<button type="button" data-add-root class="nb-add-root">＋ افزودن مورد جدید</button>';
-    const doneTree=(item,depth=0)=>`<div class="nb-row nb-done-row" data-depth="${depth}" style="--nb-depth:${depth}"><button type="button" class="nb-check done" data-restore="${esc(item.id)}" aria-label="بازگردانی"></button><span class="nb-title">${esc(item.text)}${depth===0&&item.listTitle?`<small>${esc(item.listTitle)}</small>`:''}</span></div>${(item.children||[]).filter(child=>child.done&&!child.trashed).map(child=>doneTree(child,depth+1)).join('')}`;
-    const completedRows=completed.map(entry=>`<div class="nb-done-family">${doneTree({...entry.item,listTitle:entry.listTitle})}</div>`).join('');
+    const doneTree=(item,depth=0)=>`<div class="nb-row nb-done-node" data-depth="${depth}" style="--nb-depth:${depth}"><button type="button" class="nb-check done"${depth===0?` data-restore="${esc(item.id)}"`:''} aria-label="بازگردانی"></button><span class="nb-title">${esc(item.text)}${depth===0&&item.listTitle?`<small>${esc(item.listTitle)}</small>`:''}</span></div>${(item.children||[]).filter(child=>child.done&&!child.trashed).map(child=>doneTree(child,depth+1)).join('')}`;
+    const completedRows=completed.map(entry=>`<div class="nb-done-family nb-done-row">${doneTree({...entry.item,listTitle:entry.listTitle})}</div>`).join('');
     body.innerHTML=`<div class="nb-workspace"><nav class="nb-tabs" aria-label="دفترها"><button type="button" data-starred class="nb-tab nb-star-tab ${starredMode?'active':''}">${star}</button>
       ${available(nb).map(item=>`<button type="button" data-list="${esc(item.id)}" class="nb-tab ${!starredMode&&item.id===list.id?'active':''}"><span>${esc(item.title)}</span><small>${(item.items||[]).filter(entry=>!entry.done&&!entry.trashed).length.toLocaleString('fa-IR')}</small></button>`).join('')}
       <button type="button" data-add-list class="nb-tab nb-add-tab" aria-label="افزودن دفتر">＋</button></nav>
@@ -193,7 +193,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
     body.querySelector('[data-starred]')?.addEventListener('click',()=>{repository.mutate(nb=>{nb.activeListId='__starred__';});editor=null;sheetItemId=null;render();});
     body.querySelector('[data-add-list]')?.addEventListener('click',()=>openListPrompt({title:'اضافه کردن مورد جدید',placeholder:'',onSave:value=>{repository.mutate(nb=>{const list={id:uid('nbl'),title:value,items:[],createdAt:Date.now(),updatedAt:Date.now(),archived:false,trashed:false,showCost:false};nb.lists.push(list);nb.activeListId=list.id;});render();}}));
     body.querySelector('[data-add-root]')?.addEventListener('click',()=>{editor={mode:'item',parentId:null,depth:0};render();});
-    body.querySelectorAll('[data-restore]').forEach(button=>button.onclick=()=>{change(button.dataset.restore,(item,hit)=>restoreNotebookItem(item,hit.parents||[]));render();});
+    body.querySelectorAll('[data-restore]').forEach(button=>button.onclick=()=>{change(button.dataset.restore,item=>restoreNotebookFamily(item));render();});
     body.querySelectorAll('.nb-row').forEach(row=>row.onclick=event=>{const action=event.target.closest('[data-act]')?.dataset.act;if(!action)return;const id=row.closest('.nb-node').dataset.id;
       if(action==='star')change(id,(item,hit)=>toggleNotebookStar(item,hit.parents));else if(action==='done'){const hit=locate(repository.get(),id);if(hit&&canCompleteNotebookItem(hit.item))change(id,item=>{item.done=true;item.completedAt=Date.now();});}else if(action==='expand')change(id,item=>{item.expanded=item.expanded===false;});
       else if(action==='child'){change(id,item=>{item.expanded=true;});editor={mode:'item',parentId:id,depth:Number(row.dataset.depth||0)+1};}else if(action==='edit')sheetItemId=id;render();});

@@ -4,6 +4,14 @@ import { appRouter } from '../../core/router.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
 import { stageModeOf } from '../../domain/wbs/branchingPolicy.js';
 
+export const PROJECT_STAGE_MODES = Object.freeze(['base','none','single','multiple']);
+
+export function isProjectOwner(projectId, windowRef = globalThis.window){
+  const access = windowRef?.KarhaSaosaWorkspaceAccess?.[projectId] || null;
+  if(access) return access.role === 'owner';
+  return true;
+}
+
 export default {
   id:'project-settings',
   title:'تنظیمات پروژه',
@@ -13,7 +21,10 @@ export default {
     body.replaceChildren();
     document.getElementById('closeProjectSettingsPage').onclick = () => appRouter.navigate(projectId, 'people');
     const project = projectRepository.find(projectId);
-    if(!project) return { projectId, moduleId:this.id };
+    if(!project || !isProjectOwner(projectId)){
+      appRouter.navigate(projectId, 'people');
+      return { projectId, moduleId:this.id };
+    }
     const list = document.createElement('div');
     list.className = 'workspace-option-list';
     const group = document.createElement('fieldset');
@@ -28,6 +39,7 @@ export default {
       ['single', 'سه‌مرحله‌ای', 'مرحله ← مرحله ← مرحله ← کار'],
       ['multiple', 'چندمرحله‌ای', 'مرحله ← مرحله ← مرحله ← مراحل دلخواه ← کار'],
     ];
+    const canEditStageMode = isProjectOwner(projectId);
     options.forEach(([value, label, description]) => {
       const row = document.createElement('label');
       row.className = 'workspace-option';
@@ -50,8 +62,9 @@ export default {
       input.className = 'project-stage-mode';
       input.setAttribute('aria-label', label);
       input.checked = stageModeOf(project) === value;
+      input.disabled = !canEditStageMode;
       input.addEventListener('change', () => {
-        if(!input.checked) return;
+        if(!input.checked || !isProjectOwner(projectId)) return;
         projectRepository.updateProject(projectId, current => {
           const { allowNestedStages, ...settings } = current.settings || {};
           return { ...current, settings:{ ...settings, stageMode:value } };
