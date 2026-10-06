@@ -27,6 +27,7 @@ export function stageAddKinds(project, stageId, { strict = false } = {}){
   // Member create/edit permission is the same in every mode; only depth differs.
   const stageDepth = mode === 'single' ? 2 : mode === 'none' ? 1 : 0;
   const kinds = depth < stageDepth ? (strict ? ['stage'] : ['stage', 'work']) : ['work'];
+  if(strict) return kinds;
   const existing = new Set((found.item.subtasks || []).filter(item => !item.trashed).map(item => isStage(item) ? 'stage' : 'work'));
   return kinds.filter(kind => !existing.size || (existing.size === 1 && existing.has(kind)));
 }
