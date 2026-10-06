@@ -465,8 +465,11 @@ function renderTimelineRows(rows, names, timeline, min, dayWidth){
 }
 
 function treeAddKinds(item){
+  const mode = stageModeOf(projectOf());
   const kinds = stageAddKinds(projectOf(), item.id, { strict:true });
-  if(stageModeOf(projectOf()) === 'multiple' || !kinds.includes('stage')) return kinds;
+  const legacyFixedStage = mode !== 'base' && mode !== 'multiple' && !item.createdAt && item.registrationLevel == null;
+  if(legacyFixedStage && kinds.length === 1 && kinds[0] === 'work') return ['stage'];
+  if(mode === 'multiple' || !kinds.includes('stage')) return kinds;
   const childStages = (item.subtasks || []).filter(child => !child.trashed && isStage(child));
   const alreadyTooDeep = childStages.some(child => (child.subtasks || []).some(grandchild => !grandchild.trashed && isStage(grandchild)));
   return alreadyTooDeep ? [] : kinds;
