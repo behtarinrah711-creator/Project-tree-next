@@ -12,7 +12,7 @@ let menuRootMode = null;
 
 function isGlobalWorkspaceRoute(){
   return window.KarhaRoute?.surface === 'global'
-    || /^#\/(?:notebook(?:\/|$)|profile$|management$)/i.test(String(window.location.hash || ''));
+    || /^#\/(?:notebook(?:\/|$)|profile$|management$|notifications$)/i.test(String(window.location.hash || ''));
 }
 
 function pushMenuRootHistory(kind){
@@ -233,6 +233,12 @@ function applyRoutedSurface({moduleId='dashboard',surface=null}={}){
 }
 
 function restoreGlobalMenuRoute(moduleId){
+  if(moduleId==='notifications'){
+    menuRootMode=null; menuRootPage=null;
+    closeBottomPages(); enterWorkspaceSurface(); setBottomNavActive('Home');
+    showOnlyWorkspacePage('notificationsPage'); updateWorkspaceContextBar(); renderNotificationsPage();
+    return true;
+  }
   if(moduleId==='management'){
     menuRootMode='projects'; menuRootPage='projects'; projectManagementView.reset();
     closeBottomPages(); enterWorkspaceSurface(); setBottomNavActive('Home');
@@ -245,6 +251,19 @@ function restoreGlobalMenuRoute(moduleId){
     return true;
   }
   return false;
+}
+
+function renderNotificationsPage(){
+  const body=document.getElementById('notificationsPageBody');
+  if(!body) return;
+  body.replaceChildren();
+  const wrap=document.createElement('div'); wrap.className='workspace-option-list';
+  ['دعوت‌نامه‌ها','پیام‌های من','اعلان‌ها'].forEach(label=>{
+    const row=document.createElement('button'); row.type='button'; row.className='workspace-option';
+    row.innerHTML=`<span class="workspace-option-main"><span class="workspace-option-title">${label}</span></span><span class="workspace-option-arrow">›</span>`;
+    wrap.appendChild(row);
+  });
+  body.appendChild(wrap);
 }
 
 

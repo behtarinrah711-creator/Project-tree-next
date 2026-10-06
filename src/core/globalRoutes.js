@@ -3,6 +3,7 @@ const GLOBAL_ROUTES = Object.freeze([
   Object.freeze({ path:'notebook', moduleId:'notebook', title:'دفترچه یادداشت' }),
   Object.freeze({ path:'profile', moduleId:'profile', title:'ثبت مشخصات' }),
   Object.freeze({ path:'management', moduleId:'management', title:'مدیریت پروژه‌ها' }),
+  Object.freeze({ path:'notifications', moduleId:'notifications', title:'اعلان‌ها' }),
 ]);
 
 function normalizedPath(locationLike){
@@ -20,4 +21,3 @@ export function getGlobalRoute(locationLike = globalThis.location){
 export function getGlobalRouteByModule(moduleId){
   return GLOBAL_ROUTES.find(route => route.moduleId === moduleId) || null;
 }
-

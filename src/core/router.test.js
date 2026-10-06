@@ -96,6 +96,8 @@ test('global menu routes survive reload without borrowing a project context', as
   assert.deepEqual(parseRoute(),{projectId:null,moduleId:'management',surface:'global'});
   window.location.hash='#/profile';
   assert.deepEqual(parseRoute(),{projectId:null,moduleId:'profile',surface:'global'});
+  window.location.hash='#/notifications';
+  assert.deepEqual(parseRoute(),{projectId:null,moduleId:'notifications',surface:'global'});
 });
 
 test('a stale project URL cannot become the active project', async () => {
