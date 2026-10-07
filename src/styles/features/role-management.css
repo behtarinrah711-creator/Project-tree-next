@@ -2,10 +2,11 @@
 .role-management-body{padding:12px 0 40px;}
 .role-empty,.role-access-denied{margin:28px 16px;padding:24px;border:1px dashed var(--divider);border-radius:14px;background:var(--surface);color:var(--text-dim);text-align:center;line-height:1.8;}
 .role-access-denied{color:var(--danger);}
-.role-member-row{display:flex;width:100%;align-items:center;gap:10px;padding:14px 16px;border:0;border-bottom:1px solid var(--divider);background:var(--surface);color:var(--text);font:inherit;text-align:right;}
+.role-member-item{border-bottom:1px solid var(--divider);background:var(--surface);}.role-member-row{display:flex;width:100%;align-items:center;gap:10px;padding:14px 16px 8px;border:0;background:var(--surface);color:var(--text);font:inherit;text-align:right;}
 .role-member-main{display:flex;flex:1;min-width:0;flex-direction:column;gap:4px;}
 .role-member-main strong{font-size:14px;overflow-wrap:anywhere;}.role-member-main small{color:var(--text-dim);font-size:11px;direction:rtl;}
 .role-status{flex:none;padding:4px 8px;border-radius:999px;background:var(--green-soft);color:var(--green);font-size:11px;font-weight:600;}
+.role-member-actions{display:flex;gap:8px;padding:0 16px 12px;}.role-member-actions button{min-height:34px;padding:0 12px;border:1px solid var(--green);border-radius:9px;background:var(--surface);color:var(--green);font:inherit;font-size:12px;}.role-member-actions button.is-danger{border-color:var(--danger);color:var(--danger);}.role-member-actions button:disabled{opacity:.5;}
 .role-sheet-backdrop{position:fixed;inset:0;z-index:1300;display:flex;align-items:flex-end;justify-content:center;background:#0007;}
 .role-sheet{width:min(100%,620px);max-height:88dvh;overflow:hidden;border-radius:22px 22px 0 0;background:var(--surface);box-shadow:0 -10px 36px #0003;}
 .role-member-form{display:flex;max-height:88dvh;flex-direction:column;}.role-member-form header{display:grid;grid-template-columns:64px 1fr 64px;align-items:center;min-height:60px;border-bottom:1px solid var(--divider);padding:0 10px;}
@@ -26,4 +27,4 @@
 .role-custom-select-option:last-child{border-bottom:0;}
 .role-custom-select-option:active{background:var(--bg);}
 .role-permission-group-title{margin:22px 0 2px!important;padding-top:4px;font-size:14px!important;font-weight:800;color:var(--text)!important;}
-.role-form-success{min-height:20px;color:var(--green);font-size:12px;}.role-resend-invite{width:100%;height:46px;margin-top:18px;border:1px solid var(--green);border-radius:10px;background:var(--surface);color:var(--green);font:inherit;font-weight:600;}.role-resend-invite:disabled{opacity:.55;}
+.role-form-success{min-height:20px;color:var(--green);font-size:12px;}

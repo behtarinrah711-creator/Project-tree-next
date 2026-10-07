@@ -11,10 +11,11 @@ export const MEMBER_STATUSES = Object.freeze([
   Object.freeze({ id:'invited', label:'دعوت‌شده' }),
   Object.freeze({ id:'active', label:'فعال' }),
   Object.freeze({ id:'inactive', label:'غیرفعال' }),
+  Object.freeze({ id:'deleted', label:'حذف‌شده' }),
 ]);
 
 export const EDITABLE_MEMBER_STATUSES = Object.freeze(
-  MEMBER_STATUSES.filter(item=>item.id !== 'invited')
+  MEMBER_STATUSES.filter(item=>['active','inactive'].includes(item.id))
 );
 
 export const ACCESS_LEVELS = Object.freeze([

@@ -29,11 +29,19 @@ export function createSmsInvitationAdapter({windowRef=globalThis.window}={}){
       if(!configured) return Object.freeze({sent:false,reason:'provider-not-configured'});
       return request(windowRef,`/api/v1/projects/${encodeURIComponent(projectId)}/invitations/${encodeURIComponent(invitationId)}/resend`,{method:'POST',body:'{}'});
     },
+    async cancelInvitation({projectId,invitationId}){
+      if(!configured) return Object.freeze({cancelled:false,reason:'provider-not-configured'});
+      return request(windowRef,`/api/v1/projects/${encodeURIComponent(projectId)}/invitations/${encodeURIComponent(invitationId)}`,{method:'DELETE'});
+    },
     async updateMember({projectId,member}){
       if(!configured) return Object.freeze({updated:false,reason:'provider-not-configured',member});
       return request(windowRef,`/api/v1/projects/${encodeURIComponent(projectId)}/members`,{
         method:'PATCH',body:JSON.stringify(member),
       });
+    },
+    async deleteMember({projectId,mobile}){
+      if(!configured) return Object.freeze({deleted:false,reason:'provider-not-configured'});
+      return request(windowRef,`/api/v1/projects/${encodeURIComponent(projectId)}/members/${encodeURIComponent(mobile)}`,{method:'DELETE'});
     },
   });
 }
