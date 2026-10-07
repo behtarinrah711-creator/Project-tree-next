@@ -231,7 +231,7 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
   function applySurface(){
     const notebookRoute=onRoute(),exportRoute=/\/notebook\/export/i.test(windowRef.location.hash||''),on=notebookRoute&&!exportRoute;
     documentRef.body?.classList.toggle('global-surface',notebookRoute);page.classList.toggle('hidden',!on);
-    if(on)render();else if(exportRoute){const list=active(repository.get());if(list)exportView.open(list);}
+    if(on){windowRef.KarhaWorkspaceChrome?.closeBottomPages?.();render();}else if(exportRoute){const list=active(repository.get());if(list)exportView.open(list);}
     windowRef.KarhaWorkspaceChrome?.updateWorkspaceContextBar?.();
   }
   const openNotebook=()=>windowRef.location.hash='#/notebook';

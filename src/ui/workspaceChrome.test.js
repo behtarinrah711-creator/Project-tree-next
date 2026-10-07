@@ -29,7 +29,7 @@ function harness({hash=''}={}){
   const topbar=make('topbar');
   const title=make('topbarTitle'); title.main=element('main');
   ['topbarProjectName','tabbar','bottomNav','workspaceProjectContext','workspaceProjectName','workspaceContextBack',
-    'workspaceContextAction','projectSettingsTrigger','drawerOverlay','closeReportsPage','closeAccountingPage','closeSettingsPage'].forEach(id=>make(id));
+    'workspaceContextAction','projectSettingsTrigger','projectRefreshTrigger','drawerOverlay','closeReportsPage','closeAccountingPage','closeSettingsPage'].forEach(id=>make(id));
   ids.get('drawerOverlay').classList.add('hidden');
   const bottomNav=ids.get('bottomNav');
   bottomNav.childNodes.push(...footers);
@@ -52,6 +52,8 @@ function harness({hash=''}={}){
   ids.get('bottomNav').parentNode=body;
   body.childNodes.push(ids.get('projectSettingsTrigger'));
   ids.get('projectSettingsTrigger').parentNode=body;
+  body.childNodes.push(ids.get('projectRefreshTrigger'));
+  ids.get('projectRefreshTrigger').parentNode=body;
   const documentRef={
     body,
     documentElement:{style:{setProperty(name,value){this[name]=value;}}},
@@ -61,7 +63,12 @@ function harness({hash=''}={}){
   };
   const windowRef={document:documentRef,location:{hash},KarhaRoute:{projectId:'A',moduleId:'dashboard'},setTimeout:fn=>fn(),addEventListener(type,fn){events.set(type,fn);}};
   windowRef.KarhaProjectWorkspaceControls={element:ids.get('projectSettingsTrigger'),setMounted(mounted){
-    const trigger=ids.get('projectSettingsTrigger');
+    for(const id of ['projectSettingsTrigger','projectRefreshTrigger']){
+      const trigger=ids.get(id);
+      if(mounted){if(!trigger.parentNode)body.insertBefore(trigger,null);}else trigger.remove();
+    }
+  },setRefreshMounted(mounted){
+    const trigger=ids.get('projectRefreshTrigger');
     if(mounted){if(!trigger.parentNode)body.insertBefore(trigger,null);}else trigger.remove();
   },isMounted:()=>!!ids.get('projectSettingsTrigger').parentNode};
   const calls=[];
@@ -181,6 +188,8 @@ test('global menu destinations keep one header and do not mount the project foot
   assert.equal(h.ids.get('topbar').classList.contains('workspace-context'),false);
   assert.equal(h.ids.get('topbarTitle').classList.contains('global-menu-context'),true);
   assert.equal(h.ids.get('projectSettingsTrigger').parentNode,null);
+  assert.equal(h.ids.get('projectRefreshTrigger').parentNode,h.body);
+  assert.equal(h.ids.get('projectRefreshTrigger').hidden,false);
 
   // The just-clicked menu item must supersede a route value that has not synced yet.
   h.state={...h.state,menuRootMode:'profile'};
@@ -192,6 +201,7 @@ test('global menu destinations keep one header and do not mount the project foot
   h.chrome.setBottomNavActive('Home');
   assert.equal(h.ids.get('topbarTitle').main.textContent,'مدیریت پروژه‌ها');
   assert.equal(h.ids.get('projectSettingsTrigger').parentNode,null);
+  assert.equal(h.ids.get('projectRefreshTrigger').parentNode,null);
 
   h.state={...h.state,menuRootMode:null};
   h.windowRef.KarhaRoute={projectId:'A',moduleId:'dashboard'};

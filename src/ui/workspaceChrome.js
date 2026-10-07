@@ -138,6 +138,10 @@ export function installWorkspaceChrome({
     documentRef.documentElement?.classList?.toggle?.('saosa-notebook-route', routeModuleId === 'notebook' || routeModuleId === 'notebook-export' || /^#\/notebook/i.test(windowRef.location?.hash || ''));
     if(rootTitle){
       setProjectChromeMounted(false);
+      const notebookRoute = !menuTitle && (routeModuleId === 'notebook' || routeModuleId === 'notebook-export');
+      windowRef.KarhaProjectWorkspaceControls?.setRefreshMounted?.(notebookRoute);
+      const refreshTrigger = get('projectRefreshTrigger');
+      if(refreshTrigger) refreshTrigger.hidden = !notebookRoute;
       topbar?.classList?.remove?.('workspace-context');
       topbar?.classList?.remove?.('root-workspace-context');
       get('topbarTitle')?.classList?.add?.('global-menu-context');

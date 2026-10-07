@@ -237,6 +237,7 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
   windowRef.KarhaProjectWorkspaceControls = Object.freeze({
     element:settingsTrigger,
     setMounted(mounted){ setSettingsMounted(mounted); setRefreshMounted(mounted); },
+    setRefreshMounted,
     isMounted:()=>!!settingsTrigger?.parentNode,
   });
 
