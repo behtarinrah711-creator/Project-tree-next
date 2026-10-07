@@ -87,6 +87,39 @@ export function canDeleteProjectTasks(permissions){
   return ['planning:tree','planning:timeline','planning:costline'].some(key=>modules[key]==='full');
 }
 
+export function canMutateSharedProject(permissions){
+  return permissions?.edit===true || canWriteProjectTasks(permissions);
+}
+
+function mergeTaskCollection(currentItems=[],incomingItems=[],allowDelete=false){
+  const incomingById=new Map(incomingItems.filter(Boolean).map(item=>[String(item.id),item]));
+  const merged=currentItems.filter(Boolean).map(current=>{
+    const incoming=incomingById.get(String(current.id));
+    if(!incoming) return allowDelete?null:current;
+    incomingById.delete(String(current.id));
+    if(incoming.trashed && !allowDelete) return current;
+    return {
+      ...current,
+      ...incoming,
+      subtasks:mergeTaskCollection(current.subtasks,incoming.subtasks,allowDelete),
+      workTasks:mergeTaskCollection(current.workTasks,incoming.workTasks,allowDelete),
+    };
+  }).filter(Boolean);
+  return [...merged,...incomingById.values()];
+}
+
+export function mergeSharedProjectPayload(current,incoming,permissions){
+  if(!modulePermissions(permissions)) return incoming;
+  return {
+    ...current,
+    tasks:mergeTaskCollection(
+      Array.isArray(current?.tasks)?current.tasks:[],
+      Array.isArray(incoming?.tasks)?incoming.tasks:[],
+      canDeleteProjectTasks(permissions),
+    ),
+  };
+}
+
 function taskIds(tasks){
   const ids=new Set();
   const visit=(items=[])=>items.forEach(item=>{
@@ -244,7 +277,7 @@ async function saveWorkspace(pool, accountId, snapshot){
             WHERE m.project_id = $1 AND m.account_id = $2 AND m.status = 'active'`,
           [projectId, accountId],
         );
-        if(!membership.rowCount || membership.rows[0].permissions?.edit !== true){
+        if(!membership.rowCount || !canMutateSharedProject(membership.rows[0].permissions)){
           const error = new Error('forbidden_project');
           error.statusCode = 403;
           throw error;
@@ -254,13 +287,11 @@ async function saveWorkspace(pool, accountId, snapshot){
         if(projectTasksChanged(currentPayload,project) && !canWriteProjectTasks(permissions)){
           const error=new Error('forbidden_planning_write');error.statusCode=403;throw error;
         }
-        if(projectTasksDeleted(currentPayload,project) && !canDeleteProjectTasks(permissions)){
-          const error=new Error('forbidden_planning_delete');error.statusCode=403;throw error;
-        }
+        const savedProject=mergeSharedProjectPayload(currentPayload,project,permissions);
         await client.query(
           `UPDATE projects SET payload = $2::jsonb, revision = revision + 1, updated_at = now()
             WHERE id = $1`,
-          [projectId, JSON.stringify(project)],
+          [projectId, JSON.stringify(savedProject)],
         );
       }
     }
