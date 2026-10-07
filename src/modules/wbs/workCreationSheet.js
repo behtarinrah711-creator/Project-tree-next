@@ -6,6 +6,7 @@ import { fieldRow, openWbsSheet, textInput } from './wbsSheet.js';
 export function openWorkCreationSheet({ projectId, stage, onChanged } = {}){
   const overlay = openWbsSheet({
     title:'اضافه کردن کار به:', presentation:'work-create',
+    historyKey:`wbs-work-create:${projectId}:${stage.id}`,
     body(root){
       root.appendChild(fieldRow('عنوان کار', textInput('', {name:'title',placeholder:'مثال: خرید سیم و کابل'})));
     },

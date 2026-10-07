@@ -23,6 +23,7 @@ body:has(.wbs-home-root){background:#fff;}
 .wbs-tab-label{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px;line-height:1.4;text-align:right;}
 .wbs-expand-icon{width:24px;height:24px;display:block;fill:currentColor;overflow:visible;flex:0 0 24px;}
 .wbs-tab.active{background:#2f2a24;color:#fff;border-color:#cfc7bb;}
+.wbs-tab.active .wbs-tab-label{color:#fff!important;opacity:1;}
 .wbs-toolbar{display:flex;gap:8px;padding:0 12px 10px;margin:0;direction:rtl;}
 .wbs-toolbar .wbs-root-add{flex:3 1 0;}
 .wbs-toolbar .wbs-tree-toggle{flex:1 1 0;}
