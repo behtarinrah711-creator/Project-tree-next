@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {canDeleteProjectTasks,canMutateSharedProject,canWriteProjectCostline,canWriteProjectTasks,mergeSharedProjectPayload,projectFundingChanged,projectPayloadChanged,projectTasksChanged,projectTasksDeleted} from '../src/app.js';
+import {canDeleteProjectTasks,canMutateSharedProject,canWriteProjectCostline,canWriteProjectTasks,mergeAssignedExecutionPayload,mergeSharedProjectPayload,projectFundingChanged,projectPayloadChanged,projectTasksChanged,projectTasksDeleted} from '../src/app.js';
 
 test('planning and execution write permissions authorize shared task mutations',()=>{
   assert.equal(canWriteProjectTasks({modules:{
@@ -68,4 +68,16 @@ test('cost estimate members save shared receipts without gaining unrelated proje
   assert.equal(merged.projectMembers.length,1);
   assert.equal(merged.fundingReceipts[0].amount,20);
   assert.equal(merged.fundingAllocations[0].amount,20);
+});
+
+test('assigned member can update only execution fields without general module write access',()=>{
+  const current={id:'p1',name:'پروژه',contacts:[{id:'c1',phones:['09120000000']}],tasks:[{id:'w1',text:'کار',workTasks:[{id:'t1',title:'آرماتوربندی',assigneeContactId:'c1',executionHistory:[]}]}]};
+  const incoming=structuredClone(current);
+  incoming.tasks[0].workTasks[0].actualStart='1405/07/16';
+  incoming.tasks[0].workTasks[0].executionHistory=[{type:'started'}];
+  const allowed=mergeAssignedExecutionPayload(current,incoming,'09120000000');
+  assert.equal(allowed.ok,true);
+  assert.equal(allowed.project.tasks[0].workTasks[0].actualStart,'1405/07/16');
+  incoming.tasks[0].workTasks[0].title='تغییر غیرمجاز';
+  assert.equal(mergeAssignedExecutionPayload(current,incoming,'09120000000').ok,false);
 });

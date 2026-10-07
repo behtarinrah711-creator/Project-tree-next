@@ -55,6 +55,8 @@ export function normalizeWorkTask(task, workId = ''){
     scheduleEnd:/^\d{4}\/\d{2}\/\d{2}$/.test(String(task.scheduleEnd || '')) ? task.scheduleEnd : '',
     priority:TASK_PRIORITIES.includes(task.priority) ? task.priority : 'normal',
     assigneeContactId:String(task.assigneeContactId || ''),
+    approvalContactId:String(task.approvalContactId || ''),
+    requiresManagementApproval:Boolean(task.approvalContactId),
     contractorContactId:String(task.contractorContactId || ''),
     weight:taskWeightOf(task),
     progress:taskProgressOf(task),

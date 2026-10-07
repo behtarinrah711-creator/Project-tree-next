@@ -9,11 +9,11 @@ const project = {
   location: 'تهران',
   tasks: [
     { id:'s1', kind:'stage', text:'فونداسیون', progressWeight:1, subtasks:[
-      { id:'w1', kind:'work', text:'خرید آهن', type:'خرید', priority:'high', assigneeContactId:'c1', progress:0, progressWeight:1, quantity:2, unitCost:5000, scheduleStart:today, scheduleEnd:today, subtasks:[] },
+      { id:'w1', kind:'work', text:'خرید آهن', type:'خرید', priority:'high', assigneeContactId:'c1', approvalContactId:'c1', progress:0, progressWeight:1, quantity:2, unitCost:5000, scheduleStart:today, scheduleEnd:today, subtasks:[] },
       { id:'w2', kind:'work', text:'اجرای آهن', type:'اجرا', progress:0, progressWeight:1, scheduleStart:today, scheduleEnd:today, subtasks:[] },
     ] },
   ],
-  contacts: [{id:'c1',name:'مهندس احمدی'}],
+  contacts: [{id:'c1',name:'مهندس احمدی',phone:'09120000000'}],
   activityTemplates: [],
   contractTemplates: [],
   contracts: [],
@@ -25,6 +25,7 @@ const project = {
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(seedProject => {
     localStorage.clear();
+    localStorage.setItem('saosa:v1:sms-session',JSON.stringify({accountId:'e2e',phone:'09120000000',token:'test',expiresAt:Date.now()+3600000}));
     localStorage.setItem('ptnext-v1:app-data', JSON.stringify({
       schemaVersion: 8,
       projects: [seedProject],
@@ -57,7 +58,7 @@ test('shopping is a native WBS view with its own modular surface', async ({ page
   await expect(card).toContainText('فونداسیون');
   await expect(card).toContainText('اهمیت: زیاد');
   await expect(card).toContainText('۱۰٬۰۰۰ تومان');
-  await expect(card).toContainText('مسئول: مهندس احمدی');
+  await expect(card).toContainText('مسئول پیگیری: مهندس احمدی');
   await expect(card.locator('.today-status-slot .today-start')).toHaveText('شروع');
   await expect(card).not.toContainText('خرید شروع نشده');
   await expect(page.locator('.shopping-item-card[data-entity-id="w2"]')).toHaveCount(0);

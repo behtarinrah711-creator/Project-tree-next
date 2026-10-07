@@ -170,6 +170,57 @@ export function projectTasksDeleted(previous,next){
   return [...before].some(id=>!after.has(id));
 }
 
+const ASSIGNED_EXECUTION_FIELDS=new Set([
+  'actualStart','workflowStatus','executionReports','executionHistory','completionSubmittedAt','completionSubmittedBy',
+  'completed','done','completionState','completedAt','actualFinishDay','returnedToTodayOn','progress','status','updatedAt',
+]);
+const APPROVER_EXECUTION_FIELDS=new Set([
+  'completed','done','completionState','workflowStatus','completedAt','actualFinishDay','approvedAt','approvedBy',
+  'returnedToTodayOn','progress','status','executionComments','executionHistory','updatedAt',
+]);
+
+function executionContactIds(project,phone){
+  const ids=new Set((project?.contacts||[]).filter(contact=>{
+    const phones=Array.isArray(contact?.phones)?contact.phones:[contact?.phone];
+    return phones.map(String).includes(String(phone||''));
+  }).map(contact=>String(contact.id)));
+  (project?.projectMembers||[]).filter(member=>String(member?.mobile||'')===String(phone||''))
+    .forEach(member=>{if(member?.contactId)ids.add(String(member.contactId));});
+  return ids;
+}
+
+function mergeAssignedExecutionItems(currentItems,incomingItems,contactIds,state){
+  const incomingById=new Map((incomingItems||[]).filter(Boolean).map(item=>[String(item.id),item]));
+  if(incomingById.size!==(currentItems||[]).filter(Boolean).length){state.invalid=true;return currentItems||[];}
+  return (currentItems||[]).map(current=>{
+    const incoming=incomingById.get(String(current.id));
+    if(!incoming){state.invalid=true;return current;}
+    const assigned=Boolean(current.assigneeContactId)&&contactIds.has(String(current.assigneeContactId));
+    const approver=current.approvalContactId&&contactIds.has(String(current.approvalContactId));
+    const allowed=new Set([...(assigned?ASSIGNED_EXECUTION_FIELDS:[]),...(approver?APPROVER_EXECUTION_FIELDS:[])]);
+    const next={...current};
+    const keys=new Set([...Object.keys(current),...Object.keys(incoming)]);
+    keys.delete('subtasks');keys.delete('workTasks');
+    for(const key of keys){
+      if(JSON.stringify(current[key])===JSON.stringify(incoming[key]))continue;
+      if(!allowed.has(key)){state.invalid=true;continue;}
+      next[key]=incoming[key];state.changed=true;
+    }
+    next.subtasks=mergeAssignedExecutionItems(current.subtasks||[],incoming.subtasks||[],contactIds,state);
+    next.workTasks=mergeAssignedExecutionItems(current.workTasks||[],incoming.workTasks||[],contactIds,state);
+    return next;
+  });
+}
+
+export function mergeAssignedExecutionPayload(current,incoming,phone){
+  const currentMeta={...current};delete currentMeta.tasks;
+  const incomingMeta={...incoming};delete incomingMeta.tasks;
+  if(JSON.stringify(currentMeta)!==JSON.stringify(incomingMeta))return {ok:false,project:current};
+  const state={changed:false,invalid:false};
+  const tasks=mergeAssignedExecutionItems(current?.tasks||[],incoming?.tasks||[],executionContactIds(current,phone),state);
+  return {ok:state.changed&&!state.invalid,project:{...current,tasks}};
+}
+
 async function acceptAccountInvitation(client, accountId, invitationId){
   const found=await client.query(
     `SELECT i.* FROM project_invitations i
@@ -304,7 +355,7 @@ async function saveWorkspace(pool, accountId, snapshot){
         );
       }else{
         const membership = await client.query(
-          `SELECT r.permissions
+          `SELECT r.permissions,a.phone
              FROM project_memberships m
              JOIN project_roles r ON r.id = m.role_id AND r.project_id = m.project_id
              JOIN projects p ON p.id=m.project_id
@@ -327,18 +378,17 @@ async function saveWorkspace(pool, accountId, snapshot){
         // another project in the same transaction.
         if(!projectPayloadChanged(currentPayload,project)) continue;
         const permissions=membership.rows[0].permissions||{};
-        if(!canMutateSharedProject(permissions)){
-          const error = new Error('forbidden_project');
-          error.statusCode = 403;
-          throw error;
-        }
-        if(projectTasksChanged(currentPayload,project) && !canWriteProjectTasks(permissions)){
+        const assignedExecution=!canMutateSharedProject(permissions)
+          ? mergeAssignedExecutionPayload(currentPayload,project,membership.rows[0].phone)
+          : null;
+        if(assignedExecution&&!assignedExecution.ok){const error=new Error('forbidden_project');error.statusCode=403;throw error;}
+        if(!assignedExecution?.ok && projectTasksChanged(currentPayload,project) && !canWriteProjectTasks(permissions)){
           const error=new Error('forbidden_planning_write');error.statusCode=403;throw error;
         }
         if(projectFundingChanged(currentPayload,project) && !canWriteProjectCostline(permissions)){
           const error=new Error('forbidden_costline_write');error.statusCode=403;throw error;
         }
-        const savedProject=mergeSharedProjectPayload(currentPayload,project,permissions);
+        const savedProject=assignedExecution?.ok?assignedExecution.project:mergeSharedProjectPayload(currentPayload,project,permissions);
         await client.query(
           `UPDATE projects SET payload = $2::jsonb, revision = revision + 1, updated_at = now()
             WHERE id = $1`,
