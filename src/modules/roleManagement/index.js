@@ -90,7 +90,12 @@ export function createRoleManagementModule({
       const project=repository.find(projectId);const session=sessionProvider();const saosaSession=readSaosaSession(windowRef);const ownerPhone=String(saosaSession?.phone || session?.phoneNumber || session?.phone || '').trim();
       if(!existing && ownerPhone===mobileValue){setInvalid(mobile,'این کاربر مالک پروژه است.');return;}
       const duplicate=(project?.projectMembers || []).find(item=>item.id!==existing?.id && item.mobile===mobileValue);
-      if(duplicate){setInvalid(mobile,duplicate.status==='invited'?'این کاربر قبلاً دعوت شده است.':duplicate.status==='active'?'این کاربر قبلاً عضو پروژه شده است.':'این کاربر قبلاً به پروژه اضافه شده و در حال حاضر غیرفعال است.');return;}
+      if(duplicate){
+        const message=duplicate.status==='invited'?'این کاربر قبلاً دعوت شده است.':duplicate.status==='active'?'این کاربر قبلاً عضو پروژه شده است.':'این کاربر قبلاً به پروژه اضافه شده و در حال حاضر غیرفعال است.';
+        if(duplicate.status==='invited') windowRef?.KarhaToast?.show?.(message);
+        else setInvalid(mobile,message);
+        return;
+      }
       const permissionValues=Object.fromEntries(permissionModules(registry).map(module=>[module.id,data.get(`permission:${module.id}`)]));
       const values={mobile:mobileValue,permissions:permissionValues};
       let member;
@@ -100,7 +105,7 @@ export function createRoleManagementModule({
       }else member=createMember(values,{registry});
       if(!existing && smsAdapter.configured){
         const submit=form.querySelector('[type="submit"]');submit.disabled=true;
-        try{const invitation=await smsAdapter.sendInvitation({projectId,projectName:project?.name || project?.title || 'پروژه',member});member={...member,permissions:normalizePermissions(invitation.permissions || member.permissions,registry),invitationId:invitation.id || invitation.invitationId || null,invitationExpiresAt:invitation.expiresAt || null,smsSent:!!invitation.smsSent,emailSent:!!invitation.emailSent};if(invitation.alreadyInvited)windowRef?.KarhaToast?.show?.('دعوت‌نامه موجود به لیست بازگردانده شد.');}
+        try{const invitation=await smsAdapter.sendInvitation({projectId,projectName:project?.name || project?.title || 'پروژه',member});member={...member,permissions:normalizePermissions(invitation.permissions || member.permissions,registry),invitationId:invitation.id || invitation.invitationId || null,invitationExpiresAt:invitation.expiresAt || null,smsSent:!!invitation.smsSent,emailSent:!!invitation.emailSent};if(invitation.alreadyInvited)windowRef?.KarhaToast?.show?.('این کاربر قبلاً دعوت شده است.');}
         catch(sendError){submit.disabled=false;const messages={project_owner:'این کاربر مالک پروژه است.',already_member:'این کاربر قبلاً عضو پروژه شده است.',inactive_member:'این کاربر قبلاً به پروژه اضافه شده و در حال حاضر غیرفعال است.',already_invited:'این کاربر قبلاً دعوت شده است.',invalid_phone:'شماره موبایل را به‌صورت ۱۱ رقمی و با 09 وارد کنید.'};setInvalid(mobile,messages[sendError.code] || 'ثبت دعوت‌نامه انجام نشد. دوباره تلاش کنید.');return;}
       }
       if(existing && smsAdapter.configured){
@@ -127,6 +132,10 @@ export function createRoleManagementModule({
     save(projectId,project=>({...project,projectMembers:project.projectMembers.map(item=>item.id===member.id?member:item)}));
   }
 
+  function removeMember(projectId,member){
+    save(projectId,project=>({...project,projectMembers:project.projectMembers.filter(item=>item.id!==member.id)}));
+  }
+
   async function runMemberAction(projectId,registry,member,action,button){
     const project=repository.find(projectId);
     button.disabled=true;
@@ -137,7 +146,7 @@ export function createRoleManagementModule({
       }else if(action==='cancel'){
         if(!windowRef?.confirm?.('آیا از حذف این دعوت‌نامه مطمئن هستید؟')) return;
         await smsAdapter.cancelInvitation({projectId,invitationId:member.invitationId,mobile:member.mobile});
-        replaceMember(projectId,{...member,status:'deleted',invitationId:null,invitationExpiresAt:null});
+        removeMember(projectId,member);
         windowRef?.KarhaToast?.show?.('دعوت‌نامه حذف شد.');
       }else if(action==='delete'){
         if(!windowRef?.confirm?.('آیا از حذف این عضو از پروژه مطمئن هستید؟')) return;

@@ -515,7 +515,7 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
             const project=await client.query('SELECT payload FROM projects WHERE id=$1 FOR UPDATE',[inviteRoute.projectId]);
             const payload=project.rows[0]?.payload || {};
             if(Array.isArray(payload.projectMembers)){
-              payload.projectMembers=payload.projectMembers.map(item=>item?.mobile===cancelled.rows[0].phone?{...item,status:'deleted',invitationId:null,invitationExpiresAt:null}:item);
+              payload.projectMembers=payload.projectMembers.filter(item=>item?.mobile!==cancelled.rows[0].phone);
               await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[inviteRoute.projectId,JSON.stringify(payload)]);
             }
             await client.query('COMMIT');
