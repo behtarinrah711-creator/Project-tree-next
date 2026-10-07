@@ -39,7 +39,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('shopping is a native WBS view with its own modular surface', async ({ page }) => {
-  const shoppingTab = page.locator('.wbs-tab[aria-label="خریدهای امروز"]');
+  const shoppingTab = page.locator('.wbs-tab[aria-label="لیست خریدها"]');
   await expect(shoppingTab).toBeVisible();
   await shoppingTab.click();
 
@@ -72,7 +72,7 @@ test('shopping is a native WBS view with its own modular surface', async ({ page
 });
 
 test('shopping report, comment and approval use the same WBS purchase entity',async({page})=>{
-  await page.locator('.wbs-tab[aria-label="خریدهای امروز"]').click();
+  await page.locator('.wbs-tab[aria-label="لیست خریدها"]').click();
   let card=page.locator('.shopping-item-card[data-entity-id="w1"]');
   await card.getByRole('button',{name:'ثبت گزارش'}).click();
   await page.locator('[name="reportDescription"]').fill('پیش‌فاکتور آهن دریافت شد');
