@@ -50,8 +50,6 @@ function invitationRoute(pathname){
   if(create) return {action:'create',projectId:decodeURIComponent(create[1])};
   const resend=/^\/api\/v1\/projects\/([^/]+)\/invitations\/([^/]+)\/resend$/.exec(pathname);
   if(resend) return {action:'resend',projectId:decodeURIComponent(resend[1]),invitationId:decodeURIComponent(resend[2])};
-  const cancel=/^\/api\/v1\/projects\/([^/]+)\/invitations\/([^/]+)$/.exec(pathname);
-  if(cancel) return {action:'cancel',projectId:decodeURIComponent(cancel[1]),invitationId:decodeURIComponent(cancel[2])};
   return null;
 }
 
@@ -62,10 +60,8 @@ function accountInvitationRoute(pathname){
 }
 
 function memberRoute(pathname){
-  const collection=/^\/api\/v1\/projects\/([^/]+)\/members$/.exec(pathname);
-  if(collection) return {projectId:decodeURIComponent(collection[1]),mobile:null};
-  const item=/^\/api\/v1\/projects\/([^/]+)\/members\/([^/]+)$/.exec(pathname);
-  return item?{projectId:decodeURIComponent(item[1]),mobile:decodeURIComponent(item[2])}:null;
+  const match=/^\/api\/v1\/projects\/([^/]+)\/members$/.exec(pathname);
+  return match?{projectId:decodeURIComponent(match[1])}:null;
 }
 
 function invitationAccess(permissions){
@@ -138,6 +134,10 @@ function taskIds(tasks){
 
 export function projectTasksChanged(previous,next){
   return JSON.stringify(previous?.tasks||[])!==JSON.stringify(next?.tasks||[]);
+}
+
+export function projectPayloadChanged(previous,next){
+  return JSON.stringify(previous||{})!==JSON.stringify(next||{});
 }
 
 export function projectTasksDeleted(previous,next){
@@ -216,13 +216,8 @@ async function readWorkspace(pool, accountId){
       `SELECT p.payload, r.role_key, r.permissions
          FROM project_memberships m
          JOIN projects p ON p.id = m.project_id
-         JOIN accounts a ON a.id = m.account_id
          JOIN project_roles r ON r.id = m.role_id AND r.project_id = m.project_id
         WHERE m.account_id = $1 AND m.status = 'active'
-          AND (p.owner_account_id=m.account_id OR EXISTS (
-            SELECT 1 FROM jsonb_array_elements(COALESCE(p.payload->'projectMembers','[]'::jsonb)) listed
-             WHERE listed->>'mobile'=a.phone AND listed->>'status'='active'
-          ))
         ORDER BY p.created_at, p.id`,
       [accountId],
     ),
@@ -256,7 +251,7 @@ async function saveWorkspace(pool, accountId, snapshot){
     await client.query('BEGIN');
     for(const project of snapshot.projects){
       const projectId = String(project.id);
-      const existing = await client.query('SELECT id,owner_account_id,payload FROM projects WHERE id = $1 FOR UPDATE', [projectId]);
+      const existing = await client.query('SELECT id,payload FROM projects WHERE id = $1 FOR UPDATE', [projectId]);
       if(!existing.rowCount){
         await client.query(
           `INSERT INTO projects(id, owner_account_id, payload) VALUES ($1, $2, $3::jsonb)`,
@@ -283,22 +278,25 @@ async function saveWorkspace(pool, accountId, snapshot){
           `SELECT r.permissions
              FROM project_memberships m
              JOIN project_roles r ON r.id = m.role_id AND r.project_id = m.project_id
-             JOIN projects p ON p.id=m.project_id
-             JOIN accounts a ON a.id=m.account_id
-            WHERE m.project_id = $1 AND m.account_id = $2 AND m.status = 'active'
-              AND (p.owner_account_id=m.account_id OR EXISTS (
-                SELECT 1 FROM jsonb_array_elements(COALESCE(p.payload->'projectMembers','[]'::jsonb)) listed
-                 WHERE listed->>'mobile'=a.phone AND listed->>'status'='active'
-              ))`,
+            WHERE m.project_id = $1 AND m.account_id = $2 AND m.status = 'active'`,
           [projectId, accountId],
         );
-        if(!membership.rowCount || !canMutateSharedProject(membership.rows[0].permissions)){
+        if(!membership.rowCount){
           const error = new Error('forbidden_project');
           error.statusCode = 403;
           throw error;
         }
         const currentPayload=existing.rows[0]?.payload||{};
+        // The browser persists one account-wide snapshot. Projects that were
+        // only read must not require write permission or roll back a write to
+        // another project in the same transaction.
+        if(!projectPayloadChanged(currentPayload,project)) continue;
         const permissions=membership.rows[0].permissions||{};
+        if(!canMutateSharedProject(permissions)){
+          const error = new Error('forbidden_project');
+          error.statusCode = 403;
+          throw error;
+        }
         if(projectTasksChanged(currentPayload,project) && !canWriteProjectTasks(permissions)){
           const error=new Error('forbidden_planning_write');error.statusCode=403;throw error;
         }
@@ -475,7 +473,7 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
       }
 
       const inviteRoute=invitationRoute(url.pathname);
-      if(inviteRoute && ['POST','DELETE'].includes(request.method)){
+      if(inviteRoute && request.method === 'POST'){
         if(!PROJECT_ID_PATTERN.test(inviteRoute.projectId)) return sendJson(response,400,{error:'invalid_project'});
         const accountId=await authenticate(request,pool,sessionSecret);
         if(!accountId) return sendJson(response,401,{error:'unauthorized'});
@@ -485,62 +483,21 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
         );
         if(!owner.rowCount) return sendJson(response,403,{error:'forbidden_project'});
 
-        if(inviteRoute.action==='cancel' && request.method==='DELETE'){
-          const client=await pool.connect();
-          try{
-            await client.query('BEGIN');
-            const cancelled=await client.query(
-              `UPDATE project_invitations SET status='revoked',updated_at=now()
-                WHERE id=$1 AND project_id=$2 AND status='invited' RETURNING phone`,
-              [inviteRoute.invitationId,inviteRoute.projectId],
-            );
-            if(!cancelled.rowCount){await client.query('ROLLBACK');return sendJson(response,404,{error:'invitation_not_found'});}
-            const project=await client.query('SELECT payload FROM projects WHERE id=$1 FOR UPDATE',[inviteRoute.projectId]);
-            const payload=project.rows[0]?.payload || {};
-            if(Array.isArray(payload.projectMembers)){
-              payload.projectMembers=payload.projectMembers.map(item=>item?.mobile===cancelled.rows[0].phone?{...item,status:'deleted',invitationId:null,invitationExpiresAt:null}:item);
-              await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[inviteRoute.projectId,JSON.stringify(payload)]);
-            }
-            await client.query('COMMIT');
-            return sendJson(response,200,{id:inviteRoute.invitationId,status:'revoked',phone:cancelled.rows[0].phone});
-          }catch(error){await client.query('ROLLBACK');throw error;}
-          finally{client.release();}
-        }
-
-        if(request.method!=='POST') return sendJson(response,405,{error:'method_not_allowed'});
-
         if(inviteRoute.action==='create'){
           const body=await readJson(request,64*1024);
           const phone=normalizeIranPhone(body.phone);if(!phone) return sendJson(response,400,{error:'invalid_phone'});
           const email=normalizeEmail(body.email);if(email===null) return sendJson(response,400,{error:'invalid_email'});
           if(phone===owner.rows[0].phone) return sendJson(response,409,{error:'project_owner'});
           const member=await pool.query(
-            `SELECT m.status,m.account_id FROM project_memberships m JOIN accounts a ON a.id=m.account_id
+            `SELECT m.status FROM project_memberships m JOIN accounts a ON a.id=m.account_id
               WHERE m.project_id=$1 AND a.phone=$2 LIMIT 1`,[inviteRoute.projectId,phone],
           );
-          if(member.rowCount){
-            const projectMembers=owner.rows[0].payload?.projectMembers;
-            const listed=Array.isArray(projectMembers) && projectMembers.some(item=>item?.mobile===phone && item?.status!=='deleted');
-            if(listed) return sendJson(response,409,{error:member.rows[0].status==='active'?'already_member':'inactive_member'});
-            await pool.query(
-              `DELETE FROM project_memberships WHERE project_id=$1 AND account_id=$2`,
-              [inviteRoute.projectId,member.rows[0].account_id],
-            );
-          }
-          await pool.query(
-            `UPDATE project_invitations SET status='revoked',updated_at=now()
-              WHERE project_id=$1 AND phone=$2 AND status='invited' AND expires_at<=now()`,
-            [inviteRoute.projectId,phone],
-          );
+          if(member.rowCount) return sendJson(response,409,{error:member.rows[0].status==='active'?'already_member':'inactive_member'});
           const duplicate=await pool.query(
-            `SELECT id,permissions,expires_at FROM project_invitations
-              WHERE project_id=$1 AND phone=$2 AND status='invited' AND expires_at>now() LIMIT 1`,
+            `SELECT id FROM project_invitations WHERE project_id=$1 AND phone=$2 AND status='invited' LIMIT 1`,
             [inviteRoute.projectId,phone],
           );
-          if(duplicate.rowCount){
-            const existing=duplicate.rows[0];
-            return sendJson(response,200,{id:existing.id,status:'invited',expiresAt:existing.expires_at,permissions:existing.permissions,alreadyInvited:true});
-          }
+          if(duplicate.rowCount) return sendJson(response,409,{error:'already_invited'});
           const id=randomUUID();const rawToken=randomBytes(32).toString('base64url');
           const projectName=String(owner.rows[0].payload?.name || owner.rows[0].payload?.title || body.projectName || 'پروژه').slice(0,100);
           const inserted=await pool.query(
@@ -585,21 +542,6 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
       }
 
       const memberEditRoute=memberRoute(url.pathname);
-      if(memberEditRoute?.mobile && request.method==='DELETE'){
-        if(!PROJECT_ID_PATTERN.test(memberEditRoute.projectId)) return sendJson(response,400,{error:'invalid_project'});
-        const accountId=await authenticate(request,pool,sessionSecret);
-        if(!accountId) return sendJson(response,401,{error:'unauthorized'});
-        const phone=normalizeIranPhone(memberEditRoute.mobile);if(!phone) return sendJson(response,400,{error:'invalid_phone'});
-        const owner=await pool.query('SELECT id FROM projects WHERE id=$1 AND owner_account_id=$2',[memberEditRoute.projectId,accountId]);
-        if(!owner.rowCount) return sendJson(response,403,{error:'forbidden_project'});
-        const removed=await pool.query(
-          `DELETE FROM project_memberships m USING accounts a
-            WHERE m.project_id=$1 AND m.account_id=a.id AND a.phone=$2 RETURNING m.account_id`,
-          [memberEditRoute.projectId,phone],
-        );
-        if(!removed.rowCount) return sendJson(response,404,{error:'member_not_found'});
-        return sendJson(response,200,{mobile:phone,status:'deleted'});
-      }
       if(memberEditRoute && request.method==='PATCH'){
         if(!PROJECT_ID_PATTERN.test(memberEditRoute.projectId)) return sendJson(response,400,{error:'invalid_project'});
         const accountId=await authenticate(request,pool,sessionSecret);
