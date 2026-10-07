@@ -2,14 +2,15 @@ import { todayApi, COMMENT_MIN_LENGTH, REJECTION_MIN_LENGTH, REPORT_MIN_LENGTH }
 import { contractorForItem, executionStatus, itemsForMode, remainingLabel, statusLabel, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
 import { fieldRow, openWbsSheet } from './wbsSheet.js';
 import { toPersianDigits } from '../../ui/digits.js';
+import { currentExecutionActor, isExecutionApprover, isExecutionAssignee } from './executionActor.js';
 
 export const TODAY_ICON = 'M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v255l-80 80v-175H200v400h248l80 80H200Zm0-560h560v-80H200v80Zm0 0v-80 80ZM662-60 520-202l56-56 85 85 170-170 56 57L662-60Z';
 const ICONS = Object.freeze({ overdue:'./src/assets/wbs/pending-actions.svg', today:'./src/assets/wbs/today.svg', future:'./src/assets/wbs/next-week.svg', pending:'./src/assets/wbs/pending-approval.svg', unscheduled:'./src/assets/wbs/event-busy.svg', filter:'./src/assets/wbs/filter-alt.svg' });
 const LABELS = Object.freeze({ overdue:'کارهای عقب‌افتاده', today:'کارهای امروز', future:'کارهای آینده', pending:'منتظر تأیید', unscheduled:'زمان‌بندی‌نشده' });
 const TYPE_CLASSES = new Map([['اجرا','type-1'],['خرید','type-2'],['نیروی کار','type-3'],['پیمانکار','type-4'],['کرایه','type-5'],['خدمات','type-6'],['پیگیری','type-7']]);
-let activeMode = 'today'; let activeProjectId = null;
+let activeMode = 'today'; let activeProjectId = null; let activeProject = null;
 
-function actor(){ const user = window.firebase?.auth?.()?.currentUser || null; return { id:user?.uid || 'guest', name:user?.displayName || user?.email || 'کاربر' }; }
+function actor(){ return currentExecutionActor(activeProject); }
 function esc(value){ return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])); }
 function contactName(contact){ return [contact?.type, contact?.firstName, contact?.lastName].filter(Boolean).join(' ').trim() || contact?.name || ''; }
 function refOf(item){ return { kind:item.kind, id:item.id, workId:item.workId }; }
@@ -58,7 +59,7 @@ function renderComments(documentRef,item,onChanged){
   if(comments.length>2){ const more=documentRef.createElement('button'); more.type='button'; more.className='today-show-comments'; more.textContent=`مشاهده ${toPersianDigits(comments.length-2)} نظر قبلی`; more.addEventListener('click',()=>{ expanded=true; paint(); more.remove(); }); host.appendChild(more); }
   const form=documentRef.createElement('form'); form.className='today-comment-form'; form.innerHTML=`<input class="wbs-input" name="comment" minlength="${COMMENT_MIN_LENGTH}" placeholder="افزودن نظر"><button type="submit">ثبت</button>`; form.addEventListener('submit',event=>{ event.preventDefault(); const result=todayApi.addComment(activeProjectId,refOf(item),form.elements.comment.value,actor()); if(!result.ok){ window.KarhaUI?.showToast?.(`نظر حداقل ${toPersianDigits(COMMENT_MIN_LENGTH)} حرف باشد`); return; } onChanged?.(); }); host.appendChild(form); return host;
 }
-function historyLabel(type){ return ({started:'شروع شد',start_cancelled:'شروع لغو شد',report_created:'گزارش ثبت شد',report_edited:'گزارش ویرایش شد',comment_added:'نظر ثبت شد',marked_complete:'انجام‌شده اعلام شد',sent_for_approval:'برای تأیید ارسال شد',approval_rejected:'تأیید رد شد',approval_cancelled:'تأیید نهایی لغو شد',returned_to_active:'به فهرست فعال برگشت',completion_withdrawn:'تیک انجام‌شدن برداشته شد',returned_to_previous:'به تب قبلی برگشت',approved:'تأیید نهایی شد'})[type]||type; }
+function historyLabel(type){ return ({started:'شروع شد',start_cancelled:'شروع لغو شد',report_created:'گزارش ثبت شد',report_edited:'گزارش ویرایش شد',comment_added:'نظر ثبت شد',marked_complete:'انجام‌شده اعلام شد',completed_without_approval:'بدون نیاز به تأیید تکمیل شد',sent_for_approval:'برای تأیید ارسال شد',approval_rejected:'تأیید رد شد',approval_cancelled:'تأیید نهایی لغو شد',returned_to_active:'به فهرست فعال برگشت',completion_withdrawn:'تیک انجام‌شدن برداشته شد',returned_to_previous:'به تب قبلی برگشت',approved:'تأیید نهایی شد'})[type]||type; }
 function renderHistory(documentRef,entity){ const history=(entity.executionHistory||[]).slice().sort((a,b)=>Number(b.at)-Number(a.at)); if(!history.length)return null; const details=documentRef.createElement('details'); details.className='today-history'; details.innerHTML='<summary>تاریخچه</summary>'; history.forEach(entry=>{ const row=documentRef.createElement('div'); row.textContent=`${historyLabel(entry.type)} · ${entry.actor?.name||'کاربر'} · ${formatMoment(entry.at)}`; details.appendChild(row); }); return details; }
 function renderCard(documentRef,project,item,today,onChanged){
   const entity=item.entity,status=executionStatus(entity),assignee=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.assigneeContactId||'')),contractor=contractorForItem(project,item).contact;
@@ -73,7 +74,9 @@ function renderCard(documentRef,project,item,today,onChanged){
   heading.append(chip, titles, complete); card.appendChild(heading);
   card.appendChild(detailRow(documentRef, 'تاریخ', dateText));
   card.appendChild(detailRow(documentRef, 'باقی‌مانده', remainingLabel(entity, today)));
-  if(assignee) card.appendChild(detailRow(documentRef, 'مسئول', contactName(assignee)));
+  if(assignee) card.appendChild(detailRow(documentRef, 'مسئول پیگیری', contactName(assignee)));
+  const approver=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.approvalContactId||''));
+  if(entity.requiresManagementApproval && approver) card.appendChild(detailRow(documentRef,'مسئول تأیید',contactName(approver)));
   if(contractor) card.appendChild(detailRow(documentRef, 'پیمانکار: ', contactName(contractor)));
   const statusValue=documentRef.createElement('span'); statusValue.className='today-status-slot';
   if(pending) statusValue.textContent=statusLabel(status);
@@ -86,10 +89,16 @@ function renderCard(documentRef,project,item,today,onChanged){
   }
   card.appendChild(detailRow(documentRef, 'وضعیت', statusValue));
   const actions=documentRef.createElement('div'); actions.className='today-task-actions';
+  const currentActor=actor();
+  const assigned=isExecutionAssignee(entity,currentActor);
+  const mayApprove=isExecutionApprover(entity,currentActor);
   if(pending){
-    const approve=linkButton(documentRef, 'wbs-costline-manual', 'تأیید'); approve.addEventListener('click',()=>{todayApi.approve(activeProjectId,refOf(item),actor());onChanged?.();});
-    const reject=linkButton(documentRef, 'wbs-costline-manual is-danger', 'رد'); reject.addEventListener('click',()=>openReject(item,onChanged));
-    actions.append(approve,reject);
+    if(mayApprove){
+      const approve=linkButton(documentRef, 'wbs-costline-manual', 'تأیید'); approve.addEventListener('click',()=>{todayApi.approve(activeProjectId,refOf(item),actor());onChanged?.();});
+      const reject=linkButton(documentRef, 'wbs-costline-manual is-danger', 'رد'); reject.addEventListener('click',()=>openReject(item,onChanged));
+      actions.append(approve,reject);
+    }
+    complete.disabled=!assigned;
     complete.addEventListener('click',()=>{
       const submitter = entity.completionSubmittedBy?.id;
       if(submitter && String(submitter)!==String(actor().id)){ window.KarhaUI?.showToast?.('فقط مسئول این کار می‌تواند تیک را بردارد'); return; }
@@ -99,18 +108,20 @@ function renderCard(documentRef,project,item,today,onChanged){
       onChanged?.();
     });
   } else {
-    complete.addEventListener('click',()=>{ if(!entity.actualStart){ window.KarhaUI?.showToast?.('اول شروع را بزن'); return; } todayApi.markComplete(activeProjectId,refOf(item),actor());activeMode='pending';onChanged?.();});
+    complete.disabled=complete.disabled || !assigned;
+    complete.addEventListener('click',()=>{ if(!entity.actualStart){ window.KarhaUI?.showToast?.('اول شروع را بزن'); return; } const result=todayApi.markComplete(activeProjectId,refOf(item),actor());if(result.ok)activeMode=timeState(result.entity,tehranTodayJalali());onChanged?.();});
     card.querySelector('.today-start')?.addEventListener('click',()=>{todayApi.start(activeProjectId,refOf(item),actor());onChanged?.();});
     card.querySelector('.today-cancel-start')?.addEventListener('click',()=>{todayApi.cancelStart(activeProjectId,refOf(item),actor());onChanged?.();});
   }
   const report=linkButton(documentRef, 'wbs-costline-manual', ownLatestReport(entity)?'ویرایش گزارش':'ثبت گزارش'); report.addEventListener('click',()=>openReport(item,onChanged));
-  card.appendChild(detailRow(documentRef, 'گزارش', report));
+  if(assigned) card.appendChild(detailRow(documentRef, 'گزارش', report));
   if(actions.childElementCount) card.appendChild(detailRow(documentRef, 'تأیید', actions));
   card.append(renderReports(documentRef,entity), renderComments(documentRef,item,onChanged));
   const history=renderHistory(documentRef,entity); if(history) card.appendChild(history);
   return card;
 }
 export function renderTodayView(project,documentRef=document,onChanged){
+  activeProject=project;
   if(activeProjectId!==String(project?.id||'')){activeProjectId=String(project?.id||'');activeMode='today';} const today=tehranTodayJalali(); const modes=['overdue','today','future','pending','unscheduled']; const byMode=Object.fromEntries(modes.map(mode=>[mode,itemsForMode(project,mode,today)])); const available=byMode.unscheduled.length?modes:modes.filter(mode=>mode!=='unscheduled'); if(!available.includes(activeMode))activeMode='today';
   const frame=documentRef.createElement('section'); frame.className='wbs-view-frame wbs-today-frame is-today-view'; frame.dataset.view='today'; frame.dataset.mode=activeMode; const header=documentRef.createElement('div'); header.className='wbs-view-header'; const title=documentRef.createElement('div'); title.className='wbs-view-title'; title.textContent=LABELS[activeMode]; const actions=documentRef.createElement('div'); actions.className='wbs-view-actions today-mode-tabs'; actions.setAttribute('role','tablist');
   available.forEach(mode=>{const button=documentRef.createElement('button');button.type='button';button.className='wbs-tree-mode-tab today-mode-tab'+(mode===activeMode?' active':'');button.dataset.mode=mode;button.setAttribute('role','tab');button.setAttribute('aria-selected',mode===activeMode?'true':'false');button.setAttribute('aria-label',LABELS[mode]);button.title=LABELS[mode];button.innerHTML=`<img src="${ICONS[mode]}" alt="">`;button.addEventListener('click',()=>{activeMode=mode;onChanged?.();});actions.appendChild(button);}); const divider=documentRef.createElement('span');divider.className='wbs-view-action-separator';actions.appendChild(divider);const filter=documentRef.createElement('button');filter.type='button';filter.className='wbs-tree-mode-tab today-filter';filter.setAttribute('aria-label','فیلتر');filter.title='فیلتر';filter.innerHTML=`<img src="${ICONS.filter}" alt="">`;actions.appendChild(filter);

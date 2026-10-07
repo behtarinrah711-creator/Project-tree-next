@@ -9,7 +9,7 @@ export const COMMENT_MIN_LENGTH = 2;
 export const REJECTION_MIN_LENGTH = 5;
 
 function actorValue(actor){
-  return { id:String(actor?.id || 'guest'), name:String(actor?.name || 'کاربر') };
+  return { id:String(actor?.id || 'guest'), contactId:String(actor?.contactId || ''), name:String(actor?.name || 'کاربر') };
 }
 
 function publish(projectId){
@@ -82,8 +82,17 @@ export const todayApi = {
   markComplete(projectId, ref, actor, clock = Date.now){
     const at = clock(); const by = actorValue(actor);
     const day = tehranTodayJalali(new Date(at));
-    return mutate(projectId, ref, entity => {
+    let completesImmediately = false;
+    const result = mutate(projectId, ref, entity => {
       if(!entity.actualStart) return entity;
+      completesImmediately = entity.requiresManagementApproval === false;
+      if(completesImmediately) return {
+        ...entity, completed:true, done:true, completionState:'approved', workflowStatus:'approved',
+        completionSubmittedAt:at, completionSubmittedBy:by, completedAt:at, actualFinishDay:day,
+        ...(ref.kind === 'work' ? { progress:100, status:'completed' } : {}),
+        executionHistory:[...(entity.executionHistory || []), event('marked_complete', by, at), event('completed_without_approval', by, at)],
+        updatedAt:at,
+      };
       return ({
       ...entity, completed:false, done:false, completionState:'pending_approval', workflowStatus:'pending_approval',
       completionSubmittedAt:at, actualFinishDay:null,
@@ -92,7 +101,9 @@ export const todayApi = {
       completionSubmittedBy:by,
       executionHistory:[...(entity.executionHistory || []), event('marked_complete', by, at), event('sent_for_approval', by, at)],
       updatedAt:at,
-    }); }, { completion:false });
+    }); });
+    if(result.ok && ref.kind === 'task') workTaskApi.setCompleted(projectId, ref.workId, ref.id, completesImmediately);
+    return result;
   },
 
   approve(projectId, ref, actor, clock = Date.now){

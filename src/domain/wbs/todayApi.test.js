@@ -3,9 +3,9 @@ import assert from 'node:assert/strict';
 import { createAppDataStore } from '../../data/appDataStore.js';
 import { todayApi } from './todayApi.js';
 
-function install(){
+function install(requiresManagementApproval=true){
   const store=createAppDataStore({storage:null});
-  store.replaceSnapshot({schemaVersion:8,activeTab:'p1',viewMode:'simple',starredOrder:[],projects:[{id:'p1',contacts:[{id:'a'},{id:'b'}],tasks:[{id:'w1',kind:'work',text:'کار',type:'اجرا',scheduleStart:'1405/06/01',scheduleEnd:'1405/06/20',progress:0,workTasks:[{id:'t1',workId:'w1',title:'تسک',type:'اجرا',priority:'normal',weight:1,scheduleStart:'1405/06/01',scheduleEnd:'1405/06/20'}]}]}]});
+  store.replaceSnapshot({schemaVersion:8,activeTab:'p1',viewMode:'simple',starredOrder:[],projects:[{id:'p1',contacts:[{id:'a'},{id:'b'}],tasks:[{id:'w1',kind:'work',text:'کار',type:'اجرا',scheduleStart:'1405/06/01',scheduleEnd:'1405/06/20',progress:0,workTasks:[{id:'t1',workId:'w1',title:'تسک',type:'اجرا',priority:'normal',weight:1,requiresManagementApproval,approvalContactId:requiresManagementApproval?'a':'',scheduleStart:'1405/06/01',scheduleEnd:'1405/06/20'}]}]}]});
   globalThis.KarhaAppData=store; return store;
 }
 const ref={kind:'task',id:'t1',workId:'w1'};
@@ -44,6 +44,15 @@ test('completion waits for approval; rejection is typed and returns actionable',
   assert.equal(entity(store).actualFinishDay,300);
   assert.equal(entity(store).approvedAt,400);
   assert.equal(store.getSnapshot().projects[0].tasks[0].progress,100);
+});
+
+test('completion closes immediately when management approval is not required',()=>{
+  const store=install(false),actor={id:'a',name:'الف'};
+  todayApi.start('p1',ref,actor,()=>80);
+  todayApi.markComplete('p1',ref,actor,()=>100);
+  assert.equal(entity(store).completionState,'approved');
+  assert.equal(entity(store).completed,true);
+  assert.equal(entity(store).executionHistory.at(-1).type,'completed_without_approval');
 });
 
 test('cancel start clears the start and records history without touching pending approval',()=>{
