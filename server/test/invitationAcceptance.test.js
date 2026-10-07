@@ -27,3 +27,15 @@ test('owners can revoke pending invitations and deleted members must be invited 
   assert.match(app,/return sendJson\(response,200,\{mobile:phone,status:'deleted'\}\)/);
   assert.match(app,/ON CONFLICT \(project_id,account_id\) DO UPDATE SET role_id=EXCLUDED\.role_id,status='active'/);
 });
+
+test('a missing valid invitation is reconciled while an expired one can be replaced',async()=>{
+  const app=await readApp();
+  assert.match(app,/status='invited' AND expires_at<=now\(\)/);
+  assert.match(app,/status='invited' AND expires_at>now\(\) LIMIT 1/);
+  assert.match(app,/alreadyInvited:true/);
+});
+
+test('pending invitations never grant project access',async()=>{
+  const app=await readApp();
+  assert.match(app,/FROM project_memberships m[\s\S]*WHERE m\.account_id = \$1 AND m\.status = 'active'/);
+});
