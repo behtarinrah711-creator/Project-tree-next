@@ -338,7 +338,7 @@ test('Planning and Execution keep separate view controls after background refres
   await page.evaluate(() => window.KarhaApp.modules.get('planning').mount({projectId:'e2e-wbs-home'}));
   await expect(tabs).toHaveCount(3);
   await expect(page.locator('.wbs-tab[aria-label="نمودار گانت"]')).toHaveAttribute('aria-selected','true');
-  await expect(page.locator('.wbs-tab[aria-label="کارهای امروز"]')).toHaveCount(0);
+  await expect(page.locator('.wbs-tab[aria-label="لیست کارها"]')).toHaveCount(0);
   await page.locator('.wbs-gantt-order-toggle').click();
   await expect(tabs).toHaveCount(3);
   await expect(page.locator('.wbs-tab[aria-label="نمودار گانت"]')).toHaveAttribute('aria-selected','true');
@@ -348,15 +348,15 @@ test('Planning and Execution keep separate view controls after background refres
   await expect(tabs).toHaveCount(2);
   await page.evaluate(() => window.KarhaLegacy.renderAll());
   await expect(tabs).toHaveCount(2);
-  await page.locator('.wbs-tab[aria-label="خریدهای امروز"]').click();
-  await expect(page.locator('.wbs-tab[aria-label="خریدهای امروز"]')).toHaveAttribute('aria-selected','true');
+  await page.locator('.wbs-tab[aria-label="لیست خریدها"]').click();
+  await expect(page.locator('.wbs-tab[aria-label="لیست خریدها"]')).toHaveAttribute('aria-selected','true');
 
   await page.locator('#bottomPlanningBtn').click();
   await expect(tabs).toHaveCount(3);
   await expect(page.locator('.wbs-tab[aria-label="نمودار گانت"]')).toHaveAttribute('aria-selected','true');
   await page.evaluate(() => window.KarhaLegacy.renderAll());
   await expect(tabs).toHaveCount(3);
-  await expect(page.locator('.wbs-tab[aria-label="خریدهای امروز"]')).toHaveCount(0);
+  await expect(page.locator('.wbs-tab[aria-label="لیست خریدها"]')).toHaveCount(0);
 });
 
 test('Timeline details survive initial render, timescale changes, and tree rerenders', async ({ page }) => {
