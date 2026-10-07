@@ -23,7 +23,7 @@ test('only the invited account can explicitly accept a pending invitation',async
 test('owners can revoke pending invitations and deleted members must be invited again',async()=>{
   const app=await readApp();
   assert.match(app,/project_invitations SET status='revoked'/);
-  assert.match(app,/status:'deleted',invitationId:null,invitationExpiresAt:null/);
+  assert.match(app,/payload\.projectMembers=payload\.projectMembers\.filter\(item=>item\?\.mobile!==cancelled\.rows\[0\]\.phone\)/);
   assert.match(app,/WHERE i\.status='invited' AND i\.expires_at>now\(\)/);
   assert.match(app,/i\.id=\$2 AND i\.status='invited' AND i\.expires_at>now\(\)/);
   assert.match(app,/DELETE FROM project_memberships m USING accounts a/);
