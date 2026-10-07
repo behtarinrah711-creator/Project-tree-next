@@ -18,4 +18,5 @@ test('notebook module does not import KarhaLegacy or Project.tasks', () => {
   const src = readFileSync(join(dir, 'notebookView.js'), 'utf8');
   assert.equal(src.includes('KarhaLegacy'), false);
   assert.equal(src.includes('Project.tasks'), false);
+  assert.match(src,/if\(on\)\{windowRef\.KarhaWorkspaceChrome\?\.closeBottomPages\?\.\(\);render\(\);\}/);
 });
