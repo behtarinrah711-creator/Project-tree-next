@@ -515,10 +515,18 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
           const email=normalizeEmail(body.email);if(email===null) return sendJson(response,400,{error:'invalid_email'});
           if(phone===owner.rows[0].phone) return sendJson(response,409,{error:'project_owner'});
           const member=await pool.query(
-            `SELECT m.status FROM project_memberships m JOIN accounts a ON a.id=m.account_id
+            `SELECT m.status,m.account_id FROM project_memberships m JOIN accounts a ON a.id=m.account_id
               WHERE m.project_id=$1 AND a.phone=$2 LIMIT 1`,[inviteRoute.projectId,phone],
           );
-          if(member.rowCount) return sendJson(response,409,{error:member.rows[0].status==='active'?'already_member':'inactive_member'});
+          if(member.rowCount){
+            const projectMembers=owner.rows[0].payload?.projectMembers;
+            const listed=Array.isArray(projectMembers) && projectMembers.some(item=>item?.mobile===phone && item?.status!=='deleted');
+            if(listed) return sendJson(response,409,{error:member.rows[0].status==='active'?'already_member':'inactive_member'});
+            await pool.query(
+              `DELETE FROM project_memberships WHERE project_id=$1 AND account_id=$2`,
+              [inviteRoute.projectId,member.rows[0].account_id],
+            );
+          }
           await pool.query(
             `UPDATE project_invitations SET status='revoked',updated_at=now()
               WHERE project_id=$1 AND phone=$2 AND status='invited' AND expires_at<=now()`,
