@@ -59,11 +59,11 @@ const BRANCH_ARROW_ICON = 'm480-360 160-160H320l160 160Zm0 280q-83 0-156-31.5T19
 const TREE_ICON = 'M160-360v-80h640v80H160Zm0 160v-80h640v80H160Zm0-320v-80h640v80H160Zm0-160v-80h640v80H160Z';
 
 const VIEWS = [
-  { id:'today', label:'کارهای امروز', icon:TODAY_ICON },
+  { id:'today', label:'لیست کارها', icon:TODAY_ICON },
   { id:'tree', label:'درخت پروژه', icon:TREE_ICON },
   { id:'timeline', label:'نمودار گانت', icon:'M240-280h240v-80H240v80Zm120-160h240v-80H360v80Zm120-160h240v-80H480v80ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Z' },
   { id:'costline', label:'برآورد هزینه', icon: COSTLINE_ICON },
-  { id:'shopping', label:'خریدهای امروز', icon: SHOPPING_ICON },
+  { id:'shopping', label:'لیست خریدها', icon: SHOPPING_ICON },
   { id:'delay', label:'دیرکردها', icon: DELAY_ICON },
 ];
 
