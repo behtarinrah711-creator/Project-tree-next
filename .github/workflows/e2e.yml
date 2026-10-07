@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: e2e-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -39,13 +43,29 @@ jobs:
           NPM_CONFIG_FETCH_TIMEOUT: 30000
         run: npm ci --no-audit --no-fund --loglevel verbose
 
+      - name: Detect style-only pull request
+        id: scope
+        if: github.event_name == 'pull_request'
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          git fetch --no-tags --depth=1 origin "$BASE_SHA"
+          if git diff --name-only "$BASE_SHA" HEAD | grep -Ev '^(src/styles/|\.github/workflows/e2e\.yml$)' | grep -q .; then
+            echo 'run_browser=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'run_browser=false' >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install Chromium
+        if: github.event_name != 'pull_request' || steps.scope.outputs.run_browser == 'true'
+        timeout-minutes: 3
         run: npx playwright install --with-deps chromium
 
       - name: Run unit tests
         run: node --test $(find src -name '*.test.js' -print)
 
       - name: Run Playwright E2E
+        if: github.event_name != 'pull_request' || steps.scope.outputs.run_browser == 'true'
         run: npm run test:e2e
 
       - name: Upload Playwright report on failure
