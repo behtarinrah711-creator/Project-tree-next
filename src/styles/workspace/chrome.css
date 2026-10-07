@@ -28,7 +28,7 @@
   }
   .topbar .mode-toggle{flex-shrink:0;margin-inline-start:auto;}
   .topbar .account-trigger{flex-shrink:0;}
-  .topbar-project-actions{display:flex;align-items:center;gap:2px;direction:ltr;flex:0 0 auto;margin-inline-start:auto;z-index:2;}
+  .topbar-project-actions{position:absolute;left:10px;top:50%;transform:translateY(-50%);display:flex;align-items:center;gap:2px;direction:ltr;margin:0;z-index:2;}
   .project-settings-trigger,
   .project-settings-trigger:active{margin:0;background:transparent;color:var(--text);}
   .project-settings-trigger svg{width:22px;height:22px;}
