@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {canDeleteProjectTasks,canMutateSharedProject,canWriteProjectTasks,mergeSharedProjectPayload,projectTasksChanged,projectTasksDeleted} from '../src/app.js';
+import {canDeleteProjectTasks,canMutateSharedProject,canWriteProjectTasks,mergeSharedProjectPayload,projectPayloadChanged,projectTasksChanged,projectTasksDeleted} from '../src/app.js';
 
 test('planning and execution write permissions authorize shared task mutations',()=>{
   assert.equal(canWriteProjectTasks({modules:{
@@ -25,6 +25,12 @@ test('task mutation classifier distinguishes edits from removals',()=>{
   assert.equal(projectTasksChanged(previous,edited),true);
   assert.equal(projectTasksDeleted(previous,edited),false);
   assert.equal(projectTasksDeleted(previous,deleted),true);
+});
+
+test('unchanged read-only projects do not turn an account-wide save into a write',()=>{
+  const remote={id:'view-only',name:'پروژه فقط مشاهده',tasks:[{id:'stage',text:'A'}]};
+  assert.equal(projectPayloadChanged(remote,structuredClone(remote)),false);
+  assert.equal(projectPayloadChanged(remote,{...remote,tasks:[...remote.tasks,{id:'new',text:'B'}]}),true);
 });
 
 test('invitation module access is the member work permission',()=>{
