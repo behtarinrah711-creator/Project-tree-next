@@ -100,7 +100,7 @@ export function createRoleManagementModule({
       }else member=createMember(values,{registry});
       if(!existing && smsAdapter.configured){
         const submit=form.querySelector('[type="submit"]');submit.disabled=true;
-        try{const invitation=await smsAdapter.sendInvitation({projectId,projectName:project?.name || project?.title || 'پروژه',member});member={...member,invitationId:invitation.id || invitation.invitationId || null,invitationExpiresAt:invitation.expiresAt || null,smsSent:!!invitation.smsSent,emailSent:!!invitation.emailSent};}
+        try{const invitation=await smsAdapter.sendInvitation({projectId,projectName:project?.name || project?.title || 'پروژه',member});member={...member,permissions:normalizePermissions(invitation.permissions || member.permissions,registry),invitationId:invitation.id || invitation.invitationId || null,invitationExpiresAt:invitation.expiresAt || null,smsSent:!!invitation.smsSent,emailSent:!!invitation.emailSent};if(invitation.alreadyInvited)windowRef?.KarhaToast?.show?.('دعوت‌نامه موجود به لیست بازگردانده شد.');}
         catch(sendError){submit.disabled=false;const messages={project_owner:'این کاربر مالک پروژه است.',already_member:'این کاربر قبلاً عضو پروژه شده است.',inactive_member:'این کاربر قبلاً به پروژه اضافه شده و در حال حاضر غیرفعال است.',already_invited:'این کاربر قبلاً دعوت شده است.',invalid_phone:'شماره موبایل را به‌صورت ۱۱ رقمی و با 09 وارد کنید.'};setInvalid(mobile,messages[sendError.code] || 'ثبت دعوت‌نامه انجام نشد. دوباره تلاش کنید.');return;}
       }
       if(existing && smsAdapter.configured){
