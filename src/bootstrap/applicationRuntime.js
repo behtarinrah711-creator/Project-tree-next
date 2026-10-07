@@ -17,7 +17,7 @@ window.KarhaApp?.taskRuntime?.configure({
   }
 });
 const routedProjectId = getProjectIdFromRoute();
-const routedGlobalSurface = /^#\/(?:notebook(?:\/|$)|profile$|management$)/i.test(String(location.hash || ''));
+const routedGlobalSurface = /^#\/(?:notebook(?:\/|$)|profile$|management$|notifications$)/i.test(String(location.hash || ''));
 if(routedGlobalSurface){
   // Router.start() restores global destinations after every hard refresh.
   // Never replace them with the last active project's dashboard during boot.

@@ -10,7 +10,7 @@ async function smsApi(windowRef,path,body){
 const requestSaosaOtp=(phone,windowRef)=>smsApi(windowRef,'/api/v1/auth/otp/request',{phone});
 async function verifySaosaOtp(phone,code,windowRef){
   const result=await smsApi(windowRef,'/api/v1/auth/otp/verify',{phone,code});
-  const session={phone,token:result.token,accountId:result.accountId,expiresAt:Date.now()+result.expiresIn*1000};
+  const session={phone,token:result.token,accountId:result.accountId,expiresAt:Date.now()+result.expiresIn*1000,pendingInvitationCount:Number(result.pendingInvitationCount)||0};
   windowRef.localStorage?.setItem(SAOSA_SESSION_KEY,JSON.stringify(session));
   return session;
 }
@@ -211,6 +211,8 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
   const main = title?.querySelector?.('.app-title-main');
   const projectLabel = byId(documentRef, 'topbarProjectName');
   const settingsTrigger = byId(documentRef, 'projectSettingsTrigger');
+  const refreshTrigger = byId(documentRef, 'projectRefreshTrigger');
+  const notificationsTrigger = byId(documentRef, 'notificationsTrigger');
   const settingsParent = settingsTrigger?.parentNode || null;
   const settingsNextSibling = settingsTrigger?.nextSibling || null;
   const settingsModules = new Set(['people','project-settings','role-management','activities']);
@@ -223,9 +225,17 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
       settingsTrigger.remove?.();
     }
   };
+  const setRefreshMounted = mounted => {
+    if(!refreshTrigger || !settingsParent) return;
+    if(mounted){
+      if(!refreshTrigger.parentNode) settingsParent.insertBefore?.(refreshTrigger, notificationsTrigger || settingsTrigger);
+    }else if(refreshTrigger.parentNode){
+      refreshTrigger.remove?.();
+    }
+  };
   windowRef.KarhaProjectWorkspaceControls = Object.freeze({
     element:settingsTrigger,
-    setMounted:setSettingsMounted,
+    setMounted(mounted){ setSettingsMounted(mounted); setRefreshMounted(mounted); },
     isMounted:()=>!!settingsTrigger?.parentNode,
   });
 
@@ -245,7 +255,9 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
       && !!windowRef.KarhaRoute?.projectId;
     const showSettings=!notebook && projectScoped && !!project;
     setSettingsMounted(showSettings);
+    setRefreshMounted(showSettings);
     if(settingsTrigger) settingsTrigger.hidden = !showSettings;
+    if(refreshTrigger) refreshTrigger.hidden = !showSettings;
     settingsTrigger?.classList?.toggle?.('active',settingsModules.has(moduleId));
     settingsTrigger?.setAttribute?.('aria-pressed',settingsModules.has(moduleId)?'true':'false');
     if(windowRef.KarhaWorkspaceChrome){
@@ -289,6 +301,14 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     if(settingsModules.has(moduleId)){ windowRef.KarhaBrowserHistory?.back?.(); return; }
     if(project?.id) windowRef.KarhaApp?.projectWorkspace?.selectProject?.(project.id,{moduleId:'people'});
   });
+  refreshTrigger?.addEventListener?.('click', () => windowRef.location?.reload?.());
+  notificationsTrigger?.addEventListener?.('click', () => {
+    const route='#/notifications';
+    const state=windowRef.KarhaBrowserHistory?.stateForRoute?.({projectId:null,moduleId:'notifications',surface:'global',hash:route});
+    if(windowRef.KarhaBrowserHistory?.push) windowRef.KarhaBrowserHistory.push(state||{hash:route},route);
+    else windowRef.location.hash=route;
+    windowRef.KarhaApp?.router?.sync?.();
+  });
 
   const syncUser = user => {
     const saosaLoggedOut = isSaosaHost(windowRef) && !user;
@@ -322,6 +342,7 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     drawerAuthHint?.classList?.toggle?.('hidden', !!user);
     avatar?.classList.toggle('is-guest', !user);
     avatar?.setAttribute('aria-label', user ? 'حساب کاربری' : 'ورود');
+    if(notificationsTrigger) notificationsTrigger.hidden = !user;
     if(isSaosaHost(windowRef)) windowRef.KarhaLegacy?.renderAll?.();
   };
 
@@ -423,6 +444,7 @@ export function bindShellControls({ windowRef = window, documentRef = document }
         try{
           const session = await signInWithSms({windowRef,documentRef});
           if(session){
+            if(session.pendingInvitationCount>0 && windowRef.location) windowRef.location.hash='#/notifications?section=invitations';
             windowRef.location?.reload?.();
             closeProjectMenu();
           }

@@ -30,16 +30,16 @@ function element(id){
 }
 
 function harness({user=null,popupErrors=[],redirectErrors=[],route=null,hash='',hostname='behtarinrah711-creator.github.io',saosaSession=null}={}){
-  const elements = Object.fromEntries(['drawerOverlay','topbarTitle','drawerSigninBtn','toast','globalNotebookBtn','projectSettingsTrigger'].map(id=>[id,element(id)]));
+  const elements = Object.fromEntries(['drawerOverlay','topbarTitle','drawerSigninBtn','toast','globalNotebookBtn','projectRefreshTrigger','notificationsTrigger','projectSettingsTrigger'].map(id=>[id,element(id)]));
   const events=[];
   const windowListeners=new Map();
   let storedSaosaSession=saosaSession;
   const body=element('body');
   const topbar=element('topbar');
-  topbar.childNodes=[elements.projectSettingsTrigger];
+  topbar.childNodes=[elements.projectRefreshTrigger,elements.notificationsTrigger,elements.projectSettingsTrigger];
   topbar.insertBefore=function(child,before){const index=before?this.childNodes.indexOf(before):-1;this.childNodes.splice(index>=0?index:this.childNodes.length,0,child);child.parentNode=this;};
   topbar.removeChild=function(child){const index=this.childNodes.indexOf(child);if(index>=0)this.childNodes.splice(index,1);child.parentNode=null;};
-  elements.projectSettingsTrigger.parentNode=topbar;
+  topbar.childNodes.forEach(child=>{ child.parentNode=topbar; });
   const documentElement=element('html');
   documentElement.classList.add('saosa-initial-logged-out');
   class CustomEvent { constructor(type,options={}){ this.type=type; this.detail=options.detail; } }
@@ -109,6 +109,14 @@ test('Saosa session resolution updates the shell before the workspace renders', 
   assert.equal(h.documentRef.body.classList.contains('saosa-logged-out'),true);
   assert.equal(h.documentRef.documentElement.classList.contains('saosa-initial-logged-out'),true);
   assert.equal(h.elements.drawerSigninBtn.dataset.authAction,'signin');
+});
+
+test('successful Saosa login routes pending invitations to the invitation inbox before reload',async()=>{
+  const source=await readFile(new URL('./shellControls.js',import.meta.url),'utf8');
+  const route=source.indexOf("windowRef.location.hash='#/notifications?section=invitations'");
+  const reload=source.indexOf('windowRef.location?.reload?.();',route);
+  assert.ok(route>=0);
+  assert.ok(reload>route);
 });
 
 test('Saosa logout clears the notebook address before returning to the entry page', async () => {
@@ -214,6 +222,27 @@ test('project settings trigger is visible only on an explicit project route',()=
   global.windowRef.KarhaApp={projectWorkspace};
   bindShellControls(global);
   assert.equal(global.windowRef.KarhaProjectWorkspaceControls.isMounted(),false);
+});
+
+test('authenticated header opens global notifications and reloads an installed project workspace',async()=>{
+  const projectWorkspace={getActiveProject:()=>({id:'p-1',name:'Project'})};
+  const h=harness({user:{uid:'u-1'},route:{projectId:'p-1',moduleId:'planning'},hash:'#/projects/p-1/planning'});
+  let reloads=0; let synced=0; let pushed=null;
+  h.windowRef.location.reload=()=>{ reloads++; };
+  h.windowRef.KarhaBrowserHistory={
+    stateForRoute:value=>value,
+    push:(state,route)=>{ pushed={state,route}; h.windowRef.location.hash=route; },
+  };
+  h.windowRef.KarhaApp={projectWorkspace,router:{sync(){synced++;}}};
+  bindShellControls(h);
+  assert.equal(h.elements.notificationsTrigger.hidden,false);
+  assert.equal(h.elements.projectRefreshTrigger.hidden,false);
+  await h.elements.projectRefreshTrigger.click();
+  await h.elements.notificationsTrigger.click();
+  assert.equal(reloads,1);
+  assert.equal(pushed.route,'#/notifications');
+  assert.equal(pushed.state.moduleId,'notifications');
+  assert.equal(synced,1);
 });
 
 test('project settings trigger opens settings and a second click returns to the previous route',async()=>{

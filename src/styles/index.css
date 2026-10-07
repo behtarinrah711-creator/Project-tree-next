@@ -268,6 +268,8 @@ body.saosa-no-project .saosa-empty-project-create{
 :is(html.saosa-initial-logged-out body,body.saosa-logged-out) #notebookExportPage{display:none !important;}
 :is(html.saosa-initial-logged-out body,body.saosa-logged-out) #bottomNav,
 :is(html.saosa-initial-logged-out body,body.saosa-logged-out) #projectSettingsTrigger,
+:is(html.saosa-initial-logged-out body,body.saosa-logged-out) #projectRefreshTrigger,
+:is(html.saosa-initial-logged-out body,body.saosa-logged-out) #notificationsTrigger,
 :is(html.saosa-initial-logged-out body,body.saosa-logged-out) #tabbar,
 :is(html.saosa-initial-logged-out body,body.saosa-logged-out) #workspaceProjectContext{display:none !important;}
 :is(html.saosa-initial-logged-out body,body.saosa-logged-out) .topbar{

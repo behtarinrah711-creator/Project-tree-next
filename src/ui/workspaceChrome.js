@@ -4,7 +4,7 @@ import { getGlobalRoute, getGlobalRouteByModule } from '../core/globalRoutes.js'
 const WORKSPACE_PAGE_IDS = Object.freeze([
   'projectsPage','profilePage','calendarPage','createPage','reportsPage','accountingPage','settingsPage',
   'projectSettingsPage','projectActivitiesPage','contactsPage','projectTrashPage','contractsPage','contractFormPage',
-  'roleManagementPage',
+  'roleManagementPage','notificationsPage',
   'contractTemplateFormPage','contractTemplatesPage','activityFormPage',
 ]);
 
