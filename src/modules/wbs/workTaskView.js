@@ -87,6 +87,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
   let titleEditor;
   const overlay=openWbsSheet({
     title:'کار:', presentation:'stage-create', autoFocus:false,
+    historyKey:`wbs-work-task:${projectId}:${task?.id || work.id}`,
     saveLabel:'ذخیره',readOnly,
     body(root){
       const type=optionButton({name:'taskType',value:task?.type || work.type || WORK_TYPES[0],options:WORK_TYPES.map(value=>({id:value,name:value}))});
