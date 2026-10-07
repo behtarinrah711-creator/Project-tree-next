@@ -5,8 +5,9 @@ import { reconcileDrawerProjectList, resolveDrawerProjectState } from './drawerP
 function element(){
   return {
     children: [], dataset: {}, className: '', textContent: '',
+    replaceCount:0,
     appendChild(child){ this.children.push(child); return child; },
-    replaceChildren(...children){ this.children=children; },
+    replaceChildren(...children){ this.replaceCount+=1; this.children=children; },
     addEventListener(type, listener){ this[`on${type}`]=listener; },
     click(){ this.onclick?.({ currentTarget:this }); },
   };
@@ -51,6 +52,7 @@ test('project selection remains deterministic across reconciliation and refresh'
   };
 
   render();
+  const replacementsAfterInitialRender=list.replaceCount;
   list.children[1].click();
   assertSelection('project-B');
   state.drawerOpen=true;
@@ -59,6 +61,7 @@ test('project selection remains deterministic across reconciliation and refresh'
 
   const rowsBeforeReconcile=new Map(list.children.map(row=>[row.dataset.projectId,row]));
   render();
+  assert.equal(list.replaceCount,replacementsAfterInitialRender);
   assert.equal(list.children[0],rowsBeforeReconcile.get('project-A'));
   assert.equal(list.children[1],rowsBeforeReconcile.get('project-B'));
   assert.equal(list.children[2],rowsBeforeReconcile.get('project-C'));

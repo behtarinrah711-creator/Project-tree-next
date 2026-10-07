@@ -58,6 +58,12 @@ export function reconcileDrawerProjectList(list, projects, {
     return row;
   });
 
-  list.replaceChildren(...rows);
+  const currentRows = Array.from(list.children || []);
+  const sameRows = currentRows.length === rows.length
+    && rows.every((row, index) => currentRows[index] === row);
+  // Do not detach and re-attach an unchanged button while a mobile pointer is
+  // down. Safari and Firefox cancel the pending click when that happens, which
+  // made the first project selection appear to do nothing during cloud refresh.
+  if(!sameRows) list.replaceChildren(...rows);
   return rows;
 }

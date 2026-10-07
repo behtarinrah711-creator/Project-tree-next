@@ -45,13 +45,23 @@ function onPointerMove(event){
   dragState.position = position;
 }
 
-function onPointerEnd(){
+function onPointerEnd(event){
   if(!dragState) return;
-  document.removeEventListener('pointermove', onPointerMove);
-  document.removeEventListener('pointerup', onPointerEnd);
-  document.removeEventListener('pointercancel', onPointerEnd);
+  if(event?.pointerId != null && event.pointerId !== dragState.pointerId) return;
   const state = dragState;
   dragState = null;
+  const documentRef = state.documentRef;
+  const windowRef = documentRef.defaultView;
+  documentRef.removeEventListener('pointermove', onPointerMove);
+  documentRef.removeEventListener('pointerup', onPointerEnd);
+  documentRef.removeEventListener('pointercancel', onPointerEnd);
+  state.grip?.removeEventListener?.('lostpointercapture', onPointerEnd);
+  windowRef?.removeEventListener?.('blur', onPointerEnd);
+  windowRef?.removeEventListener?.('pagehide', onPointerEnd);
+  documentRef.removeEventListener?.('visibilitychange', state.onVisibilityChange);
+  if(state.grip?.hasPointerCapture?.(state.pointerId)){
+    try{ state.grip.releasePointerCapture(state.pointerId); }catch(_error){}
+  }
   clearIndicators(state);
   if(!state.target) return;
   const targetId = rowOf(state.target)?.dataset.wbsId;
@@ -60,7 +70,7 @@ function onPointerEnd(){
   if(orderedIds) state.onReorder?.(orderedIds);
 }
 
-export function bindRowDrag(row, { id, onReorder }){
+export function bindRowDrag(row, { id, onReorder, documentRef = document }){
   if(!row) return;
   row.dataset.wbsId = id;
   const grip = row.querySelector('.wbs-grip');
@@ -73,11 +83,22 @@ export function bindRowDrag(row, { id, onReorder }){
     const container = wrapper?.parentElement;
     const siblings = Array.from(container?.children || []).filter(child => rowOf(child));
     if(!wrapper || siblings.length < 2) return;
-    dragState = { id:String(id), wrapper, siblings, target:null, position:null, onReorder };
+    onPointerEnd();
+    const onVisibilityChange = () => {
+      if(documentRef.visibilityState === 'hidden') onPointerEnd();
+    };
+    dragState = {
+      id:String(id), wrapper, siblings, target:null, position:null, onReorder,
+      grip, pointerId:event.pointerId, documentRef, onVisibilityChange,
+    };
     wrapper.classList.add('wbs-row-dragging');
     try{ grip.setPointerCapture(event.pointerId); }catch(_error){}
-    document.addEventListener('pointermove', onPointerMove);
-    document.addEventListener('pointerup', onPointerEnd, { once:true });
-    document.addEventListener('pointercancel', onPointerEnd, { once:true });
+    documentRef.addEventListener('pointermove', onPointerMove);
+    documentRef.addEventListener('pointerup', onPointerEnd);
+    documentRef.addEventListener('pointercancel', onPointerEnd);
+    grip.addEventListener?.('lostpointercapture', onPointerEnd);
+    documentRef.defaultView?.addEventListener?.('blur', onPointerEnd);
+    documentRef.defaultView?.addEventListener?.('pagehide', onPointerEnd);
+    documentRef.addEventListener?.('visibilitychange', onVisibilityChange);
   });
 }
