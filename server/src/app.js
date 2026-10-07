@@ -216,8 +216,13 @@ async function readWorkspace(pool, accountId){
       `SELECT p.payload, r.role_key, r.permissions
          FROM project_memberships m
          JOIN projects p ON p.id = m.project_id
+         JOIN accounts a ON a.id = m.account_id
          JOIN project_roles r ON r.id = m.role_id AND r.project_id = m.project_id
         WHERE m.account_id = $1 AND m.status = 'active'
+          AND (p.owner_account_id=m.account_id OR EXISTS (
+            SELECT 1 FROM jsonb_array_elements(COALESCE(p.payload->'projectMembers','[]'::jsonb)) listed
+             WHERE listed->>'mobile'=a.phone AND listed->>'status'='active'
+          ))
         ORDER BY p.created_at, p.id`,
       [accountId],
     ),
@@ -251,7 +256,7 @@ async function saveWorkspace(pool, accountId, snapshot){
     await client.query('BEGIN');
     for(const project of snapshot.projects){
       const projectId = String(project.id);
-      const existing = await client.query('SELECT id,payload FROM projects WHERE id = $1 FOR UPDATE', [projectId]);
+      const existing = await client.query('SELECT id,owner_account_id,payload FROM projects WHERE id = $1 FOR UPDATE', [projectId]);
       if(!existing.rowCount){
         await client.query(
           `INSERT INTO projects(id, owner_account_id, payload) VALUES ($1, $2, $3::jsonb)`,
@@ -278,7 +283,13 @@ async function saveWorkspace(pool, accountId, snapshot){
           `SELECT r.permissions
              FROM project_memberships m
              JOIN project_roles r ON r.id = m.role_id AND r.project_id = m.project_id
-            WHERE m.project_id = $1 AND m.account_id = $2 AND m.status = 'active'`,
+             JOIN projects p ON p.id=m.project_id
+             JOIN accounts a ON a.id=m.account_id
+            WHERE m.project_id = $1 AND m.account_id = $2 AND m.status = 'active'
+              AND (p.owner_account_id=m.account_id OR EXISTS (
+                SELECT 1 FROM jsonb_array_elements(COALESCE(p.payload->'projectMembers','[]'::jsonb)) listed
+                 WHERE listed->>'mobile'=a.phone AND listed->>'status'='active'
+              ))`,
           [projectId, accountId],
         );
         if(!membership.rowCount || !canMutateSharedProject(membership.rows[0].permissions)){
@@ -496,11 +507,20 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
               WHERE m.project_id=$1 AND a.phone=$2 LIMIT 1`,[inviteRoute.projectId,phone],
           );
           if(member.rowCount) return sendJson(response,409,{error:member.rows[0].status==='active'?'already_member':'inactive_member'});
-          const duplicate=await pool.query(
-            `SELECT id FROM project_invitations WHERE project_id=$1 AND phone=$2 AND status='invited' LIMIT 1`,
+          await pool.query(
+            `UPDATE project_invitations SET status='revoked',updated_at=now()
+              WHERE project_id=$1 AND phone=$2 AND status='invited' AND expires_at<=now()`,
             [inviteRoute.projectId,phone],
           );
-          if(duplicate.rowCount) return sendJson(response,409,{error:'already_invited'});
+          const duplicate=await pool.query(
+            `SELECT id,permissions,expires_at FROM project_invitations
+              WHERE project_id=$1 AND phone=$2 AND status='invited' AND expires_at>now() LIMIT 1`,
+            [inviteRoute.projectId,phone],
+          );
+          if(duplicate.rowCount){
+            const existing=duplicate.rows[0];
+            return sendJson(response,200,{id:existing.id,status:'invited',expiresAt:existing.expires_at,permissions:existing.permissions,alreadyInvited:true});
+          }
           const id=randomUUID();const rawToken=randomBytes(32).toString('base64url');
           const projectName=String(owner.rows[0].payload?.name || owner.rows[0].payload?.title || body.projectName || 'پروژه').slice(0,100);
           const inserted=await pool.query(
