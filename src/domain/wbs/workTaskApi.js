@@ -32,13 +32,12 @@ function validate(projectId, workId, input){
   if(!Number.isFinite(weight) || weight <= 0) return { ok:false, code:'weight' };
   if(assigneeContactId && !contactRepository.get(projectId, assigneeContactId)) return { ok:false, code:'assignee' };
   if(contractorContactId && !contactRepository.get(projectId, contractorContactId)) return { ok:false, code:'contractor' };
-  if(input?.requiresManagementApproval && !approvalContactId) return { ok:false, code:'approver' };
   if(approvalContactId && !contactRepository.get(projectId, approvalContactId)) return { ok:false, code:'approver' };
   if(!validDateRange(input.scheduleStart || '', input.scheduleEnd || '')) return { ok:false, code:'dates' };
   if(!workTaskRepository.work(projectId, workId)) return { ok:false, code:'work' };
   return { ok:true, value:{ ...input, title, weight, assigneeContactId, contractorContactId,
-    requiresManagementApproval:Boolean(input?.requiresManagementApproval),
-    approvalContactId:input?.requiresManagementApproval ? approvalContactId : '',
+    requiresManagementApproval:Boolean(approvalContactId),
+    approvalContactId,
   } };
 }
 

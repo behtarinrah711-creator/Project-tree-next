@@ -76,7 +76,7 @@ function renderCard(documentRef,project,item,today,onChanged){
   card.appendChild(detailRow(documentRef, 'باقی‌مانده', remainingLabel(entity, today)));
   if(assignee) card.appendChild(detailRow(documentRef, 'مسئول پیگیری', contactName(assignee)));
   const approver=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.approvalContactId||''));
-  if(entity.requiresManagementApproval && approver) card.appendChild(detailRow(documentRef,'مسئول تأیید',contactName(approver)));
+  if(approver) card.appendChild(detailRow(documentRef,'مسئول تأیید',contactName(approver)));
   if(contractor) card.appendChild(detailRow(documentRef, 'پیمانکار: ', contactName(contractor)));
   const statusValue=documentRef.createElement('span'); statusValue.className='today-status-slot';
   if(pending) statusValue.textContent=statusLabel(status);

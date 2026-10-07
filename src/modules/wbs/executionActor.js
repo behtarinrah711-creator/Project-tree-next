@@ -25,12 +25,11 @@ export function currentExecutionActor(project, windowRef = window){
 }
 
 export function isExecutionAssignee(entity, actor){
-  return !entity?.assigneeContactId || String(entity.assigneeContactId) === String(actor?.contactId || '');
+  return Boolean(entity?.assigneeContactId)
+    && String(entity.assigneeContactId) === String(actor?.contactId || '');
 }
 
 export function isExecutionApprover(entity, actor){
-  if(entity?.completionState === 'pending_approval' && !entity?.approvalContactId) return true;
-  return Boolean(entity?.requiresManagementApproval)
-    && Boolean(entity?.approvalContactId)
+  return Boolean(entity?.approvalContactId)
     && String(entity.approvalContactId) === String(actor?.contactId || '');
 }

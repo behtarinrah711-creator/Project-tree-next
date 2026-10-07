@@ -8,7 +8,8 @@ test('work form uses Saosa sheets, pickers and numpad without progress submissio
   assert.match(source,/presentation:'stage-create'/);
   assert.match(source,/optionButton\(\{name:'taskType'/);
   assert.match(source,/optionButton\(\{name:'taskPriority'/);
-  assert.match(source,/optionButton\(\{name:'taskRequiresApproval'/);
+  assert.doesNotMatch(source,/taskRequiresApproval/);
+  assert.match(source,/بدون مسئول تأیید/);
   assert.match(source,/numericButton\('taskWeight'/);
   assert.match(source,/numericButton\('taskAmount'/);
   assert.doesNotMatch(source,/taskProgress/);

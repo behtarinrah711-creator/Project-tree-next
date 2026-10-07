@@ -12,5 +12,7 @@ test('Saosa execution history uses the linked contact full name',()=>{
   const actor=currentExecutionActor(project,windowRef);
   assert.deepEqual(actor,{id:'acc-1',contactId:'c1',name:'سیامند احمدی'});
   assert.equal(isExecutionAssignee({assigneeContactId:'c1'},actor),true);
-  assert.equal(isExecutionApprover({requiresManagementApproval:true,approvalContactId:'c1'},actor),true);
+  assert.equal(isExecutionApprover({approvalContactId:'c1'},actor),true);
+  assert.equal(isExecutionAssignee({assigneeContactId:''},actor),false);
+  assert.equal(isExecutionApprover({approvalContactId:''},actor),false);
 });

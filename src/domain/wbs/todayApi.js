@@ -85,7 +85,7 @@ export const todayApi = {
     let completesImmediately = false;
     const result = mutate(projectId, ref, entity => {
       if(!entity.actualStart) return entity;
-      completesImmediately = entity.requiresManagementApproval === false;
+      completesImmediately = !entity.approvalContactId;
       if(completesImmediately) return {
         ...entity, completed:true, done:true, completionState:'approved', workflowStatus:'approved',
         completionSubmittedAt:at, completionSubmittedBy:by, completedAt:at, actualFinishDay:day,

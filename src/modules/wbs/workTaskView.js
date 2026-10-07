@@ -39,15 +39,23 @@ function linkedContractor(projectId, workId){
   return contactRepository.get(projectId, contract.contractorId || contract.contactId) || null;
 }
 
-function optionButton({ name, value, options, contextKey, title }){
-  const button=document.createElement('button');
-  button.type='button';button.name=name;button.className='wbs-input';button.dataset.value=String(value ?? '');
-  const paint=()=>{button.textContent=options.find(item=>String(item.id)===button.dataset.value)?.name || 'انتخاب کنید';};
-  button.addEventListener('click',()=>openSearchPicker({
-    title,listTitle:title,selectedTitle:'انتخاب‌شده',contextKey,items:options,showStar:false,showAdd:false,
-    onSelect:selected=>{button.dataset.value=String(selected.id);paint();button.dispatchEvent(new Event('change'));},
-  }));
-  paint();return button;
+function optionButton({ name, value, options }){
+  const root=document.createElement('div');root.className='wbs-task-option-select';
+  const input=document.createElement('input');input.type='hidden';input.name=name;input.value=String(value ?? '');
+  const button=document.createElement('button');button.type='button';button.className='wbs-input wbs-task-option-trigger';
+  const label=document.createElement('span');
+  const arrow=document.createElement('span');arrow.className='wbs-task-option-arrow';arrow.textContent='⌄';
+  const menu=document.createElement('div');menu.className='wbs-task-option-menu';menu.setAttribute('role','listbox');
+  const close=()=>{menu.classList.remove('open');button.classList.remove('open');};
+  const paint=()=>{label.textContent=options.find(item=>String(item.id)===input.value)?.name || 'انتخاب کنید';};
+  options.forEach(item=>{
+    const option=document.createElement('button');option.type='button';option.className='wbs-task-option-item';
+    option.textContent=item.name;option.dataset.value=String(item.id);
+    option.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();input.value=String(item.id);paint();close();});
+    menu.appendChild(option);
+  });
+  button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();const opening=!menu.classList.contains('open');document.querySelectorAll('.wbs-task-option-menu.open').forEach(open=>open.classList.remove('open'));document.querySelectorAll('.wbs-task-option-trigger.open').forEach(open=>open.classList.remove('open'));if(opening){menu.classList.add('open');button.classList.add('open');}});
+  button.append(label,arrow);root.append(input,button,menu);paint();return root;
 }
 
 function numericButton(name, value, { money=false }={}){
@@ -81,11 +89,11 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
     title:'کار:', presentation:'stage-create', autoFocus:false,
     saveLabel:'ذخیره',readOnly,
     body(root){
-      const type=optionButton({name:'taskType',value:task?.type || work.type || WORK_TYPES[0],options:WORK_TYPES.map(value=>({id:value,name:value})),contextKey:`wbs-task-type:${work.id}`,title:'نوع کار'});
+      const type=optionButton({name:'taskType',value:task?.type || work.type || WORK_TYPES[0],options:WORK_TYPES.map(value=>({id:value,name:value}))});
       root.appendChild(fieldRow('نوع کار',type));
       root.appendChild(dateField(documentRef, 'taskStart', 'تاریخ شروع', task?.scheduleStart || ''));
       root.appendChild(dateField(documentRef, 'taskEnd', 'تاریخ پایان', task?.scheduleEnd || ''));
-      const priority=optionButton({name:'taskPriority',value:task?.priority || 'normal',options:TASK_PRIORITIES.map(value=>({id:value,name:PRIORITY_LABELS[value]})),contextKey:`wbs-task-priority:${work.id}`,title:'درجه اهمیت'});
+      const priority=optionButton({name:'taskPriority',value:task?.priority || 'normal',options:TASK_PRIORITIES.map(value=>({id:value,name:PRIORITY_LABELS[value]}))});
       root.appendChild(fieldRow('درجه اهمیت',priority));
 
       const contacts = contactRepository.list(projectId).filter(contact => contact && !contact.trashed);
@@ -106,19 +114,12 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       paintAssignee();
       root.appendChild(fieldRow('مسئول پیگیری', assignee));
 
-      const approvalNeed=optionButton({name:'taskRequiresApproval',value:task?.requiresManagementApproval?'yes':'no',options:[
-        {id:'no',name:'نیاز به تأیید مدیریت ندارد'},
-        {id:'yes',name:'نیاز به تأیید مدیریت دارد'},
-      ],contextKey:`wbs-task-approval-need:${work.id}`,title:'تأیید مدیریت'});
-      root.appendChild(fieldRow('تأیید مدیریت',approvalNeed));
       const approver=documentRef.createElement('button');
       approver.type='button';approver.name='taskApprover';approver.className='wbs-input';approver.dataset.value=task?.approvalContactId || '';
       const paintApprover=()=>{const selected=contacts.find(contact=>String(contact.id)===String(approver.dataset.value));approver.textContent=selected?contactName(selected):'انتخاب مسئول تأیید';};
-      approver.addEventListener('click',()=>openSearchPicker({title:'انتخاب مسئول تأیید',listTitle:'مخاطبین',selectedTitle:'مسئول تأیید منتخب',contextKey:`wbs-task-approver:${work.id}`,items:contacts.map(contact=>({id:contact.id,name:contactName(contact)})),showStar:false,showAdd:false,onSelect:selected=>{approver.dataset.value=String(selected.id);paintApprover();}}));
+      approver.addEventListener('click',()=>openSearchPicker({title:'انتخاب مسئول تأیید',listTitle:'مخاطبین',selectedTitle:'مسئول تأیید منتخب',contextKey:`wbs-task-approver:${work.id}`,items:[{id:'',name:'بدون مسئول تأیید'},...contacts.map(contact=>({id:contact.id,name:contactName(contact)}))],showStar:false,showAdd:false,onSelect:selected=>{approver.dataset.value=String(selected.id);paintApprover();}}));
       paintApprover();
-      const approverRow=fieldRow('مسئول تأیید',approver);
-      const syncApprover=()=>{approverRow.hidden=approvalNeed.dataset.value!=='yes';};
-      approvalNeed.addEventListener('change',syncApprover);syncApprover();root.appendChild(approverRow);
+      root.appendChild(fieldRow('مسئول تأیید',approver));
 
       if(contractor){
         const note = documentRef.createElement('div');
@@ -152,12 +153,11 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       }
       const draft = {
         title:(titleEditor.textContent || '').trim(),
-        type:root.querySelector('[name="taskType"]').dataset.value,
+        type:root.querySelector('[name="taskType"]').value,
         scheduleStart:root.querySelector('[name="taskStart"]').dataset.value,
         scheduleEnd:root.querySelector('[name="taskEnd"]').dataset.value,
-        priority:root.querySelector('[name="taskPriority"]').dataset.value,
+        priority:root.querySelector('[name="taskPriority"]').value,
         assigneeContactId:root.querySelector('[name="taskAssignee"]').dataset.value,
-        requiresManagementApproval:root.querySelector('[name="taskRequiresApproval"]').dataset.value==='yes',
         approvalContactId:root.querySelector('[name="taskApprover"]').dataset.value,
         contractorContactId:'',
         weight:Number(root.querySelector('[name="taskWeight"]').dataset.value),
