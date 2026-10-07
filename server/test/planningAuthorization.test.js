@@ -3,8 +3,13 @@ import assert from 'node:assert/strict';
 import {canDeleteProjectTasks,canMutateSharedProject,canWriteProjectTasks,mergeSharedProjectPayload,projectTasksChanged,projectTasksDeleted} from '../src/app.js';
 
 test('planning and execution write permissions authorize shared task mutations',()=>{
+  assert.equal(canWriteProjectTasks({modules:{
+    'planning:tree':'none','planning:timeline':'none','planning:costline':'none',
+  }}),false);
   assert.equal(canWriteProjectTasks({modules:{'planning:tree':'view'}}),false);
+  assert.equal(canWriteProjectTasks({modules:{'planning:tree':'create'}}),true);
   assert.equal(canWriteProjectTasks({modules:{'planning:timeline':'create'}}),true);
+  assert.equal(canWriteProjectTasks({modules:{'planning:costline':'create'}}),true);
   assert.equal(canWriteProjectTasks({modules:{'execution:today':'create'}}),true);
 });
 
@@ -28,6 +33,9 @@ test('invitation module access is the member work permission',()=>{
   assert.equal(canWriteProjectTasks(granted),true);
   assert.equal(canDeleteProjectTasks(granted),false);
   assert.equal(canMutateSharedProject({modules:{'planning:tree':'view'}}),false);
+  assert.equal(canMutateSharedProject({modules:{
+    'planning:tree':'view','planning:timeline':'view','planning:costline':'view',
+  }}),false);
 });
 
 test('member task writes merge onto the shared project and do not wipe other records',()=>{
