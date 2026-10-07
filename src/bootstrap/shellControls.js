@@ -211,6 +211,7 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
   const main = title?.querySelector?.('.app-title-main');
   const projectLabel = byId(documentRef, 'topbarProjectName');
   const settingsTrigger = byId(documentRef, 'projectSettingsTrigger');
+  const notebookMenuTrigger = byId(documentRef, 'notebookMenuTrigger');
   const refreshTrigger = byId(documentRef, 'projectRefreshTrigger');
   const notificationsTrigger = byId(documentRef, 'notificationsTrigger');
   const settingsParent = settingsTrigger?.parentNode || null;
@@ -255,9 +256,10 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
       && !!windowRef.KarhaRoute?.projectId;
     const showSettings=!notebook && projectScoped && !!project;
     setSettingsMounted(showSettings);
-    setRefreshMounted(showSettings);
+    setRefreshMounted(showSettings || notebook);
     if(settingsTrigger) settingsTrigger.hidden = !showSettings;
-    if(refreshTrigger) refreshTrigger.hidden = !showSettings;
+    if(notebookMenuTrigger) notebookMenuTrigger.hidden = !notebook;
+    if(refreshTrigger) refreshTrigger.hidden = !(showSettings || notebook);
     settingsTrigger?.classList?.toggle?.('active',settingsModules.has(moduleId));
     settingsTrigger?.setAttribute?.('aria-pressed',settingsModules.has(moduleId)?'true':'false');
     if(windowRef.KarhaWorkspaceChrome){
@@ -429,6 +431,7 @@ export function bindShellControls({ windowRef = window, documentRef = document }
 
   installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin});
 
+  byId(documentRef, 'notebookMenuTrigger')?.addEventListener?.('click', openProjectMenu);
   title?.addEventListener('click', openProjectMenu);
   title?.addEventListener('keydown', event => {
     if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); openProjectMenu(); }
