@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { ModuleRegistry } from '../../core/moduleRegistry.js';
 import {
-  ACCESS_LEVELS, PROJECT_ROLES, canDeleteWithAccess, canManageProjectRoles,
+  ACCESS_LEVELS, MEMBER_STATUSES, PROJECT_ROLES, canDeleteWithAccess, canManageProjectRoles,
   createMember, ensureInvitationContact, isValidIranianMobile, normalizeMobile, permissionGroups, permissionModules,
 } from './roleManagementDomain.js';
 
@@ -22,6 +22,7 @@ test('roles and access levels expose the complete product vocabulary',()=>{
   assert.deepEqual(ACCESS_LEVELS.map(item=>item.id),['none','view','edit','create','full']);
   assert.equal(canDeleteWithAccess('create'),false);
   assert.equal(canDeleteWithAccess('full'),true);
+  assert.deepEqual(MEMBER_STATUSES.map(item=>item.id),['invited','active','inactive','deleted']);
 });
 
 test('permission list comes from registry and never delegates role management',()=>{

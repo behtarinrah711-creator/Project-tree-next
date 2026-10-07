@@ -27,3 +27,15 @@ test('Saosa adapter persists edits through the member backend endpoint',async()=
   assert.equal(calls[0][1].method,'PATCH');
   assert.equal(result.member.permissions['planning:tree'],'create');
 });
+
+test('Saosa adapter exposes lifecycle actions on their dedicated endpoints',async()=>{
+  const calls=[];
+  const win={location:{hostname:'saosa.ir'},localStorage:{getItem:()=>JSON.stringify({token:'t',phone:'09123456789',expiresAt:Date.now()+1000})},fetch:async(...args)=>{calls.push(args);return {ok:true,json:async()=>({})};}};
+  const adapter=createSmsInvitationAdapter({windowRef:win});
+  await adapter.cancelInvitation({projectId:'p1',invitationId:'i1'});
+  await adapter.deleteMember({projectId:'p1',mobile:'09120000000'});
+  assert.deepEqual(calls.map(([path,options])=>[path,options.method]),[
+    ['/api/v1/projects/p1/invitations/i1','DELETE'],
+    ['/api/v1/projects/p1/members/09120000000','DELETE'],
+  ]);
+});

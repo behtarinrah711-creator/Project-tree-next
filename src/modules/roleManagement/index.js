@@ -75,11 +75,6 @@ export function createRoleManagementModule({
     });
     const hint=documentRef.createElement('p');hint.className='role-form-hint';hint.textContent='حذف اطلاعات هر ماژول فقط با «دسترسی کامل» مجاز است. مدیریت نقش‌ها قابل واگذاری نیست.';fields.appendChild(hint);
     const error=documentRef.createElement('p');error.className='role-form-error';error.setAttribute('role','alert');fields.appendChild(error);
-    if(existing?.status==='invited' && existing?.invitationId && smsAdapter.configured){
-      const resend=documentRef.createElement('button');resend.type='button';resend.className='role-resend-invite';resend.textContent='ارسال مجدد دعوت‌نامه';
-      resend.onclick=async()=>{resend.disabled=true;error.textContent='';try{const result=await smsAdapter.resendInvitation({projectId,invitationId:existing.invitationId});const delivered=result.smsSent || result.emailSent;error.className=delivered?'role-form-success':'role-form-error';error.textContent=delivered?'دعوت‌نامه مجدداً ارسال شد.':'دعوت ثبت است، اما ارسال پیامک و ایمیل انجام نشد.';}catch(sendError){error.className='role-form-error';error.textContent=sendError.code==='invitation_recently_sent'?'دعوت‌نامه قبلی ارسال شده است؛ برای جلوگیری از پیامک تکراری، چند دقیقه دیگر دوباره تلاش کنید.':'ارسال مجدد دعوت‌نامه انجام نشد.';}finally{resend.disabled=false;}};
-      fields.appendChild(resend);
-    }
     form.appendChild(fields);sheet.appendChild(form);overlay.appendChild(sheet);documentRef.body.appendChild(overlay);activeSheet=overlay;
     const close=()=>closeSheet();form.querySelector('[data-close]').onclick=close;
     overlay.addEventListener('click',event=>{if(event.target===overlay)close();});
@@ -128,6 +123,48 @@ export function createRoleManagementModule({
     mobile.focus?.();
   }
 
+  function replaceMember(projectId,member){
+    save(projectId,project=>({...project,projectMembers:project.projectMembers.map(item=>item.id===member.id?member:item)}));
+  }
+
+  async function runMemberAction(projectId,registry,member,action,button){
+    const project=repository.find(projectId);
+    button.disabled=true;
+    try{
+      if(action==='resend'){
+        await smsAdapter.resendInvitation({projectId,invitationId:member.invitationId});
+        windowRef?.KarhaToast?.show?.('دعوت‌نامه مجدداً ارسال شد.');
+      }else if(action==='cancel'){
+        if(!windowRef?.confirm?.('آیا از حذف این دعوت‌نامه مطمئن هستید؟')) return;
+        await smsAdapter.cancelInvitation({projectId,invitationId:member.invitationId});
+        replaceMember(projectId,{...member,status:'deleted',invitationId:null,invitationExpiresAt:null});
+      }else if(action==='delete'){
+        if(!windowRef?.confirm?.('آیا از حذف این عضو از پروژه مطمئن هستید؟')) return;
+        await smsAdapter.deleteMember({projectId,mobile:member.mobile});
+        replaceMember(projectId,{...member,status:'deleted',invitationId:null,invitationExpiresAt:null});
+      }else if(action==='activate' || action==='deactivate'){
+        const status=action==='activate'?'active':'inactive';
+        const updated=await smsAdapter.updateMember({projectId,member:{...member,status}});
+        replaceMember(projectId,{...member,...updated.member,status});
+      }else if(action==='invite'){
+        const invitation=await smsAdapter.sendInvitation({projectId,projectName:project?.name || project?.title || 'پروژه',member});
+        replaceMember(projectId,{...member,status:'invited',invitationId:invitation.id || invitation.invitationId || null,invitationExpiresAt:invitation.expiresAt || null});
+      }
+      render(projectId,registry);
+    }catch(error){
+      const messages={invitation_recently_sent:'دعوت‌نامه قبلی ارسال شده است؛ چند دقیقه دیگر دوباره تلاش کنید.',already_invited:'این کاربر قبلاً دعوت شده است.'};
+      windowRef?.KarhaToast?.show?.(messages[error.code] || 'انجام عملیات ممکن نشد. دوباره تلاش کنید.');
+    }finally{button.disabled=false;}
+  }
+
+  function memberActions(member){
+    if(member.status==='invited') return [['resend','ارسال مجدد دعوت‌نامه'],['cancel','حذف دعوت‌نامه']];
+    if(member.status==='active') return [['deactivate','غیرفعال‌سازی'],['delete','حذف']];
+    if(member.status==='inactive') return [['activate','فعال‌سازی'],['delete','حذف']];
+    if(member.status==='deleted') return [['invite','ارسال دعوت‌نامه']];
+    return [];
+  }
+
   function render(projectId,registry){
     const body=documentRef.getElementById('roleManagementPageBody');if(!body)return;
     body.replaceChildren();const project=repository.find(projectId);
@@ -137,7 +174,18 @@ export function createRoleManagementModule({
     const members=project.projectMembers || [];
     if(!members.length){const empty=documentRef.createElement('div');empty.className='role-empty';empty.textContent='هنوز عضوی به پروژه دعوت نشده است.';body.appendChild(empty);}
     const statusMap=new Map(MEMBER_STATUSES.map(item=>[item.id,item.label]));
-    members.forEach(member=>{const row=documentRef.createElement('button');row.type='button';row.className='role-member-row';const contact=(project.contacts || []).find(item=>item.id===member.contactId || (item.phones || [item.phone]).includes(member.mobile));const name=[contact?.firstName,contact?.lastName].filter(Boolean).join(' ') || member.mobile;row.innerHTML=`<span class="role-member-main"><strong></strong><small></small></span><span class="role-status"></span><span class="workspace-option-arrow">›</span>`;row.querySelector('strong').textContent=name;row.querySelector('small').textContent=member.mobile;row.querySelector('.role-status').textContent=statusMap.get(member.status) || member.status;row.onclick=()=>openMemberSheet(projectId,registry,member);body.appendChild(row);});
+    members.forEach(member=>{
+      const item=documentRef.createElement('section');item.className='role-member-item';
+      const row=documentRef.createElement('button');row.type='button';row.className='role-member-row';
+      const contact=(project.contacts || []).find(contactItem=>contactItem.id===member.contactId || (contactItem.phones || [contactItem.phone]).includes(member.mobile));
+      const name=[contact?.firstName,contact?.lastName].filter(Boolean).join(' ') || member.mobile;
+      row.innerHTML=`<span class="role-member-main"><strong></strong><small></small></span><span class="role-status"></span><span class="workspace-option-arrow">›</span>`;
+      row.querySelector('strong').textContent=name;row.querySelector('small').textContent=member.mobile;row.querySelector('.role-status').textContent=statusMap.get(member.status) || member.status;
+      row.onclick=()=>openMemberSheet(projectId,registry,member);
+      const actions=documentRef.createElement('div');actions.className='role-member-actions';
+      memberActions(member).forEach(([action,label])=>{const button=documentRef.createElement('button');button.type='button';button.dataset.action=action;button.textContent=label;if(['delete','cancel'].includes(action))button.classList.add('is-danger');button.onclick=()=>runMemberAction(projectId,registry,member,action,button);actions.appendChild(button);});
+      item.append(row,actions);body.appendChild(item);
+    });
   }
 
   return {

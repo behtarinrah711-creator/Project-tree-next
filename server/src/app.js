@@ -50,6 +50,8 @@ function invitationRoute(pathname){
   if(create) return {action:'create',projectId:decodeURIComponent(create[1])};
   const resend=/^\/api\/v1\/projects\/([^/]+)\/invitations\/([^/]+)\/resend$/.exec(pathname);
   if(resend) return {action:'resend',projectId:decodeURIComponent(resend[1]),invitationId:decodeURIComponent(resend[2])};
+  const cancel=/^\/api\/v1\/projects\/([^/]+)\/invitations\/([^/]+)$/.exec(pathname);
+  if(cancel) return {action:'cancel',projectId:decodeURIComponent(cancel[1]),invitationId:decodeURIComponent(cancel[2])};
   return null;
 }
 
@@ -60,8 +62,10 @@ function accountInvitationRoute(pathname){
 }
 
 function memberRoute(pathname){
-  const match=/^\/api\/v1\/projects\/([^/]+)\/members$/.exec(pathname);
-  return match?{projectId:decodeURIComponent(match[1])}:null;
+  const collection=/^\/api\/v1\/projects\/([^/]+)\/members$/.exec(pathname);
+  if(collection) return {projectId:decodeURIComponent(collection[1]),mobile:null};
+  const item=/^\/api\/v1\/projects\/([^/]+)\/members\/([^/]+)$/.exec(pathname);
+  return item?{projectId:decodeURIComponent(item[1]),mobile:decodeURIComponent(item[2])}:null;
 }
 
 function invitationAccess(permissions){
@@ -460,7 +464,7 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
       }
 
       const inviteRoute=invitationRoute(url.pathname);
-      if(inviteRoute && request.method === 'POST'){
+      if(inviteRoute && ['POST','DELETE'].includes(request.method)){
         if(!PROJECT_ID_PATTERN.test(inviteRoute.projectId)) return sendJson(response,400,{error:'invalid_project'});
         const accountId=await authenticate(request,pool,sessionSecret);
         if(!accountId) return sendJson(response,401,{error:'unauthorized'});
@@ -469,6 +473,18 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
             WHERE p.id = $1 AND p.owner_account_id = $2`,[inviteRoute.projectId,accountId],
         );
         if(!owner.rowCount) return sendJson(response,403,{error:'forbidden_project'});
+
+        if(inviteRoute.action==='cancel' && request.method==='DELETE'){
+          const cancelled=await pool.query(
+            `UPDATE project_invitations SET status='revoked',updated_at=now()
+              WHERE id=$1 AND project_id=$2 AND status='invited' RETURNING phone`,
+            [inviteRoute.invitationId,inviteRoute.projectId],
+          );
+          if(!cancelled.rowCount) return sendJson(response,404,{error:'invitation_not_found'});
+          return sendJson(response,200,{id:inviteRoute.invitationId,status:'revoked',phone:cancelled.rows[0].phone});
+        }
+
+        if(request.method!=='POST') return sendJson(response,405,{error:'method_not_allowed'});
 
         if(inviteRoute.action==='create'){
           const body=await readJson(request,64*1024);
@@ -529,6 +545,21 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
       }
 
       const memberEditRoute=memberRoute(url.pathname);
+      if(memberEditRoute?.mobile && request.method==='DELETE'){
+        if(!PROJECT_ID_PATTERN.test(memberEditRoute.projectId)) return sendJson(response,400,{error:'invalid_project'});
+        const accountId=await authenticate(request,pool,sessionSecret);
+        if(!accountId) return sendJson(response,401,{error:'unauthorized'});
+        const phone=normalizeIranPhone(memberEditRoute.mobile);if(!phone) return sendJson(response,400,{error:'invalid_phone'});
+        const owner=await pool.query('SELECT id FROM projects WHERE id=$1 AND owner_account_id=$2',[memberEditRoute.projectId,accountId]);
+        if(!owner.rowCount) return sendJson(response,403,{error:'forbidden_project'});
+        const removed=await pool.query(
+          `DELETE FROM project_memberships m USING accounts a
+            WHERE m.project_id=$1 AND m.account_id=a.id AND a.phone=$2 RETURNING m.account_id`,
+          [memberEditRoute.projectId,phone],
+        );
+        if(!removed.rowCount) return sendJson(response,404,{error:'member_not_found'});
+        return sendJson(response,200,{mobile:phone,status:'deleted'});
+      }
       if(memberEditRoute && request.method==='PATCH'){
         if(!PROJECT_ID_PATTERN.test(memberEditRoute.projectId)) return sendJson(response,400,{error:'invalid_project'});
         const accountId=await authenticate(request,pool,sessionSecret);
