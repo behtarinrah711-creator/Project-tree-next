@@ -77,6 +77,17 @@ export async function refreshSaosaWorkspace({windowRef = window, store} = {}){
   return {enabled:true,authenticated:true,changed,accountId:remote.accountId};
 }
 
+export async function activateAcceptedProject({windowRef = window, store, projectId} = {}){
+  if(!projectId) return false;
+  const refreshed=await refreshSaosaWorkspace({windowRef,store});
+  if(!refreshed?.authenticated) return false;
+  const selected=windowRef.KarhaApp?.projectWorkspace?.selectProject?.(projectId,{
+    moduleId:'dashboard',replace:true,closeDrawer:true,
+  });
+  if(selected) windowRef.KarhaLegacy?.renderDrawerProjectList?.();
+  return !!selected;
+}
+
 let persistBusy = false;
 export function isSaosaPersistBusy(){ return persistBusy; }
 
