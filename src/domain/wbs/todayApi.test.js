@@ -23,6 +23,14 @@ test('same author edits the latest report while another author creates the next 
   assert.equal(entity(store).executionReports.length,2);
 });
 
+test('report progress is persisted and capped at one hundred percent',()=>{
+  const store=install(); const actor={id:'a',name:'الف'};
+  todayApi.saveReport('p1',ref,'گزارش پیشرفت',actor,()=>100,72);
+  assert.equal(entity(store).progress,72);
+  todayApi.saveReport('p1',ref,'گزارش تکمیل',actor,()=>200,140);
+  assert.equal(entity(store).progress,100);
+});
+
 test('completion waits for approval; rejection is typed and returns actionable',()=>{
   const store=install(),actor={id:'a',name:'الف'};
   todayApi.markComplete('p1',ref,actor,()=>50);
