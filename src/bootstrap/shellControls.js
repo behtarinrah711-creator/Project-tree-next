@@ -228,7 +228,7 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
   const setRefreshMounted = mounted => {
     if(!refreshTrigger || !settingsParent) return;
     if(mounted){
-      if(!refreshTrigger.parentNode) settingsParent.insertBefore?.(refreshTrigger, notificationsTrigger || settingsTrigger);
+      if(!refreshTrigger.parentNode) settingsParent.insertBefore?.(refreshTrigger, null);
     }else if(refreshTrigger.parentNode){
       refreshTrigger.remove?.();
     }
@@ -310,6 +310,25 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     windowRef.KarhaApp?.router?.sync?.();
   });
 
+  const syncNotificationBadge = async user => {
+    const badge=byId(documentRef,'notificationBadge');
+    if(!badge) return;
+    const render=count=>{
+      const value=Math.max(0,Number(count)||0);
+      badge.hidden=value===0;
+      badge.textContent=value>99?'۹۹+':value.toLocaleString('fa-IR');
+      notificationsTrigger?.setAttribute?.('aria-label',value?`اعلان‌ها، ${value} خوانده‌نشده`:'اعلان‌ها');
+    };
+    if(!user || !isSaosaHost(windowRef)){render(0);return;}
+    const session=readSaosaSession(windowRef);render(session?.pendingInvitationCount || 0);
+    if(!session?.token || !windowRef.fetch) return;
+    try{
+      const response=await windowRef.fetch('/api/v1/invitations',{headers:{authorization:`Bearer ${session.token}`}});
+      const payload=await response.json().catch(()=>({}));
+      if(response.ok) render(Array.isArray(payload.items)?payload.items.length:0);
+    }catch{}
+  };
+
   const syncUser = user => {
     const saosaLoggedOut = isSaosaHost(windowRef) && !user;
     documentRef.body?.classList?.toggle?.('saosa-logged-out', saosaLoggedOut);
@@ -343,6 +362,7 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     avatar?.classList.toggle('is-guest', !user);
     avatar?.setAttribute('aria-label', user ? 'حساب کاربری' : 'ورود');
     if(notificationsTrigger) notificationsTrigger.hidden = !user;
+    void syncNotificationBadge(user);
     if(isSaosaHost(windowRef)) windowRef.KarhaLegacy?.renderAll?.();
   };
 

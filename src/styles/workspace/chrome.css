@@ -28,10 +28,14 @@
   }
   .topbar .mode-toggle{flex-shrink:0;margin-inline-start:auto;}
   .topbar .account-trigger{flex-shrink:0;}
+  .topbar-project-actions{display:flex;align-items:center;gap:2px;direction:ltr;flex:0 0 auto;margin-inline-start:auto;z-index:2;}
   .project-settings-trigger,
-  .project-settings-trigger:active{margin-inline-start:auto;background:transparent;color:var(--text);}
+  .project-settings-trigger:active{margin:0;background:transparent;color:var(--text);}
   .project-settings-trigger svg{width:22px;height:22px;}
   .project-refresh-trigger svg,.notifications-trigger svg{width:22px;height:22px;}
+  .notifications-trigger{position:relative;}
+  .notification-badge{position:absolute;top:1px;right:0;min-width:15px;height:15px;padding:0 3px;box-sizing:border-box;border:2px solid var(--bg);border-radius:9px;background:var(--danger);color:#fff;font-size:9px;font-weight:700;line-height:11px;text-align:center;direction:ltr;}
+  .notification-badge[hidden]{display:none!important;}
   .project-settings-trigger.active,
   .project-settings-trigger.active:active{background:#2f2a24;color:#fff;}
 

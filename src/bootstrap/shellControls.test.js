@@ -245,6 +245,21 @@ test('authenticated header opens global notifications and reloads an installed p
   assert.equal(synced,1);
 });
 
+test('project header keeps settings, notifications, and refresh in one ordered left action group',async()=>{
+  const [html,css]=await Promise.all([
+    readFile(new URL('../../index.html',import.meta.url),'utf8'),
+    readFile(new URL('../styles/workspace/chrome.css',import.meta.url),'utf8'),
+  ]);
+  const group=html.match(/<div class="topbar-project-actions"[\s\S]*?<\/div>/)?.[0] || '';
+  assert.ok(group.indexOf('projectSettingsTrigger')>=0);
+  assert.ok(group.indexOf('notificationsTrigger')>group.indexOf('projectSettingsTrigger'));
+  assert.ok(group.indexOf('projectRefreshTrigger')>group.indexOf('notificationsTrigger'));
+  assert.match(group,/id="notificationBadge" hidden/);
+  assert.match(css,/\.topbar-project-actions\{[^}]*gap:2px;/);
+  assert.match(css,/\.topbar-project-actions\{[^}]*direction:ltr;/);
+  assert.match(css,/\.notification-badge\{[^}]*position:absolute;[^}]*background:var\(--danger\);/);
+});
+
 test('project settings trigger opens settings and a second click returns to the previous route',async()=>{
   const selected=[];
   const projectWorkspace={
