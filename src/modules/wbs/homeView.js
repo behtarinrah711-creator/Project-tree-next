@@ -738,7 +738,10 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   const items = (project.tasks || []).filter(x => !x.trashed && !isPendingUiDelete(x.id));
   const effectiveView = currentView === 'tree' ? currentTreeMode : currentView;
   const codes = wbsCodeMap(items);
-  if(currentView === 'costline') tree.appendChild(renderCostline(project));
+  if(currentView === 'costline') tree.appendChild(renderCostline(project, {
+    canWrite:canWritePlanning(activePlanningLevel),
+    canDelete:canDeletePlanning(activePlanningLevel),
+  }));
   else if(!items.length) tree.innerHTML = `<div class="empty-state">${baseMode ? 'کاری ثبت نشده است.' : 'مرحله یا کاری ثبت نشده است.'}</div>`;
   else if(currentView === 'timeline') tree.appendChild(renderTimeline(items));
   else items.forEach(item => tree.appendChild(renderRow(item, codes, effectiveView, 0)));

@@ -23,8 +23,9 @@ const ORIGIN_ICON = 'M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 
 let rangeIndex = 1;
 let originWeekday = 4;
 
-export function renderCostline(project){
+export function renderCostline(project, access = {}){
   project = projectRepository.getActiveProject(project.id) || project;
+  const permissions = { canWrite:access.canWrite !== false, canDelete:access.canDelete !== false };
   const root = document.createElement('section');
   root.className = 'wbs-costline';
   const range = COSTLINE_RANGES[rangeIndex] || COSTLINE_RANGES[1];
@@ -32,11 +33,11 @@ export function renderCostline(project){
   const chartFrame = document.createElement('section');
   chartFrame.className = 'wbs-costline-frame wbs-view-frame is-costline-frame';
   chartFrame.append(renderToolbar(() => {
-    root.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project));
-  }), renderChart(project, model));
+    root.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project, permissions));
+  }), renderChart(project, model, permissions));
   root.append(chartFrame, renderFundingPanel(project, () => {
-    root.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project));
-  }));
+    root.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project, permissions));
+  }, permissions));
   return root;
 }
 
@@ -137,11 +138,13 @@ function depositRow(label, control){
   return row;
 }
 
-function openDepositSheet(project, refresh, receipt = null){
+function openDepositSheet(project, refresh, receipt = null, access = {}){
   const editing = Boolean(receipt);
+  const readOnly = access.canWrite === false;
   openWbsSheet({
     title: editing ? 'ویرایش دریافتی' : 'ثبت دریافتی',
     saveLabel: 'ذخیره',
+    showSave: !readOnly,
     presentation: 'stage-create',
     autoFocus: false,
     historyKey: 'funding-deposit-sheet',
@@ -159,8 +162,11 @@ function openDepositSheet(project, refresh, receipt = null){
         amount.dataset.value = String(value || '');
         amount.textContent = amount.dataset.value ? new Intl.NumberFormat('fa-IR').format(Number(amount.dataset.value)) + ' تومان' : 'مبلغ را وارد کنید';
       }, { suffix: ' تومان' }));
+      amount.disabled = readOnly;
       fields.appendChild(depositRow('مبلغ', amount));
-      fields.appendChild(depositRow('تاریخ دریافت', dateButton('depositDate', receipt?.depositDate || '')));
+      const depositDate = dateButton('depositDate', receipt?.depositDate || '');
+      depositDate.disabled = readOnly;
+      fields.appendChild(depositRow('تاریخ دریافت', depositDate));
       const contacts = contactRepository.list(project.id).filter(contact => contact && !contact.trashed);
       const party = document.createElement('button');
       party.type = 'button';
@@ -178,6 +184,7 @@ function openDepositSheet(project, refresh, receipt = null){
         showStar:false, showAdd:false,
         onSelect:selected => { party.dataset.value = String(selected.id); paintParty(); },
       }));
+      party.disabled = readOnly;
       paintParty();
       fields.appendChild(depositRow('واریزکننده', party));
       host.appendChild(fields);
@@ -186,8 +193,9 @@ function openDepositSheet(project, refresh, receipt = null){
       note.name = 'description';
       note.value = receipt?.description || '';
       note.rows = 2;
+      note.readOnly = readOnly;
       host.appendChild(fieldRow('توضیح اختیاری', note));
-      if(editing){
+      if(editing && access.canDelete){
         const remove = document.createElement('button');
         remove.type = 'button';
         remove.className = 'wbs-info-row is-danger';
@@ -267,7 +275,7 @@ function openDepositSheet(project, refresh, receipt = null){
   });
 }
 
-function renderFundingPanel(project, refresh){
+function renderFundingPanel(project, refresh, access){
   const frame = document.createElement('section');
   frame.className = 'wbs-funding-frame wbs-view-frame';
   const header = document.createElement('div');
@@ -275,7 +283,8 @@ function renderFundingPanel(project, refresh){
   const title = document.createElement('strong');
   title.className = 'wbs-funding-title';
   title.textContent = 'دریافتی‌ها';
-  header.append(title, budgetButton(project, refresh));
+  header.appendChild(title);
+  if(access.canWrite) header.appendChild(budgetButton(project, refresh));
 
   const body = document.createElement('div');
   body.className = 'wbs-funding-list wbs-view-body';
@@ -292,7 +301,7 @@ function renderFundingPanel(project, refresh){
         `دریافتی شماره ${new Intl.NumberFormat('fa-IR').format(number)} | ${numericJalaliDate(receipt.depositDate)}`,
         `${money(receipt.amount)} تومان`,
         'is-action',
-        () => openDepositSheet(project, refresh, receipt),
+        () => openDepositSheet(project, refresh, receipt, access),
       ));
     });
   frame.append(header, body);
@@ -353,7 +362,7 @@ function renderMoney(value, { className = '', negative = false } = {}){
   return line;
 }
 
-function renderChart(project, model){
+function renderChart(project, model, access){
   const wrap = document.createElement('div');
   wrap.className = 'wbs-costline-chart wbs-view-body';
   const scroll = document.createElement('div');
@@ -384,8 +393,8 @@ function renderChart(project, model){
     label.textContent = bucket.label;
     col.append(values, renderBar(bucket, max, allocated), label);
     col.addEventListener('click', () => openBucketSheet(project, bucket, () => {
-      wrap.closest('.wbs-costline')?.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project));
-    }));
+      wrap.closest('.wbs-costline')?.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project, access));
+    }, access));
     axis.appendChild(col);
   });
   scroll.appendChild(axis);
@@ -414,7 +423,7 @@ function costlineDetailRow(label, value, className = ''){
   return row;
 }
 
-function openBucketSheet(project, bucket, refresh){
+function openBucketSheet(project, bucket, refresh, access){
   openWbsSheet({
     title: `برآورد هزینه ${bucket.label}`,
     showSave: false,
@@ -467,6 +476,7 @@ function openBucketSheet(project, bucket, refresh){
         mode.type = 'button';
         mode.className = 'wbs-costline-mode';
         mode.dataset.value = work.accrual || 'spread';
+        mode.disabled = !access.canWrite;
         const paintMode = () => {
           mode.textContent = accrualOptions.find(option => option.id === mode.dataset.value)?.name || accrualOptions[0].name;
         };
@@ -512,6 +522,7 @@ function openBucketSheet(project, bucket, refresh){
         const manual = document.createElement('button');
         manual.type = 'button';
         manual.className = 'wbs-costline-manual';
+        manual.disabled = !access.canWrite;
         const paintManual = () => {
           const live = projectRepository.getActiveProject(project.id) || project;
           const amount = allocatedForBucket(live, work.id, bucket);

@@ -33,6 +33,9 @@ export function buildProjectCloudPayload(p, store, policy, normalizeEmail, DATA_
     contractTemplates: pickCol('contractTemplates'),
     contracts: pickCol('contracts'),
     projectMembers: pickCol('projectMembers'),
+    fundingReceipts: Array.isArray(p.fundingReceipts) ? p.fundingReceipts : [],
+    fundingAllocations: Array.isArray(p.fundingAllocations) ? p.fundingAllocations : [],
+    fundingLedgerVersion: Number(p.fundingLedgerVersion) || 0,
     schemaVersion: DATA_SCHEMA_VERSION,
   };
 }

@@ -30,3 +30,20 @@ test('refresh hydration keeps a newly created WBS workTask over stale cloud proj
   assert.equal(project.tasks[0].workTasks.length, 1);
   assert.equal(project.tasks[0].workTasks[0].title, 'ارسال یخچال به پروژه');
 });
+
+test('cloud hydration shares receipts and allocations with other project members', () => {
+  const project = docToProjectFromCloud({
+    id:'p1',
+    data:() => ({
+      name:'P', ownerUid:'u1',
+      fundingReceipts:[{id:'r1',amount:50}],
+      fundingAllocations:[{taskId:'t1',amount:20}],
+      fundingLedgerVersion:1,
+    }),
+  }, {id:'p1',fundingReceipts:[],fundingAllocations:[]}, {
+    appDataStore:createAppDataStore({storage:null}),
+  });
+  assert.equal(project.fundingReceipts[0].amount,50);
+  assert.equal(project.fundingAllocations[0].amount,20);
+  assert.equal(project.fundingLedgerVersion,1);
+});

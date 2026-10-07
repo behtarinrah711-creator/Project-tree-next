@@ -33,6 +33,17 @@ test('buildProjectCloudPayload prefers store over empty live collection', () => 
   assert.equal(payload.contacts.length, 1);
 });
 
+test('project cloud payload includes the shared cost estimate ledger', () => {
+  const project = {
+    name:'P', ownerUid:'u', fundingReceipts:[{id:'r1',amount:25}],
+    fundingAllocations:[{taskId:'t1',amount:25}], fundingLedgerVersion:1,
+  };
+  const payload = buildProjectCloudPayload(project, project, null, value => String(value || ''), 8);
+  assert.deepEqual(payload.fundingReceipts, project.fundingReceipts);
+  assert.deepEqual(payload.fundingAllocations, project.fundingAllocations);
+  assert.equal(payload.fundingLedgerVersion, 1);
+});
+
 test('cloud acknowledgement clears the canonical pending-write owner', async () => {
   const appData = createAppDataStore({ storage: null });
   const project = { id: 'p1', name: 'P', ownerUid: 'u1', tasks: [] };

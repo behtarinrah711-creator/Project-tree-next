@@ -91,6 +91,12 @@ export function canDeleteProjectTasks(permissions){
   return ['planning:tree','planning:timeline','planning:costline'].some(key=>modules[key]==='full');
 }
 
+export function canWriteProjectCostline(permissions){
+  const modules=modulePermissions(permissions);
+  if(!modules) return permissions?.edit===true;
+  return ['edit','create','full'].includes(modules['planning:costline']);
+}
+
 export function canMutateSharedProject(permissions){
   return permissions?.edit===true || canWriteProjectTasks(permissions);
 }
@@ -114,6 +120,7 @@ function mergeTaskCollection(currentItems=[],incomingItems=[],allowDelete=false)
 
 export function mergeSharedProjectPayload(current,incoming,permissions){
   if(!modulePermissions(permissions)) return incoming;
+  const costline = canWriteProjectCostline(permissions);
   return {
     ...current,
     tasks:mergeTaskCollection(
@@ -121,6 +128,11 @@ export function mergeSharedProjectPayload(current,incoming,permissions){
       Array.isArray(incoming?.tasks)?incoming.tasks:[],
       canDeleteProjectTasks(permissions),
     ),
+    ...(costline ? {
+      fundingReceipts:Array.isArray(incoming?.fundingReceipts)?incoming.fundingReceipts:[],
+      fundingAllocations:Array.isArray(incoming?.fundingAllocations)?incoming.fundingAllocations:[],
+      fundingLedgerVersion:Number(incoming?.fundingLedgerVersion)||0,
+    } : {}),
   };
 }
 
@@ -138,6 +150,14 @@ function taskIds(tasks){
 
 export function projectTasksChanged(previous,next){
   return JSON.stringify(previous?.tasks||[])!==JSON.stringify(next?.tasks||[]);
+}
+
+export function projectFundingChanged(previous,next){
+  return JSON.stringify([
+    previous?.fundingReceipts||[], previous?.fundingAllocations||[], Number(previous?.fundingLedgerVersion)||0,
+  ])!==JSON.stringify([
+    next?.fundingReceipts||[], next?.fundingAllocations||[], Number(next?.fundingLedgerVersion)||0,
+  ]);
 }
 
 export function projectPayloadChanged(previous,next){
@@ -314,6 +334,9 @@ async function saveWorkspace(pool, accountId, snapshot){
         }
         if(projectTasksChanged(currentPayload,project) && !canWriteProjectTasks(permissions)){
           const error=new Error('forbidden_planning_write');error.statusCode=403;throw error;
+        }
+        if(projectFundingChanged(currentPayload,project) && !canWriteProjectCostline(permissions)){
+          const error=new Error('forbidden_costline_write');error.statusCode=403;throw error;
         }
         const savedProject=mergeSharedProjectPayload(currentPayload,project,permissions);
         await client.query(
