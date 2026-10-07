@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createAppDataStore, APP_DATA_STORAGE_KEY} from '../data/appDataStore.js';
-import {prepareSaosaWorkspace, refreshSaosaWorkspace, SAOSA_SESSION_KEY, clearSaosaWorkspaceSession} from './saosaWorkspaceSync.js';
+import {activateAcceptedProject, prepareSaosaWorkspace, refreshSaosaWorkspace, SAOSA_SESSION_KEY, clearSaosaWorkspaceSession} from './saosaWorkspaceSync.js';
 
 function storage(initial = {}){
   const values = new Map(Object.entries(initial));
@@ -116,4 +116,33 @@ test('drawer refresh adds later invitations without replacing the live snapshot'
   assert.equal(store.getSnapshot(),live);
   assert.deepEqual(live.projects.map(project=>project.id),['first','second']);
   assert.equal(win.KarhaSaosaWorkspaceAccess.second.role,'member');
+});
+
+test('accepted invitation refreshes membership and enters the project in one transaction', async () => {
+  const local=storage({[SAOSA_SESSION_KEY]:session});
+  const initial={schemaVersion:8,projects:[],viewMode:'simple',activeTab:null,starredOrder:[]};
+  const accepted={...initial,projects:[{id:'accepted-project',name:'accepted'}]};
+  const win=windowWith({localStorage:local,fetch:async()=>response(200,{
+    accountId:'account-a',snapshot:accepted,access:{'accepted-project':{role:'member',permissions:{view:true}}},
+  })});
+  const store=createAppDataStore({storage:local});
+  store.replaceSnapshot(initial);
+  const selections=[];
+  let drawerRenders=0;
+  win.KarhaApp={projectWorkspace:{selectProject(projectId,options){
+    selections.push({projectId,options,projectExists:store.getProjects().some(project=>project.id===projectId)});
+    return true;
+  }}};
+  win.KarhaLegacy={renderDrawerProjectList(){drawerRenders++;}};
+
+  const entered=await activateAcceptedProject({windowRef:win,store,projectId:'accepted-project'});
+
+  assert.equal(entered,true);
+  assert.deepEqual(store.getProjects().map(project=>project.id),['accepted-project']);
+  assert.deepEqual(selections,[{
+    projectId:'accepted-project',
+    options:{moduleId:'dashboard',replace:true,closeDrawer:true},
+    projectExists:true,
+  }]);
+  assert.equal(drawerRenders,1);
 });

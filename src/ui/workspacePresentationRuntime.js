@@ -291,8 +291,11 @@ async function renderInvitationList(body){
       accept.onclick=async()=>{
         accept.disabled=true;
         try{
-          await notificationRequest(`/api/v1/invitations/${encodeURIComponent(invitation.id)}/accept`,{method:'POST',body:'{}'});
-          location.hash='#/notifications?section=invitations';location.reload();
+          const accepted=await notificationRequest(`/api/v1/invitations/${encodeURIComponent(invitation.id)}/accept`,{method:'POST',body:'{}'});
+          const entered=await window.KarhaApp?.activateAcceptedProject?.({
+            windowRef:window,store:window.KarhaAppData,projectId:accepted.projectId || invitation.projectId,
+          });
+          if(!entered) throw new Error('accepted_project_unavailable');
         }catch(error){accept.disabled=false;showToast(error.code==='invitation_not_found'?'این دعوت‌نامه دیگر معتبر نیست.':'تأیید دعوت‌نامه انجام نشد.');}
       };
       main.append(title,meta);row.append(main,accept);wrap.appendChild(row);

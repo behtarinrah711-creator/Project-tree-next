@@ -63,7 +63,7 @@ import { taskIcons } from '../ui/taskIcons.js';
 import * as projectRecordReferences from '../domain/projectRecordReferences.js';
 import { installApplicationTheme } from '../core/applicationTheme.js';
 import { createFoundationCloudRuntime } from '../cloud/foundationCloudComposition.js';
-import { prepareSaosaWorkspace, refreshSaosaWorkspace, isSaosaHost } from '../cloud/saosaWorkspaceSync.js';
+import { activateAcceptedProject, prepareSaosaWorkspace, refreshSaosaWorkspace, isSaosaHost } from '../cloud/saosaWorkspaceSync.js';
 
 /** Start the modular API, then the classic application runtime, then routing. */
 export async function startApplication({
@@ -87,6 +87,7 @@ export async function startApplication({
     createProjectManagementView,
     reconcileDrawerProjectList,
     projectWorkspace: Object.freeze({ listProjects, getProject, getActiveProject, selectProject }),
+    activateAcceptedProject,
     getSession,
     activityApi,
     contactApi,
