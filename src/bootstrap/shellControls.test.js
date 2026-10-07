@@ -30,13 +30,13 @@ function element(id){
 }
 
 function harness({user=null,popupErrors=[],redirectErrors=[],route=null,hash='',hostname='behtarinrah711-creator.github.io',saosaSession=null}={}){
-  const elements = Object.fromEntries(['drawerOverlay','topbarTitle','drawerSigninBtn','toast','globalNotebookBtn','projectRefreshTrigger','notificationsTrigger','projectSettingsTrigger'].map(id=>[id,element(id)]));
+  const elements = Object.fromEntries(['drawerOverlay','topbarTitle','drawerSigninBtn','toast','globalNotebookBtn','projectRefreshTrigger','notificationsTrigger','projectSettingsTrigger','notebookMenuTrigger'].map(id=>[id,element(id)]));
   const events=[];
   const windowListeners=new Map();
   let storedSaosaSession=saosaSession;
   const body=element('body');
   const topbar=element('topbar');
-  topbar.childNodes=[elements.projectRefreshTrigger,elements.notificationsTrigger,elements.projectSettingsTrigger];
+  topbar.childNodes=[elements.notebookMenuTrigger,elements.projectRefreshTrigger,elements.notificationsTrigger,elements.projectSettingsTrigger];
   topbar.insertBefore=function(child,before){const index=before?this.childNodes.indexOf(before):-1;this.childNodes.splice(index>=0?index:this.childNodes.length,0,child);child.parentNode=this;};
   topbar.removeChild=function(child){const index=this.childNodes.indexOf(child);if(index>=0)this.childNodes.splice(index,1);child.parentNode=null;};
   topbar.childNodes.forEach(child=>{ child.parentNode=topbar; });
@@ -259,6 +259,28 @@ test('project header keeps settings, notifications, and refresh in one ordered l
   assert.match(css,/\.topbar-project-actions\{[^}]*direction:ltr;/);
   assert.match(css,/\.topbar-project-actions\{position:absolute;left:10px;top:50%;transform:translateY\(-50%\);/);
   assert.match(css,/\.notification-badge\{[^}]*position:absolute;[^}]*background:var\(--danger\);/);
+});
+
+test('notebook header keeps menu, notifications, and refresh in the home header order',async()=>{
+  const h=harness({
+    route:{projectId:null,moduleId:'notebook'},
+    hash:'#/notebook',
+    hostname:'saosa.ir',
+    saosaSession:{phone:'09170000000',token:'token',expiresAt:Date.now()+60_000},
+  });
+  bindShellControls(h);
+  assert.equal(h.elements.notebookMenuTrigger.hidden,false);
+  assert.equal(h.elements.notificationsTrigger.hidden,false);
+  assert.equal(h.elements.projectRefreshTrigger.hidden,false);
+  assert.equal(h.elements.projectSettingsTrigger.parentNode,null);
+  await h.elements.notebookMenuTrigger.click();
+  assert.equal(h.elements.drawerOverlay.classList.contains('hidden'),false);
+
+  const html=await readFile(new URL('../../index.html',import.meta.url),'utf8');
+  const group=html.match(/<div class="topbar-project-actions"[\s\S]*?<\/div>/)?.[0] || '';
+  assert.ok(group.indexOf('notebookMenuTrigger')>=0);
+  assert.ok(group.indexOf('notificationsTrigger')>group.indexOf('notebookMenuTrigger'));
+  assert.ok(group.indexOf('projectRefreshTrigger')>group.indexOf('notificationsTrigger'));
 });
 
 test('project settings trigger opens settings and a second click returns to the previous route',async()=>{

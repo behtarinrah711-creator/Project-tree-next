@@ -32,7 +32,8 @@
   .project-settings-trigger,
   .project-settings-trigger:active{margin:0;background:transparent;color:var(--text);}
   .project-settings-trigger svg{width:22px;height:22px;}
-  .project-refresh-trigger svg,.notifications-trigger svg{width:22px;height:22px;}
+  .project-refresh-trigger svg,.notifications-trigger svg,.notebook-menu-trigger svg{width:22px;height:22px;}
+  .notebook-menu-trigger svg{fill:currentColor;}
   .notifications-trigger{position:relative;}
   .notification-badge{position:absolute;top:1px;right:0;min-width:15px;height:15px;padding:0 3px;box-sizing:border-box;border:2px solid var(--bg);border-radius:9px;background:var(--danger);color:#fff;font-size:9px;font-weight:700;line-height:11px;text-align:center;direction:ltr;}
   .notification-badge[hidden]{display:none!important;}
@@ -110,7 +111,7 @@
     width:38px;height:38px;border-radius:50%;border:none;background:transparent;
     color:var(--text);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;
   }
-  #projectSettingsTrigger[hidden],#projectRefreshTrigger[hidden],#notificationsTrigger[hidden],html.saosa-notebook-route #projectSettingsTrigger,html.saosa-notebook-route #projectRefreshTrigger{display:none!important}
+  #projectSettingsTrigger[hidden],#projectRefreshTrigger[hidden],#notificationsTrigger[hidden],#notebookMenuTrigger[hidden],html.saosa-notebook-route #projectSettingsTrigger{display:none!important}
   .icon-btn:active{background:var(--divider);}
   .notification-invitation{cursor:default;}
   .notification-accept{border:0;border-radius:9px;background:var(--primary-navy);color:#fff;font:inherit;font-size:13px;padding:8px 12px;white-space:nowrap;}
