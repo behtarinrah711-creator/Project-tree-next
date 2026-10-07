@@ -53,6 +53,12 @@ function invitationRoute(pathname){
   return null;
 }
 
+function accountInvitationRoute(pathname){
+  if(pathname==='/api/v1/invitations') return {action:'list'};
+  const accept=/^\/api\/v1\/invitations\/([^/]+)\/accept$/.exec(pathname);
+  return accept?{action:'accept',invitationId:decodeURIComponent(accept[1])}:null;
+}
+
 function memberRoute(pathname){
   const match=/^\/api\/v1\/projects\/([^/]+)\/members$/.exec(pathname);
   return match?{projectId:decodeURIComponent(match[1])}:null;
@@ -103,61 +109,43 @@ export function projectTasksDeleted(previous,next){
   return [...before].some(id=>!after.has(id));
 }
 
-async function acceptPhoneInvitations(client, accountId, phone){
-  const pending=await client.query(
-    `SELECT * FROM project_invitations
-      WHERE phone = $1 AND status = 'invited' AND expires_at > now()
-      ORDER BY created_at FOR UPDATE`,[phone],
+async function acceptAccountInvitation(client, accountId, invitationId){
+  const found=await client.query(
+    `SELECT i.* FROM project_invitations i
+       JOIN accounts a ON a.id=$1 AND a.phone=i.phone
+      WHERE i.id=$2 AND i.status='invited' AND i.expires_at>now()
+      FOR UPDATE`,[accountId,invitationId],
   );
-  for(const invitation of pending.rows){
-    const roleKey=`invite-${String(invitation.id).slice(0,8)}`;
-    const access=invitationAccess(invitation.permissions);
-    const role=await client.query(
-      `INSERT INTO project_roles(id, project_id, role_key, display_name, permissions, is_system)
-       VALUES ($1, $2, $3, $4, $5::jsonb, false)
-       ON CONFLICT (project_id, role_key) DO UPDATE SET permissions = EXCLUDED.permissions, updated_at = now()
-       RETURNING id`,
-      [randomUUID(),invitation.project_id,roleKey,invitation.role_key,JSON.stringify(access)],
-    );
-    await client.query(
-      `INSERT INTO project_memberships(project_id, account_id, role_id, status, invited_by)
-       VALUES ($1, $2, $3, 'active', $4)
-       ON CONFLICT (project_id, account_id) DO UPDATE SET role_id = EXCLUDED.role_id, status = 'active', updated_at = now()`,
-      [invitation.project_id,accountId,role.rows[0].id,invitation.invited_by],
-    );
-    await client.query(
-      `UPDATE project_invitations SET status = 'accepted', accepted_at = now(), updated_at = now() WHERE id = $1`,
-      [invitation.id],
-    );
-    const project=await client.query('SELECT payload FROM projects WHERE id=$1 FOR UPDATE',[invitation.project_id]);
-    if(project.rowCount){
-      const payload=project.rows[0].payload || {};
-      if(Array.isArray(payload.projectMembers)){
-        payload.projectMembers=payload.projectMembers.map(member=>member?.mobile===phone?{...member,status:'active',invitationId:invitation.id}:member);
-        await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[invitation.project_id,JSON.stringify(payload)]);
-      }
+  if(!found.rowCount) return null;
+  const invitation=found.rows[0];
+  const roleKey=`invite-${String(invitation.id).slice(0,8)}`;
+  const access=invitationAccess(invitation.permissions);
+  const role=await client.query(
+    `INSERT INTO project_roles(id, project_id, role_key, display_name, permissions, is_system)
+     VALUES ($1, $2, $3, $4, $5::jsonb, false)
+     ON CONFLICT (project_id, role_key) DO UPDATE SET permissions=EXCLUDED.permissions,updated_at=now()
+     RETURNING id`,
+    [randomUUID(),invitation.project_id,roleKey,invitation.role_key,JSON.stringify(access)],
+  );
+  await client.query(
+    `INSERT INTO project_memberships(project_id, account_id, role_id, status, invited_by)
+     VALUES ($1,$2,$3,'active',$4)
+     ON CONFLICT (project_id,account_id) DO UPDATE SET role_id=EXCLUDED.role_id,status='active',updated_at=now()`,
+    [invitation.project_id,accountId,role.rows[0].id,invitation.invited_by],
+  );
+  await client.query(
+    `UPDATE project_invitations SET status='accepted',accepted_at=now(),updated_at=now() WHERE id=$1`,
+    [invitation.id],
+  );
+  const project=await client.query('SELECT payload FROM projects WHERE id=$1 FOR UPDATE',[invitation.project_id]);
+  if(project.rowCount){
+    const payload=project.rows[0].payload || {};
+    if(Array.isArray(payload.projectMembers)){
+      payload.projectMembers=payload.projectMembers.map(member=>member?.mobile===invitation.phone?{...member,status:'active',invitationId:invitation.id}:member);
+      await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[invitation.project_id,JSON.stringify(payload)]);
     }
   }
-  return pending.rows.map(row=>row.project_id);
-}
-
-async function refreshAccountInvitations(pool, accountId){
-  const client=await pool.connect();
-  try{
-    await client.query('BEGIN');
-    const account=await client.query('SELECT phone FROM accounts WHERE id=$1 FOR UPDATE',[accountId]);
-    if(account.rowCount){
-      await acceptPhoneInvitations(client,accountId,account.rows[0].phone);
-    }
-    const workspace=await readWorkspace(client,accountId);
-    await client.query('COMMIT');
-    return workspace;
-  }catch(error){
-    await client.query('ROLLBACK');
-    throw error;
-  }finally{
-    client.release();
-  }
+  return {id:invitation.id,projectId:invitation.project_id,status:'accepted'};
 }
 
 const PROJECT_ID_PATTERN = /^[a-z0-9][a-z0-9._:-]{0,127}$/i;
@@ -388,7 +376,10 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
              RETURNING id`,
             [randomUUID(), phone],
           );
-          const acceptedProjectIds=await acceptPhoneInvitations(client,account.rows[0].id,phone);
+          const pendingInvitations=await client.query(
+            `SELECT count(*)::int AS count FROM project_invitations
+              WHERE phone=$1 AND status='invited' AND expires_at>now()`,[phone],
+          );
           const token = randomBytes(32).toString('base64url');
           await client.query(
             `INSERT INTO sessions(token_hash, account_id, expires_at)
@@ -396,13 +387,45 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
             [hashToken(token, sessionSecret), account.rows[0].id],
           );
           await client.query('COMMIT');
-          return sendJson(response, 200, {token, accountId:account.rows[0].id, expiresIn:2592000, acceptedProjectIds});
+          return sendJson(response, 200, {token, accountId:account.rows[0].id, expiresIn:2592000, pendingInvitationCount:pendingInvitations.rows[0]?.count || 0});
         }catch(error){
           await client.query('ROLLBACK');
           throw error;
         }finally{
           client.release();
         }
+      }
+
+      const accountInviteRoute=accountInvitationRoute(url.pathname);
+      if(accountInviteRoute){
+        const accountId=await authenticate(request,pool,sessionSecret);
+        if(!accountId) return sendJson(response,401,{error:'unauthorized'});
+        if(accountInviteRoute.action==='list' && request.method==='GET'){
+          const invitations=await pool.query(
+            `SELECT i.id,i.project_id,p.payload->>'name' AS project_name,i.created_at,i.expires_at
+               FROM project_invitations i
+               JOIN accounts a ON a.id=$1 AND a.phone=i.phone
+               JOIN projects p ON p.id=i.project_id
+              WHERE i.status='invited' AND i.expires_at>now()
+              ORDER BY i.created_at DESC`,[accountId],
+          );
+          return sendJson(response,200,{items:invitations.rows.map(item=>({
+            id:item.id,projectId:item.project_id,projectName:item.project_name || 'پروژه',
+            createdAt:item.created_at,expiresAt:item.expires_at,
+          }))});
+        }
+        if(accountInviteRoute.action==='accept' && request.method==='POST'){
+          const client=await pool.connect();
+          try{
+            await client.query('BEGIN');
+            const accepted=await acceptAccountInvitation(client,accountId,accountInviteRoute.invitationId);
+            if(!accepted){await client.query('ROLLBACK');return sendJson(response,404,{error:'invitation_not_found'});}
+            await client.query('COMMIT');
+            return sendJson(response,200,accepted);
+          }catch(error){await client.query('ROLLBACK');throw error;}
+          finally{client.release();}
+        }
+        return sendJson(response,405,{error:'method_not_allowed'});
       }
 
       const inviteRoute=invitationRoute(url.pathname);
@@ -531,10 +554,7 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
       if(url.pathname === '/api/v1/workspace'){
         const accountId = await authenticate(request, pool, sessionSecret);
         if(!accountId) return sendJson(response, 401, {error: 'unauthorized'});
-        // A user can receive more invitations while an existing 30-day session
-        // is still valid. Activate those invitations on every authoritative
-        // workspace refresh instead of requiring logout/login to run OTP verify.
-        if(request.method === 'GET') return sendJson(response, 200, await refreshAccountInvitations(pool, accountId));
+        if(request.method === 'GET') return sendJson(response, 200, await readWorkspace(pool, accountId));
         if(request.method === 'PUT'){
           const body = await readJson(request);
           const snapshot = normalizeWorkspaceSnapshot(body.snapshot);

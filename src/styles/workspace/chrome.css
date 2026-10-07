@@ -108,6 +108,9 @@
   }
   #projectSettingsTrigger[hidden],#projectRefreshTrigger[hidden],#notificationsTrigger[hidden],html.saosa-notebook-route #projectSettingsTrigger,html.saosa-notebook-route #projectRefreshTrigger{display:none!important}
   .icon-btn:active{background:var(--divider);}
+  .notification-invitation{cursor:default;}
+  .notification-accept{border:0;border-radius:9px;background:var(--primary-navy);color:#fff;font:inherit;font-size:13px;padding:8px 12px;white-space:nowrap;}
+  .notification-accept:disabled{opacity:.55;}
   .account-trigger{
     display:flex;align-items:center;gap:4px;color:var(--text-dim);cursor:pointer;
     padding:4px 6px 4px 2px;border-radius:20px;

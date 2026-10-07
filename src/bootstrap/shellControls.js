@@ -10,7 +10,7 @@ async function smsApi(windowRef,path,body){
 const requestSaosaOtp=(phone,windowRef)=>smsApi(windowRef,'/api/v1/auth/otp/request',{phone});
 async function verifySaosaOtp(phone,code,windowRef){
   const result=await smsApi(windowRef,'/api/v1/auth/otp/verify',{phone,code});
-  const session={phone,token:result.token,accountId:result.accountId,expiresAt:Date.now()+result.expiresIn*1000};
+  const session={phone,token:result.token,accountId:result.accountId,expiresAt:Date.now()+result.expiresIn*1000,pendingInvitationCount:Number(result.pendingInvitationCount)||0};
   windowRef.localStorage?.setItem(SAOSA_SESSION_KEY,JSON.stringify(session));
   return session;
 }
@@ -444,6 +444,7 @@ export function bindShellControls({ windowRef = window, documentRef = document }
         try{
           const session = await signInWithSms({windowRef,documentRef});
           if(session){
+            if(session.pendingInvitationCount>0 && windowRef.location) windowRef.location.hash='#/notifications?section=invitations';
             windowRef.location?.reload?.();
             closeProjectMenu();
           }

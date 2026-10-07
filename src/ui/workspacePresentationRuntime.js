@@ -253,14 +253,65 @@ function restoreGlobalMenuRoute(moduleId){
   return false;
 }
 
+function notificationSession(){
+  try{return JSON.parse(localStorage.getItem('saosa:v1:sms-session') || 'null');}catch{return null;}
+}
+
+async function notificationRequest(path,options={}){
+  const session=notificationSession();
+  if(!session?.token) throw new Error('unauthorized');
+  const response=await fetch(path,{...options,headers:{authorization:`Bearer ${session.token}`,'content-type':'application/json',...(options.headers||{})}});
+  const payload=await response.json().catch(()=>({}));
+  if(!response.ok) throw Object.assign(new Error(payload.error||'invitation_request_failed'),{code:payload.error,status:response.status});
+  return payload;
+}
+
+function openNotificationSection(section){
+  const route=`#/notifications?section=${encodeURIComponent(section)}`;
+  const state=window.KarhaBrowserHistory?.stateForRoute?.({projectId:null,moduleId:'notifications',surface:'global',hash:route});
+  if(window.KarhaBrowserHistory?.push) window.KarhaBrowserHistory.push(state||{hash:route},route);
+  else location.hash=route;
+  window.KarhaApp?.router?.sync?.();
+}
+
+async function renderInvitationList(body){
+  body.innerHTML='<div class="mgmt-empty">در حال دریافت دعوت‌نامه‌ها…</div>';
+  try{
+    const result=await notificationRequest('/api/v1/invitations');
+    const items=Array.isArray(result.items)?result.items:[];
+    body.replaceChildren();
+    if(!items.length){body.innerHTML='<div class="mgmt-empty">دعوت‌نامه‌ای ندارید.</div>';return;}
+    const wrap=document.createElement('div');wrap.className='workspace-option-list notification-invitation-list';
+    items.forEach(invitation=>{
+      const row=document.createElement('div');row.className='workspace-option notification-invitation';
+      const main=document.createElement('span');main.className='workspace-option-main';
+      const title=document.createElement('span');title.className='workspace-option-title';title.textContent=invitation.projectName || 'پروژه';
+      const meta=document.createElement('span');meta.className='workspace-option-meta';meta.textContent='دعوت به عضویت در پروژه';
+      const accept=document.createElement('button');accept.type='button';accept.className='notification-accept';accept.textContent='تأیید دعوت';
+      accept.onclick=async()=>{
+        accept.disabled=true;
+        try{
+          await notificationRequest(`/api/v1/invitations/${encodeURIComponent(invitation.id)}/accept`,{method:'POST',body:'{}'});
+          location.hash='#/notifications?section=invitations';location.reload();
+        }catch(error){accept.disabled=false;showToast(error.code==='invitation_not_found'?'این دعوت‌نامه دیگر معتبر نیست.':'تأیید دعوت‌نامه انجام نشد.');}
+      };
+      main.append(title,meta);row.append(main,accept);wrap.appendChild(row);
+    });
+    body.appendChild(wrap);
+  }catch{body.innerHTML='<div class="mgmt-empty">دریافت دعوت‌نامه‌ها انجام نشد.</div>';}
+}
+
 function renderNotificationsPage(){
   const body=document.getElementById('notificationsPageBody');
   if(!body) return;
   body.replaceChildren();
+  const params=new URLSearchParams(String(location.hash||'').split('?')[1]||'');
+  if(params.get('section')==='invitations'){void renderInvitationList(body);return;}
   const wrap=document.createElement('div'); wrap.className='workspace-option-list';
-  ['دعوت‌نامه‌ها','پیام‌های من','اعلان‌ها'].forEach(label=>{
+  [{id:'invitations',label:'دعوت‌نامه‌ها'},{id:'messages',label:'پیام‌های من'},{id:'alerts',label:'اعلان‌ها'}].forEach(item=>{
     const row=document.createElement('button'); row.type='button'; row.className='workspace-option';
-    row.innerHTML=`<span class="workspace-option-main"><span class="workspace-option-title">${label}</span></span><span class="workspace-option-arrow">›</span>`;
+    row.innerHTML=`<span class="workspace-option-main"><span class="workspace-option-title">${item.label}</span></span><span class="workspace-option-arrow">›</span>`;
+    if(item.id==='invitations') row.onclick=()=>openNotificationSection(item.id);
     wrap.appendChild(row);
   });
   body.appendChild(wrap);

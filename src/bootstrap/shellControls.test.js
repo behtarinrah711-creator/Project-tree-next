@@ -111,6 +111,14 @@ test('Saosa session resolution updates the shell before the workspace renders', 
   assert.equal(h.elements.drawerSigninBtn.dataset.authAction,'signin');
 });
 
+test('successful Saosa login routes pending invitations to the invitation inbox before reload',async()=>{
+  const source=await readFile(new URL('./shellControls.js',import.meta.url),'utf8');
+  const route=source.indexOf("windowRef.location.hash='#/notifications?section=invitations'");
+  const reload=source.indexOf('windowRef.location?.reload?.();',route);
+  assert.ok(route>=0);
+  assert.ok(reload>route);
+});
+
 test('Saosa logout clears the notebook address before returning to the entry page', async () => {
   const session={phone:'09170000000',token:'token',expiresAt:Date.now()+60_000};
   const h=harness({hostname:'saosa.ir',saosaSession:session,hash:'#/notebook'});
