@@ -431,7 +431,9 @@ export function bindShellControls({ windowRef = window, documentRef = document }
 
   installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin});
 
-  byId(documentRef, 'notebookMenuTrigger')?.addEventListener?.('click', openProjectMenu);
+  byId(documentRef, 'notebookMenuTrigger')?.addEventListener?.('click', () => {
+    windowRef.dispatchEvent(new windowRef.CustomEvent('karha:open-notebook-order'));
+  });
   title?.addEventListener('click', openProjectMenu);
   title?.addEventListener('keydown', event => {
     if(event.key === 'Enter' || event.key === ' '){ event.preventDefault(); openProjectMenu(); }
