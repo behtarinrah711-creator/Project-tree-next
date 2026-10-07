@@ -133,7 +133,7 @@ export function createRoleManagementModule({
   }
 
   function removeMember(projectId,member){
-    save(projectId,project=>({...project,projectMembers:project.projectMembers.filter(item=>item.id!==member.id)}));
+    save(projectId,project=>({...project,projectMembers:project.projectMembers.filter(item=>item.mobile!==member.mobile)}));
   }
 
   async function runMemberAction(projectId,registry,member,action,button){

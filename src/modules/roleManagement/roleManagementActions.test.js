@@ -23,3 +23,8 @@ test('a duplicate pending invitation uses the system toast instead of an inline 
   const source=await readFile(new URL('./index.js',import.meta.url),'utf8');
   assert.match(source,/duplicate\.status==='invited'\) windowRef\?\.KarhaToast\?\.show\?\.\(message\)/);
 });
+
+test('cancelling an invitation removes every stale local row for the same phone',async()=>{
+  const source=await readFile(new URL('./index.js',import.meta.url),'utf8');
+  assert.match(source,/projectMembers\.filter\(item=>item\.mobile!==member\.mobile\)/);
+});
