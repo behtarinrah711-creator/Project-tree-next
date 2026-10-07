@@ -89,8 +89,14 @@ export function docToProjectFromCloud(doc, localExisting, ctx = {}){
     archived: !!meta.archived,
     schemaVersion: Number(d.schemaVersion || 1),
     expanded: true,
-    fundingReceipts: Array.isArray(localExisting?.fundingReceipts) ? localExisting.fundingReceipts : [],
-    fundingAllocations: Array.isArray(localExisting?.fundingAllocations) ? localExisting.fundingAllocations : [],
-    fundingLedgerVersion: Number(localExisting?.fundingLedgerVersion) || 0,
+    fundingReceipts: projectDirty
+      ? (Array.isArray(localExisting?.fundingReceipts) ? localExisting.fundingReceipts : [])
+      : (Array.isArray(d.fundingReceipts) ? d.fundingReceipts : (localExisting?.fundingReceipts || [])),
+    fundingAllocations: projectDirty
+      ? (Array.isArray(localExisting?.fundingAllocations) ? localExisting.fundingAllocations : [])
+      : (Array.isArray(d.fundingAllocations) ? d.fundingAllocations : (localExisting?.fundingAllocations || [])),
+    fundingLedgerVersion: projectDirty
+      ? (Number(localExisting?.fundingLedgerVersion) || 0)
+      : (Number(d.fundingLedgerVersion) || Number(localExisting?.fundingLedgerVersion) || 0),
   };
 }

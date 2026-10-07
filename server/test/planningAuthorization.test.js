@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {canDeleteProjectTasks,canMutateSharedProject,canWriteProjectTasks,mergeSharedProjectPayload,projectPayloadChanged,projectTasksChanged,projectTasksDeleted} from '../src/app.js';
+import {canDeleteProjectTasks,canMutateSharedProject,canWriteProjectCostline,canWriteProjectTasks,mergeSharedProjectPayload,projectFundingChanged,projectPayloadChanged,projectTasksChanged,projectTasksDeleted} from '../src/app.js';
 
 test('planning and execution write permissions authorize shared task mutations',()=>{
   assert.equal(canWriteProjectTasks({modules:{
@@ -16,6 +16,12 @@ test('planning and execution write permissions authorize shared task mutations',
 test('task deletion requires full planning access',()=>{
   assert.equal(canDeleteProjectTasks({modules:{'planning:tree':'create','planning:timeline':'view'}}),false);
   assert.equal(canDeleteProjectTasks({modules:{'planning:timeline':'full'}}),true);
+});
+
+test('funding writes require cost estimate edit access',()=>{
+  assert.equal(canWriteProjectCostline({modules:{'planning:tree':'full','planning:costline':'view'}}),false);
+  assert.equal(canWriteProjectCostline({modules:{'planning:costline':'create'}}),true);
+  assert.equal(projectFundingChanged({fundingReceipts:[]},{fundingReceipts:[{id:'r1',amount:10}]}),true);
 });
 
 test('task mutation classifier distinguishes edits from removals',()=>{
@@ -52,4 +58,14 @@ test('member task writes merge onto the shared project and do not wipe other rec
   assert.equal(merged.projectMembers.length,1);
   const trashed=mergeSharedProjectPayload(merged,{...merged,tasks:merged.tasks.map(task=>task.id==='owner'?{...task,trashed:true}:task)},{edit:true,modules:{'planning:tree':'create'}});
   assert.equal(trashed.tasks.find(task=>task.id==='owner').trashed,undefined);
+});
+
+test('cost estimate members save shared receipts without gaining unrelated project fields',()=>{
+  const current={id:'p1',name:'مالک',fundingReceipts:[],fundingAllocations:[],projectMembers:[{mobile:'09120000000'}],tasks:[]};
+  const incoming={...current,name:'عضو',projectMembers:[],fundingReceipts:[{id:'r1',amount:20}],fundingAllocations:[{taskId:'w1',amount:20}],fundingLedgerVersion:1};
+  const merged=mergeSharedProjectPayload(current,incoming,{modules:{'planning:costline':'create'}});
+  assert.equal(merged.name,'مالک');
+  assert.equal(merged.projectMembers.length,1);
+  assert.equal(merged.fundingReceipts[0].amount,20);
+  assert.equal(merged.fundingAllocations[0].amount,20);
 });
