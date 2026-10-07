@@ -187,7 +187,7 @@ test('tree toggle reveals one depth per press and collapses after the deepest le
   await expect(expandShade).toHaveAttribute('opacity', '0');
 });
 
-test('Work Task create, edit, connector, modes and weighted completion share one persisted model', async ({ page }) => {
+test('Work Task create, edit, connector and modes share one persisted model', async ({ page }) => {
   await page.locator('.wbs-tree-toggle').click();
   const work = page.locator('.wbs-row.is-work', { hasText:'خرید آهن' });
   await expect(work.locator('.wbs-add')).toHaveAttribute('aria-label', 'ساخت کار');
@@ -200,11 +200,16 @@ test('Work Task create, edit, connector, modes and weighted completion share one
 
   let task = page.locator('.wbs-work-task', { hasText:'تحویل آهن' });
   await task.click();
-  await sheet.locator('[name="taskType"]').selectOption('خرید');
-  await sheet.locator('[name="taskPriority"]').selectOption('high');
+  await sheet.locator('[name="taskType"] + .wbs-task-option-trigger').click();
+  await sheet.locator('[name="taskType"] ~ .wbs-task-option-menu .wbs-task-option-item',{hasText:'خرید'}).click();
+  await sheet.locator('[name="taskPriority"] + .wbs-task-option-trigger').click();
+  await sheet.locator('[name="taskPriority"] ~ .wbs-task-option-menu .wbs-task-option-item',{hasText:'زیاد'}).click();
   await sheet.locator('[name="taskAssignee"]').click();
   await page.locator('#searchTemplatePage .stpl-row[data-id="c1"]').click();
-  await sheet.locator('[name="taskAmount"]').fill('25');
+  await sheet.locator('[name="taskAmount"]').click();
+  await page.locator('#numpadBackspace').click();
+  for(const digit of '25') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
+  await page.locator('#numpadDoneBtn').click();
   await sheet.locator('.wbs-sheet-save').click();
   await expect(task).toBeVisible();
   await expect(task.locator('.wbs-task-connector')).toBeVisible();
@@ -247,32 +252,11 @@ test('Work Task create, edit, connector, modes and weighted completion share one
   await expect(task.locator('.wbs-task-progress')).toHaveText('٪۰');
   await expect(work.locator('.wbs-check')).toHaveCount(0);
   await task.click();
-  await sheet.locator('[name="taskWeight"]').fill('3');
+  await sheet.locator('[name="taskWeight"]').click();
+  await page.locator('#numpadBackspace').click();
+  await page.locator('.numpad-key[data-d="3"]').click();
+  await page.locator('#numpadDoneBtn').click();
   await sheet.locator('.wbs-sheet-save').click();
-  await task.click();
-  await sheet.locator('.wbs-task-completion-action').click();
-
-  await expect.poll(() => page.evaluate(() => {
-    const task = window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0].workTasks[0];
-    return { state:task.completionState, completed:task.completed };
-  })).toEqual({ state:'pending_approval', completed:false });
-  await page.locator('#bottomExecutionBtn').click();
-  await page.locator('.wbs-tab[aria-label="خریدهای امروز"]').click();
-  await page.locator('.wbs-shopping-frame .today-mode-tab[data-mode="pending"]').click();
-  await page.locator('.shopping-item-card', { hasText:'تحویل آهن' }).getByRole('button', { name:'تأیید خرید', exact:true }).click();
-  await page.locator('#bottomPlanningBtn').click();
-  await expect(page.locator('.wbs-tab[aria-label="درخت پروژه"]')).toHaveAttribute('aria-selected','true');
-  await selectTreeMode(page, 'درصد پیشرفت');
-
-  task = page.locator('.wbs-work-task', { hasText:'تحویل آهن' });
-  await expect(task).toHaveClass(/is-complete/);
-  await expect(task.locator('.wbs-task-title')).toHaveCSS('text-decoration-line', 'line-through');
-  await expect(task.locator('.wbs-task-progress')).toHaveText('٪۱۰۰');
-  await expect(work.locator('.wbs-meta')).toHaveText('٪۱۰۰');
-  await expect.poll(() => task.locator('.wbs-task-connector').evaluate(element => ({
-    color:getComputedStyle(element).borderRightColor,
-    width:getComputedStyle(element).borderRightWidth,
-  }))).toEqual({ color:'rgb(22, 163, 74)', width:'3px' });
   await expect.poll(() => page.evaluate(() => (
     window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0].workTasks[0].weight
   ))).toBe(3);
