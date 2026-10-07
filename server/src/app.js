@@ -485,14 +485,18 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
         );
         if(!owner.rowCount) return sendJson(response,403,{error:'forbidden_project'});
 
-        if(inviteRoute.action==='cancel' && request.method==='DELETE'){
+        if(request.method==='DELETE'){
+          const cancelPhone=inviteRoute.action==='create'?normalizeIranPhone((await readJson(request,16*1024)).phone):null;
+          if(inviteRoute.action==='create' && !cancelPhone) return sendJson(response,400,{error:'invalid_phone'});
           const client=await pool.connect();
           try{
             await client.query('BEGIN');
             const cancelled=await client.query(
               `UPDATE project_invitations SET status='revoked',updated_at=now()
-                WHERE id=$1 AND project_id=$2 AND status='invited' RETURNING phone`,
-              [inviteRoute.invitationId,inviteRoute.projectId],
+                WHERE project_id=$2 AND status='invited'
+                  AND (($1::uuid IS NOT NULL AND id=$1::uuid) OR ($3::varchar IS NOT NULL AND phone=$3))
+                RETURNING id,phone`,
+              [inviteRoute.invitationId || null,inviteRoute.projectId,cancelPhone],
             );
             if(!cancelled.rowCount){await client.query('ROLLBACK');return sendJson(response,404,{error:'invitation_not_found'});}
             const project=await client.query('SELECT payload FROM projects WHERE id=$1 FOR UPDATE',[inviteRoute.projectId]);
@@ -502,7 +506,7 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
               await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[inviteRoute.projectId,JSON.stringify(payload)]);
             }
             await client.query('COMMIT');
-            return sendJson(response,200,{id:inviteRoute.invitationId,status:'revoked',phone:cancelled.rows[0].phone});
+            return sendJson(response,200,{id:cancelled.rows[0].id,status:'revoked',phone:cancelled.rows[0].phone});
           }catch(error){await client.query('ROLLBACK');throw error;}
           finally{client.release();}
         }
