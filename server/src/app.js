@@ -475,13 +475,25 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
         if(!owner.rowCount) return sendJson(response,403,{error:'forbidden_project'});
 
         if(inviteRoute.action==='cancel' && request.method==='DELETE'){
-          const cancelled=await pool.query(
-            `UPDATE project_invitations SET status='revoked',updated_at=now()
-              WHERE id=$1 AND project_id=$2 AND status='invited' RETURNING phone`,
-            [inviteRoute.invitationId,inviteRoute.projectId],
-          );
-          if(!cancelled.rowCount) return sendJson(response,404,{error:'invitation_not_found'});
-          return sendJson(response,200,{id:inviteRoute.invitationId,status:'revoked',phone:cancelled.rows[0].phone});
+          const client=await pool.connect();
+          try{
+            await client.query('BEGIN');
+            const cancelled=await client.query(
+              `UPDATE project_invitations SET status='revoked',updated_at=now()
+                WHERE id=$1 AND project_id=$2 AND status='invited' RETURNING phone`,
+              [inviteRoute.invitationId,inviteRoute.projectId],
+            );
+            if(!cancelled.rowCount){await client.query('ROLLBACK');return sendJson(response,404,{error:'invitation_not_found'});}
+            const project=await client.query('SELECT payload FROM projects WHERE id=$1 FOR UPDATE',[inviteRoute.projectId]);
+            const payload=project.rows[0]?.payload || {};
+            if(Array.isArray(payload.projectMembers)){
+              payload.projectMembers=payload.projectMembers.map(item=>item?.mobile===cancelled.rows[0].phone?{...item,status:'deleted',invitationId:null,invitationExpiresAt:null}:item);
+              await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[inviteRoute.projectId,JSON.stringify(payload)]);
+            }
+            await client.query('COMMIT');
+            return sendJson(response,200,{id:inviteRoute.invitationId,status:'revoked',phone:cancelled.rows[0].phone});
+          }catch(error){await client.query('ROLLBACK');throw error;}
+          finally{client.release();}
         }
 
         if(request.method!=='POST') return sendJson(response,405,{error:'method_not_allowed'});
