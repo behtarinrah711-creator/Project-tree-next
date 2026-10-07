@@ -140,6 +140,10 @@ export function projectTasksChanged(previous,next){
   return JSON.stringify(previous?.tasks||[])!==JSON.stringify(next?.tasks||[]);
 }
 
+export function projectPayloadChanged(previous,next){
+  return JSON.stringify(previous||{})!==JSON.stringify(next||{});
+}
+
 export function projectTasksDeleted(previous,next){
   const before=taskIds(previous?.tasks);
   const after=taskIds(next?.tasks);
@@ -292,13 +296,22 @@ async function saveWorkspace(pool, accountId, snapshot){
               ))`,
           [projectId, accountId],
         );
-        if(!membership.rowCount || !canMutateSharedProject(membership.rows[0].permissions)){
+        if(!membership.rowCount){
           const error = new Error('forbidden_project');
           error.statusCode = 403;
           throw error;
         }
         const currentPayload=existing.rows[0]?.payload||{};
+        // The browser persists one account-wide snapshot. Projects that were
+        // only read must not require write permission or roll back a write to
+        // another project in the same transaction.
+        if(!projectPayloadChanged(currentPayload,project)) continue;
         const permissions=membership.rows[0].permissions||{};
+        if(!canMutateSharedProject(permissions)){
+          const error = new Error('forbidden_project');
+          error.statusCode = 403;
+          throw error;
+        }
         if(projectTasksChanged(currentPayload,project) && !canWriteProjectTasks(permissions)){
           const error=new Error('forbidden_planning_write');error.statusCode=403;throw error;
         }
@@ -485,18 +498,14 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
         );
         if(!owner.rowCount) return sendJson(response,403,{error:'forbidden_project'});
 
-        if(request.method==='DELETE'){
-          const cancelPhone=inviteRoute.action==='create'?normalizeIranPhone((await readJson(request,16*1024)).phone):null;
-          if(inviteRoute.action==='create' && !cancelPhone) return sendJson(response,400,{error:'invalid_phone'});
+        if(inviteRoute.action==='cancel' && request.method==='DELETE'){
           const client=await pool.connect();
           try{
             await client.query('BEGIN');
             const cancelled=await client.query(
               `UPDATE project_invitations SET status='revoked',updated_at=now()
-                WHERE project_id=$2 AND status='invited'
-                  AND (($1::uuid IS NOT NULL AND id=$1::uuid) OR ($3::varchar IS NOT NULL AND phone=$3))
-                RETURNING id,phone`,
-              [inviteRoute.invitationId || null,inviteRoute.projectId,cancelPhone],
+                WHERE id=$1 AND project_id=$2 AND status='invited' RETURNING phone`,
+              [inviteRoute.invitationId,inviteRoute.projectId],
             );
             if(!cancelled.rowCount){await client.query('ROLLBACK');return sendJson(response,404,{error:'invitation_not_found'});}
             const project=await client.query('SELECT payload FROM projects WHERE id=$1 FOR UPDATE',[inviteRoute.projectId]);
@@ -506,7 +515,7 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
               await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[inviteRoute.projectId,JSON.stringify(payload)]);
             }
             await client.query('COMMIT');
-            return sendJson(response,200,{id:cancelled.rows[0].id,status:'revoked',phone:cancelled.rows[0].phone});
+            return sendJson(response,200,{id:inviteRoute.invitationId,status:'revoked',phone:cancelled.rows[0].phone});
           }catch(error){await client.query('ROLLBACK');throw error;}
           finally{client.release();}
         }
