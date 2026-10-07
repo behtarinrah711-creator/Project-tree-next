@@ -257,6 +257,7 @@ test('project header keeps settings, notifications, and refresh in one ordered l
   assert.match(group,/id="notificationBadge" hidden/);
   assert.match(css,/\.topbar-project-actions\{[^}]*gap:2px;/);
   assert.match(css,/\.topbar-project-actions\{[^}]*direction:ltr;/);
+  assert.match(css,/\.topbar-project-actions\{position:absolute;left:10px;top:50%;transform:translateY\(-50%\);/);
   assert.match(css,/\.notification-badge\{[^}]*position:absolute;[^}]*background:var\(--danger\);/);
 });
 
