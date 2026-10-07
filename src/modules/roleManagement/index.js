@@ -136,7 +136,7 @@ export function createRoleManagementModule({
         windowRef?.KarhaToast?.show?.('دعوت‌نامه مجدداً ارسال شد.');
       }else if(action==='cancel'){
         if(!windowRef?.confirm?.('آیا از حذف این دعوت‌نامه مطمئن هستید؟')) return;
-        await smsAdapter.cancelInvitation({projectId,invitationId:member.invitationId});
+        await smsAdapter.cancelInvitation({projectId,invitationId:member.invitationId,mobile:member.mobile});
         replaceMember(projectId,{...member,status:'deleted',invitationId:null,invitationExpiresAt:null});
         windowRef?.KarhaToast?.show?.('دعوت‌نامه حذف شد.');
       }else if(action==='delete'){
