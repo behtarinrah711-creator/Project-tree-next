@@ -17,22 +17,18 @@ const formatCost=value=>new Intl.NumberFormat('fa-IR').format(Number(value)||0);
 
 export function installNotebookWorkspace({documentRef=globalThis.document,windowRef=globalThis.window,repository=createNotebookRepository()}={}){
   const page=documentRef?.getElementById?.('notebookPage');
-  const topbar=documentRef?.getElementById?.('topbar');
-  if(topbar && !topbar.querySelector('[data-nb-order]')){
-    const entry=documentRef.createElement('button');
-    entry.type='button';
-    entry.className='nb-order-entry';
-    entry.dataset.nbOrder='1';
-    entry.setAttribute('aria-label','ترتیب نمایش دفترچه‌ها');
-    entry.innerHTML=more;
-    entry.addEventListener('click',()=>{orderOpen=true;windowRef.KarhaChildHistory?.open?.('notebook-order');render();});
-    topbar.appendChild(entry);
-  }
   if(!page)return null;
   repository.load();
   const exportView=installNotebookExportView({documentRef,windowRef});
   let editor=null, sheetItemId=null, menuOpen=false, trashOpen=false, listPrompt=null, orderOpen=false, orderDrag=null;
   let notebookDrag=null;
+  const openNotebookOrder=()=>{
+    if(!onRoute()) return;
+    orderOpen=true;
+    windowRef.KarhaChildHistory?.open?.('notebook-order');
+    render();
+  };
+  windowRef.addEventListener?.('karha:open-notebook-order',openNotebookOrder);
   const onRoute=()=>/^#\/notebook/i.test(String(windowRef.location.hash||''));
   const available=nb=>(nb.lists||[]).filter(list=>!list.trashed);
   const active=nb=>available(nb).find(list=>list.id===nb.activeListId)||available(nb)[0]||null;

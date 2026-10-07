@@ -274,7 +274,8 @@ test('notebook header keeps menu, notifications, and refresh in the home header 
   assert.equal(h.elements.projectRefreshTrigger.hidden,false);
   assert.equal(h.elements.projectSettingsTrigger.parentNode,null);
   await h.elements.notebookMenuTrigger.click();
-  assert.equal(h.elements.drawerOverlay.classList.contains('hidden'),false);
+  assert.equal(h.elements.drawerOverlay.classList.contains('hidden'),true);
+  assert.equal(h.events.at(-1)?.type,'karha:open-notebook-order');
 
   const html=await readFile(new URL('../../index.html',import.meta.url),'utf8');
   const group=html.match(/<div class="topbar-project-actions"[\s\S]*?<\/div>/)?.[0] || '';
