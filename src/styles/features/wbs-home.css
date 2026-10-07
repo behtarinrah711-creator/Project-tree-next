@@ -303,7 +303,7 @@ body:has(.wbs-home-root){background:#fff;}
 .wbs-inline-number{display:flex;align-items:baseline;gap:5px;border:0;background:transparent;font:inherit;color:var(--text);cursor:pointer;}
 .wbs-inline-number small{font-size:10px;color:var(--text-dim);}
 .wbs-inline-description{flex:1;min-width:0;border:0;background:transparent;resize:vertical;font:inherit;color:var(--text);text-align:left;}
-.wbs-stage-edit-title{font-size:17px;font-weight:800;outline:none;white-space:pre-wrap;overflow-wrap:anywhere;}
+.wbs-stage-edit-title{font-size:17px;font-weight:800;outline:none;white-space:pre-wrap;overflow-wrap:anywhere;pointer-events:auto;}
 
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-caption{flex:1;min-width:0;text-align:center;overflow-wrap:anywhere;}
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-head button{flex-shrink:0;}
