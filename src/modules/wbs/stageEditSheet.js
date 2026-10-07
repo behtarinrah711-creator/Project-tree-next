@@ -3,7 +3,7 @@ import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { lineTotal, progressWeightOf } from '../../domain/wbs/normalize.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
-import { fieldRow, openWbsSheet } from './wbsSheet.js';
+import { fieldRow, openWbsSheet, textInput } from './wbsSheet.js';
 
 function numericRow(root, name, label, value, money=false){
   const control=document.createElement('button');
@@ -32,12 +32,12 @@ function numericRow(root, name, label, value, money=false){
 }
 
 export function openStageEditSheet({projectId,stage,onChanged,onDelete,readOnly=false}={}){
-  let titleEditor;
   const overlay=openWbsSheet({
     title:'مرحله:',presentation:'stage-create',autoFocus:false,readOnly,
     body(root){
       if(!activeWorkTasks(stage).length) numericRow(root,'manualCost','هزینه',lineTotal(stage),true);
       numericRow(root,'progressWeight','وزن مرحله',progressWeightOf(stage));
+      root.appendChild(fieldRow('عنوان مرحله',textInput(stage.text || '',{name:'title'})));
       const description=document.createElement('textarea');
       description.name='description';
       description.className='wbs-inline-description';
@@ -55,7 +55,7 @@ export function openStageEditSheet({projectId,stage,onChanged,onDelete,readOnly=
       }
     },
     onSave(root){
-      const title=(titleEditor.textContent || '').trim();
+      const title=root.querySelector('[name="title"]').value.trim();
       const weight=Number(root.querySelector('[name="progressWeight"]').dataset.value);
       const cost=root.querySelector('[name="manualCost"]');
       const amount=cost?Number(cost.dataset.value):null;
@@ -69,13 +69,9 @@ export function openStageEditSheet({projectId,stage,onChanged,onDelete,readOnly=
       return true;
     },
   });
-  titleEditor=document.createElement('span');
-  titleEditor.className='wbs-stage-edit-title';
-  titleEditor.contentEditable=readOnly?'false':'true';
-  titleEditor.setAttribute('role','textbox');
-  titleEditor.setAttribute('aria-label','عنوان مرحله');
-  titleEditor.textContent=stage.text || '';
-  titleEditor.addEventListener('keydown',event=>{if(event.key==='Enter') event.preventDefault();});
-  overlay.querySelector('.sheet-caption').append(' ',titleEditor);
+  const title=document.createElement('span');
+  title.className='wbs-stage-edit-title';
+  title.textContent=stage.text || '';
+  overlay.querySelector('.sheet-caption').append(' ',title);
   return overlay;
 }
