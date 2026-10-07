@@ -140,6 +140,10 @@ export function projectTasksChanged(previous,next){
   return JSON.stringify(previous?.tasks||[])!==JSON.stringify(next?.tasks||[]);
 }
 
+export function projectPayloadChanged(previous,next){
+  return JSON.stringify(previous||{})!==JSON.stringify(next||{});
+}
+
 export function projectTasksDeleted(previous,next){
   const before=taskIds(previous?.tasks);
   const after=taskIds(next?.tasks);
@@ -292,13 +296,22 @@ async function saveWorkspace(pool, accountId, snapshot){
               ))`,
           [projectId, accountId],
         );
-        if(!membership.rowCount || !canMutateSharedProject(membership.rows[0].permissions)){
+        if(!membership.rowCount){
           const error = new Error('forbidden_project');
           error.statusCode = 403;
           throw error;
         }
         const currentPayload=existing.rows[0]?.payload||{};
+        // The browser persists one account-wide snapshot. Projects that were
+        // only read must not require write permission or roll back a write to
+        // another project in the same transaction.
+        if(!projectPayloadChanged(currentPayload,project)) continue;
         const permissions=membership.rows[0].permissions||{};
+        if(!canMutateSharedProject(permissions)){
+          const error = new Error('forbidden_project');
+          error.statusCode = 403;
+          throw error;
+        }
         if(projectTasksChanged(currentPayload,project) && !canWriteProjectTasks(permissions)){
           const error=new Error('forbidden_planning_write');error.statusCode=403;throw error;
         }
