@@ -23,7 +23,7 @@ test('only the invited account can explicitly accept a pending invitation',async
 test('owners can revoke pending invitations and deleted members must be invited again',async()=>{
   const app=await readApp();
   assert.match(app,/project_invitations SET status='revoked'/);
-  assert.match(app,/payload\.projectMembers=payload\.projectMembers\.filter\(item=>item\?\.mobile!==cancelled\.rows\[0\]\.phone\)/);
+  assert.match(app,/payload\.projectMembers=payload\.projectMembers\.filter\(item=>item\?\.mobile!==cancelledPhone\)/);
   assert.match(app,/WHERE i\.status='invited' AND i\.expires_at>now\(\)/);
   assert.match(app,/i\.id=\$2 AND i\.status='invited' AND i\.expires_at>now\(\)/);
   assert.match(app,/DELETE FROM project_memberships m USING accounts a/);
@@ -51,7 +51,14 @@ test('an orphan membership cannot block a new invitation',async()=>{
 
 test('legacy invitations without a local invitation id can be revoked by phone',async()=>{
   const app=await readApp();
-  assert.match(app,/inviteRoute\.action==='create'\?normalizeIranPhone/);
+  assert.match(app,/const cancelPhone=normalizeIranPhone/);
   assert.match(app,/phone=\$3/);
   assert.match(app,/RETURNING id,phone/);
+});
+
+test('a stale invitation id still removes the project row by phone',async()=>{
+  const app=await readApp();
+  assert.match(app,/if\(!cancelled\.rowCount && !cancelPhone\)/);
+  assert.match(app,/const cancelledPhone=cancelled\.rows\[0\]\?\.phone \|\| cancelPhone/);
+  assert.match(app,/projectMembers\.filter\(item=>item\?\.mobile!==cancelledPhone\)/);
 });

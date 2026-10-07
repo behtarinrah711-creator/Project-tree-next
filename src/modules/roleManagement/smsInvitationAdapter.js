@@ -32,7 +32,7 @@ export function createSmsInvitationAdapter({windowRef=globalThis.window}={}){
     async cancelInvitation({projectId,invitationId,mobile}){
       if(!configured) return Object.freeze({cancelled:false,reason:'provider-not-configured'});
       const suffix=invitationId?`/${encodeURIComponent(invitationId)}`:'';
-      return request(windowRef,`/api/v1/projects/${encodeURIComponent(projectId)}/invitations${suffix}`,{method:'DELETE',body:JSON.stringify(invitationId?{}:{phone:mobile})});
+      return request(windowRef,`/api/v1/projects/${encodeURIComponent(projectId)}/invitations${suffix}`,{method:'DELETE',body:JSON.stringify({phone:mobile})});
     },
     async updateMember({projectId,member}){
       if(!configured) return Object.freeze({updated:false,reason:'provider-not-configured',member});

@@ -499,7 +499,7 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
         if(!owner.rowCount) return sendJson(response,403,{error:'forbidden_project'});
 
         if(request.method==='DELETE'){
-          const cancelPhone=inviteRoute.action==='create'?normalizeIranPhone((await readJson(request,16*1024)).phone):null;
+          const cancelPhone=normalizeIranPhone((await readJson(request,16*1024)).phone);
           if(inviteRoute.action==='create' && !cancelPhone) return sendJson(response,400,{error:'invalid_phone'});
           const client=await pool.connect();
           try{
@@ -511,15 +511,16 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
                 RETURNING id,phone`,
               [inviteRoute.invitationId || null,inviteRoute.projectId,cancelPhone],
             );
-            if(!cancelled.rowCount){await client.query('ROLLBACK');return sendJson(response,404,{error:'invitation_not_found'});}
+            if(!cancelled.rowCount && !cancelPhone){await client.query('ROLLBACK');return sendJson(response,404,{error:'invitation_not_found'});}
+            const cancelledPhone=cancelled.rows[0]?.phone || cancelPhone;
             const project=await client.query('SELECT payload FROM projects WHERE id=$1 FOR UPDATE',[inviteRoute.projectId]);
             const payload=project.rows[0]?.payload || {};
             if(Array.isArray(payload.projectMembers)){
-              payload.projectMembers=payload.projectMembers.filter(item=>item?.mobile!==cancelled.rows[0].phone);
+              payload.projectMembers=payload.projectMembers.filter(item=>item?.mobile!==cancelledPhone);
               await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[inviteRoute.projectId,JSON.stringify(payload)]);
             }
             await client.query('COMMIT');
-            return sendJson(response,200,{id:cancelled.rows[0].id,status:'revoked',phone:cancelled.rows[0].phone});
+            return sendJson(response,200,{id:cancelled.rows[0]?.id || null,status:'revoked',phone:cancelledPhone});
           }catch(error){await client.query('ROLLBACK');throw error;}
           finally{client.release();}
         }
