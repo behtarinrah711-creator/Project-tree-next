@@ -42,3 +42,9 @@ test('pending invitations never grant project access',async()=>{
   const app=await readApp();
   assert.match(app,/FROM project_memberships m[\s\S]*WHERE m\.account_id = \$1 AND m\.status = 'active'/);
 });
+
+test('an orphan membership cannot block a new invitation',async()=>{
+  const app=await readApp();
+  assert.match(app,/Array\.isArray\(projectMembers\)[\s\S]*item\?\.mobile===phone && item\?\.status!=='deleted'/);
+  assert.match(app,/DELETE FROM project_memberships WHERE project_id=\$1 AND account_id=\$2/);
+});
