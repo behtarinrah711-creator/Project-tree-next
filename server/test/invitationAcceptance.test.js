@@ -48,3 +48,10 @@ test('an orphan membership cannot block a new invitation',async()=>{
   assert.match(app,/Array\.isArray\(projectMembers\)[\s\S]*item\?\.mobile===phone && item\?\.status!=='deleted'/);
   assert.match(app,/DELETE FROM project_memberships WHERE project_id=\$1 AND account_id=\$2/);
 });
+
+test('legacy invitations without a local invitation id can be revoked by phone',async()=>{
+  const app=await readApp();
+  assert.match(app,/inviteRoute\.action==='create'\?normalizeIranPhone/);
+  assert.match(app,/phone=\$3/);
+  assert.match(app,/RETURNING id,phone/);
+});
