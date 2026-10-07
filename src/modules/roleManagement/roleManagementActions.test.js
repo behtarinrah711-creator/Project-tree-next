@@ -8,5 +8,6 @@ test('member lifecycle controls stay in the list and vary by status',async()=>{
   assert.match(source,/member\.status==='active'.*'غیرفعال‌سازی'.*'حذف'/s);
   assert.match(source,/member\.status==='inactive'.*'فعال‌سازی'.*'حذف'/s);
   assert.match(source,/member\.status==='deleted'.*'ارسال دعوت‌نامه'/s);
+  assert.match(source,/cancelInvitation[\s\S]*'دعوت‌نامه حذف شد\.'/);
   assert.doesNotMatch(source,/fields\.appendChild\(resend\)/);
 });
