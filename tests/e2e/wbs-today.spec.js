@@ -5,9 +5,9 @@ const today = tehranTodayJalali();
 const todayShort = new Intl.NumberFormat('fa-IR').format(Number(today.split('/')[1]))
   + '/' + new Intl.NumberFormat('fa-IR').format(Number(today.split('/')[2]));
 
-const project={id:'e2e-today',name:'پروژه امروز',location:'تهران',contacts:[{id:'a',name:'مهندس احمدی'},{id:'c',name:'پیمانکار قرارداد'}],contracts:[{id:'contract',projectItemId:'w1',contractorId:'c'}],tasks:[{id:'s1',kind:'stage',text:'سازه',subtasks:[
+const project={id:'e2e-today',name:'پروژه امروز',location:'تهران',contacts:[{id:'a',name:'مهندس احمدی',phone:'09120000000'},{id:'c',name:'پیمانکار قرارداد'}],contracts:[{id:'contract',projectItemId:'w1',contractorId:'c'}],tasks:[{id:'s1',kind:'stage',text:'سازه',subtasks:[
   {id:'w1',kind:'work',text:'فونداسیون',type:'اجرا',scheduleStart:'1405/06/01',scheduleEnd:'1405/06/30',workTasks:[
-    {id:'today-task',workId:'w1',title:'قالب‌بندی',type:'اجرا',scheduleStart:today,scheduleEnd:today,priority:'high',assigneeContactId:'a',weight:1,executionComments:[
+    {id:'today-task',workId:'w1',title:'قالب‌بندی',type:'اجرا',scheduleStart:today,scheduleEnd:today,priority:'high',assigneeContactId:'a',approvalContactId:'a',weight:1,executionComments:[
       {id:'c1',text:'نظر اول',createdBy:{id:'a',name:'الف'},createdAt:1},{id:'c2',text:'نظر دوم',createdBy:{id:'a',name:'الف'},createdAt:2},{id:'c3',text:'نظر سوم',createdBy:{id:'a',name:'الف'},createdAt:3},
     ]},
     {id:'unscheduled-task',workId:'w1',title:'بدون تاریخ',type:'پیگیری',scheduleStart:'',scheduleEnd:'',priority:'normal',weight:1},
@@ -17,7 +17,7 @@ const project={id:'e2e-today',name:'پروژه امروز',location:'تهران'
 ]}],activityTemplates:[],contractTemplates:[],generalConditions:[],trashed:false,archived:false};
 
 test.beforeEach(async({page})=>{
-  await page.addInitScript(seed=>{localStorage.clear();localStorage.setItem('ptnext-v1:app-data',JSON.stringify({schemaVersion:8,projects:[seed],activeTab:seed.id,viewMode:'simple',starredOrder:[]}));},project);
+  await page.addInitScript(seed=>{localStorage.clear();localStorage.setItem('saosa:v1:sms-session',JSON.stringify({accountId:'e2e',phone:'09120000000',token:'test',expiresAt:Date.now()+3600000}));localStorage.setItem('ptnext-v1:app-data',JSON.stringify({schemaVersion:8,projects:[seed],activeTab:seed.id,viewMode:'simple',starredOrder:[]}));},project);
   await page.goto('/index.html#/projects/e2e-today/execution');
   await page.waitForFunction(()=>Boolean(window.KarhaLegacy&&window.KarhaApp));
   await page.locator('.wbs-tab[aria-label="کارهای امروز"]').click();

@@ -2,7 +2,7 @@ import { contactRepository } from '../../data/contactRepository.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { WORK_TYPES } from '../../domain/wbs/normalize.js';
 import { workTaskApi } from '../../domain/wbs/workTaskApi.js';
-import { TASK_PRIORITIES } from '../../domain/wbs/workTaskModel.js';
+import { TASK_PRIORITIES, isTaskComplete } from '../../domain/wbs/workTaskModel.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
