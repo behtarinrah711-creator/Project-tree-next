@@ -30,12 +30,19 @@ function detailRow(documentRef, label, value){
   const row = documentRef.createElement('div');
   row.className = 'wbs-costline-detail-row';
   const name = documentRef.createElement('span');
-  name.textContent = label;
+  if(label instanceof Node) name.appendChild(label);
+  else name.textContent = label;
   const cell = documentRef.createElement('span');
   if(value instanceof Node) cell.appendChild(value);
   else cell.textContent = value || '—';
   row.append(name, cell);
   return row;
+}
+function responsibilityCell(documentRef,label,name){
+  const cell=documentRef.createElement('span'); cell.className='today-responsibility-cell';
+  const title=documentRef.createElement('span'); title.textContent=label;
+  const person=documentRef.createElement('span'); person.textContent=name || '—';
+  cell.append(title,person); return cell;
 }
 function linkButton(documentRef, className, text, label){
   const button = documentRef.createElement('button');
@@ -94,7 +101,11 @@ function renderCard(documentRef,project,item,today,onChanged){
   heading.append(chip, titles, complete); card.appendChild(heading);
   card.appendChild(detailRow(documentRef, dateText, remainingLabel(entity, today)));
   const approver=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.approvalContactId||''));
-  card.appendChild(detailRow(documentRef, assignee?`مسئول پیگیری ${contactName(assignee)}`:'مسئول پیگیری —', approver?`مسئول تأیید ${contactName(approver)}`:'مسئول تأیید —'));
+  card.appendChild(detailRow(
+    documentRef,
+    responsibilityCell(documentRef,'مسئول پیگیری',assignee?contactName(assignee):'—'),
+    responsibilityCell(documentRef,'مسئول تأیید',approver?contactName(approver):'—'),
+  ));
   if(contractor) card.appendChild(detailRow(documentRef, 'پیمانکار: ', contactName(contractor)));
   const statusValue=documentRef.createElement('span'); statusValue.className='today-status-slot';
   let statusText='هنوز شروع نشده است';
