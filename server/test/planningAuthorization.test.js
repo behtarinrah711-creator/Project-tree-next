@@ -81,3 +81,17 @@ test('assigned member can update only execution fields without general module wr
   incoming.tasks[0].workTasks[0].title='تغییر غیرمجاز';
   assert.equal(mergeAssignedExecutionPayload(current,incoming,'09120000000').ok,false);
 });
+
+test('assigned member report survives harmless local project metadata differences',()=>{
+  const current={id:'p1',name:'نسخه سرور',contacts:[{id:'c1',phones:['09120000000']}],projectMembers:[{mobile:'09120000000',contactId:'c1',status:'active'}],tasks:[{id:'w1',text:'کار',workTasks:[{id:'t1',title:'آرماتوربندی',assigneeContactId:'c1',executionReports:[],executionHistory:[]}]}]};
+  const incoming=structuredClone(current);
+  incoming.name='نسخه محلی قدیمی';
+  incoming.projectMembers=[...incoming.projectMembers,{mobile:'09000000000',status:'invited'}];
+  incoming.tasks[0].workTasks[0].executionReports=[{id:'r1',description:'گزارش مسئول',createdBy:{id:'account-1',name:'مهندس احمدی'},createdAt:10}];
+  incoming.tasks[0].workTasks[0].executionHistory=[{type:'report_created',at:10}];
+  const result=mergeAssignedExecutionPayload(current,incoming,'09120000000');
+  assert.equal(result.ok,true);
+  assert.equal(result.project.name,'نسخه سرور');
+  assert.equal(result.project.projectMembers.length,1);
+  assert.equal(result.project.tasks[0].workTasks[0].executionReports[0].description,'گزارش مسئول');
+});
