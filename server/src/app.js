@@ -213,9 +213,6 @@ function mergeAssignedExecutionItems(currentItems,incomingItems,contactIds,state
 }
 
 export function mergeAssignedExecutionPayload(current,incoming,phone){
-  const currentMeta={...current};delete currentMeta.tasks;
-  const incomingMeta={...incoming};delete incomingMeta.tasks;
-  if(JSON.stringify(currentMeta)!==JSON.stringify(incomingMeta))return {ok:false,project:current};
   const state={changed:false,invalid:false};
   const tasks=mergeAssignedExecutionItems(current?.tasks||[],incoming?.tasks||[],executionContactIds(current,phone),state);
   return {ok:state.changed&&!state.invalid,project:{...current,tasks}};
