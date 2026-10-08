@@ -11,12 +11,23 @@
 .wbs-today-frame .today-card-titles strong{font-size:13px;font-weight:600;color:#4d4741;text-align:center;overflow-wrap:anywhere}
 .wbs-today-frame .today-card-titles span{font-size:11px;color:#4d4741;text-align:center}
 .wbs-today-frame .today-card-heading .wbs-type-chip{position:absolute;inset-inline-start:12px;top:10px}
-.wbs-today-frame .today-card-heading .today-complete{position:absolute;inset-inline-end:12px;top:6px}
+.wbs-today-frame .today-card-heading .today-progress-circle{position:absolute;inset-inline-end:12px;top:7px}
 .wbs-shopping-frame .shopping-card-heading{position:relative}
 .wbs-shopping-frame .shopping-card-heading .today-task-primary{justify-content:center;min-height:30px}
 .wbs-shopping-frame .shopping-card-heading .today-task-primary strong{padding-inline:28px;text-align:center}
 .wbs-shopping-frame .shopping-card-heading .wbs-type-chip{position:absolute;inset-inline-start:12px;top:10px}
-.wbs-shopping-frame .shopping-card-heading .today-complete{position:absolute;inset-inline-end:12px;top:6px}
+.wbs-shopping-frame .shopping-card-heading .today-progress-circle{position:absolute;inset-inline-end:12px;top:7px}
+.today-progress-circle{--today-ring:#03045e;box-sizing:border-box;position:relative;width:42px;height:42px;border:0;border-radius:50%;padding:3px;background:conic-gradient(var(--today-ring) var(--today-progress),#d8d3cc 0);color:#03045e;font:inherit;font-size:10px;font-weight:700;cursor:pointer;box-shadow:none}
+.today-progress-circle::before{content:"";position:absolute;inset:4px;border-radius:50%;background:#f4f1ec}
+.today-progress-circle>span{position:relative;z-index:1;display:flex;align-items:center;justify-content:center;flex-direction:column;width:100%;height:100%;line-height:1.05}
+.today-progress-circle:disabled{cursor:default;opacity:.55}
+.today-progress-circle.is-ready{--today-ring:#03045e}
+.today-progress-circle.is-pending{--today-ring:#d58b00;color:#9a6500}
+.today-progress-circle svg{width:15px;height:15px;fill:currentColor}
+.today-progress-circle small{font-size:7px;margin-top:1px}
+.today-progress-symbol{font-size:18px}
+.today-submit-approval{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;min-height:44px;margin-top:14px;border:0;border-radius:8px;background:#03045e;color:#fff;font:inherit;font-size:12px;font-weight:600}
+.today-submit-approval svg{width:18px;height:18px;fill:currentColor}
 .wbs-today-frame .wbs-costline-detail-row{font-size:11px;color:#4d4741}
 .wbs-today-frame .today-responsibility-row{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:0;direction:rtl}
 .wbs-today-frame .today-responsibility-row>.today-responsibility-cell{box-sizing:border-box;width:100%!important;min-width:0;justify-self:stretch;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center!important;white-space:normal!important}
