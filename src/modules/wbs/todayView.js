@@ -1,10 +1,9 @@
-import { todayApi, COMMENT_MIN_LENGTH, REJECTION_MIN_LENGTH, REPORT_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
+import { todayApi, COMMENT_MIN_LENGTH, REJECTION_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
 import { contractorForItem, executionStatus, itemsForMode, remainingLabel, statusLabel, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
 import { fieldRow, openWbsSheet } from './wbsSheet.js';
 import { toPersianDigits } from '../../ui/digits.js';
-import { toEnglishDigits } from '../../ui/digits.js';
-import { openNumpadGeneric } from '../../ui/numpad.js';
 import { currentExecutionActor, isExecutionApprover, isExecutionAssignee } from './executionActor.js';
+import { openDailyExecutionReport, progressCircle } from './dailyExecutionReport.js';
 
 export const TODAY_ICON = 'M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v255l-80 80v-175H200v400h248l80 80H200Zm0-560h560v-80H200v80Zm0 0v-80 80ZM662-60 520-202l56-56 85 85 170-170 56 57L662-60Z';
 const ICONS = Object.freeze({ overdue:'./src/assets/wbs/pending-actions.svg', today:'./src/assets/wbs/today.svg', future:'./src/assets/wbs/next-week.svg', pending:'./src/assets/wbs/pending-approval.svg', unscheduled:'./src/assets/wbs/event-busy.svg', filter:'./src/assets/wbs/filter-alt.svg' });
@@ -24,7 +23,6 @@ function formatDate(value){
 function formatMoment(value){ return value ? new Intl.DateTimeFormat('fa-IR-u-ca-persian', { timeZone:'Asia/Tehran', year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }).format(new Date(value)) : ''; }
 function reportsOf(entity){ return (entity.executionReports || []).filter(report => report && !report.trashed).slice().reverse(); }
 function commentsOf(entity){ return (entity.executionComments || []).filter(comment => comment && !comment.trashed).slice().sort((a,b) => Number(b.createdAt) - Number(a.createdAt)); }
-function ownLatestReport(entity){ const latest = reportsOf(entity)[0]; return latest && String(latest.createdBy?.id) === String(actor().id) ? latest : null; }
 function textArea(documentRef, value, name){ const field = documentRef.createElement('textarea'); field.className='wbs-input today-textarea'; field.name=name; field.value=value || ''; return field; }
 function detailRow(documentRef, label, value){
   const row = documentRef.createElement('div');
@@ -53,26 +51,6 @@ function linkButton(documentRef, className, text, label){
   return button;
 }
 
-function progressButton(value){
-  const button=document.createElement('button');
-  button.type='button'; button.name='reportProgress'; button.className='wbs-input wbs-inline-number today-progress-input';
-  button.dataset.value=String(Math.min(100,Math.max(0,Number(value)||0)));
-  const paint=()=>{ button.textContent=`${toPersianDigits(button.dataset.value)}٪`; };
-  button.addEventListener('click',()=>openNumpadGeneric(button.dataset.value,raw=>{
-    const parsed=Math.min(100,Math.max(0,Number(toEnglishDigits(String(raw)).replace(/\D/g,''))||0));
-    button.dataset.value=String(parsed); paint();
-  },{suffix:'٪',maxLen:3,group:false}));
-  paint(); return button;
-}
-
-function openReport(item, onChanged){
-  const own = ownLatestReport(item.entity);
-  openWbsSheet({ title:own ? 'ویرایش گزارش' : 'ثبت گزارش', saveLabel:'ذخیره', presentation:'stage-create', autoFocus:false, historyKey:`execution-report:${activeProjectId}:${item.id}`, body(root){
-    root.appendChild(fieldRow('درصد پیشرفت', progressButton(item.entity.progress)));
-    root.appendChild(fieldRow('شرح گزارش', textArea(document, own?.description || '', 'reportDescription')));
-    const note=document.createElement('div'); note.className='today-upload-note'; note.innerHTML='<span>پیوست‌ها</span><div><button type="button" disabled>عکس<small>به‌زودی</small></button><button type="button" disabled>ویدئو<small>به‌زودی</small></button><button type="button" disabled>فایل<small>به‌زودی</small></button></div>'; root.appendChild(note);
-  }, onSave(root){ const result=todayApi.saveReport(activeProjectId,refOf(item),root.querySelector('[name="reportDescription"]').value,actor(),Date.now,root.querySelector('[name="reportProgress"]').dataset.value); if(!result.ok){ window.KarhaUI?.showToast?.(`شرح گزارش حداقل ${toPersianDigits(REPORT_MIN_LENGTH)} حرف باشد`); return false; } onChanged?.(); return true; } });
-}
 function openComment(item,onChanged){
   openWbsSheet({title:'افزودن نظر',saveLabel:'ذخیره',presentation:'stage-create',autoFocus:false,historyKey:`execution-comment:${activeProjectId}:${item.id}`,body(root){
     root.appendChild(fieldRow('نظر',textArea(document,'','commentText')));
@@ -94,8 +72,17 @@ function renderCard(documentRef,project,item,today,onChanged){
   const dateText=entity.scheduleStart ? (entity.scheduleStart===entity.scheduleEnd?formatDate(entity.scheduleStart):`${formatDate(entity.scheduleStart)} > ${formatDate(entity.scheduleEnd)}`) : '';
   const type=entity.type||item.work.type||'کار';
   const pending = item.mode==='pending';
+  const currentActor=actor();
+  const assigned=isExecutionAssignee(entity,currentActor);
   const heading=documentRef.createElement('div'); heading.className='wbs-costline-work-heading today-card-heading';
-  const complete=documentRef.createElement('button'); complete.type='button'; complete.className='today-complete'; complete.setAttribute('aria-label','اعلام انجام‌شدن'); complete.textContent=pending?'✓':'□'; if(!(entity.actualStart || pending)) complete.disabled=true;
+  const complete=progressCircle(documentRef,entity,{pending,disabled:!assigned,onClick:()=>{
+    if(pending){
+      const result=todayApi.withdrawCompletion(activeProjectId,refOf(item),actor());
+      if(!result.ok){ window.KarhaUI?.showToast?.('لغو ارسال ممکن نیست'); return; }
+      activeMode=timeState(result.entity,tehranTodayJalali()); onChanged?.(); return;
+    }
+    openDailyExecutionReport({projectId:activeProjectId,item,actor:currentActor,onChanged,onSubmitted(updated){activeMode=timeState(updated,tehranTodayJalali());},subject:'کار'});
+  }});
   const titles=documentRef.createElement('div'); titles.className='today-card-titles'; titles.innerHTML=`<strong>${esc(entity.title||entity.text||'')}</strong><span>${esc(item.path.join(' · '))}</span>`;
   const chip=documentRef.createElement('span'); chip.className=`wbs-type-chip ${TYPE_CLASSES.get(type)||'type-7'}`; chip.textContent=type;
   heading.append(chip, titles, complete); card.appendChild(heading);
@@ -121,8 +108,6 @@ function renderCard(documentRef,project,item,today,onChanged){
   }
   const statusRow=detailRow(documentRef,statusText,statusValue); statusRow.classList.add(entity.actualStart?'is-in-progress':'is-not-started'); card.appendChild(statusRow);
   const actions=documentRef.createElement('div'); actions.className='today-task-actions';
-  const currentActor=actor();
-  const assigned=isExecutionAssignee(entity,currentActor);
   const mayApprove=isExecutionApprover(entity,currentActor);
   if(pending){
     if(mayApprove){
@@ -130,24 +115,11 @@ function renderCard(documentRef,project,item,today,onChanged){
       const reject=linkButton(documentRef, 'wbs-costline-manual is-danger', 'رد'); reject.addEventListener('click',()=>openReject(item,onChanged));
       actions.append(approve,reject);
     }
-    complete.disabled=!assigned;
-    complete.addEventListener('click',()=>{
-      const submitter = entity.completionSubmittedBy?.id;
-      if(submitter && String(submitter)!==String(actor().id)){ window.KarhaUI?.showToast?.('فقط مسئول این کار می‌تواند تیک را بردارد'); return; }
-      const result=todayApi.withdrawCompletion(activeProjectId,refOf(item),actor());
-      if(!result.ok){ window.KarhaUI?.showToast?.('برداشتن تیک ممکن نیست'); return; }
-      activeMode=timeState(result.entity, tehranTodayJalali());
-      onChanged?.();
-    });
   } else {
-    complete.disabled=complete.disabled || !assigned;
     const startButton=card.querySelector('.today-start'); if(startButton) startButton.disabled=!assigned;
-    complete.addEventListener('click',()=>{ if(!entity.actualStart){ window.KarhaUI?.showToast?.('اول شروع را بزن'); return; } const result=todayApi.markComplete(activeProjectId,refOf(item),actor());if(result.ok)activeMode=timeState(result.entity,tehranTodayJalali());onChanged?.();});
     card.querySelector('.today-start')?.addEventListener('click',()=>{todayApi.start(activeProjectId,refOf(item),actor());onChanged?.();});
     card.querySelector('.today-cancel-start')?.addEventListener('click',()=>{todayApi.cancelStart(activeProjectId,refOf(item),actor());onChanged?.();});
   }
-  const report=linkButton(documentRef, 'wbs-costline-manual today-section-action', ownLatestReport(entity)?'ویرایش گزارش':'ثبت گزارش'); report.addEventListener('click',()=>openReport(item,onChanged));
-  if(assigned) card.appendChild(detailRow(documentRef, '', report));
   if(actions.childElementCount) card.appendChild(detailRow(documentRef, 'تأیید', actions));
   card.appendChild(renderReports(documentRef,entity));
   const comment=linkButton(documentRef,'wbs-costline-manual today-section-action','افزودن نظر');comment.addEventListener('click',()=>openComment(item,onChanged));card.appendChild(detailRow(documentRef,'',comment));
