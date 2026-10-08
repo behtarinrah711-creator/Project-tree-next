@@ -101,12 +101,12 @@ function renderCard(documentRef,project,item,today,onChanged){
   heading.append(chip, titles, complete); card.appendChild(heading);
   card.appendChild(detailRow(documentRef, dateText, remainingLabel(entity, today)));
   const approver=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.approvalContactId||''));
-  const responsibilityRow=detailRow(
-    documentRef,
+  const responsibilityRow=documentRef.createElement('div');
+  responsibilityRow.className='wbs-costline-detail-row today-responsibility-row';
+  responsibilityRow.append(
     responsibilityCell(documentRef,'مسئول پیگیری',assignee?contactName(assignee):'—'),
     responsibilityCell(documentRef,'مسئول تأیید',approver?contactName(approver):'—'),
   );
-  responsibilityRow.classList.add('today-responsibility-row');
   card.appendChild(responsibilityRow);
   if(contractor) card.appendChild(detailRow(documentRef, 'پیمانکار: ', contactName(contractor)));
   const statusValue=documentRef.createElement('span'); statusValue.className='today-status-slot';
