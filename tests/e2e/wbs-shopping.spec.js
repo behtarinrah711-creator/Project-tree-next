@@ -74,15 +74,19 @@ test('shopping is a native WBS view with its own modular surface', async ({ page
 test('shopping report, comment and approval use the same WBS purchase entity',async({page})=>{
   await page.locator('.wbs-tab[aria-label="لیست خریدها"]').click();
   let card=page.locator('.shopping-item-card[data-entity-id="w1"]');
-  await card.getByRole('button',{name:'ثبت گزارش'}).click();
+  await card.locator('.today-progress-circle').click();
   await page.locator('[name="reportDescription"]').fill('پیش‌فاکتور آهن دریافت شد');
+  await page.locator('[name="reportProgress"]').click();
+  await page.locator('#numpadBackspace').click();
+  for(const digit of '100') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
+  await page.locator('#numpadDoneBtn').click();
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
   await expect(card).toContainText('پیش‌فاکتور آهن دریافت شد');
   await card.locator('[name="comment"]').fill('قیمت با فروشنده بررسی شود');
   await card.locator('.today-comment-form button').click();
   await expect(card).toContainText('قیمت با فروشنده بررسی شود');
-  await card.locator('.today-start').click();
-  await card.locator('.today-complete').click();
+  await card.locator('.today-progress-circle').click();
+  await page.locator('.today-submit-approval').click();
   await expect(page.locator('.wbs-shopping-frame')).toHaveAttribute('data-mode','pending');
   card=page.locator('.shopping-item-card[data-entity-id="w1"]');
   await expect(card).toContainText('در انتظار تأیید خرید');
