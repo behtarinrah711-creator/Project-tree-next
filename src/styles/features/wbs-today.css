@@ -17,7 +17,7 @@
 .wbs-today-frame .today-responsibility-cell>span{display:block;text-align:center}
 .wbs-today-frame .wbs-costline-detail-row.is-in-progress>span:first-child{color:#03045e;font-weight:600}
 .wbs-today-frame .wbs-costline-detail-row.is-not-started>span:last-child .today-start{color:#26221e}
-.wbs-today-frame .today-section-action{color:#033e8a!important}
+.wbs-today-frame .today-section-action{color:#03045e!important}
 .wbs-today-frame .wbs-costline-detail-row:has(.today-section-action)>span:first-child:empty{display:none}
 .wbs-today-frame .wbs-costline-detail-row:has(.today-section-action){grid-template-columns:1fr;justify-items:start}
 .today-progress-input{justify-content:flex-start}
