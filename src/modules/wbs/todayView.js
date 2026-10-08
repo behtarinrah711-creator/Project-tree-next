@@ -2,6 +2,8 @@ import { todayApi, COMMENT_MIN_LENGTH, REJECTION_MIN_LENGTH, REPORT_MIN_LENGTH }
 import { contractorForItem, executionStatus, itemsForMode, remainingLabel, statusLabel, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
 import { fieldRow, openWbsSheet } from './wbsSheet.js';
 import { toPersianDigits } from '../../ui/digits.js';
+import { toEnglishDigits } from '../../ui/digits.js';
+import { openNumpadGeneric } from '../../ui/numpad.js';
 import { currentExecutionActor, isExecutionApprover, isExecutionAssignee } from './executionActor.js';
 
 export const TODAY_ICON = 'M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v255l-80 80v-175H200v400h248l80 80H200Zm0-560h560v-80H200v80Zm0 0v-80 80ZM662-60 520-202l56-56 85 85 170-170 56 57L662-60Z';
@@ -17,7 +19,7 @@ function refOf(item){ return { kind:item.kind, id:item.id, workId:item.workId };
 function formatDate(value){
   const parts = String(value || '').split('/');
   if(parts.length !== 3) return toPersianDigits(String(value || ''));
-  return `${toPersianDigits(Number(parts[1]))}/${toPersianDigits(Number(parts[2]))}`;
+  return `${toPersianDigits(Number(parts[0]))}/${toPersianDigits(Number(parts[1]))}/${toPersianDigits(Number(parts[2]))}`;
 }
 function formatMoment(value){ return value ? new Intl.DateTimeFormat('fa-IR-u-ca-persian', { timeZone:'Asia/Tehran', year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }).format(new Date(value)) : ''; }
 function reportsOf(entity){ return (entity.executionReports || []).filter(report => report && !report.trashed).slice().reverse(); }
@@ -44,12 +46,30 @@ function linkButton(documentRef, className, text, label){
   return button;
 }
 
+function progressButton(value){
+  const button=document.createElement('button');
+  button.type='button'; button.name='reportProgress'; button.className='wbs-input wbs-inline-number today-progress-input';
+  button.dataset.value=String(Math.min(100,Math.max(0,Number(value)||0)));
+  const paint=()=>{ button.textContent=`${toPersianDigits(button.dataset.value)}٪`; };
+  button.addEventListener('click',()=>openNumpadGeneric(button.dataset.value,raw=>{
+    const parsed=Math.min(100,Math.max(0,Number(toEnglishDigits(String(raw)).replace(/\D/g,''))||0));
+    button.dataset.value=String(parsed); paint();
+  },{suffix:'٪',maxLen:3,group:false}));
+  paint(); return button;
+}
+
 function openReport(item, onChanged){
   const own = ownLatestReport(item.entity);
-  openWbsSheet({ title:own ? 'ویرایش گزارش' : 'ثبت گزارش', saveLabel:'ذخیره', body(root){
+  openWbsSheet({ title:own ? 'ویرایش گزارش' : 'ثبت گزارش', saveLabel:'ذخیره', presentation:'stage-create', autoFocus:false, historyKey:`execution-report:${activeProjectId}:${item.id}`, body(root){
+    root.appendChild(fieldRow('درصد پیشرفت', progressButton(item.entity.progress)));
     root.appendChild(fieldRow('شرح گزارش', textArea(document, own?.description || '', 'reportDescription')));
     const note=document.createElement('div'); note.className='today-upload-note'; note.innerHTML='<span>پیوست‌ها</span><div><button type="button" disabled>عکس<small>به‌زودی</small></button><button type="button" disabled>ویدئو<small>به‌زودی</small></button><button type="button" disabled>فایل<small>به‌زودی</small></button></div>'; root.appendChild(note);
-  }, onSave(root){ const result=todayApi.saveReport(activeProjectId,refOf(item),root.querySelector('[name="reportDescription"]').value,actor()); if(!result.ok){ window.KarhaUI?.showToast?.(`شرح گزارش حداقل ${toPersianDigits(REPORT_MIN_LENGTH)} حرف باشد`); return false; } onChanged?.(); return true; } });
+  }, onSave(root){ const result=todayApi.saveReport(activeProjectId,refOf(item),root.querySelector('[name="reportDescription"]').value,actor(),Date.now,root.querySelector('[name="reportProgress"]').dataset.value); if(!result.ok){ window.KarhaUI?.showToast?.(`شرح گزارش حداقل ${toPersianDigits(REPORT_MIN_LENGTH)} حرف باشد`); return false; } onChanged?.(); return true; } });
+}
+function openComment(item,onChanged){
+  openWbsSheet({title:'افزودن نظر',saveLabel:'ذخیره',presentation:'stage-create',autoFocus:false,historyKey:`execution-comment:${activeProjectId}:${item.id}`,body(root){
+    root.appendChild(fieldRow('نظر',textArea(document,'','commentText')));
+  },onSave(root){const result=todayApi.addComment(activeProjectId,refOf(item),root.querySelector('[name="commentText"]').value,actor());if(!result.ok){window.KarhaUI?.showToast?.(`نظر حداقل ${toPersianDigits(COMMENT_MIN_LENGTH)} حرف باشد`);return false;}onChanged?.();return true;}});
 }
 function openReject(item,onChanged){ openWbsSheet({ title:'رد تأیید', saveLabel:'ثبت رد', body(root){ root.appendChild(fieldRow('علت رد',textArea(document,'','rejectionReason'))); }, onSave(root){ const result=todayApi.reject(activeProjectId,refOf(item),root.querySelector('[name="rejectionReason"]').value,actor()); if(!result.ok){ window.KarhaUI?.showToast?.(`علت رد حداقل ${toPersianDigits(REJECTION_MIN_LENGTH)} حرف باشد`); return false; } activeMode=timeState(result.entity, tehranTodayJalali()); onChanged?.(); return true; } }); }
 function renderReports(documentRef,entity){ const host=documentRef.createElement('div'); host.className='today-reports'; reportsOf(entity).forEach(report=>{ const row=documentRef.createElement('article'); row.className='today-report'; row.innerHTML=`<p>${esc(report.description)}</p><div>${esc(report.createdBy?.name||'کاربر')} · ${esc(formatMoment(report.createdAt))}${report.updatedAt?` · <b>ویرایش‌شده ${esc(formatMoment(report.updatedAt))}</b>`:''}</div>`; host.appendChild(row); }); return host; }
@@ -57,14 +77,14 @@ function renderComments(documentRef,item,onChanged){
   const host=documentRef.createElement('div'); host.className='today-comments'; const comments=commentsOf(item.entity); let expanded=false; const list=documentRef.createElement('div');
   const paint=()=>{ list.replaceChildren(); (expanded?comments:comments.slice(0,2)).forEach(comment=>{ const row=documentRef.createElement('div'); row.className='today-comment'+(comment.type==='approval_rejected'?' is-rejection':''); row.innerHTML=`<p>${esc(comment.text)}</p><span>${esc(comment.createdBy?.name||'کاربر')} · ${esc(formatMoment(comment.createdAt))}</span>`; list.appendChild(row); }); }; paint(); host.appendChild(list);
   if(comments.length>2){ const more=documentRef.createElement('button'); more.type='button'; more.className='today-show-comments'; more.textContent=`مشاهده ${toPersianDigits(comments.length-2)} نظر قبلی`; more.addEventListener('click',()=>{ expanded=true; paint(); more.remove(); }); host.appendChild(more); }
-  const form=documentRef.createElement('form'); form.className='today-comment-form'; form.innerHTML=`<input class="wbs-input" name="comment" minlength="${COMMENT_MIN_LENGTH}" placeholder="افزودن نظر"><button type="submit">ثبت</button>`; form.addEventListener('submit',event=>{ event.preventDefault(); const result=todayApi.addComment(activeProjectId,refOf(item),form.elements.comment.value,actor()); if(!result.ok){ window.KarhaUI?.showToast?.(`نظر حداقل ${toPersianDigits(COMMENT_MIN_LENGTH)} حرف باشد`); return; } onChanged?.(); }); host.appendChild(form); return host;
+  return host;
 }
 function historyLabel(type){ return ({started:'شروع شد',start_cancelled:'شروع لغو شد',report_created:'گزارش ثبت شد',report_edited:'گزارش ویرایش شد',comment_added:'نظر ثبت شد',marked_complete:'انجام‌شده اعلام شد',completed_without_approval:'بدون نیاز به تأیید تکمیل شد',sent_for_approval:'برای تأیید ارسال شد',approval_rejected:'تأیید رد شد',approval_cancelled:'تأیید نهایی لغو شد',returned_to_active:'به فهرست فعال برگشت',completion_withdrawn:'تیک انجام‌شدن برداشته شد',returned_to_previous:'به تب قبلی برگشت',approved:'تأیید نهایی شد'})[type]||type; }
-function renderHistory(documentRef,entity){ const history=(entity.executionHistory||[]).slice().sort((a,b)=>Number(b.at)-Number(a.at)); if(!history.length)return null; const details=documentRef.createElement('details'); details.className='today-history'; details.innerHTML='<summary>تاریخچه</summary>'; history.forEach(entry=>{ const row=documentRef.createElement('div'); row.textContent=`${historyLabel(entry.type)} · ${entry.actor?.name||'کاربر'} · ${formatMoment(entry.at)}`; details.appendChild(row); }); return details; }
+function renderHistory(documentRef,entity){ const history=(entity.executionHistory||[]).slice().sort((a,b)=>Number(b.at)-Number(a.at)); const details=documentRef.createElement('details'); details.className='today-history'; details.innerHTML='<summary>تاریخچه</summary>'; history.forEach(entry=>{ const row=documentRef.createElement('div'); row.textContent=`${historyLabel(entry.type)} · ${entry.actor?.name||'کاربر'} · ${formatMoment(entry.at)}`; details.appendChild(row); }); return details; }
 function renderCard(documentRef,project,item,today,onChanged){
   const entity=item.entity,status=executionStatus(entity),assignee=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.assigneeContactId||'')),contractor=contractorForItem(project,item).contact;
   const card=documentRef.createElement('article'); card.className='today-task-card wbs-costline-work'; card.dataset.entityId=item.id; card.dataset.entityKind=item.kind;
-  const dateText=entity.scheduleStart ? (entity.scheduleStart===entity.scheduleEnd?formatDate(entity.scheduleStart):`${formatDate(entity.scheduleStart)} تا ${formatDate(entity.scheduleEnd)}`) : '';
+  const dateText=entity.scheduleStart ? (entity.scheduleStart===entity.scheduleEnd?formatDate(entity.scheduleStart):`${formatDate(entity.scheduleStart)} > ${formatDate(entity.scheduleEnd)}`) : '';
   const type=entity.type||item.work.type||'کار';
   const pending = item.mode==='pending';
   const heading=documentRef.createElement('div'); heading.className='wbs-costline-work-heading today-card-heading';
@@ -72,22 +92,21 @@ function renderCard(documentRef,project,item,today,onChanged){
   const titles=documentRef.createElement('div'); titles.className='today-card-titles'; titles.innerHTML=`<strong>${esc(entity.title||entity.text||'')}</strong><span>${esc(item.path.join(' · '))}</span>`;
   const chip=documentRef.createElement('span'); chip.className=`wbs-type-chip ${TYPE_CLASSES.get(type)||'type-7'}`; chip.textContent=type;
   heading.append(chip, titles, complete); card.appendChild(heading);
-  card.appendChild(detailRow(documentRef, 'تاریخ', dateText));
-  card.appendChild(detailRow(documentRef, 'باقی‌مانده', remainingLabel(entity, today)));
-  if(assignee) card.appendChild(detailRow(documentRef, 'مسئول پیگیری', contactName(assignee)));
+  card.appendChild(detailRow(documentRef, dateText, remainingLabel(entity, today)));
   const approver=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.approvalContactId||''));
-  if(approver) card.appendChild(detailRow(documentRef,'مسئول تأیید',contactName(approver)));
+  card.appendChild(detailRow(documentRef, assignee?`مسئول پیگیری ${contactName(assignee)}`:'مسئول پیگیری —', approver?`مسئول تأیید ${contactName(approver)}`:'مسئول تأیید —'));
   if(contractor) card.appendChild(detailRow(documentRef, 'پیمانکار: ', contactName(contractor)));
   const statusValue=documentRef.createElement('span'); statusValue.className='today-status-slot';
-  if(pending) statusValue.textContent=statusLabel(status);
+  let statusText='هنوز شروع نشده است';
+  if(pending){ statusText=statusLabel(status); statusValue.textContent=''; }
   else if(entity.actualStart){
-    statusValue.append(documentRef.createTextNode(statusLabel(status)));
+    statusText=statusLabel(status);
     const cancel=linkButton(documentRef, 'today-cancel-start today-status-action wbs-costline-manual', 'لغو شروع', 'لغو شروع');
     statusValue.appendChild(cancel);
   } else {
-    statusValue.appendChild(linkButton(documentRef, 'today-start today-status-action wbs-costline-manual', 'شروع', 'شروع'));
+    statusValue.appendChild(linkButton(documentRef, 'today-start today-status-action wbs-costline-manual', 'شروع کار', 'شروع کار'));
   }
-  card.appendChild(detailRow(documentRef, 'وضعیت', statusValue));
+  const statusRow=detailRow(documentRef,statusText,statusValue); statusRow.classList.add(entity.actualStart?'is-in-progress':'is-not-started'); card.appendChild(statusRow);
   const actions=documentRef.createElement('div'); actions.className='today-task-actions';
   const currentActor=actor();
   const assigned=isExecutionAssignee(entity,currentActor);
@@ -109,15 +128,18 @@ function renderCard(documentRef,project,item,today,onChanged){
     });
   } else {
     complete.disabled=complete.disabled || !assigned;
+    const startButton=card.querySelector('.today-start'); if(startButton) startButton.disabled=!assigned;
     complete.addEventListener('click',()=>{ if(!entity.actualStart){ window.KarhaUI?.showToast?.('اول شروع را بزن'); return; } const result=todayApi.markComplete(activeProjectId,refOf(item),actor());if(result.ok)activeMode=timeState(result.entity,tehranTodayJalali());onChanged?.();});
     card.querySelector('.today-start')?.addEventListener('click',()=>{todayApi.start(activeProjectId,refOf(item),actor());onChanged?.();});
     card.querySelector('.today-cancel-start')?.addEventListener('click',()=>{todayApi.cancelStart(activeProjectId,refOf(item),actor());onChanged?.();});
   }
-  const report=linkButton(documentRef, 'wbs-costline-manual', ownLatestReport(entity)?'ویرایش گزارش':'ثبت گزارش'); report.addEventListener('click',()=>openReport(item,onChanged));
-  if(assigned) card.appendChild(detailRow(documentRef, 'گزارش', report));
+  const report=linkButton(documentRef, 'wbs-costline-manual today-section-action', ownLatestReport(entity)?'ویرایش گزارش':'ثبت گزارش'); report.addEventListener('click',()=>openReport(item,onChanged));
+  if(assigned) card.appendChild(detailRow(documentRef, '', report));
   if(actions.childElementCount) card.appendChild(detailRow(documentRef, 'تأیید', actions));
-  card.append(renderReports(documentRef,entity), renderComments(documentRef,item,onChanged));
-  const history=renderHistory(documentRef,entity); if(history) card.appendChild(history);
+  card.appendChild(renderReports(documentRef,entity));
+  const comment=linkButton(documentRef,'wbs-costline-manual today-section-action','افزودن نظر');comment.addEventListener('click',()=>openComment(item,onChanged));card.appendChild(detailRow(documentRef,'',comment));
+  card.appendChild(renderComments(documentRef,item,onChanged));
+  card.appendChild(renderHistory(documentRef,entity));
   return card;
 }
 export function renderTodayView(project,documentRef=document,onChanged){

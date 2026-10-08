@@ -12,6 +12,12 @@
 .wbs-today-frame .today-card-heading .wbs-type-chip{position:absolute;inset-inline-start:0;top:10px}
 .wbs-today-frame .today-card-heading .today-complete{position:absolute;inset-inline-end:0;top:6px}
 .wbs-today-frame .wbs-costline-detail-row{font-size:11px;color:#4d4741}
+.wbs-today-frame .wbs-costline-detail-row.is-in-progress>span:first-child{color:#03045e;font-weight:600}
+.wbs-today-frame .wbs-costline-detail-row.is-not-started>span:last-child .today-start{color:#26221e}
+.wbs-today-frame .today-section-action{color:#033e8a!important}
+.wbs-today-frame .wbs-costline-detail-row:has(.today-section-action)>span:first-child:empty{display:none}
+.wbs-today-frame .wbs-costline-detail-row:has(.today-section-action){grid-template-columns:1fr;justify-items:start}
+.today-progress-input{justify-content:flex-start}
 .wbs-today-frame .wbs-costline-manual{width:auto;min-height:0;margin:0;padding:0;font-size:11px;font-weight:600;text-align:left}
 .wbs-today-frame .wbs-costline-manual.is-danger,.wbs-today-frame .today-cancel-start{color:#b42318}
 .wbs-today-frame .today-status-action{border:0;background:transparent;padding:0}

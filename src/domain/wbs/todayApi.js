@@ -32,7 +32,7 @@ function mutate(projectId, ref, updater, { completion } = {}){
 }
 
 export const todayApi = {
-  saveReport(projectId, ref, description, actor, clock = Date.now){
+  saveReport(projectId, ref, description, actor, clock = Date.now, progress = null){
     const text = String(description || '').trim();
     if(text.length < REPORT_MIN_LENGTH) return { ok:false, code:'report_too_short' };
     const at = clock(); const by = actorValue(actor);
@@ -48,7 +48,10 @@ export const todayApi = {
         reports.push(report);
         history.push(event('report_created', by, at, { reportId:report.id }));
       }
-      return { ...entity, executionReports:reports, executionHistory:history, workflowStatus:'in_progress', updatedAt:at };
+      const nextProgress = progress === null || progress === undefined
+        ? Number(entity.progress) || 0
+        : Math.min(100, Math.max(0, Number(progress) || 0));
+      return { ...entity, progress:nextProgress, executionReports:reports, executionHistory:history, workflowStatus:'in_progress', updatedAt:at };
     });
   },
 
