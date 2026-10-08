@@ -35,23 +35,26 @@ export const todayApi = {
   saveReport(projectId, ref, description, actor, clock = Date.now, progress = null){
     const text = String(description || '').trim();
     if(text.length < REPORT_MIN_LENGTH) return { ok:false, code:'report_too_short' };
-    const at = clock(); const by = actorValue(actor);
+    const at = clock(); const by = actorValue(actor); const reportDay = tehranTodayJalali(new Date(at));
     return mutate(projectId, ref, entity => {
       const reports = [...(entity.executionReports || []).filter(report => report && !report.trashed)];
       const history = [...(entity.executionHistory || [])];
-      const last = reports.at(-1);
-      if(last && String(last.createdBy?.id) === by.id){
-        reports[reports.length - 1] = { ...last, description:text, updatedBy:by, updatedAt:at };
-        history.push(event('report_edited', by, at, { reportId:last.id }));
-      }else{
-        const report = { id:uid(), description:text, createdBy:by, createdAt:at, updatedAt:null, updatedBy:null };
-        reports.push(report);
-        history.push(event('report_created', by, at, { reportId:report.id }));
-      }
+      const reportIndex = reports.findLastIndex(report => (
+        (report.reportDay || tehranTodayJalali(new Date(report.createdAt))) === reportDay
+      ));
       const nextProgress = progress === null || progress === undefined
         ? Number(entity.progress) || 0
         : Math.min(100, Math.max(0, Number(progress) || 0));
-      return { ...entity, progress:nextProgress, executionReports:reports, executionHistory:history, workflowStatus:'in_progress', updatedAt:at };
+      if(reportIndex >= 0){
+        const current = reports[reportIndex];
+        reports[reportIndex] = { ...current, description:text, progress:nextProgress, reportDay, updatedBy:by, updatedAt:at };
+        history.push(event('report_edited', by, at, { reportId:current.id }));
+      }else{
+        const report = { id:uid(), description:text, progress:nextProgress, reportDay, createdBy:by, createdAt:at, updatedAt:null, updatedBy:null };
+        reports.push(report);
+        history.push(event('report_created', by, at, { reportId:report.id }));
+      }
+      return { ...entity, progress:nextProgress, actualStart:entity.actualStart || reportDay, executionReports:reports, executionHistory:history, workflowStatus:'in_progress', updatedAt:at };
     });
   },
 
