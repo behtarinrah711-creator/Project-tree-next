@@ -113,7 +113,7 @@ function renderCard(documentRef,project,item,today,onChanged){
   let statusText='هنوز شروع نشده است';
   if(pending){ statusText=statusLabel(status); statusValue.textContent=''; }
   else if(entity.actualStart){
-    statusText=statusLabel(status);
+    statusText=`وضعیت: ${statusLabel(status)}`;
     const cancel=linkButton(documentRef, 'today-cancel-start today-status-action wbs-costline-manual', 'لغو شروع', 'لغو شروع');
     statusValue.appendChild(cancel);
   } else {
