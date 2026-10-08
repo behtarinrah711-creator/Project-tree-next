@@ -3,8 +3,9 @@
 
 .today-status-slot{display:inline-flex;align-items:center;justify-content:flex-end;gap:4px;text-align:left}.today-status-action{border:1px solid var(--divider,#e4ddd3);border-radius:6px;background:#fff;color:var(--text,#26221e);font:inherit;font-size:11px;line-height:1.5;padding:2px 8px}.today-cancel-start{color:#b42318}.wbs-today-frame[data-mode="pending"] .today-start,.wbs-shopping-frame[data-mode="pending"] .today-start{display:none}
 
-.wbs-today-frame .wbs-today-body{background:#fff;padding:4px 12px 18px}
-.wbs-today-frame .today-task-card.wbs-costline-work{margin:12px 0;padding:0 12px;border:1px solid #e5ded3;border-radius:var(--wbs-frame-radius,5px);background:#f4f1ec}
+.wbs-today-frame .wbs-today-body,.wbs-shopping-frame .wbs-shopping-body{background:#fff;padding:4px 0 18px}
+.wbs-today-frame .today-task-card.wbs-costline-work,.wbs-shopping-frame .shopping-item-card{margin:12px 0;padding:0 12px;border:1px solid #e5ded3;border-radius:var(--wbs-frame-radius,5px);background:#fff}
+.wbs-today-frame .today-card-heading,.wbs-shopping-frame .shopping-card-heading{margin-inline:-12px;padding:10px 12px;background:#f4f1ec;border-radius:var(--wbs-frame-radius,5px) var(--wbs-frame-radius,5px) 0 0}
 .wbs-today-frame .today-card-heading{position:relative;align-items:center}
 .wbs-today-frame .today-card-titles{display:flex;flex-direction:column;align-items:center;gap:2px;min-width:0;padding:0 28px}
 .wbs-today-frame .today-card-titles strong{font-size:13px;font-weight:600;color:#4d4741;text-align:center;overflow-wrap:anywhere}
