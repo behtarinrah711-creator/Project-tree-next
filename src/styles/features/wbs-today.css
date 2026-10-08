@@ -12,6 +12,8 @@
 .wbs-today-frame .today-card-heading .wbs-type-chip{position:absolute;inset-inline-start:0;top:10px}
 .wbs-today-frame .today-card-heading .today-complete{position:absolute;inset-inline-end:0;top:6px}
 .wbs-today-frame .wbs-costline-detail-row{font-size:11px;color:#4d4741}
+.wbs-today-frame .today-responsibility-cell{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-align:center;white-space:normal}
+.wbs-today-frame .today-responsibility-cell>span{display:block;text-align:center}
 .wbs-today-frame .wbs-costline-detail-row.is-in-progress>span:first-child{color:#03045e;font-weight:600}
 .wbs-today-frame .wbs-costline-detail-row.is-not-started>span:last-child .today-start{color:#26221e}
 .wbs-today-frame .today-section-action{color:#033e8a!important}
