@@ -19,7 +19,7 @@
 .wbs-today-frame .wbs-costline-detail-row.is-not-started>span:last-child .today-start{color:#26221e}
 .wbs-today-frame .today-section-action{color:#03045e!important}
 .wbs-today-frame .wbs-costline-detail-row:has(.today-section-action)>span:first-child:empty{display:none}
-.wbs-today-frame .wbs-costline-detail-row:has(.today-section-action){grid-template-columns:1fr;justify-items:start}
+.wbs-today-frame .wbs-costline-detail-row:has(.today-section-action){grid-template-columns:1fr;justify-items:center}
 .today-progress-input{justify-content:flex-start}
 .wbs-today-frame .wbs-costline-manual{width:auto;min-height:0;margin:0;padding:0;font-size:11px;font-weight:600;text-align:left}
 .wbs-today-frame .wbs-costline-manual.is-danger,.wbs-today-frame .today-cancel-start{color:#b42318}
@@ -32,5 +32,5 @@
 .wbs-today-frame .today-comment-form .wbs-input{border:1px solid #e5ded3;border-radius:6px;background:#fff}
 .wbs-today-frame .today-comment-form button{border:0;background:transparent;color:#033E8A;padding:0 2px}
 .wbs-today-frame .today-history{margin:0;border-top:0;padding:0}
-.wbs-today-frame .today-history summary{min-height:40px;display:flex;align-items:center;color:#033E8A;font-size:11px;font-weight:600}
+.wbs-today-frame .today-history summary{min-height:40px;display:flex;align-items:center;justify-content:center;color:#033E8A;font-size:11px;font-weight:600;text-align:center}
 .wbs-today-frame .today-history div{padding:4px 0 8px}
