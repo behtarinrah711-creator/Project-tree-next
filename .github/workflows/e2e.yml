@@ -58,7 +58,7 @@ jobs:
 
       - name: Install Chromium
         if: github.event_name != 'pull_request' || steps.scope.outputs.run_browser == 'true'
-        timeout-minutes: 3
+        timeout-minutes: 8
         run: npx playwright install --with-deps chromium
 
       - name: Run unit tests
