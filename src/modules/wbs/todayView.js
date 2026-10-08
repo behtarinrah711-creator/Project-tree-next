@@ -133,7 +133,7 @@ function renderCard(documentRef,project,item,today,onChanged){
     card.querySelector('.today-start')?.addEventListener('click',()=>{todayApi.start(activeProjectId,refOf(item),actor());onChanged?.();});
     card.querySelector('.today-cancel-start')?.addEventListener('click',()=>{todayApi.cancelStart(activeProjectId,refOf(item),actor());onChanged?.();});
   }
-  const report=linkButton(documentRef, 'wbs-costline-manual today-section-action', 'ثبت گزارش'); report.addEventListener('click',()=>openReport(item,onChanged));
+  const report=linkButton(documentRef, 'wbs-costline-manual today-section-action', ownLatestReport(entity)?'ویرایش گزارش':'ثبت گزارش'); report.addEventListener('click',()=>openReport(item,onChanged));
   if(assigned) card.appendChild(detailRow(documentRef, '', report));
   if(actions.childElementCount) card.appendChild(detailRow(documentRef, 'تأیید', actions));
   card.appendChild(renderReports(documentRef,entity));
