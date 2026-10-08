@@ -60,8 +60,8 @@ test('report is edited in place with edit time and upload placeholders remain di
   await expect(sheet.getByRole('button',{name:/فایل/})).toBeDisabled();
   await sheet.locator('[name="reportDescription"]').fill('گزارش اجرای امروز');
   await sheet.locator('.wbs-sheet-save').click();
-  await expect(card.getByRole('button',{name:'ثبت گزارش'})).toBeVisible();
-  await card.getByRole('button',{name:'ثبت گزارش'}).click();
+  await expect(card.getByRole('button',{name:'ویرایش گزارش'})).toBeVisible();
+  await card.getByRole('button',{name:'ویرایش گزارش'}).click();
   await sheet.locator('[name="reportDescription"]').fill('گزارش اصلاح‌شده امروز');
   await sheet.locator('.wbs-sheet-save').click();
   await expect(card).toContainText('گزارش اصلاح‌شده امروز');
