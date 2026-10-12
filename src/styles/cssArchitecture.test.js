@@ -17,14 +17,14 @@ const jsFiles = walk(join(root, 'src')).filter(path => path.endsWith('.js') && !
 
 test('the application has one deterministic CSS manifest and no embedded application CSS', () => {
   const html = read('index.html');
-  const linkedCss = [...html.matchAll(/<link\b[^>]*href="([^"]+\.css(?:\?[^\"]*)?)"[^>]*>/g)]
+  const linkedCss = [...html.matchAll(/<link\b[^>]*href="([^"]+\.css(?:\?[^"]*)?)"[^>]*>/g)]
     .map(match => stripQuery(match[1]));
   assert.deepEqual(linkedCss, ['src/styles/index.css']);
   assert.equal(/<style\b/i.test(html), false);
   assert.equal(/\sstyle\s*=/i.test(html), false);
 
   const manifest = read('src/styles/index.css');
-  const imports = [...manifest.matchAll(/@import url\("\.\/([^"\n]+\.css(?:\?[^\"]*)?)"\);/g)]
+  const imports = [...manifest.matchAll(/@import url\("\.\/([^"\n]+\.css(?:\?[^"]*)?)"\);/g)]
     .map(match => stripQuery(match[1]));
   assert.equal(imports.length, new Set(imports).size, 'each owner must be imported once');
   assert.deepEqual(imports, [
@@ -38,6 +38,7 @@ test('the application has one deterministic CSS manifest and no embedded applica
     'components/form-template.css', 'features/contact-form-template.css', 'workspace/navigation.css',
     'features/wbs-home.css', 'features/wbs-standard-polish.css', 'features/wbs-work-tasks.css', 'features/wbs-today.css', 'features/wbs-timeline-sticky.css', 'features/wbs-timeline-details.css',
     'features/wbs-costline.css',
+    'workspace/app-frame.css',
   ]);
   assert.deepEqual(new Set(imports.map(path => join(stylesRoot, path))), new Set(cssFiles.filter(path => !path.endsWith('/index.css'))));
 });
@@ -115,4 +116,18 @@ test('deleted delivery and legacy injection selectors do not return', () => {
   assert.equal(cssFiles.some(path => path.endsWith('/legacy.css')), false);
   assert.equal(cssFiles.some(path => readFileSync(path, 'utf8').includes('#contract-edit-no-draft-style')), false);
   assert.equal(read('index.html').includes('src/styles/legacy.css'), false);
+});
+
+test('one central frame owns the responsive column for every page', () => {
+  const tokens = read('src/styles/tokens.css');
+  const frame = read('src/styles/workspace/app-frame.css');
+  assert.match(tokens, /--layout-max:1360px;/);
+  assert.match(tokens, /--layout-form:440px;/);
+  assert.match(frame, /@media \(max-width:767\.98px\)/);
+  assert.match(frame, /@media \(min-width:768px\) and \(max-width:1023\.98px\)/);
+  assert.match(frame, /@media \(min-width:1024px\)/);
+  assert.match(frame, /@media \(min-width:1360px\)/);
+  assert.match(frame, /width:var\(--layout-max\)/);
+  assert.equal(frame.includes('#projectsPage'), false);
+  assert.equal(frame.includes('#profilePage'), false);
 });
