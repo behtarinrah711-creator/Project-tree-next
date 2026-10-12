@@ -35,16 +35,19 @@ test.afterEach(() => { delete globalThis.KarhaAppData; });
 test('task API validates references and dates and persists a canonical Work reference', () => {
   installFixture();
   assert.equal(workTaskApi.create('p1', 'w1', draft({ assigneeContactId:'missing' })).code, 'assignee');
+  assert.equal(workTaskApi.create('p1', 'w1', draft({ counterpartyContactId:'missing' })).code, 'counterparty');
   assert.equal(workTaskApi.create('p1', 'w1', draft({ scheduleEnd:'1405/05/30' })).code, 'dates');
 
   const created = workTaskApi.create('p1', 'w1', draft({ weight:undefined }), () => 100);
   assert.equal(created.ok, false);
   assert.equal(created.code, 'weight');
 
-  const valid = workTaskApi.create('p1', 'w1', draft(), () => 100);
+  const valid = workTaskApi.create('p1', 'w1', draft({ counterpartyContactId:'c1', hasLaborPayroll:true }), () => 100);
   assert.equal(valid.ok, true);
   assert.equal(valid.task.workId, 'w1');
   assert.equal(valid.task.assigneeContactId, 'c1');
+  assert.equal(valid.task.counterpartyContactId, 'c1');
+  assert.equal(valid.task.hasLaborPayroll, true);
   assert.equal(typeof valid.task.weight, 'number');
 });
 

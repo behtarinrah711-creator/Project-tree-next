@@ -23,6 +23,7 @@ export function findProjectRecordReferences(projects,type,id){
           if(String(node.contractorContactId||'')===targetId) add(project,'پیمانکار کار اجرایی');
           (node.workTasks||[]).forEach(workTask=>{
             if(!workTask.trashed&&String(workTask.assigneeContactId||'')===targetId) add(project,'مسئول کار');
+            if(!workTask.trashed&&String(workTask.counterpartyContactId||'')===targetId) add(project,'طرف انجام کار');
             if(!workTask.trashed&&String(workTask.contractorContactId||'')===targetId) add(project,'پیمانکار کار');
           });
           (node.subtasks||[]).forEach(visit);

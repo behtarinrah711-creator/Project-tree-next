@@ -7,7 +7,7 @@ export const UNITS = ['متر', 'مترمربع', 'مترمکعب', 'کیلوگ�
 export const WORK_TYPE_TOGGLES = Object.freeze({
   'پیمانکار': [{key:'hasContract', label:'قرارداد'}, {key:'hasProgressReport', label:'صورت وضعیت'}],
   'خرید': [{key:'hasInvoice', label:'فاکتور'}, {key:'hasPreInvoice', label:'پیش فاکتور'}],
-  'نیروی کار': [{key:'hasContract', label:'قرارداد'}, {key:'hasProgressReport', label:'صورت وضعیت'}],
+  'نیروی کار': [{key:'hasContract', label:'قرارداد'}, {key:'hasProgressReport', label:'صورت وضعیت'}, {key:'hasLaborPayroll', label:'کارکرد و دستمزد'}],
   'حمل و نقل': [{key:'hasContract', label:'قرارداد'}, {key:'hasInvoice', label:'فاکتور'}, {key:'hasProgressReport', label:'صورت وضعیت'}],
   'خدمات': [{key:'hasContract', label:'قرارداد'}, {key:'hasInvoice', label:'فاکتور'}, {key:'hasProgressReport', label:'صورت وضعیت'}],
   'پیگیری': [],

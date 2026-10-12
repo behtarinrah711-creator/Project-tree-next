@@ -16,6 +16,14 @@ const TYPE_CLASSES = new Map([
   ['پیمانکار','type-1'], ['خرید','type-2'], ['نیروی کار','type-3'], ['حمل و نقل','type-4'],
   ['خدمات','type-5'], ['پیگیری','type-6'], ['ماشین آلات','type-7'],
 ]);
+const COUNTERPARTY_LABELS = Object.freeze({
+  'پیمانکار':'پیمانکار',
+  'خرید':'فروشنده',
+  'نیروی کار':'شخص',
+  'حمل و نقل':'راننده',
+  'خدمات':'ارائه‌دهنده',
+  'ماشین آلات':'شخص',
+});
 
 function escapeHtml(value){
   return String(value ?? '').replace(/[&<>"']/g, char => ({
@@ -101,6 +109,32 @@ function renderToggles(container, type, task){
   container.appendChild(row);
 }
 
+function renderCounterparty(container, { type, contacts, value, onSelect, workId, documentRef }){
+  container.replaceChildren();
+  const label = COUNTERPARTY_LABELS[type];
+  if(!label) return;
+  const button = documentRef.createElement('button');
+  button.type = 'button'; button.name = 'taskCounterparty'; button.className = 'wbs-input';
+  button.dataset.value = value || '';
+  const paint = () => {
+    const selected = contacts.find(contact => String(contact.id) === String(button.dataset.value));
+    button.textContent = selected ? contactName(selected) : `انتخاب ${label}`;
+  };
+  button.addEventListener('click', () => openSearchPicker({
+    title:`انتخاب ${label}`, listTitle:'مخاطبین', selectedTitle:`${label} منتخب`,
+    contextKey:`wbs-task-counterparty:${workId}`,
+    items:contacts.map(contact => ({ id:contact.id, name:contactName(contact) })),
+    showStar:false, showAdd:false,
+    onSelect:selected => {
+      button.dataset.value = String(selected.id);
+      onSelect(button.dataset.value);
+      paint();
+    },
+  }));
+  paint();
+  container.appendChild(fieldRow(label, button));
+}
+
 function taskForm({ projectId, work, task = null, onChanged, readOnly=false, canDelete=true }){
   const editing = Boolean(task);
   const documentRef = document;
@@ -111,18 +145,29 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
     historyKey:`wbs-work-task:${projectId}:${task?.id || work.id}`,
     saveLabel:'ذخیره',readOnly,
     body(root){
+      const contacts = contactRepository.list(projectId).filter(contact => contact && !contact.trashed);
+      let counterpartyContactId = task?.counterpartyContactId || contractor?.id || '';
       const togglesContainer = documentRef.createElement('div');
       togglesContainer.className = 'wbs-toggles-container';
-      const type=optionButton({name:'taskType',value:task?.type || work.type || WORK_TYPES[0],options:WORK_TYPES.map(value=>({id:value,name:value})), onChange: val => renderToggles(togglesContainer, val, task)});
+      const counterpartyContainer = documentRef.createElement('div');
+      counterpartyContainer.className = 'wbs-counterparty-container';
+      const renderTypeFields = val => {
+        renderToggles(togglesContainer, val, task);
+        renderCounterparty(counterpartyContainer, {
+          type:val, contacts, value:counterpartyContactId, workId:work.id, documentRef,
+          onSelect:value => { counterpartyContactId = value; },
+        });
+      };
+      const type=optionButton({name:'taskType',value:task?.type || work.type || WORK_TYPES[0],options:WORK_TYPES.map(value=>({id:value,name:value})), onChange:renderTypeFields});
       root.appendChild(fieldRow('نوع کار',type));
       root.appendChild(togglesContainer);
-      renderToggles(togglesContainer, task?.type || work.type || WORK_TYPES[0], task);
+      root.appendChild(counterpartyContainer);
+      renderTypeFields(task?.type || work.type || WORK_TYPES[0]);
       root.appendChild(dateField(documentRef, 'taskStart', 'تاریخ شروع', task?.scheduleStart || ''));
       root.appendChild(dateField(documentRef, 'taskEnd', 'تاریخ پایان', task?.scheduleEnd || ''));
       const priority=optionButton({name:'taskPriority',value:task?.priority || 'normal',options:TASK_PRIORITIES.map(value=>({id:value,name:PRIORITY_LABELS[value]}))});
       root.appendChild(fieldRow('درجه اهمیت',priority));
 
-      const contacts = contactRepository.list(projectId).filter(contact => contact && !contact.trashed);
       const assignee = documentRef.createElement('button');
       assignee.type = 'button'; assignee.name = 'taskAssignee'; assignee.className = 'wbs-input';
       assignee.dataset.value = task?.assigneeContactId || '';
@@ -184,6 +229,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         scheduleEnd:root.querySelector('[name="taskEnd"]').dataset.value,
         priority:root.querySelector('[name="taskPriority"]').value,
         assigneeContactId:root.querySelector('[name="taskAssignee"]').dataset.value,
+        counterpartyContactId:root.querySelector('[name="taskCounterparty"]')?.dataset.value || '',
         approvalContactId:root.querySelector('[name="taskApprover"]').dataset.value,
         contractorContactId:'',
         weight:Number(root.querySelector('[name="taskWeight"]').dataset.value),
@@ -194,6 +240,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         hasProgressReport:!!root.querySelector('[name="hasProgressReport"]')?.checked,
         hasInvoice:!!root.querySelector('[name="hasInvoice"]')?.checked,
         hasPreInvoice:!!root.querySelector('[name="hasPreInvoice"]')?.checked,
+        hasLaborPayroll:!!root.querySelector('[name="hasLaborPayroll"]')?.checked,
         isRental:!!root.querySelector('[name="isRental"]')?.checked,
       };
       const result = editing
