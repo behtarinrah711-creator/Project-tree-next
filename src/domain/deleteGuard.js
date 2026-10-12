@@ -104,6 +104,7 @@ export function findContactReferences(projects, contactId){
         if(String(task.assigneeContactId || '') === target){
           add(project, 'work_task', task.id, 'مسئول کار');
         }
+        if(String(task.counterpartyContactId || '') === target) add(project, 'work_task_counterparty', task.id, 'طرف انجام کار');
         if(String(task.contractorContactId || '') === target) add(project, 'work_task_contractor', task.id, 'پیمانکار کار');
       });
       visit(node?.subtasks);
