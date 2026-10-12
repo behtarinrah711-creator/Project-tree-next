@@ -1,0 +1,97 @@
+/* Central frame. Mobile-first, one contract for every page.
+   Mobile  < 768px
+   Tablet  768–1023px
+   Desktop ≥ 1024px
+   Column  ≥ 1360px, matching --layout-max in tokens.css
+   Pages inherit this shell. Do not set a page width anywhere else. */
+
+.content,
+.topbar,
+.workspace-project-context,
+.page-overlay{
+  width:100%;
+  min-width:0;
+  max-width:100%;
+}
+
+.sms-auth-form{
+  width:min(100% - (var(--layout-gutter) * 2), var(--layout-form));
+  max-width:var(--layout-form);
+  margin-inline:auto;
+  align-self:center;
+}
+
+body.saosa-logged-out .content .saosa-guest-card,
+body.saosa-no-project .content .saosa-empty-project-card{
+  width:min(100%, var(--layout-form));
+  max-width:var(--layout-form);
+  align-self:center;
+  flex:0 1 auto;
+}
+
+/* Mobile: the shell is the viewport. */
+@media (max-width:767.98px){
+  body{
+    width:100%;
+    min-width:0;
+  }
+  .page-overlay,
+  .sms-auth-screen,
+  .bottom-nav{
+    left:0;
+    right:0;
+  }
+}
+
+/* Tablet: still the viewport. Touch navigation stays at the bottom. */
+@media (min-width:768px) and (max-width:1023.98px){
+  body{
+    width:100%;
+    min-width:0;
+  }
+  .page-overlay,
+  .sms-auth-screen,
+  .bottom-nav{
+    left:0;
+    right:0;
+  }
+}
+
+/* Laptop and up: the bottom bar is a labeled row, not a phone dock. */
+@media (min-width:1024px){
+  .bottom-nav{
+    height:64px;
+    padding-inline:24px;
+  }
+  .bottom-nav-item{
+    flex-direction:row;
+    gap:8px;
+    height:48px;
+  }
+  .bottom-nav-item span{
+    font-size:14px;
+    font-weight:600;
+  }
+  .workspace-page{
+    bottom:64px !important;
+  }
+}
+
+/* Wide screens: one centered column. Fixed shells use the same edges. */
+@media (min-width:1360px){
+  html{
+    background:#e7e9ec;
+  }
+  body{
+    width:var(--layout-max);
+    max-width:var(--layout-max);
+    margin-inline:auto;
+  }
+  .page-overlay,
+  .sms-auth-screen,
+  .bottom-nav{
+    left:calc((100% - var(--layout-max)) / 2);
+    right:calc((100% - var(--layout-max)) / 2);
+    width:auto;
+  }
+}
