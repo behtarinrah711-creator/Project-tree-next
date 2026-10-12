@@ -85,15 +85,14 @@ function renderToggles(container, type, task){
   const toggles = WORK_TYPE_TOGGLES[type] || [];
   if(!toggles.length) return;
   const row = document.createElement('div');
-  row.style.cssText = 'display:flex; flex-wrap:wrap; gap:12px; margin:8px 0 12px; align-items:center;';
+  row.className = 'wbs-toggles-row';
   toggles.forEach(toggle => {
     const label = document.createElement('label');
-    label.style.cssText = 'display:flex; align-items:center; gap:6px; font-size:14px; cursor:pointer; flex:1 1 30%; min-width:90px;';
+    label.className = 'wbs-toggle-label';
     const checkbox = document.createElement('input');
     checkbox.type = 'checkbox';
     checkbox.name = toggle.key;
     checkbox.checked = Boolean(task?.[toggle.key]);
-    checkbox.style.cssText = 'width:18px; height:18px; accent-color:#1976d2;';
     const text = document.createElement('span');
     text.textContent = toggle.label;
     label.append(checkbox, text);
