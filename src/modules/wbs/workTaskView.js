@@ -1,6 +1,6 @@
 import { contactRepository } from '../../data/contactRepository.js';
 import { projectRepository } from '../../data/projectRepository.js';
-import { WORK_TYPES } from '../../domain/wbs/normalize.js';
+import { WORK_TYPES, WORK_TYPE_TOGGLES } from '../../domain/wbs/normalize.js';
 import { workTaskApi } from '../../domain/wbs/workTaskApi.js';
 import { TASK_PRIORITIES, isTaskComplete } from '../../domain/wbs/workTaskModel.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
@@ -13,8 +13,8 @@ import { predecessorField } from './predecessorField.js';
 
 const PRIORITY_LABELS = Object.freeze({ low:'کم', normal:'عادی', high:'زیاد' });
 const TYPE_CLASSES = new Map([
-  ['اجرا','type-1'], ['خرید','type-2'], ['نیروی کار','type-3'], ['پیمانکار','type-4'],
-  ['کرایه','type-5'], ['خدمات','type-6'], ['پیگیری','type-7'],
+  ['پیمانکار','type-1'], ['خرید','type-2'], ['نیروی کار','type-3'], ['حمل و نقل','type-4'],
+  ['خدمات','type-5'], ['پیگیری','type-6'], ['ماشین آلات','type-7'],
 ]);
 
 function escapeHtml(value){
@@ -39,7 +39,7 @@ function linkedContractor(projectId, workId){
   return contactRepository.get(projectId, contract.contractorId || contract.contactId) || null;
 }
 
-function optionButton({ name, value, options }){
+function optionButton({ name, value, options, onChange }){
   const root=document.createElement('div');root.className='wbs-task-option-select';
   const input=document.createElement('input');input.type='hidden';input.name=name;input.value=String(value ?? '');
   const button=document.createElement('button');button.type='button';button.className='wbs-input wbs-task-option-trigger';
@@ -51,7 +51,7 @@ function optionButton({ name, value, options }){
   options.forEach(item=>{
     const option=document.createElement('button');option.type='button';option.className='wbs-task-option-item';
     option.textContent=item.name;option.dataset.value=String(item.id);
-    option.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();input.value=String(item.id);paint();close();});
+    option.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();input.value=String(item.id);paint();close(); if(onChange) onChange(input.value);});
     menu.appendChild(option);
   });
   button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();const opening=!menu.classList.contains('open');document.querySelectorAll('.wbs-task-option-menu.open').forEach(open=>open.classList.remove('open'));document.querySelectorAll('.wbs-task-option-trigger.open').forEach(open=>open.classList.remove('open'));if(opening){menu.classList.add('open');button.classList.add('open');}});
@@ -80,6 +80,27 @@ function dateField(documentRef, name, label, value){
   return fieldRow(label, button);
 }
 
+function renderToggles(container, type, task){
+  container.innerHTML = '';
+  const toggles = WORK_TYPE_TOGGLES[type] || [];
+  if(!toggles.length) return;
+  const row = document.createElement('div');
+  row.className = 'wbs-toggles-row';
+  toggles.forEach(toggle => {
+    const label = document.createElement('label');
+    label.className = 'wbs-toggle-label';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.name = toggle.key;
+    checkbox.checked = Boolean(task?.[toggle.key]);
+    const text = document.createElement('span');
+    text.textContent = toggle.label;
+    label.append(checkbox, text);
+    row.appendChild(label);
+  });
+  container.appendChild(row);
+}
+
 function taskForm({ projectId, work, task = null, onChanged, readOnly=false, canDelete=true }){
   const editing = Boolean(task);
   const documentRef = document;
@@ -90,8 +111,12 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
     historyKey:`wbs-work-task:${projectId}:${task?.id || work.id}`,
     saveLabel:'ذخیره',readOnly,
     body(root){
-      const type=optionButton({name:'taskType',value:task?.type || work.type || WORK_TYPES[0],options:WORK_TYPES.map(value=>({id:value,name:value}))});
+      const togglesContainer = documentRef.createElement('div');
+      togglesContainer.className = 'wbs-toggles-container';
+      const type=optionButton({name:'taskType',value:task?.type || work.type || WORK_TYPES[0],options:WORK_TYPES.map(value=>({id:value,name:value})), onChange: val => renderToggles(togglesContainer, val, task)});
       root.appendChild(fieldRow('نوع کار',type));
+      root.appendChild(togglesContainer);
+      renderToggles(togglesContainer, task?.type || work.type || WORK_TYPES[0], task);
       root.appendChild(dateField(documentRef, 'taskStart', 'تاریخ شروع', task?.scheduleStart || ''));
       root.appendChild(dateField(documentRef, 'taskEnd', 'تاریخ پایان', task?.scheduleEnd || ''));
       const priority=optionButton({name:'taskPriority',value:task?.priority || 'normal',options:TASK_PRIORITIES.map(value=>({id:value,name:PRIORITY_LABELS[value]}))});
@@ -165,6 +190,11 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         amount:Number(root.querySelector('[name="taskAmount"]').dataset.value) || 0,
         predecessorIds:root._taskDependency?.value() || [],
         dependencies:root._taskDependency?.relations() || [],
+        hasContract:!!root.querySelector('[name="hasContract"]')?.checked,
+        hasProgressReport:!!root.querySelector('[name="hasProgressReport"]')?.checked,
+        hasInvoice:!!root.querySelector('[name="hasInvoice"]')?.checked,
+        hasPreInvoice:!!root.querySelector('[name="hasPreInvoice"]')?.checked,
+        isRental:!!root.querySelector('[name="isRental"]')?.checked,
       };
       const result = editing
         ? workTaskApi.update(projectId, work.id, task.id, draft)

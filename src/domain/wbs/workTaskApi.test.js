@@ -20,7 +20,7 @@ function installFixture(){
 function draft(overrides = {}){
   return {
     title:'نصب یونیت زمینی',
-    type:'اجرا',
+    type:'پیمانکار',
     scheduleStart:'1405/06/01',
     scheduleEnd:'1405/06/03',
     priority:'high',
@@ -51,7 +51,7 @@ test('task API validates references and dates and persists a canonical Work refe
 test('task weight edits and weighted completion drive Work completion', () => {
   const store = installFixture();
   const first = workTaskApi.create('p1', 'w1', draft({ title:'خرید', weight:2 }), () => 100).task;
-  const second = workTaskApi.create('p1', 'w1', draft({ title:'اجرا', weight:1 }), () => 200).task;
+  const second = workTaskApi.create('p1', 'w1', draft({ title:'پیمانکار', weight:1 }), () => 200).task;
 
   const edited = workTaskApi.update('p1', 'w1', second.id, { weight:3, type:'خدمات' }, () => 300);
   assert.equal(edited.ok, true);

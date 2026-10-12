@@ -1,8 +1,18 @@
 export const KIND_STAGE = 'stage';
 export const KIND_WORK = 'work';
 
-export const WORK_TYPES = ['اجرا', 'خرید', 'نیروی کار', 'پیمانکار', 'کرایه', 'خدمات', 'پیگیری'];
+export const WORK_TYPES = ['پیمانکار', 'خرید', 'نیروی کار', 'حمل و نقل', 'خدمات', 'پیگیری', 'ماشین آلات'];
 export const UNITS = ['متر', 'مترمربع', 'مترمکعب', 'کیلوگرم', 'تن', 'عدد', 'دستگاه', 'ست', 'ساعت', 'روز', 'ماه'];
+
+export const WORK_TYPE_TOGGLES = Object.freeze({
+  'پیمانکار': [{key:'hasContract', label:'قرارداد'}, {key:'hasProgressReport', label:'صورت وضعیت'}],
+  'خرید': [{key:'hasInvoice', label:'فاکتور'}, {key:'hasPreInvoice', label:'پیش فاکتور'}],
+  'نیروی کار': [{key:'hasContract', label:'قرارداد'}, {key:'hasProgressReport', label:'صورت وضعیت'}],
+  'حمل و نقل': [{key:'hasContract', label:'قرارداد'}, {key:'hasInvoice', label:'فاکتور'}, {key:'hasProgressReport', label:'صورت وضعیت'}],
+  'خدمات': [{key:'hasContract', label:'قرارداد'}, {key:'hasInvoice', label:'فاکتور'}, {key:'hasProgressReport', label:'صورت وضعیت'}],
+  'پیگیری': [],
+  'ماشین آلات': [{key:'hasContract', label:'قرارداد'}, {key:'hasInvoice', label:'فاکتور'}, {key:'hasProgressReport', label:'صورت وضعیت'}, {key:'isRental', label:'اجاره ای'}],
+});
 
 export function itemKind(item){
   return item && item.kind === KIND_STAGE ? KIND_STAGE : KIND_WORK;

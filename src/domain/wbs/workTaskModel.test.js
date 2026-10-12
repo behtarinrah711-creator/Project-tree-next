@@ -4,7 +4,7 @@ import { activeWorkTasks, normalizeWorkTask, taskWeightOf, workTaskProgress } fr
 import { lineTotal, normalizeItem, progressOf } from './normalize.js';
 
 test('work task defaults, reference and weighted progress are canonical', () => {
-  const task = normalizeWorkTask({ id:'t1', title:'نصب', type:'اجرا' }, 'w1');
+  const task = normalizeWorkTask({ id:'t1', title:'نصب', type:'پیمانکار' }, 'w1');
   assert.equal(task.workId, 'w1');
   assert.equal(task.weight, 1);
   assert.equal(task.completed, false);

@@ -31,3 +31,7 @@
 .wbs-work-task.is-dragging{opacity:.72;background:#fff;z-index:2;}
 .wbs-task-drop-indicator{display:none;position:relative;z-index:30;height:4px;margin:-2px 8px;background:var(--green);box-shadow:0 1px 4px rgba(0,7,93,.35);pointer-events:none;}
 .wbs-task-drop-indicator.is-visible{display:block;}
+
+.wbs-toggles-row{display:flex;flex-wrap:wrap;gap:12px;margin:8px 0 12px;align-items:center;}
+.wbs-toggle-label{display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer;flex:1 1 30%;min-width:90px;}
+.wbs-toggle-label input[type="checkbox"]{width:18px;height:18px;accent-color:#1976d2;}
