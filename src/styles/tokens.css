@@ -2,6 +2,10 @@
 /* legacy style anonymous */
 :root{
     --workspace-page-top:98px;
+    /* قرارداد چیدمان. مدیاکوئری نمی‌تواند این متغیرها را بخواند؛ عددها در app-frame.css باید همین باشند. */
+    --layout-max:1360px;
+    --layout-form:440px;
+    --layout-gutter:16px;
     /* رنگ‌های معنایی؛ حالت روشن فعلی عمداً بدون تغییر بصری حفظ شده است. */
     --bg:#f1f3f4;
     --surface:#ffffff;
