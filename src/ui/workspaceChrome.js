@@ -27,6 +27,15 @@ const MENU_TITLES = Object.freeze({
   projects: 'مدیریت پروژه‌ها',
 });
 
+const ACCOUNTING_SUBPAGE_TITLES = Object.freeze({
+  'accounting-statements': 'صورت وضعیت‌ها',
+  'pending-payments': 'در انتظار پرداخت',
+  'account-ledger': 'گردش حساب',
+  'party-ledgers': 'گردش حساب اشخاص',
+  'petty-cash': 'تنخواه',
+  'payment-forecast': 'پیش‌بینی پرداخت‌ها',
+});
+
 const INNER_SECTION_SUBPAGES = new Set([
   'statusList','statusForm','collab','projectTrash','contractTemplates','contractTemplateForm',
   'statusTest','contracts','contractForm','projectSettings','roleManagement',
@@ -189,7 +198,8 @@ export function installWorkspaceChrome({
       return;
     }
 
-    let subTitle = INNER_SECTION_SUBPAGES.has(subpage) ? '' : sectionTitle;
+    let subTitle = ACCOUNTING_SUBPAGE_TITLES[subpage]
+      || (INNER_SECTION_SUBPAGES.has(subpage) ? '' : sectionTitle);
     if(!INNER_SECTION_SUBPAGES.has(subpage)){
       if(key === 'Financial' && (subpage === 'statusList' || subpage === 'statusForm')) subTitle = 'صورت وضعیت';
       else if(key === 'Settings' && subpage === 'collab') subTitle = 'همکاران پروژه';

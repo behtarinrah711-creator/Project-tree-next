@@ -99,7 +99,7 @@ function refreshCurrentFooterPage(){
     workspaceSubpage=null; showOnlyWorkspacePage('reportsPage'); renderReportsWorkspace(); updateWorkspaceContextBar(); return;
   }
   if(active.id==='bottomFinancialBtn'){
-    workspaceSubpage=null; showOnlyWorkspacePage('accountingPage'); renderAccountingWorkspace(); updateWorkspaceContextBar(); return;
+    showOnlyWorkspacePage('accountingPage'); renderAccountingWorkspace(); updateWorkspaceContextBar(); return;
   }
   renderAll();
 }

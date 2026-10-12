@@ -167,6 +167,21 @@ function closeBottomPages(){
 }
 
 function handleWorkspaceContextBack(){
+  if(workspaceSubpage && Object.hasOwn({
+    'accounting-statements': true,
+    'pending-payments': true,
+    'account-ledger': true,
+    'party-ledgers': true,
+    'petty-cash': true,
+    'payment-forecast': true,
+  }, workspaceSubpage)){
+    if(window.KarhaBrowserHistory?.back) window.KarhaBrowserHistory.back();
+    else {
+      const projectId = getActiveTab();
+      if(projectId) window.KarhaApp?.router?.navigate(projectId, 'accounting', { replace:true });
+    }
+    return;
+  }
   if(workspaceSubpage === 'contractTemplates'){ closeContractTemplatesPage(); return; }
   if(workspaceSubpage === 'contractTemplateForm'){ requestCloseContractTemplateForm(); return; }
   if(workspaceSubpage === 'contractForm'){ requestCloseContractForm(); return; }
@@ -210,14 +225,12 @@ function renderReportsWorkspace(){
   if(module?.render) module.render();
 }
 
-/* VERSION 232 — صورت‌وضعیت‌ها از منوی حسابداری حذف شدند.
-   منطق و داده‌های داخلی فعلاً دست‌نخورده می‌مانند تا در صورت نیاز
-   بعداً محل و مسیر جدیدشان را جداگانه طراحی کنیم. */
 function renderAccountingWorkspace(){
   ensureHomeSelection();
-  const body=document.getElementById('accountingPageBody');
-  if(!body) return;
-  body.innerHTML='';
+  const projectId=getActiveTab();
+  const moduleId=window.KarhaRoute?.moduleId || 'accounting';
+  const module=window.KarhaApp?.modules?.get(moduleId);
+  module?.mount?.({projectId});
 }
 
 // D6 compatibility view adapter. Route/module/surface selection is owned by
