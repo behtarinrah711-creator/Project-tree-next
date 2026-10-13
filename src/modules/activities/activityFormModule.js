@@ -3,7 +3,7 @@ import { activityApi } from '../../domain/activityApi.js';
 
 const runtime=new Proxy({}, {get(_target,key){return window.KarhaApp?.getActivityFormRuntime?.()?.[key];}});
 
-const state={dirty:false,projectId:null,activityId:null};
+const state={dirty:false,projectId:null,activityId:null,onCreated:null};
 
 function getProjectId(){
   return projectContext.getProjectId?.()
@@ -12,12 +12,13 @@ function getProjectId(){
     || null;
 }
 
-function beginForm(activityId=null){
+function beginForm(activityId=null,onCreated=null){
   const projectId=getProjectId();
   if(!projectId) return null;
   state.dirty=false;
   state.projectId=projectId;
   state.activityId=activityId;
+  state.onCreated=typeof onCreated==='function' ? onCreated : null;
   runtime.enterActivityForm?.();
   runtime.pushWorkspaceHistory?.('activityForm');
   return projectId;
@@ -51,6 +52,12 @@ function renderForm(activity=null){
   cancel.textContent='انصراف';
   cancel.onclick=()=>closeActivityForm();
   actions.append(save,cancel);
+  document.getElementById('activityFormHeaderConfirm')?.remove();
+  const header=document.querySelector('#activityFormPage .inner-section-bar');
+  const confirm=document.createElement('button');
+  confirm.id='activityFormHeaderConfirm';confirm.type='button';confirm.className='inner-section-action';
+  confirm.textContent='تأیید';confirm.onclick=()=>save.click();
+  header?.appendChild(confirm);
   return true;
 }
 
@@ -69,14 +76,17 @@ function saveActivity(input,activity){
     runtime.showToast?.(result.message || 'ذخیره فعالیت انجام نشد');
     return false;
   }
+  const projectId=state.projectId;
+  const onCreated=state.onCreated;
   state.dirty=false;
   closeActivityForm(true);
-  runtime.renderActivities?.(state.projectId);
+  runtime.renderActivities?.(projectId);
+  if(!activity && result.activity) onCreated?.(result.activity);
   return true;
 }
 
-export function openActivityForm(){
-  if(!beginForm()) return false;
+export function openActivityForm({onCreated=null}={}){
+  if(!beginForm(null,onCreated)) return false;
   return renderForm();
 }
 
@@ -94,6 +104,8 @@ export function closeActivityForm(fromPopState=false){
   state.dirty=false;
   state.projectId=null;
   state.activityId=null;
+  state.onCreated=null;
+  document.getElementById('activityFormHeaderConfirm')?.remove();
   return true;
 }
 
