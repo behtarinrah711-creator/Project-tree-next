@@ -15,7 +15,7 @@ function readContactDraft(){ try{return JSON.parse(localStorageAdapter.getItem(C
 function writeContactDraft(draft){ try{localStorageAdapter.setItem(CONTACT_DRAFT_KEY,JSON.stringify(draft));}catch{} }
 function clearContactDraft(id){ const draft=readContactDraft(); if(!draft||!id||draft.id===id){try{localStorageAdapter.removeItem(CONTACT_DRAFT_KEY);}catch{}} }
 
-export function openContactForm(contact=null,{activityId=null}={}){
+export function openContactForm(contact=null,{activityId=null,onCreated=null}={}){
   const projectId=getProjectId();
   if(!projectId) return false;
   const storedContact=contact?.id ? contactApi.get(projectId, contact.id) : null;
@@ -180,8 +180,17 @@ export function openContactForm(contact=null,{activityId=null}={}){
       selectedTitle:'فعالیت منتخب',
       contextKey:'contactActivity',
       items:acts.map(a=>({id:a.id, name:a.name||a.title||'فعالیت'})),
+      resourceType:'activity',
       showStar:true,
-      showAdd:false,
+      showAdd:true,
+      onAdd:()=>{
+        window.KarhaSearchTemplate?.close(false);
+        const activitiesModule=window.KarhaApp?.modules?.get('activities');
+        activitiesModule?.openActivityForm?.({onCreated:created=>{
+          selectedActivityId=String(created.id);
+          c.activities=[selectedActivityId];syncActVal();formIsDirty=true;
+        }});
+      },
       onSelect:(item)=>{
         selectedActivityId=String(item.id);
         c.activities=selectedActivityId?[selectedActivityId]:[];
@@ -220,6 +229,7 @@ export function openContactForm(contact=null,{activityId=null}={}){
   natRow.querySelectorAll('input').forEach(r=>r.addEventListener('change',toggleNationality)); toggleNationality();
   const cleanupContactForm=()=>{
     clearTimeout(draftTimer);
+    document.getElementById('contactFormHeaderConfirm')?.remove();
     window.removeEventListener('beforeunload',contactBeforeUnload);
     if(window.__commitContactDraft===commitDraftNow) window.__commitContactDraft=null; if(window.__contactBackGuard===backToList) window.__contactBackGuard=null;
     cleanupContactActivityPicker();
@@ -295,6 +305,9 @@ export function openContactForm(contact=null,{activityId=null}={}){
     commitDraftNow(); formIsDirty=false; discardAndBack();
   };
 
+  document.getElementById('contactFormHeaderConfirm')?.remove();
+  const headerConfirm=document.createElement('button');headerConfirm.id='contactFormHeaderConfirm';headerConfirm.type='button';headerConfirm.className='inner-section-action';headerConfirm.textContent='تأیید';headerConfirm.onclick=()=>save.click();header?.appendChild(headerConfirm);
+
   const clearInvalid=el=>{if(el) el.classList.remove('contact-invalid');};
   const markInvalid=el=>{if(el) el.classList.add('contact-invalid');};
   [ 'lastName','type' ].forEach(k=>{const el=wrap.querySelector(`[data-key="${k}"]`)?.closest('.contact-field'); if(el){const input=wrap.querySelector(`[data-key="${k}"]`); input?.addEventListener('input',()=>clearInvalid(el)); input?.addEventListener('change',()=>clearInvalid(el));}});
@@ -321,7 +334,7 @@ export function openContactForm(contact=null,{activityId=null}={}){
     const bankVals=bankEntries.map(entry=>{const getE=k=>entry.querySelector(`[data-key="${k}"]`)?.value.trim()||'';return {ownerName:getE('ownerName'),bankName:getE('bankName'),card:toEnglishDigits(getE('card')),iban:toEnglishDigits(getE('iban')),account:toEnglishDigits(getE('account'))};}).filter(b=>b.ownerName||b.bankName||b.card||b.iban||b.account);
     c.pending=false;c.draftUpdatedAt=null;c.nationalityType=nat;c.nationality=get('nationality');c.foreignId=toEnglishDigits(get('foreignId'));c.foreignIdImages=nat==='غیر ایرانی'?c.foreignIdImages:[];c.iranianDocumentImages=nat==='ایرانی'?c.iranianDocumentImages:[];c.foreignIdImage=c.foreignIdImages[0]||'';
     c.firstName=firstName;c.lastName=lastName;c.fatherName=get('fatherName');c.name=[firstName,lastName].filter(Boolean).join(' ');c.nationalId=nat==='ایرانی'?toEnglishDigits(nationalId):'';c.address=get('address');c.postalCode=toEnglishDigits(get('postalCode'));c.phones=phoneVals;c.phone=phoneVals[0]||'';c.type=typeVal;c.activities=selectedActivityId?[selectedActivityId]:[];c.bankAccounts=bankVals;c.cards=bankVals.map(x=>x.card).filter(Boolean);c.ibans=bankVals.map(x=>x.iban).filter(Boolean);c.accounts=bankVals.map(x=>x.account).filter(Boolean);
-    if(!contactApi.save(projectId, c).ok) return; clearContactDraft(c.id); contactSavedSuccessfully=true; backToList();
+    const result=contactApi.save(projectId, c); if(!result.ok) return; clearContactDraft(c.id); contactSavedSuccessfully=true; if(!contact && result.contact) onCreated?.(result.contact); backToList();
   };
 }
 
