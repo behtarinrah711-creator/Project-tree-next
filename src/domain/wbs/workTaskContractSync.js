@@ -2,6 +2,15 @@ import { activityRepository } from '../../data/activityRepository.js';
 import { contractRepository } from '../../data/contractRepository.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { workTaskRepository } from '../../data/workTaskRepository.js';
+import { markDirty, persist } from '../../sync/persistAdapter.js';
+
+function publishTaskChange(projectId, saved){
+  if(saved && typeof window!=='undefined'){
+    markDirty(projectId);
+    persist({local:false});
+  }
+  return saved;
+}
 
 function taskContract(projectId, workId, taskId){
   return contractRepository.list(projectId).find(contract =>
@@ -66,7 +75,7 @@ export function syncContractFromWorkTask(projectId, workId, task, clock=Date.now
 export function syncWorkTaskFromContract(projectId, contract){
   if(!contract?.workTaskId || !contract?.projectItemId) return null;
   const activityId=String(contract.activityId || '');
-  return workTaskRepository.update(projectId,contract.projectItemId,contract.workTaskId,task=>({
+  const saved=workTaskRepository.update(projectId,contract.projectItemId,contract.workTaskId,task=>({
     ...task,
     hasContract:true,
     activityId,
@@ -74,6 +83,7 @@ export function syncWorkTaskFromContract(projectId, contract){
     activities:activityId ? [activityId] : [],
     counterpartyContactId:String(contract.contractorId || contract.contactId || ''),
   }));
+  return publishTaskChange(projectId,saved);
 }
 
 export function clearWorkTaskContractFlag(projectId, contract){

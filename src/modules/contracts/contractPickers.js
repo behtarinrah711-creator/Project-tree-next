@@ -3,6 +3,7 @@ import { projectRepository } from '../../data/projectRepository.js';
 import { wbsApi } from '../../domain/wbs/wbsApi.js';
 import { activityIdsOf, isStage } from '../../domain/wbs/normalize.js';
 import { cloneTemplateIntoContract, syncContractPartyData } from './realContractDomain.js';
+import { syncWorkTaskFromContract } from '../../domain/wbs/workTaskContractSync.js';
 
 function getProject(projectId=null){
   const id=projectId || projectContext.getProjectId?.() || projectContext.getActiveProjectId?.();
@@ -39,6 +40,7 @@ export function selectContractor(projectId,state,item){
   if(aid && !(contact?.activities||[]).some(x=>String(x)===aid)) return false;
   state.contractorId=item.id; state.contactId=item.id;
   syncContractPartyData(state,p);
+  syncWorkTaskFromContract(projectId,state);
   return true;
 }
 export function selectEmployer(projectId,state,item){
@@ -81,6 +83,7 @@ export function selectActivity(projectId,state,item){
     if(!ids.includes(String(item.id))) ids.push(String(item.id));
     state.activityIds=ids;
   }
+  syncWorkTaskFromContract(projectId,state);
   const ts=templatesForActivity(p, item.id);
   if(ts.length===1) applyTemplateToState(state, ts[0]);
   else clearTemplateState(state);

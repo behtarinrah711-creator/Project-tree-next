@@ -11,6 +11,7 @@ globalThis.document = globalThis.document || { getElementById(){ return null; } 
 const {
   selectProjectItem,
   selectActivity,
+  selectContractor,
   selectContractTemplate,
   openContractTemplatePicker,
   contractActivityChoices,
@@ -127,5 +128,32 @@ test('user can pick one of multiple templates into contract state', () => {
   assert.equal(state.templateId, 'tpl-b');
   assert.equal(state.items.length, 1);
   assert.equal(state.paymentItems[0].id, 'p2');
+});
+
+test('system contract picker immediately syncs activity and contractor to its work task',()=>{
+  const store=boot({
+    id:'p-c6',
+    tasks:[{id:'w6',kind:'work',text:'کار',subtasks:[],workTasks:[{
+      id:'task-6',workId:'w6',title:'اجرای کار',type:'پیمانکار',priority:'normal',weight:1,
+      hasContract:true,activityId:'act-old',activityIds:['act-old'],activities:['act-old'],
+      counterpartyContactId:'contact-old',
+    }]}],
+    contacts:[
+      {id:'contact-old',name:'قدیمی',activities:['act-old']},
+      {id:'contact-new',name:'جدید',activities:['act-new']},
+    ],
+    activityTemplates:[
+      {id:'act-old',name:'فعالیت قدیمی',trashed:false},
+      {id:'act-new',name:'فعالیت جدید',trashed:false},
+    ],
+    contractTemplates:[],contracts:[],
+  });
+  const state={workTaskId:'task-6',projectItemId:'w6',activityId:'act-old',activityIds:['act-old'],contractorId:'contact-old'};
+  assert.equal(selectActivity('p-c6',state,{id:'act-new'}),true);
+  assert.equal(selectContractor('p-c6',state,{id:'contact-new'}),true);
+  const task=store.getSnapshot().projects[0].tasks[0].workTasks[0];
+  assert.equal(task.activityId,'act-new');
+  assert.deepEqual(task.activityIds,['act-new']);
+  assert.equal(task.counterpartyContactId,'contact-new');
 });
 });
