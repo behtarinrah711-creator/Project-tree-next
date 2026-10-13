@@ -185,6 +185,7 @@ function openContractPicker(kind) {
     const people = window?.KarhaApp?.modules?.get('people');
     if (typeof people?.openContactForm === 'function') {
       people.openContactForm(null, {
+        pickerMode:true,
         ...(kind === 'contractor' ? { activityId: state.activityId } : {}),
         onCreated: created => {
           const item={id:created.id};
@@ -198,7 +199,7 @@ function openContractPicker(kind) {
   const addActivity = () => {
     closePicker();
     const activities=window?.KarhaApp?.modules?.get('activities');
-    activities?.openActivityForm?.({onCreated:created=>{
+    activities?.openActivityForm?.({pickerMode:true,onCreated:created=>{
       contractPickers.selectActivity(project.id,state,{id:created.id});
       pickerChanged();
     }});
