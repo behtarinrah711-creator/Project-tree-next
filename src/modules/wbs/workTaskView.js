@@ -1,4 +1,5 @@
 import { contactRepository } from '../../data/contactRepository.js';
+import { activityRepository } from '../../data/activityRepository.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { WORK_TYPES, WORK_TYPE_TOGGLES } from '../../domain/wbs/normalize.js';
 import { workTaskApi } from '../../domain/wbs/workTaskApi.js';
@@ -36,9 +37,11 @@ function contactName(contact){
     || contact?.name || 'مخاطب';
 }
 
-function linkedContractForWork(projectId, workId){
+function linkedContractForWork(projectId, workId, taskId=''){
   return (projectRepository.find(projectId)?.contracts || [])
-    .find(contract => !contract.trashed && String(contract.projectItemId || '') === String(workId));
+    .find(contract => !contract.trashed
+      && String(contract.projectItemId || '') === String(workId)
+      && (!taskId || String(contract.workTaskId || '') === String(taskId)));
 }
 
 function linkedContractor(projectId, workId){
@@ -88,7 +91,7 @@ function dateField(documentRef, name, label, value){
   return fieldRow(label, button);
 }
 
-function renderToggles(container, type, task){
+function renderToggles(container, type, task, {contractLocked=false}={}){
   container.innerHTML = '';
   const toggles = WORK_TYPE_TOGGLES[type] || [];
   if(!toggles.length) return;
@@ -101,6 +104,10 @@ function renderToggles(container, type, task){
     checkbox.type = 'checkbox';
     checkbox.name = toggle.key;
     checkbox.checked = Boolean(task?.[toggle.key]);
+    if(toggle.key==='hasContract' && contractLocked){
+      checkbox.disabled=true;
+      checkbox.title='برای برداشتن تیک، ابتدا خود قرارداد را حذف کنید';
+    }
     const text = document.createElement('span');
     text.textContent = toggle.label;
     label.append(checkbox, text);
@@ -135,10 +142,28 @@ function renderCounterparty(container, { type, contacts, value, onSelect, workId
   container.appendChild(fieldRow(label, button));
 }
 
+function renderActivity(container,{activities,value,onSelect,workId,documentRef}){
+  const button=documentRef.createElement('button');
+  button.type='button';button.name='taskActivity';button.className='wbs-input';button.dataset.value=value || '';
+  const paint=()=>{
+    const selected=activities.find(activity=>String(activity.id)===String(button.dataset.value));
+    button.textContent=selected?.name || 'انتخاب فعالیت';
+  };
+  button.addEventListener('click',()=>openSearchPicker({
+    title:'انتخاب فعالیت',listTitle:'فعالیت‌ها',selectedTitle:'فعالیت منتخب',
+    contextKey:`wbs-task-activity:${workId}`,
+    items:[{id:'',name:'بدون فعالیت'},...activities.map(activity=>({id:activity.id,name:activity.name||'فعالیت'}))],
+    showStar:false,showAdd:false,
+    onSelect:selected=>{button.dataset.value=String(selected.id);onSelect(button.dataset.value);paint();},
+  }));
+  paint();container.appendChild(fieldRow('فعالیت',button));
+}
+
 function taskForm({ projectId, work, task = null, onChanged, readOnly=false, canDelete=true }){
   const editing = Boolean(task);
   const documentRef = document;
   const contractor = linkedContractor(projectId, work.id);
+  const linkedContract=task ? linkedContractForWork(projectId,work.id,task.id) : null;
   let titleEditor;
   const overlay=openWbsSheet({
     title:'کار:', presentation:'stage-create', autoFocus:false,
@@ -146,13 +171,17 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
     saveLabel:'ذخیره',readOnly,
     body(root){
       const contacts = contactRepository.list(projectId).filter(contact => contact && !contact.trashed);
+      const activities=activityRepository.list(projectId).filter(activity=>activity && !activity.trashed);
       let counterpartyContactId = task?.counterpartyContactId || contractor?.id || '';
+      let activityId=task?.activityId || '';
       const togglesContainer = documentRef.createElement('div');
       togglesContainer.className = 'wbs-toggles-container';
       const counterpartyContainer = documentRef.createElement('div');
       counterpartyContainer.className = 'wbs-counterparty-container';
       const renderTypeFields = val => {
-        renderToggles(togglesContainer, val, task);
+        renderToggles(togglesContainer, val, task,{
+          contractLocked:Boolean(linkedContract && !(linkedContract.isDraft || linkedContract.status==='draft')),
+        });
         renderCounterparty(counterpartyContainer, {
           type:val, contacts, value:counterpartyContactId, workId:work.id, documentRef,
           onSelect:value => { counterpartyContactId = value; },
@@ -163,6 +192,9 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       root.appendChild(togglesContainer);
       root.appendChild(counterpartyContainer);
       renderTypeFields(task?.type || work.type || WORK_TYPES[0]);
+      const activityContainer=documentRef.createElement('div');
+      renderActivity(activityContainer,{activities,value:activityId,workId:work.id,documentRef,onSelect:value=>{activityId=value;}});
+      root.appendChild(activityContainer);
       root.appendChild(dateField(documentRef, 'taskStart', 'تاریخ شروع', task?.scheduleStart || ''));
       root.appendChild(dateField(documentRef, 'taskEnd', 'تاریخ پایان', task?.scheduleEnd || ''));
       const priority=optionButton({name:'taskPriority',value:task?.priority || 'normal',options:TASK_PRIORITIES.map(value=>({id:value,name:PRIORITY_LABELS[value]}))});
@@ -229,6 +261,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         scheduleEnd:root.querySelector('[name="taskEnd"]').dataset.value,
         priority:root.querySelector('[name="taskPriority"]').value,
         assigneeContactId:root.querySelector('[name="taskAssignee"]').dataset.value,
+        activityId:root.querySelector('[name="taskActivity"]')?.dataset.value || '',
         counterpartyContactId:root.querySelector('[name="taskCounterparty"]')?.dataset.value || '',
         approvalContactId:root.querySelector('[name="taskApprover"]').dataset.value,
         contractorContactId:'',
@@ -249,6 +282,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       if(!result.ok){
         documentRef.defaultView?.KarhaUI?.showToast?.(result.code === 'dates'
           ? 'تاریخ پایان باید برابر یا بعد از تاریخ شروع باشد'
+          : result.code === 'contract_locked' ? 'برای برداشتن تیک قرارداد، ابتدا خود قرارداد را حذف کنید'
           : result.code === 'approver' ? 'مسئول تأیید را انتخاب کنید'
           : 'اطلاعات کار را کامل و معتبر وارد کنید');
         return false;

@@ -45,6 +45,8 @@ function strip(item){
       scheduleEnd:task.scheduleEnd,
       priority:task.priority,
       assigneeContactId:task.assigneeContactId,
+      activityId:task.activityId || '',
+      activityIds:task.activityId ? [task.activityId] : [],
       counterpartyContactId:task.counterpartyContactId,
       contractorContactId:task.contractorContactId,
       weight:Number(task.weight) || 1,

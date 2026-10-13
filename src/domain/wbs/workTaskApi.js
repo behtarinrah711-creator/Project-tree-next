@@ -7,6 +7,8 @@ import { TASK_PRIORITIES, activeWorkTasks, normalizeWorkTask, workTaskProgress }
 import { validatePredecessors } from './scheduling.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { cardFundingKey, placeCardFunding } from './fundingReceipts.js';
+import { activityRepository } from '../../data/activityRepository.js';
+import { linkedWorkTaskContract, syncContractFromWorkTask } from './workTaskContractSync.js';
 
 function publish(projectId){
   if(typeof window !== 'undefined'){
@@ -27,6 +29,7 @@ function validate(projectId, workId, input){
   const counterpartyContactId = String(input?.counterpartyContactId || '');
   const contractorContactId = String(input?.contractorContactId || '');
   const approvalContactId = String(input?.approvalContactId || '');
+  const activityId = String(input?.activityId || '');
   if(!title) return { ok:false, code:'title' };
   if(input?.type !== '' && !WORK_TYPES.includes(input?.type)) return { ok:false, code:'type' };
   if(!TASK_PRIORITIES.includes(input?.priority)) return { ok:false, code:'priority' };
@@ -35,9 +38,11 @@ function validate(projectId, workId, input){
   if(counterpartyContactId && !contactRepository.get(projectId, counterpartyContactId)) return { ok:false, code:'counterparty' };
   if(contractorContactId && !contactRepository.get(projectId, contractorContactId)) return { ok:false, code:'contractor' };
   if(approvalContactId && !contactRepository.get(projectId, approvalContactId)) return { ok:false, code:'approver' };
+  if(activityId && !activityRepository.get(projectId, activityId)) return { ok:false, code:'activity' };
   if(!validDateRange(input.scheduleStart || '', input.scheduleEnd || '')) return { ok:false, code:'dates' };
   if(!workTaskRepository.work(projectId, workId)) return { ok:false, code:'work' };
   return { ok:true, value:{ ...input, title, weight, assigneeContactId, counterpartyContactId, contractorContactId,
+    activityId, activityIds:activityId ? [activityId] : [], activities:activityId ? [activityId] : [],
     requiresManagementApproval:Boolean(approvalContactId),
     approvalContactId,
   } };
@@ -86,6 +91,7 @@ export const workTaskApi = {
     }, workId);
     const saved = workTaskRepository.save(projectId, workId, task, { clearWorkPredecessors:firstTask && inherited.length > 0 });
     if(!saved) return { ok:false, code:'persist' };
+    syncContractFromWorkTask(projectId,workId,saved,clock);
     syncWorkCompletion(projectId, workId); publish(projectId);
     return { ok:true, task:saved };
   },
@@ -93,6 +99,10 @@ export const workTaskApi = {
     const current = workTaskRepository.get(projectId, workId, taskId);
     if(!current) return { ok:false, code:'not_found' };
     const next = { ...current, ...patch };
+    const linkedContract=linkedWorkTaskContract(projectId,workId,taskId);
+    if(linkedContract && !(linkedContract.isDraft || linkedContract.status==='draft') && !next.hasContract){
+      return {ok:false,code:'contract_locked'};
+    }
     const dependencyCheck = validatePredecessors(projectRepository.find(projectId)?.tasks || [], taskId, next.predecessorIds || []);
     if(!dependencyCheck.ok) return dependencyCheck;
     const checked = validate(projectId, workId, next);
@@ -105,6 +115,7 @@ export const workTaskApi = {
       createdAt:current.createdAt, updatedAt:clock(),
     });
     if(!saved) return { ok:false, code:'persist' };
+    syncContractFromWorkTask(projectId,workId,saved,clock);
     if(cardFundingKey(projectRepository.find(projectId), taskId) !== beforeKey){
       projectRepository.updateProject(projectId, row => placeCardFunding(row, taskId));
     }

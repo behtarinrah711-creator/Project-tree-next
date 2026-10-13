@@ -21,6 +21,9 @@ test('work form uses Saosa sheets, pickers and numpad without progress submissio
   assert.doesNotMatch(source,/'پیگیری':'/);
   assert.match(source,/contextKey:`wbs-task-counterparty:/);
   assert.match(source,/counterpartyContactId:root\.querySelector/);
+  assert.match(source,/contextKey:`wbs-task-activity:/);
+  assert.match(source,/activityId:root\.querySelector\('\[name="taskActivity"\]'\)/);
+  assert.match(source,/فعالیت منتخب/);
   assert.match(source,/hasLaborPayroll:/);
   assert.match(source,/numericButton\('taskWeight'/);
   assert.match(source,/numericButton\('taskAmount'/);

@@ -3,12 +3,15 @@ import assert from 'node:assert/strict';
 import { createAppDataStore } from '../../data/appDataStore.js';
 import { workTaskApi } from './workTaskApi.js';
 import { rollupProgress } from './estimate.js';
+import { contractApi } from '../contractApi.js';
 
 function installFixture(){
   const store = createAppDataStore({ storage:null });
   store.replaceSnapshot({ schemaVersion:8, activeTab:'p1', viewMode:'simple', starredOrder:[], projects:[{
     id:'p1',
-    contacts:[{ id:'c1', name:'مهندس احمدی' }],
+    contacts:[{ id:'c1', name:'مهندس احمدی' },{id:'c2',name:'مهندس محمدی'}],
+    activityTemplates:[{id:'a1',name:'آرماتوربندی'},{id:'a2',name:'قالب‌بندی'}],
+    contracts:[],
     tasks:[{ id:'s1', kind:'stage', subtasks:[{
       id:'w1', kind:'work', text:'اجرای کابینت', progress:35, done:false, status:'in_progress', subtasks:[],
     }] }],
@@ -36,19 +39,46 @@ test('task API validates references and dates and persists a canonical Work refe
   installFixture();
   assert.equal(workTaskApi.create('p1', 'w1', draft({ assigneeContactId:'missing' })).code, 'assignee');
   assert.equal(workTaskApi.create('p1', 'w1', draft({ counterpartyContactId:'missing' })).code, 'counterparty');
+  assert.equal(workTaskApi.create('p1', 'w1', draft({ activityId:'missing' })).code, 'activity');
   assert.equal(workTaskApi.create('p1', 'w1', draft({ scheduleEnd:'1405/05/30' })).code, 'dates');
 
   const created = workTaskApi.create('p1', 'w1', draft({ weight:undefined }), () => 100);
   assert.equal(created.ok, false);
   assert.equal(created.code, 'weight');
 
-  const valid = workTaskApi.create('p1', 'w1', draft({ counterpartyContactId:'c1', hasLaborPayroll:true }), () => 100);
+  const valid = workTaskApi.create('p1', 'w1', draft({ counterpartyContactId:'c1', activityId:'a1', hasLaborPayroll:true }), () => 100);
   assert.equal(valid.ok, true);
   assert.equal(valid.task.workId, 'w1');
   assert.equal(valid.task.assigneeContactId, 'c1');
   assert.equal(valid.task.counterpartyContactId, 'c1');
+  assert.equal(valid.task.activityId, 'a1');
+  assert.deepEqual(valid.task.activityIds, ['a1']);
   assert.equal(valid.task.hasLaborPayroll, true);
   assert.equal(typeof valid.task.weight, 'number');
+});
+
+test('contract toggle creates one system draft and contract edits sync activity back to the task',()=>{
+  const store=installFixture();
+  const created=workTaskApi.create('p1','w1',draft({counterpartyContactId:'c1',activityId:'a1',hasContract:true}),()=>100);
+  assert.equal(created.ok,true);
+  let project=store.getSnapshot().projects[0];
+  assert.equal(project.contracts.length,1);
+  const draftContract=project.contracts[0];
+  assert.equal(draftContract.status,'draft');
+  assert.equal(draftContract.isDraft,true);
+  assert.equal(draftContract.workTaskId,created.task.id);
+  assert.equal(draftContract.activityId,'a1');
+  assert.equal(draftContract.contractorId,'c1');
+
+  assert.equal(contractApi.save('p1',{...draftContract,activityId:'a2',contractorId:'c2'}).ok,true);
+  let synced=workTaskApi.get('p1','w1',created.task.id);
+  assert.equal(synced.activityId,'a2');
+  assert.equal(synced.counterpartyContactId,'c2');
+  assert.equal(workTaskApi.update('p1','w1',created.task.id,{hasContract:false}).code,'contract_locked');
+
+  assert.equal(contractApi.trash('p1',draftContract.id).ok,true);
+  synced=workTaskApi.get('p1','w1',created.task.id);
+  assert.equal(synced.hasContract,false);
 });
 
 test('task weight edits and weighted completion drive Work completion', () => {
