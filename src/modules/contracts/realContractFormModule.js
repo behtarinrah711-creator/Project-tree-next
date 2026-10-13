@@ -190,6 +190,7 @@ function openContractPicker(kind) {
 
   if (kind === 'contractor') return contractPickers.openContractorPicker(project.id, state, pickerChanged, addContact);
   if (kind === 'employer') return contractPickers.openEmployerPicker(project.id, state, pickerChanged, addContact);
+  if (kind === 'activity') return contractPickers.openActivityPicker(project.id, state, pickerChanged);
   return contractPickers.openProjectItemPicker(project.id, state, pickerChanged);
 }
 
@@ -411,9 +412,11 @@ function renderContractForm() {
   if (!state.contractPlace) state.contractPlace = projectPlace;
   ftTextRow(form, 'محل انعقاد قرارداد', state.contractPlace || '', value => { state.contractPlace = value; }, { placeholder: 'پیش‌فرض: محل پروژه' });
 
-  ftSelectRow(form, 'آیتم پروژه', state.projectItemPath || '', () => openContractPicker('projectItem'), { placeholder: 'انتخاب' });
+  if(state.workTaskId) ftTextRow(form,'آیتم پروژه',state.projectItemPath || '',()=>{}, {readonly:true,placeholder:'توسط سیستم انتخاب شده'});
+  else ftSelectRow(form, 'آیتم پروژه', state.projectItemPath || '', () => openContractPicker('projectItem'), { placeholder: 'انتخاب' });
   ftSelectRow(form, 'کارفرما', state.employerId ? contactDisplayName(findContact(state.employerId)) : '', () => openContractPicker('employer'), { placeholder: 'انتخاب' });
   ftSelectRow(form, 'پیمانکار', state.contractorId ? contactDisplayName(findContact(state.contractorId)) : '', () => openContractPicker('contractor'), { placeholder: 'انتخاب' });
+  ftSelectRow(form, 'فعالیت', activityName, () => openContractPicker('activity'), { placeholder: 'انتخاب' });
 
   const templates = contractTemplatesDomain.getContractTemplates(project).filter(template => !template.trashed);
   const matchingTemplates = templates.filter(template => String(template.activityId) === String(state.activityId));

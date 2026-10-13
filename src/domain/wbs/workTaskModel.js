@@ -55,6 +55,13 @@ export function normalizeWorkTask(task, workId = ''){
     scheduleEnd:/^\d{4}\/\d{2}\/\d{2}$/.test(String(task.scheduleEnd || '')) ? task.scheduleEnd : '',
     priority:TASK_PRIORITIES.includes(task.priority) ? task.priority : 'normal',
     assigneeContactId:String(task.assigneeContactId || ''),
+    activityId:String(task.activityId || task.activityIds?.[0] || task.activities?.[0] || ''),
+    activityIds:(task.activityId || task.activityIds?.[0] || task.activities?.[0])
+      ? [String(task.activityId || task.activityIds?.[0] || task.activities?.[0])]
+      : [],
+    activities:(task.activityId || task.activityIds?.[0] || task.activities?.[0])
+      ? [String(task.activityId || task.activityIds?.[0] || task.activities?.[0])]
+      : [],
     counterpartyContactId:String(task.counterpartyContactId || ''),
     approvalContactId:String(task.approvalContactId || ''),
     requiresManagementApproval:Boolean(task.approvalContactId),

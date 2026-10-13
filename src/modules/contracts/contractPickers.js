@@ -74,10 +74,13 @@ function relatedActivityIds(projectId, state){
 export function selectActivity(projectId,state,item){
   const p=getProject(projectId); if(!p||!state||!item)return false;
   state.activityId=item.id;
-  if(state.projectItemId) wbsApi.attachActivity(projectId, state.projectItemId, item.id);
-  const ids=relatedActivityIds(projectId, state);
-  if(!ids.includes(String(item.id))) ids.push(String(item.id));
-  state.activityIds=ids;
+  if(state.workTaskId) state.activityIds=[String(item.id)];
+  else{
+    if(state.projectItemId) wbsApi.attachActivity(projectId,state.projectItemId,item.id);
+    const ids=relatedActivityIds(projectId,state);
+    if(!ids.includes(String(item.id))) ids.push(String(item.id));
+    state.activityIds=ids;
+  }
   const ts=templatesForActivity(p, item.id);
   if(ts.length===1) applyTemplateToState(state, ts[0]);
   else clearTemplateState(state);
@@ -162,6 +165,7 @@ export function openEmployerPicker(projectId,state,onChange,onAdd){
 }
 export function contractActivityChoices(projectId,state){
   const p=getProject(projectId); if(!p) return [];
+  if(state?.workTaskId) return activities(p);
   const ids=Array.isArray(state?.activityIds)?state.activityIds.map(String):[];
   const pool=activities(p);
   return ids.length ? pool.filter(a=>ids.some(id=>String(a.id)===id)) : pool;

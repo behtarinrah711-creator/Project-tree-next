@@ -53,7 +53,7 @@ function contractRowData(projectId,c){
   const contact=findContact(projectId,c.contractorId||c.contactId);
   const title=c.title || ('قرارداد '+(a?.name||''));
   const person=contact ? ([contact.firstName,contact.lastName].filter(Boolean).join(' ')||contact.name) : 'بدون مخاطب';
-  const meta=[person,a?.name||'بدون فعالیت',money(c.amount)].join(' · ');
+  const meta=[person,a?.name||'بدون فعالیت',money(c.amount),c.isDraft||c.status==='draft'?'در انتظار تکمیل':''].filter(Boolean).join(' · ');
   return {title,meta,created:contractCreatedParts(c.createdAt)};
 }
 

@@ -4,6 +4,7 @@ import { getSession } from '../core/session.js';
 import { canDeleteContract } from './deleteGuard.js';
 import { isOffline } from './mergePolicy.js';
 import { markDirty as adapterMarkDirty, persist as adapterPersist } from '../sync/persistAdapter.js';
+import { clearWorkTaskContractFlag, syncWorkTaskFromContract } from './wbs/workTaskContractSync.js';
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
@@ -82,7 +83,8 @@ function saveContractRecord(projectId, draft, {status = null} = {}){
   record.updatedAt = Date.now();
 
   if(!contractRepository.save(projectId, record)) return deny('conflict', 'ذخیره قرارداد انجام نشد');
-  publishLive(projectId, ['contracts']);
+  syncWorkTaskFromContract(projectId,record);
+  publishLive(projectId, ['contracts','tasks']);
   return allow({ contract: record });
 }
 
@@ -126,8 +128,10 @@ export const contractApi = {
     const check = canDeleteContract(projectRepository.getProjectsList(), contractId);
     if(!check.ok) return deny('in_use', 'این قرارداد قابل حذف نیست؛ هنوز صورت وضعیت به آن وصل است', { refs: check.refs });
 
+    const contract=contractRepository.get(projectId,contractId);
     if(!contractRepository.softDelete(projectId, contractId)) return deny('conflict', 'حذف قرارداد انجام نشد');
-    publishLive(projectId, ['contracts']);
+    clearWorkTaskContractFlag(projectId,contract);
+    publishLive(projectId, ['contracts','tasks']);
     return allow();
   },
 
