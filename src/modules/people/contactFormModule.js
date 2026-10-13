@@ -15,7 +15,7 @@ function readContactDraft(){ try{return JSON.parse(localStorageAdapter.getItem(C
 function writeContactDraft(draft){ try{localStorageAdapter.setItem(CONTACT_DRAFT_KEY,JSON.stringify(draft));}catch{} }
 function clearContactDraft(id){ const draft=readContactDraft(); if(!draft||!id||draft.id===id){try{localStorageAdapter.removeItem(CONTACT_DRAFT_KEY);}catch{}} }
 
-export function openContactForm(contact=null,{activityId=null,onCreated=null}={}){
+export function openContactForm(contact=null,{activityId=null,onCreated=null,pickerMode=false}={}){
   const projectId=getProjectId();
   if(!projectId) return false;
   const storedContact=contact?.id ? contactApi.get(projectId, contact.id) : null;
@@ -51,6 +51,7 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null}={}
   const header=page?.querySelector('.inner-section-bar');
   const h2=header?.querySelector('h2');
   const addBtn=document.getElementById('contactAddBtn');
+  if(pickerMode) page?.classList.remove('hidden');
   if(!enterContactFormShell({page,body,title:h2,addButton:addBtn,isEdit,setFormMode:runtime.setInternalFormMode})) return;
 
   const wrap=document.createElement('div'); wrap.className='contacts-page-form form-template';
@@ -186,7 +187,7 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null}={}
       onAdd:()=>{
         window.KarhaSearchTemplate?.close(false);
         const activitiesModule=window.KarhaApp?.modules?.get('activities');
-        activitiesModule?.openActivityForm?.({onCreated:created=>{
+        activitiesModule?.openActivityForm?.({pickerMode:true,onCreated:created=>{
           selectedActivityId=String(created.id);
           c.activities=[selectedActivityId];syncActVal();formIsDirty=true;
         }});
@@ -234,6 +235,7 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null}={}
     if(window.__commitContactDraft===commitDraftNow) window.__commitContactDraft=null; if(window.__contactBackGuard===backToList) window.__contactBackGuard=null;
     cleanupContactActivityPicker();
     leaveContactFormShell({page,title:h2,addButton:addBtn,setFormMode:runtime.setInternalFormMode});
+    if(pickerMode) page?.classList.add('hidden');
   };
   const contactBeforeUnload=(e)=>{
     // هنگام Refresh نمی‌توانیم پنجره سه‌گزینه‌ای سفارشی مرورگر بسازیم؛ فقط هشدار می‌دهیم که اطلاعات ذخیره نشده است.
@@ -252,8 +254,10 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null}={}
   let contactSavedSuccessfully=false;
   const discardAndBack=()=>{
     cleanupContactForm();
-    runtime.renderContacts(projectId);
-    if(header) header.querySelector('.inner-section-back').onclick=closeContactsToSettings;
+    if(!pickerMode){
+      runtime.renderContacts(projectId);
+      if(header) header.querySelector('.inner-section-back').onclick=closeContactsToSettings;
+    }
   };
   const showExitChoice=()=>{
     if(exitGuardOpen) return;
