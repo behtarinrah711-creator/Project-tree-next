@@ -107,6 +107,7 @@ function handleSearchTemplateBack(){
  *   title, listTitle, selectedTitle?,
  *   contextKey: 'contractor'|'employer'|...,
  *   items:[{id,name}],
+ *   resourceType: 'contact'|'activity'|'other',
  *   onSelect, onAdd, showStar, showAdd
  * }
  */
@@ -126,11 +127,12 @@ function openSearchTemplate(opts){
     listTitle: opts.listTitle||'موارد',
     selectedTitle: opts.selectedTitle || ((opts.listTitle||'موارد')+' منتخب'),
     contextKey,
+    resourceType: ['contact','activity'].includes(opts.resourceType) ? opts.resourceType : 'other',
     items,
     onSelect: typeof opts.onSelect==='function'?opts.onSelect:null,
     onAdd: typeof opts.onAdd==='function'?opts.onAdd:null,
     showStar: opts.showStar!==false,
-    showAdd: opts.showAdd!==false && typeof opts.onAdd==='function',
+    showAdd: ['contact','activity'].includes(opts.resourceType) && typeof opts.onAdd==='function',
     query:''
   };
   const titleEl=document.getElementById('searchTemplateTitle');
