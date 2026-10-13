@@ -131,7 +131,13 @@ function renderCounterparty(container, { type, contacts, value, onSelect, workId
     title:`انتخاب ${label}`, listTitle:'مخاطبین', selectedTitle:`${label} منتخب`,
     contextKey:`wbs-task-counterparty:${workId}`,
     items:contacts.map(contact => ({ id:contact.id, name:contactName(contact) })),
-    showStar:false, showAdd:false,
+    resourceType:'contact', showStar:false, showAdd:true,
+    onAdd:()=>{
+      window.KarhaSearchTemplate?.close(false);
+      window.KarhaApp?.modules?.get('people')?.openContactForm?.(null,{onCreated:created=>{
+        contacts.push(created);button.dataset.value=String(created.id);onSelect(button.dataset.value);paint();
+      }});
+    },
     onSelect:selected => {
       button.dataset.value = String(selected.id);
       onSelect(button.dataset.value);
@@ -153,7 +159,13 @@ function renderActivity(container,{activities,value,onSelect,workId,documentRef}
     title:'انتخاب فعالیت',listTitle:'فعالیت‌ها',selectedTitle:'فعالیت منتخب',
     contextKey:`wbs-task-activity:${workId}`,
     items:[{id:'',name:'بدون فعالیت'},...activities.map(activity=>({id:activity.id,name:activity.name||'فعالیت'}))],
-    showStar:false,showAdd:false,
+    resourceType:'activity',showStar:false,showAdd:true,
+    onAdd:()=>{
+      window.KarhaSearchTemplate?.close(false);
+      window.KarhaApp?.modules?.get('activities')?.openActivityForm?.({onCreated:created=>{
+        activities.push(created);button.dataset.value=String(created.id);onSelect(button.dataset.value);paint();
+      }});
+    },
     onSelect:selected=>{button.dataset.value=String(selected.id);onSelect(button.dataset.value);paint();},
   }));
   paint();container.appendChild(fieldRow('فعالیت',button));
@@ -211,7 +223,8 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         title:'انتخاب مسئول پیگیری', listTitle:'مخاطبین', selectedTitle:'مسئول پیگیری منتخب',
         contextKey:`wbs-task-assignee:${work.id}`,
         items:contacts.map(contact => ({ id:contact.id, name:contactName(contact) })),
-        showStar:false, showAdd:false,
+        resourceType:'contact', showStar:false, showAdd:true,
+        onAdd:()=>{ window.KarhaSearchTemplate?.close(false); window.KarhaApp?.modules?.get('people')?.openContactForm?.(null,{onCreated:created=>{contacts.push(created);assignee.dataset.value=String(created.id);paintAssignee();}}); },
         onSelect:selected => { assignee.dataset.value = String(selected.id); paintAssignee(); },
       }));
       paintAssignee();
@@ -220,7 +233,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       const approver=documentRef.createElement('button');
       approver.type='button';approver.name='taskApprover';approver.className='wbs-input';approver.dataset.value=task?.approvalContactId || '';
       const paintApprover=()=>{const selected=contacts.find(contact=>String(contact.id)===String(approver.dataset.value));approver.textContent=selected?contactName(selected):'انتخاب مسئول تأیید';};
-      approver.addEventListener('click',()=>openSearchPicker({title:'انتخاب مسئول تأیید',listTitle:'مخاطبین',selectedTitle:'مسئول تأیید منتخب',contextKey:`wbs-task-approver:${work.id}`,items:[{id:'',name:'بدون مسئول تأیید'},...contacts.map(contact=>({id:contact.id,name:contactName(contact)}))],showStar:false,showAdd:false,onSelect:selected=>{approver.dataset.value=String(selected.id);paintApprover();}}));
+      approver.addEventListener('click',()=>openSearchPicker({title:'انتخاب مسئول تأیید',listTitle:'مخاطبین',selectedTitle:'مسئول تأیید منتخب',contextKey:`wbs-task-approver:${work.id}`,items:[{id:'',name:'بدون مسئول تأیید'},...contacts.map(contact=>({id:contact.id,name:contactName(contact)}))],resourceType:'contact',showStar:false,showAdd:true,onAdd:()=>{window.KarhaSearchTemplate?.close(false);window.KarhaApp?.modules?.get('people')?.openContactForm?.(null,{onCreated:created=>{contacts.push(created);approver.dataset.value=String(created.id);paintApprover();}});},onSelect:selected=>{approver.dataset.value=String(selected.id);paintApprover();}}));
       paintApprover();
       root.appendChild(fieldRow('مسئول تأیید',approver));
 

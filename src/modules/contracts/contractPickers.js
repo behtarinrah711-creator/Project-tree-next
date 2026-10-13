@@ -148,7 +148,7 @@ export function openContractorPicker(projectId,state,onChange,onAdd){
   const aid=String(state?.activityId||'');
   const list=contacts(p).filter(c=>!aid || (c.activities||[]).some(x=>String(x)===aid));
   return openSearch({
-    title:'انتخاب پیمانکار',listTitle:'پیمانکاران',selectedTitle:'پیمانکاران منتخب',
+    title:'انتخاب پیمانکار',listTitle:'پیمانکاران',selectedTitle:'پیمانکاران منتخب',resourceType:'contact',
     contextKey:'contractor:'+aid,
     items:list.map(c=>({id:c.id,name:c.name||[c.firstName,c.lastName].filter(Boolean).join(' ')})),
     showStar:true,showAdd:true,onSelect:item=>{
@@ -159,7 +159,7 @@ export function openContractorPicker(projectId,state,onChange,onAdd){
 export function openEmployerPicker(projectId,state,onChange,onAdd){
   const p=getProject(projectId); if(!p)return false;
   return openSearch({
-    title:'انتخاب کارفرما',listTitle:'کارفرمایان',selectedTitle:'کارفرمایان منتخب',
+    title:'انتخاب کارفرما',listTitle:'کارفرمایان',selectedTitle:'کارفرمایان منتخب',resourceType:'contact',
     contextKey:'employer',items:contacts(p).map(c=>({id:c.id,name:c.name||[c.firstName,c.lastName].filter(Boolean).join(' ')})),
     showStar:true,showAdd:true,
     onSelect:item=>{selectEmployer(projectId,state,item);onChange?.(state);},
@@ -178,7 +178,7 @@ export function openActivityPicker(projectId,state,onChange,onAdd){
   const p=getProject(projectId); if(!p)return false;
   const acts=contractActivityChoices(projectId,state);
   return openSearch({
-    title:'انتخاب فعالیت',listTitle:'فعالیت‌ها',selectedTitle:'فعالیت‌های منتخب',
+    title:'انتخاب فعالیت',listTitle:'فعالیت‌ها',selectedTitle:'فعالیت‌های منتخب',resourceType:'activity',
     contextKey:'activity:projectItem:'+String(state?.projectItemId||''),
     items:acts.map(a=>({id:a.id,name:a.name||a.title||'فعالیت'})),
     showStar:true,showAdd:true,
@@ -199,7 +199,7 @@ export function openProjectItemPicker(projectId,state,onChange,onAddActivity){
   const p=getProject(projectId); if(!p)return false;
   const all=findProjectItems(p).filter(x=>!isStage(x.raw));
   return openSearch({
-    title:'انتخاب آیتم پروژه',listTitle:'آیتم‌های پروژه',selectedTitle:'آیتم‌های منتخب',
+    title:'انتخاب آیتم پروژه',listTitle:'آیتم‌های پروژه',selectedTitle:'آیتم‌های منتخب',resourceType:'other',
     contextKey:'projectItem',
     items:all.map(x=>({id:x.id,name:x.path,_raw:{...x.raw,rootId:x.rootId,path:x.path}})),
     showStar:true,showAdd:false,
