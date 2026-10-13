@@ -134,7 +134,7 @@ function renderCounterparty(container, { type, contacts, value, onSelect, workId
     resourceType:'contact', showStar:false, showAdd:true,
     onAdd:()=>{
       window.KarhaSearchTemplate?.close(false);
-      window.KarhaApp?.modules?.get('people')?.openContactForm?.(null,{onCreated:created=>{
+      window.KarhaApp?.modules?.get('people')?.openContactForm?.(null,{pickerMode:true,onCreated:created=>{
         contacts.push(created);button.dataset.value=String(created.id);onSelect(button.dataset.value);paint();
       }});
     },
@@ -162,7 +162,7 @@ function renderActivity(container,{activities,value,onSelect,workId,documentRef}
     resourceType:'activity',showStar:false,showAdd:true,
     onAdd:()=>{
       window.KarhaSearchTemplate?.close(false);
-      window.KarhaApp?.modules?.get('activities')?.openActivityForm?.({onCreated:created=>{
+      window.KarhaApp?.modules?.get('activities')?.openActivityForm?.({pickerMode:true,onCreated:created=>{
         activities.push(created);button.dataset.value=String(created.id);onSelect(button.dataset.value);paint();
       }});
     },
@@ -224,7 +224,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         contextKey:`wbs-task-assignee:${work.id}`,
         items:contacts.map(contact => ({ id:contact.id, name:contactName(contact) })),
         resourceType:'contact', showStar:false, showAdd:true,
-        onAdd:()=>{ window.KarhaSearchTemplate?.close(false); window.KarhaApp?.modules?.get('people')?.openContactForm?.(null,{onCreated:created=>{contacts.push(created);assignee.dataset.value=String(created.id);paintAssignee();}}); },
+        onAdd:()=>{ window.KarhaSearchTemplate?.close(false); window.KarhaApp?.modules?.get('people')?.openContactForm?.(null,{pickerMode:true,onCreated:created=>{contacts.push(created);assignee.dataset.value=String(created.id);paintAssignee();}}); },
         onSelect:selected => { assignee.dataset.value = String(selected.id); paintAssignee(); },
       }));
       paintAssignee();
@@ -233,7 +233,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       const approver=documentRef.createElement('button');
       approver.type='button';approver.name='taskApprover';approver.className='wbs-input';approver.dataset.value=task?.approvalContactId || '';
       const paintApprover=()=>{const selected=contacts.find(contact=>String(contact.id)===String(approver.dataset.value));approver.textContent=selected?contactName(selected):'انتخاب مسئول تأیید';};
-      approver.addEventListener('click',()=>openSearchPicker({title:'انتخاب مسئول تأیید',listTitle:'مخاطبین',selectedTitle:'مسئول تأیید منتخب',contextKey:`wbs-task-approver:${work.id}`,items:[{id:'',name:'بدون مسئول تأیید'},...contacts.map(contact=>({id:contact.id,name:contactName(contact)}))],resourceType:'contact',showStar:false,showAdd:true,onAdd:()=>{window.KarhaSearchTemplate?.close(false);window.KarhaApp?.modules?.get('people')?.openContactForm?.(null,{onCreated:created=>{contacts.push(created);approver.dataset.value=String(created.id);paintApprover();}});},onSelect:selected=>{approver.dataset.value=String(selected.id);paintApprover();}}));
+      approver.addEventListener('click',()=>openSearchPicker({title:'انتخاب مسئول تأیید',listTitle:'مخاطبین',selectedTitle:'مسئول تأیید منتخب',contextKey:`wbs-task-approver:${work.id}`,items:[{id:'',name:'بدون مسئول تأیید'},...contacts.map(contact=>({id:contact.id,name:contactName(contact)}))],resourceType:'contact',showStar:false,showAdd:true,onAdd:()=>{window.KarhaSearchTemplate?.close(false);window.KarhaApp?.modules?.get('people')?.openContactForm?.(null,{pickerMode:true,onCreated:created=>{contacts.push(created);approver.dataset.value=String(created.id);paintApprover();}});},onSelect:selected=>{approver.dataset.value=String(selected.id);paintApprover();}}));
       paintApprover();
       root.appendChild(fieldRow('مسئول تأیید',approver));
 
