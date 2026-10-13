@@ -176,21 +176,37 @@ function openContractPicker(kind) {
   const project = currentProject();
   if (!project || !state) return false;
 
-  const addContact = () => {
+  const closePicker = () => {
     if (typeof window?.KarhaSearchTemplate?.close === 'function') window.KarhaSearchTemplate.close(false);
     else helper('closeSearchTemplate', false);
-
+  };
+  const addContact = () => {
+    closePicker();
     const people = window?.KarhaApp?.modules?.get('people');
     if (typeof people?.openContactForm === 'function') {
-      people.openContactForm(null, kind === 'contractor' ? { activityId: state.activityId } : undefined);
-    } else {
-      helper('showToast', 'افزودن مخاطب در دسترس نیست');
-    }
+      people.openContactForm(null, {
+        ...(kind === 'contractor' ? { activityId: state.activityId } : {}),
+        onCreated: created => {
+          const item={id:created.id};
+          if(kind==='contractor') contractPickers.selectContractor(project.id,state,item);
+          else contractPickers.selectEmployer(project.id,state,item);
+          pickerChanged();
+        }
+      });
+    } else helper('showToast', 'افزودن مخاطب در دسترس نیست');
+  };
+  const addActivity = () => {
+    closePicker();
+    const activities=window?.KarhaApp?.modules?.get('activities');
+    activities?.openActivityForm?.({onCreated:created=>{
+      contractPickers.selectActivity(project.id,state,{id:created.id});
+      pickerChanged();
+    }});
   };
 
   if (kind === 'contractor') return contractPickers.openContractorPicker(project.id, state, pickerChanged, addContact);
   if (kind === 'employer') return contractPickers.openEmployerPicker(project.id, state, pickerChanged, addContact);
-  if (kind === 'activity') return contractPickers.openActivityPicker(project.id, state, pickerChanged);
+  if (kind === 'activity') return contractPickers.openActivityPicker(project.id, state, pickerChanged, addActivity);
   return contractPickers.openProjectItemPicker(project.id, state, pickerChanged);
 }
 
