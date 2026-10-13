@@ -3,7 +3,7 @@ import { activityApi } from '../../domain/activityApi.js';
 
 const runtime=new Proxy({}, {get(_target,key){return window.KarhaApp?.getActivityFormRuntime?.()?.[key];}});
 
-const state={dirty:false,projectId:null,activityId:null,onCreated:null};
+const state={dirty:false,projectId:null,activityId:null,onCreated:null,pickerMode:false};
 
 function getProjectId(){
   return projectContext.getProjectId?.()
@@ -12,15 +12,21 @@ function getProjectId(){
     || null;
 }
 
-function beginForm(activityId=null,onCreated=null){
+function beginForm(activityId=null,onCreated=null,pickerMode=false){
   const projectId=getProjectId();
   if(!projectId) return null;
   state.dirty=false;
   state.projectId=projectId;
   state.activityId=activityId;
   state.onCreated=typeof onCreated==='function' ? onCreated : null;
-  runtime.enterActivityForm?.();
-  runtime.pushWorkspaceHistory?.('activityForm');
+  state.pickerMode=!!pickerMode;
+  if(state.pickerMode){
+    document.getElementById('activityFormPage')?.classList.remove('hidden');
+    runtime.setInternalFormMode?.(true);
+  }else{
+    runtime.enterActivityForm?.();
+    runtime.pushWorkspaceHistory?.('activityForm');
+  }
   return projectId;
 }
 
@@ -85,8 +91,8 @@ function saveActivity(input,activity){
   return true;
 }
 
-export function openActivityForm({onCreated=null}={}){
-  if(!beginForm(null,onCreated)) return false;
+export function openActivityForm({onCreated=null,pickerMode=false}={}){
+  if(!beginForm(null,onCreated,pickerMode)) return false;
   return renderForm();
 }
 
@@ -99,12 +105,19 @@ export function openActivityEditForm(activity){
 }
 
 export function closeActivityForm(fromPopState=false){
-  window.KarhaChildHistory?.consume('activityForm',{fromPopState});
-  runtime.leaveActivityForm?.();
+  const pickerMode=state.pickerMode;
+  if(pickerMode){
+    document.getElementById('activityFormPage')?.classList.add('hidden');
+    runtime.setInternalFormMode?.(false);
+  }else{
+    window.KarhaChildHistory?.consume('activityForm',{fromPopState});
+    runtime.leaveActivityForm?.();
+  }
   state.dirty=false;
   state.projectId=null;
   state.activityId=null;
   state.onCreated=null;
+  state.pickerMode=false;
   document.getElementById('activityFormHeaderConfirm')?.remove();
   return true;
 }
