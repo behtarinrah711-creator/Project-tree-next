@@ -7,6 +7,7 @@ let dirty=false;
 let inlineAddState=null;
 let dragHandlesVisible=true;
 let editingId=null;
+let previewResizeObserver=null;
 
 function activeProject(projectId=null){
   const id=projectId || projectContext.getProjectId?.() || projectContext.getActiveProjectId?.();
@@ -53,6 +54,24 @@ function ctfCommitRoot(text,keep=true){
 }
 
 function ctfFocus(selector){ setTimeout(()=>{const el=document.querySelector(selector); if(el){el.focus(); const v=el.value.length; try{el.setSelectionRange(v,v)}catch(e){}}},0); }
+
+function mountCtfPrintPreview(body){
+  const viewport=document.createElement('div');viewport.className='ctf-preview-viewport';
+  const page=document.createElement('div');page.className='ctf-preview';page.innerHTML=ctfPreview();viewport.appendChild(page);body.appendChild(viewport);
+  const resize=()=>{
+    const available=Math.max(0,viewport.clientWidth);
+    const scale=Math.min(1,available/794);
+    page.style.left=Math.max(0,(available-(794*scale))/2)+'px';
+    page.style.transform='scale('+scale+')';
+    viewport.style.height=Math.ceil(1123*scale)+'px';
+  };
+  if(previewResizeObserver) previewResizeObserver.disconnect();
+  if(typeof ResizeObserver==='function'){
+    previewResizeObserver=new ResizeObserver(resize);
+    previewResizeObserver.observe(viewport);
+  }
+  requestAnimationFrame(resize);
+}
 
 function ctfPreview(){
   const st=state; const title=ctfActivityName()?('قرارداد '+ctfActivityName()):'قرارداد + فعالیت';
@@ -187,7 +206,7 @@ function renderContractTemplateFormClean(){
   const addBand=document.createElement('button');addBand.type='button';addBand.className='ctf-add-band';addBand.textContent='+ افزودن ماده';addBand.onclick=()=>{inlineAddState={parentId:null};renderContractTemplateFormClean();ctfFocus('#ctf-root-input');};
   list.appendChild(addBand); body.appendChild(list);
   st.paymentItems=[];
-  const previewTitle=document.createElement('div');previewTitle.className='ctf-section-title';previewTitle.textContent='پیش‌نمایش';body.appendChild(previewTitle);const preview=document.createElement('div');preview.className='ctf-preview';preview.innerHTML=ctfPreview();body.appendChild(preview);
+  const previewTitle=document.createElement('div');previewTitle.className='ctf-section-title';previewTitle.textContent='پیش‌نمایش';body.appendChild(previewTitle);mountCtfPrintPreview(body);
   const actions=document.getElementById('contractTemplateFormActions');actions.innerHTML='';const save=document.createElement('button');save.className='if-save';save.textContent='ذخیره';save.onclick=()=>contractTemplateFormModule.save(null,false);const draft=document.createElement('button');draft.className='if-draft';draft.textContent='پیش‌نویس';draft.onclick=()=>contractTemplateFormModule.saveDraft(null,false);const cancel=document.createElement('button');cancel.className='if-cancel';cancel.textContent='انصراف';cancel.onclick=()=>contractTemplateFormModule.close(false);actions.append(save,draft,cancel);
 }
 
