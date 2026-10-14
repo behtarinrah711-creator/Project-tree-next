@@ -51,6 +51,8 @@ test('contract template form uses module save actions and exposes inline clause 
   assert.doesNotMatch(source, /e\.key==='Enter'.*handleCommit/);
   assert.doesNotMatch(source, /insertLineBreak/);
   assert.match(source, /saveDraft\(null,false\)/);
+  assert.match(source, /ctfCommitChild\(parentId,input\.value,false\)/);
+  assert.match(source, /inlineAddState\?\.parentId===item\.id[\s\S]*ctf-add-material/);
 });
 
 
