@@ -46,4 +46,6 @@ test('contract template form uses module save actions and exposes inline clause 
   assert.match(source, /save\.onclick=\(\)=>contractTemplateFormModule\.save\(null,false\)/);
   assert.match(source, /confirm\.textContent='ثبت'/);
   assert.doesNotMatch(source, /save\.onclick=\(\)=>saveContractTemplateClean/);
+  assert.match(source, /band\.append\(num,text,del,grip\)/);
+  assert.match(source, /row\.append\(num2,tx,rm,grip2\)/);
 });
