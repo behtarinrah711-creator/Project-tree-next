@@ -66,7 +66,8 @@ test('contract template drafts persist as project records and list rerenders aft
 
 test('contract template mobile styles keep row actions together and remove resize grip', async () => {
   const css = await readFile(new URL('../styles/features/contracts.css', import.meta.url), 'utf8');
-  assert.match(css, /\.ctf-row-actions\{[^}]*direction:ltr/);
+  assert.match(css, /\.ctf-row-actions\{[^}]*position:absolute;left:12px[^}]*direction:ltr/);
+  assert.match(css, /\.ctf-row\{[^}]*padding:0 12px 0 110px/);
   assert.match(css, /\.ctf-inline-input\{[^}]*resize:none/);
   assert.match(css, /font-family:IRANSansX,IRANSans,Arial,sans-serif/);
 });
