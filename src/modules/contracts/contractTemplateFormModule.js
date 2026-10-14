@@ -98,11 +98,10 @@ function renderCtfGroup(item,index){
     grip.classList.add('is-inert-handle');
     grip.setAttribute('aria-hidden','true');
   }
-  band.appendChild(grip);
   const num=document.createElement('span');num.className='ctf-num';num.textContent=helper("toPersianDigits",item.number||'');
   const text=document.createElement('input');text.className='ctf-text';text.value=item.text||'';text.placeholder='عنوان ماده را وارد کنید…';text.oninput=()=>{item.text=text.value;dirty=true;};
   const del=document.createElement('button');del.type='button';del.className='ctf-delete';del.textContent='حذف';del.onclick=()=>{state.items.splice(index,1);helper("renumberContractItems",state.items);dirty=true;inlineAddState=null;renderContractTemplateFormClean();};
-  band.append(num,text,del); group.appendChild(band);
+  band.append(num,text,del,grip); group.appendChild(band);
   const children=item.children||[];
   // بندها همیشه بلافاصله زیر ماده مادر می‌آیند و ردیف افزودن بند همیشه بعد از آخرین بند قرار می‌گیرد.
   children.forEach((child,j)=>{
@@ -115,11 +114,10 @@ function renderCtfGroup(item,index){
       grip2.classList.add('is-inert-handle');
       grip2.setAttribute('aria-hidden','true');
     }
-    row.appendChild(grip2);
     const num2=document.createElement('span');num2.className='ctf-num';num2.textContent=helper("toPersianDigits",child.number||'');
     const tx=document.createElement('textarea');tx.className='ctf-text';tx.value=child.text||'';tx.placeholder='متن بند را وارد کنید…';tx.rows=1;tx.wrap='soft';tx.oninput=()=>{child.text=tx.value;dirty=true;tx.style.height='auto';tx.style.height=Math.max(44,tx.scrollHeight)+'px';};setTimeout(()=>{tx.style.height='auto';tx.style.height=Math.max(44,tx.scrollHeight)+'px';},0);
     const rm=document.createElement('button');rm.type='button';rm.className='ctf-delete';rm.textContent='حذف';rm.onclick=()=>{children.splice(j,1);helper("renumberContractItems",state.items);dirty=true;renderContractTemplateFormClean();};
-    row.append(num2,tx,rm);group.appendChild(row);
+    row.append(num2,tx,rm,grip2);group.appendChild(row);
   });
   const adding=inlineAddState?.parentId===item.id;
   // این ردیف دقیقاً جای علامت + است؛ با زدن + همان ردیف به فیلد ورود ماده تبدیل می‌شود.
