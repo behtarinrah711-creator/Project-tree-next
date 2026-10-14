@@ -33,3 +33,17 @@ test('contract list is sorted by createdAt descending before pagination with sta
   assert.match(source, /b\.createdAt-a\.createdAt/);
   assert.match(source, /a\.index-b\.index/);
 });
+
+
+test('contract template save keeps a required activity id', async () => {
+  const source = await readFile(new URL('./contractApi.js', import.meta.url), 'utf8');
+  assert.match(source, /const activityId = String\(draft\.activityId \|\| ''\)\.trim\(\)/);
+  assert.match(source, /\.\.\.draft, id, activityId/);
+});
+
+test('contract template form uses module save actions and exposes inline clause confirmation', async () => {
+  const source = await readFile(new URL('../modules/contracts/contractTemplateFormModule.js', import.meta.url), 'utf8');
+  assert.match(source, /save\.onclick=\(\)=>contractTemplateFormModule\.save\(null,false\)/);
+  assert.match(source, /confirm\.textContent='ثبت'/);
+  assert.doesNotMatch(source, /save\.onclick=\(\)=>saveContractTemplateClean/);
+});
