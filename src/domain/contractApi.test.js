@@ -88,7 +88,7 @@ test('contract template mobile styles keep row actions together and remove resiz
   assert.match(css, /\.ctf-row\{[^}]*padding:0 12px 0 110px/);
   assert.match(css, /\.ctf-material-row\{[^}]*padding-left:110px !important/);
   assert.match(css, /\.ctf-material-row \.ctf-material-actions\{left:12px/);
-  assert.match(css, /\.ctf-material-row \.ctf-text\{[^}]*font-size:10px[^}]*resize:none!important/);
+  assert.match(css, /\.ctf-material-row \.ctf-text\{[^}]*font-size:12px[^}]*resize:none!important/);
   assert.match(css, /textarea\.ctf-text::\-webkit-resizer\{display:none/);
   assert.match(css, /\.ctf-inline-input\{[^}]*resize:none/);
   assert.match(css, /font-family:IRANSansX,IRANSans,Arial,sans-serif/);
