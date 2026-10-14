@@ -30,7 +30,7 @@ function ctfAddRow(parentId){
   input.rows=1; input.wrap='soft'; input.inputMode='text'; input.enterKeyHint='enter'; input.setAttribute('enterkeyhint','enter'); input.autocomplete='off'; input.autocapitalize='off'; input.spellcheck=false;
   const grow=()=>{input.style.height='auto';input.style.height=Math.max(42,input.scrollHeight)+'px';};
   input.addEventListener('input',grow);
-  const commit=()=> parentId?ctfCommitChild(parentId,input.value,true):ctfCommitRoot(input.value,true);
+  const commit=()=> parentId?ctfCommitChild(parentId,input.value,false):ctfCommitRoot(input.value,true);
   let committed=false;
   const handleCommit=(e)=>{ if(e){e.preventDefault();e.stopPropagation();} if(committed)return; if(!String(input.value||'').trim())return; committed=true; commit(); setTimeout(()=>{committed=false;},100); };
   input.onkeydown=e=>{if(e.key==='Escape'){inlineAddState=null;renderContractTemplateFormClean();}};
