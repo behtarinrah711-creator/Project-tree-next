@@ -61,7 +61,8 @@ function mountCtfPrintPreview(body){
   const resize=()=>{
     const available=Math.max(0,viewport.clientWidth);
     const scale=Math.min(1,available/794);
-    page.style.transform='translateX(-50%) scale('+scale+')';
+    page.style.left=Math.max(0,(available-(794*scale))/2)+'px';
+    page.style.transform='scale('+scale+')';
     viewport.style.height=Math.ceil(1123*scale)+'px';
   };
   if(previewResizeObserver) previewResizeObserver.disconnect();
