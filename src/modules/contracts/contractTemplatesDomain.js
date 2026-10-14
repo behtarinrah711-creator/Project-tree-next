@@ -52,18 +52,6 @@ export function normalizeContractTemplate(t){
   return t;
 }
 
-export function appendContractChild(items, parentId, text=''){
-  const value=String(text||'').trim();
-  if(!value || !Array.isArray(items)) return null;
-  const parent=items.find(item=>String(item?.id)===String(parentId));
-  if(!parent) return null;
-  if(!Array.isArray(parent.children)) parent.children=[];
-  const child=makeContractItem(value);
-  parent.children.push(child);
-  renumberContractItems(items);
-  return child;
-}
-
 export function renumberContractItems(items){
   (items||[]).forEach((item,i)=>{
     item.number=String(i+1);
