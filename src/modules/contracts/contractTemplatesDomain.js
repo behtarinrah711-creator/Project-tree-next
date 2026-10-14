@@ -1,217 +1,89 @@
-import { contractRepository } from '../data/contractRepository.js';
-import { projectRepository } from '../data/projectRepository.js';
-import { getSession } from '../core/session.js';
-import { canDeleteContract } from './deleteGuard.js';
-import { isOffline } from './mergePolicy.js';
-import { markDirty as adapterMarkDirty, persist as adapterPersist } from '../sync/persistAdapter.js';
-import { clearWorkTaskContractFlag, syncWorkTaskFromContract } from './wbs/workTaskContractSync.js';
+import { STORAGE_KEYS } from '../../config/deploymentConfig.js';
+import { projectContext } from '../../core/projectContext.js';
+import { projectRepository } from '../../data/projectRepository.js';
 
-const DEFAULT_LIMIT = 50;
-const MAX_LIMIT = 200;
-
-function clampLimit(limit){
-  const n = Number(limit);
-  if(!Number.isFinite(n)) return DEFAULT_LIMIT;
-  return Math.min(MAX_LIMIT, Math.max(1, Math.floor(n)));
+export function getCurrentProject(projectId=null){
+  const id=projectId || projectContext.getProjectId?.()
+    || projectContext.getActiveProjectId?.() || null;
+  return id ? projectRepository.getActiveProject(id) : null;
 }
 
-function createdAtValue(value){
-  const n=Number(value);
-  return Number.isFinite(n) && n>0 ? n : 0;
+export function getContractTemplates(project=null){
+  const p=project || getCurrentProject();
+  if(!p) return [];
+  if(!Array.isArray(p.contractTemplates)) p.contractTemplates=[];
+  return p.contractTemplates;
 }
 
-function newestFirst(items){
-  return items
-    .map((item,index)=>({item,index,createdAt:createdAtValue(item?.createdAt)}))
-    .sort((a,b)=>(b.createdAt-a.createdAt)||(a.index-b.index))
-    .map(entry=>entry.item);
+export function findContractTemplate(id, project=getCurrentProject()){
+  return getContractTemplates(project).find(x=>String(x.id)===String(id) && !x.trashed) || null;
 }
 
-function makeId(){
-  return 'i' + Math.random().toString(36).slice(2, 10);
+export function makeContractItem(text='', children=[]){
+  return {id:uid(), text:String(text||''), children:Array.isArray(children)?children:[]};
 }
 
-function deny(code, message, extra = {}){
-  return { ok:false, code, message, ...extra };
+export function getDefaultContractTemplateItems(){
+  // قالب اولیه فقط بندهای اصلی را دارد؛ ماده‌ها باید توسط کاربر اضافه شوند.
+  return [
+    makeContractItem('موضوع قرارداد:'),
+    makeContractItem('اسناد و مدارک قرارداد:'),
+    makeContractItem('مدت قرارداد:'),
+    makeContractItem('شرایط پرداخت:'),
+    makeContractItem('تعهدات پیمانکار:'),
+    makeContractItem('تعهدات کارفرما:'),
+    makeContractItem('فسخ:'),
+    makeContractItem('شرایط غیرمترقبه:'),
+    makeContractItem('کسورات قانونی:'),
+    makeContractItem('حل اختلافات:'),
+    makeContractItem('جریمه:'),
+    makeContractItem('دوره تضمین:')
+  ];
 }
 
-function allow(extra = {}){
-  return { ok:true, ...extra };
+export function normalizeContractTemplate(t){
+  if(!t) return null;
+  if(!Array.isArray(t.items)) t.items=[];
+  const normalizeItems=(arr,depth=0)=> (arr||[]).map(x=>{
+    const item={id:x.id||uid(),text:String(x.text||x.description||''),children:depth<1&&Array.isArray(x.children)?x.children.map(c=>({id:c.id||uid(),text:String(c.text||c.description||''),children:[]})):[]};
+    return item;
+  });
+  t.items=normalizeItems(t.items,0);
+  return t;
 }
 
-function canWriteProject(project){
-  if(!project) return deny('not_found', 'پروژه پیدا نشد');
-  const session = getSession();
-  if(session.ready && !session.uid && project.ownerUid){
-    return deny('forbidden', 'این پروژه در حالت مهمان قابل ویرایش نیست');
+export function appendContractChild(items, parentId, text=''){
+  const value=String(text||'').trim();
+  if(!value || !Array.isArray(items)) return null;
+  const parent=items.find(item=>String(item?.id)===String(parentId));
+  if(!parent) return null;
+  if(!Array.isArray(parent.children)) parent.children=[];
+  const child=makeContractItem(value);
+  parent.children.push(child);
+  renumberContractItems(items);
+  return child;
+}
+
+export function renumberContractItems(items){
+  (items||[]).forEach((item,i)=>{
+    item.number=String(i+1);
+    (item.children||[]).forEach((child,j)=>child.number=(i+1)+'-'+(j+1));
+  });
+  return items;
+}
+
+export function makeContractTemplateDraftClean(existing=null){
+  if(existing){
+    const copy=JSON.parse(JSON.stringify(existing));
+    normalizeContractTemplate(copy);
+    copy.paymentItems=Array.isArray(copy.paymentItems)?copy.paymentItems:[];
+    renumberContractItems(copy.items);
+    return copy;
   }
-  return allow();
+  return {id:uid(),activityId:'',title:'',items:getDefaultContractTemplateItems(),paymentItems:[],createdAt:Date.now(),updatedAt:Date.now(),trashed:false};
 }
 
-function publishLive(projectId, fields = ['contracts', 'contractTemplates']){
-  const stored = projectRepository.find(projectId);
-  const live = typeof window !== 'undefined' ? window.KarhaLegacy?.getProject?.(projectId) : null;
-  if(live && stored){
-    fields.forEach(field => {
-      if(Array.isArray(stored[field])) live[field] = stored[field];
-    });
-  }
-  if(typeof window !== 'undefined'){
-    adapterMarkDirty(projectId);
-    adapterPersist({ local:false });
-  }
+export function getContractTemplateDraftKey(){
+  const p=getCurrentProject();
+  return STORAGE_KEYS.contractTemplateDraftPrefix + (p?.id||'none');
 }
-
-function saveContractRecord(projectId, draft, {status = null} = {}){
-  if(isOffline()) return deny('offline', 'برای ثبت تغییرات به اینترنت متصل شوید');
-  if(!projectId || !draft) return deny('invalid', 'قرارداد نامعتبر است');
-  const project = projectRepository.find(projectId);
-  const access = canWriteProject(project);
-  if(!access.ok) return access;
-
-  const id = draft.id || makeId();
-  const current = draft.id ? contractRepository.get(projectId, draft.id) : null;
-  const record = { ...(current || {}), ...draft, id, trashed:false };
-  if(status) record.status = status;
-  if(status === 'draft'){
-    record.isDraft = true;
-    record.title = String(record.title || '').trim() || 'پیش‌نویس قرارداد';
-  }else if(status === 'final'){
-    record.isDraft = false;
-  }
-  if(!current) record.createdAt = record.createdAt || Date.now();
-  record.updatedAt = Date.now();
-
-  if(!contractRepository.save(projectId, record)) return deny('conflict', 'ذخیره قرارداد انجام نشد');
-  syncWorkTaskFromContract(projectId,record);
-  publishLive(projectId, ['contracts','tasks']);
-  return allow({ contract: record });
-}
-
-export const contractApi = {
-  get(projectId, contractId){
-    return contractRepository.get(projectId, contractId);
-  },
-
-  lookup(projectId, contractId){
-    const contract = contractRepository.get(projectId, contractId);
-    return contract && !contract.trashed ? contract : null;
-  },
-
-  listPage(projectId, { cursor = 0, limit = DEFAULT_LIMIT, includeTrashed = false } = {}){
-    const start = Math.max(0, Number(cursor) || 0);
-    const size = clampLimit(limit);
-    const all = newestFirst(contractRepository.list(projectId)
-      .filter(contract => includeTrashed || !contract.trashed));
-    return {
-      items: all.slice(start, start + size),
-      cursor: start + size < all.length ? start + size : null,
-    };
-  },
-
-  save(projectId, draft){
-    return saveContractRecord(projectId, draft, {status:'final'});
-  },
-
-  saveDraft(projectId, draft){
-    return saveContractRecord(projectId, draft, {status:'draft'});
-  },
-
-  trash(projectId, contractId){
-    if(isOffline()) return deny('offline', 'برای ثبت تغییرات به اینترنت متصل شوید');
-    if(!projectId || !contractId) return deny('invalid', 'قرارداد نامعتبر است');
-    const project = projectRepository.find(projectId);
-    const access = canWriteProject(project);
-    if(!access.ok) return access;
-    if(!contractRepository.get(projectId, contractId)) return deny('not_found', 'قرارداد پیدا نشد');
-
-    const check = canDeleteContract(projectRepository.getProjectsList(), contractId);
-    if(!check.ok) return deny('in_use', 'این قرارداد قابل حذف نیست؛ هنوز صورت وضعیت به آن وصل است', { refs: check.refs });
-
-    const contract=contractRepository.get(projectId,contractId);
-    if(!contractRepository.softDelete(projectId, contractId)) return deny('conflict', 'حذف قرارداد انجام نشد');
-    clearWorkTaskContractFlag(projectId,contract);
-    publishLive(projectId, ['contracts','tasks']);
-    return allow();
-  },
-
-  listTemplatesPage(projectId, { cursor = 0, limit = DEFAULT_LIMIT, includeTrashed = false } = {}){
-    const start = Math.max(0, Number(cursor) || 0);
-    const size = clampLimit(limit);
-    const project = projectRepository.find(projectId);
-    const all = (Array.isArray(project?.contractTemplates) ? project.contractTemplates : [])
-      .filter(template => includeTrashed || !template.trashed);
-    return {
-      items: all.slice(start, start + size),
-      cursor: start + size < all.length ? start + size : null,
-    };
-  },
-
-  getTemplate(projectId, templateId){
-    if(!projectId || !templateId) return null;
-    const project = projectRepository.find(projectId);
-    return (project?.contractTemplates || []).find(t => String(t.id) === String(templateId)) || null;
-  },
-
-  saveTemplate(projectId, draft, activityName = '', { status = 'final' } = {}){
-    if(isOffline()) return deny('offline', 'برای ثبت تغییرات به اینترنت متصل شوید');
-    if(!projectId || !draft) return deny('invalid', 'قالب قرارداد نامعتبر است');
-    const project = projectRepository.find(projectId);
-    const access = canWriteProject(project);
-    if(!access.ok) return access;
-
-    const activityId = String(draft.activityId || '').trim();
-    if(!activityId) return deny('invalid', 'فعالیت قالب قرارداد را انتخاب کنید');
-    const id = draft.id || makeId();
-    const current = draft.id ? this.getTemplate(projectId, draft.id) : null;
-    const record = JSON.parse(JSON.stringify({ ...(current || {}), ...draft, id, activityId }));
-    record.title = `قرارداد ${activityName || record.title || ''}`.trim();
-    record.items = (record.items || [])
-      .filter(x => String(x?.text || '').trim())
-      .map(x => ({
-        ...x,
-        children: (x.children || []).filter(c => String(c?.text || '').trim()),
-      }));
-    record.paymentItems = [];
-    record.status = status;
-    record.isDraft = status === 'draft';
-    record.updatedAt = Date.now();
-    record.trashed = false;
-    if(!current) record.createdAt = record.createdAt || Date.now();
-
-    const saved = projectRepository.updateProject(projectId, p => {
-      const templates = Array.isArray(p.contractTemplates) ? [...p.contractTemplates] : [];
-      const index = templates.findIndex(item => String(item.id) === String(id));
-      if(index >= 0) templates[index] = record;
-      else templates.push(record);
-      return { ...p, contractTemplates: templates };
-    });
-    if(!saved) return deny('conflict', 'ذخیره قالب قرارداد انجام نشد');
-    publishLive(projectId, ['contractTemplates']);
-    return allow({ template: record });
-  },
-
-  trashTemplate(projectId, templateId){
-    if(isOffline()) return deny('offline', 'برای ثبت تغییرات به اینترنت متصل شوید');
-    if(!projectId || !templateId) return deny('invalid', 'قالب قرارداد نامعتبر است');
-    const project = projectRepository.find(projectId);
-    const access = canWriteProject(project);
-    if(!access.ok) return access;
-    if(!this.getTemplate(projectId, templateId)) return deny('not_found', 'قالب قرارداد پیدا نشد');
-
-    const saved = projectRepository.updateProject(projectId, p => {
-      if(!Array.isArray(p.contractTemplates)) return p;
-      return {
-        ...p,
-        contractTemplates: p.contractTemplates.map(item =>
-          String(item.id) === String(templateId)
-            ? { ...item, trashed: true, deletedAt: Date.now() }
-            : item
-        ),
-      };
-    });
-    if(!saved) return deny('conflict', 'حذف قالب قرارداد انجام نشد');
-    publishLive(projectId, ['contractTemplates']);
-    return allow();
-  },
-};
