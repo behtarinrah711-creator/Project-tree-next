@@ -1,6 +1,7 @@
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { saveContractTemplate } from './contractTemplatePersistence.js';
+import { appendContractChild } from './contractTemplatesDomain.js';
 
 let state=null;
 let dirty=false;
@@ -41,8 +42,8 @@ function ctfAddRow(parentId){
 
 function ctfCommitChild(parentId,text,keep=true){
   const v=String(text||'').trim(); if(!v)return false;
-  const st=state; const parent=helper("findContractItemById",st.items,parentId); if(!parent)return false;
-  if(!Array.isArray(parent.children))parent.children=[]; parent.children.push(helper("makeContractItem",v)); helper("renumberContractItems",st.items); dirty=true;
+  const st=state; if(!st || !appendContractChild(st.items,parentId,v))return false;
+  dirty=true;
   inlineAddState=keep?{parentId}:null; renderContractTemplateFormClean(); if(keep) ctfFocus('#ctf-child-input-'+CSS.escape(String(parentId))); return true;
 }
 
@@ -222,6 +223,13 @@ function persistTemplate(projectId=null, silent=false, status='final'){
   const activities=Array.isArray(p.activityTemplates)?p.activityTemplates:[];
   const activity=activities.find(a=>String(a.id)===String(state.activityId));
   const activityName=activity?.name || '';
+  const duplicate=(p.contractTemplates||[]).find(template=>!template.trashed
+    && String(template.activityId||'')===String(state.activityId)
+    && String(template.id)!==String(state.id));
+  if(duplicate){
+    helper("showToast",'برای این فعالیت قبلاً قالب قرارداد ساخته شده است');
+    return false;
+  }
   const saved=saveContractTemplate(p.id,state,activityName,{status});
   if(!saved){
     helper("showToast",status==='draft'?'ذخیره پیش‌نویس انجام نشد':'ذخیره قالب قرارداد انجام نشد');
