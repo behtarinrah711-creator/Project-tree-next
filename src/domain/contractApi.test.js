@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { canDeleteContract, findContractReferences } from './deleteGuard.js';
+import { appendContractChild } from '../modules/contracts/contractTemplatesDomain.js';
 
 test('contract delete is not blocked by retained contractStatusReports (phase 5 inactive)', () => {
   const projects = [{
@@ -35,10 +36,20 @@ test('contract list is sorted by createdAt descending before pagination with sta
 });
 
 
+test('contract clauses append without replacing previous clauses and stay numbered', () => {
+  const items=[{id:'material-1',text:'ماده',children:[]}];
+  assert.ok(appendContractChild(items,'material-1','بند اول'));
+  assert.ok(appendContractChild(items,'material-1','بند دوم'));
+  assert.deepEqual(items[0].children.map(child=>child.text),['بند اول','بند دوم']);
+  assert.deepEqual(items[0].children.map(child=>child.number),['1-1','1-2']);
+});
+
 test('contract template save keeps a required activity id', async () => {
   const source = await readFile(new URL('./contractApi.js', import.meta.url), 'utf8');
   assert.match(source, /const activityId = String\(draft\.activityId \|\| ''\)\.trim\(\)/);
   assert.match(source, /\.\.\.draft, id, activityId/);
+  assert.match(source, /duplicate_activity/);
+  assert.match(source, /String\(template\.activityId \|\| ''\) === activityId/);
 });
 
 test('contract template form uses module save actions and exposes inline clause confirmation', async () => {
@@ -53,6 +64,8 @@ test('contract template form uses module save actions and exposes inline clause 
   assert.doesNotMatch(source, /insertLineBreak/);
   assert.match(source, /saveDraft\(null,false\)/);
   assert.match(source, /ctfCommitChild\(parentId,input\.value,false\)/);
+  assert.match(source, /appendContractChild\(st\.items,parentId,v\)/);
+  assert.match(source, /برای این فعالیت قبلاً قالب قرارداد ساخته شده است/);
   assert.match(source, /inlineAddState\?\.parentId===item\.id[\s\S]*ctf-add-material/);
 });
 
