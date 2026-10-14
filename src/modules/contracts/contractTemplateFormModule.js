@@ -30,7 +30,7 @@ function ctfAddRow(parentId){
   input.rows=1; input.wrap='soft'; input.inputMode='text'; input.enterKeyHint='enter'; input.setAttribute('enterkeyhint','enter'); input.autocomplete='off'; input.autocapitalize='off'; input.spellcheck=false;
   const grow=()=>{input.style.height='auto';input.style.height=Math.max(42,input.scrollHeight)+'px';};
   input.addEventListener('input',grow);
-  const commit=()=> parentId?ctfCommitChild(parentId,input.value,true):ctfCommitRoot(input.value,true);
+  const commit=()=> parentId?ctfCommitChild(parentId,input.value,false):ctfCommitRoot(input.value,true);
   let committed=false;
   const handleCommit=(e)=>{ if(e){e.preventDefault();e.stopPropagation();} if(committed)return; if(!String(input.value||'').trim())return; committed=true; commit(); setTimeout(()=>{committed=false;},100); };
   input.onkeydown=e=>{if(e.key==='Escape'){inlineAddState=null;renderContractTemplateFormClean();}};
@@ -136,7 +136,7 @@ function renderCtfGroup(item,index){
     const num2=document.createElement('span');num2.className='ctf-num';num2.textContent=helper("toPersianDigits",child.number||'');
     const tx=document.createElement('textarea');tx.className='ctf-text';tx.value=child.text||'';tx.placeholder='متن بند را وارد کنید…';tx.rows=1;tx.wrap='soft';tx.oninput=()=>{child.text=tx.value;dirty=true;tx.style.height='auto';tx.style.height=Math.max(44,tx.scrollHeight)+'px';};setTimeout(()=>{tx.style.height='auto';tx.style.height=Math.max(44,tx.scrollHeight)+'px';},0);
     const rm=document.createElement('button');rm.type='button';rm.className='ctf-delete';rm.textContent='حذف';rm.onclick=()=>{children.splice(j,1);helper("renumberContractItems",state.items);dirty=true;renderContractTemplateFormClean();};
-    const rowActions=document.createElement('div');rowActions.className='ctf-row-actions';rowActions.append(grip2,rm);
+    const rowActions=document.createElement('div');rowActions.className='ctf-row-actions ctf-material-actions';rowActions.append(grip2,rm);
     row.append(num2,tx,rowActions);group.appendChild(row);
   });
   const adding=inlineAddState?.parentId===item.id;

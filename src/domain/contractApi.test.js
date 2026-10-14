@@ -48,9 +48,12 @@ test('contract template form uses module save actions and exposes inline clause 
   assert.doesNotMatch(source, /save\.onclick=\(\)=>saveContractTemplateClean/);
   assert.match(source, /actions\.append\(grip,del\)/);
   assert.match(source, /rowActions\.append\(grip2,rm\)/);
+  assert.match(source, /rowActions\.className='ctf-row-actions ctf-material-actions'/);
   assert.doesNotMatch(source, /e\.key==='Enter'.*handleCommit/);
   assert.doesNotMatch(source, /insertLineBreak/);
   assert.match(source, /saveDraft\(null,false\)/);
+  assert.match(source, /ctfCommitChild\(parentId,input\.value,false\)/);
+  assert.match(source, /inlineAddState\?\.parentId===item\.id[\s\S]*ctf-add-material/);
 });
 
 
@@ -68,6 +71,8 @@ test('contract template mobile styles keep row actions together and remove resiz
   const css = await readFile(new URL('../styles/features/contracts.css', import.meta.url), 'utf8');
   assert.match(css, /\.ctf-row-actions\{[^}]*position:absolute;left:12px[^}]*direction:ltr/);
   assert.match(css, /\.ctf-row\{[^}]*padding:0 12px 0 110px/);
+  assert.match(css, /\.ctf-material-row\{[^}]*padding-left:110px !important/);
+  assert.match(css, /\.ctf-material-row \.ctf-material-actions\{left:12px/);
   assert.match(css, /\.ctf-inline-input\{[^}]*resize:none/);
   assert.match(css, /font-family:IRANSansX,IRANSans,Arial,sans-serif/);
   assert.match(css, /\.ctf-preview\{[^}]*width:794px;height:1123px[^}]*padding:53px/);
