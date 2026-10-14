@@ -541,7 +541,9 @@
 .ctf-add-input-row{display:flex;align-items:center;gap:8px;min-height:54px;padding:6px 12px;border-top:1px solid rgba(0,0,0,.07);box-sizing:border-box;}
 .ctf-inline-input{flex:1;min-width:0;height:42px;border:0;background:transparent;outline:none;box-shadow:none;color:var(--text);font:inherit;font-size:15px;text-align:right;padding:0 4px;}
 .ctf-inline-input:focus{outline:none;border:0;box-shadow:none;}
-.ctf-inline-cancel{border:0;background:transparent;color:var(--text-dim);font:inherit;font-size:12px;}
+.ctf-inline-confirm,.ctf-inline-cancel{border:0;background:transparent;font:inherit;font-size:12px;min-height:36px;padding:0 8px;}
+.ctf-inline-confirm{color:var(--primary);font-weight:800;}
+.ctf-inline-cancel{color:var(--text-dim);}
 .ctf-dragging{opacity:.45;}.ctf-drag-top{box-shadow:inset 0 2px 0 var(--primary);}.ctf-drag-bottom{box-shadow:inset 0 -2px 0 var(--primary);}
 /* انتخاب فعالیت: جستجوی درون‌صفحه‌ای، بدون پاپ‌آپ */
 .ctf-activity-search-wrap{width:100%;position:relative;}
