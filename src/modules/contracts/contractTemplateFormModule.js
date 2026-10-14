@@ -32,8 +32,7 @@ function ctfAddRow(parentId){
   const commit=()=> parentId?ctfCommitChild(parentId,input.value,true):ctfCommitRoot(input.value,true);
   let committed=false;
   const handleCommit=(e)=>{ if(e){e.preventDefault();e.stopPropagation();} if(committed)return; if(!String(input.value||'').trim())return; committed=true; commit(); setTimeout(()=>{committed=false;},100); };
-  input.onkeydown=e=>{if(e.key==='Enter'){handleCommit(e);}else if(e.key==='Escape'){inlineAddState=null;renderContractTemplateFormClean();}};
-  input.onbeforeinput=e=>{if(e.inputType==='insertLineBreak'){handleCommit(e);}};
+  input.onkeydown=e=>{if(e.key==='Escape'){inlineAddState=null;renderContractTemplateFormClean();}};
   const confirm=document.createElement('button'); confirm.type='button'; confirm.className='ctf-inline-confirm'; confirm.textContent='ثبت'; confirm.onclick=handleCommit;
   const cancel=document.createElement('button'); cancel.type='button'; cancel.className='ctf-inline-cancel'; cancel.textContent='لغو'; cancel.onclick=()=>{inlineAddState=null;renderContractTemplateFormClean();};
   row.append(input,confirm,cancel); setTimeout(grow,0); return row;
@@ -101,7 +100,8 @@ function renderCtfGroup(item,index){
   const num=document.createElement('span');num.className='ctf-num';num.textContent=helper("toPersianDigits",item.number||'');
   const text=document.createElement('input');text.className='ctf-text';text.value=item.text||'';text.placeholder='عنوان ماده را وارد کنید…';text.oninput=()=>{item.text=text.value;dirty=true;};
   const del=document.createElement('button');del.type='button';del.className='ctf-delete';del.textContent='حذف';del.onclick=()=>{state.items.splice(index,1);helper("renumberContractItems",state.items);dirty=true;inlineAddState=null;renderContractTemplateFormClean();};
-  band.append(num,text,del,grip); group.appendChild(band);
+  const actions=document.createElement('div');actions.className='ctf-row-actions';actions.append(grip,del);
+  band.append(num,text,actions); group.appendChild(band);
   const children=item.children||[];
   // بندها همیشه بلافاصله زیر ماده مادر می‌آیند و ردیف افزودن بند همیشه بعد از آخرین بند قرار می‌گیرد.
   children.forEach((child,j)=>{
@@ -117,7 +117,8 @@ function renderCtfGroup(item,index){
     const num2=document.createElement('span');num2.className='ctf-num';num2.textContent=helper("toPersianDigits",child.number||'');
     const tx=document.createElement('textarea');tx.className='ctf-text';tx.value=child.text||'';tx.placeholder='متن بند را وارد کنید…';tx.rows=1;tx.wrap='soft';tx.oninput=()=>{child.text=tx.value;dirty=true;tx.style.height='auto';tx.style.height=Math.max(44,tx.scrollHeight)+'px';};setTimeout(()=>{tx.style.height='auto';tx.style.height=Math.max(44,tx.scrollHeight)+'px';},0);
     const rm=document.createElement('button');rm.type='button';rm.className='ctf-delete';rm.textContent='حذف';rm.onclick=()=>{children.splice(j,1);helper("renumberContractItems",state.items);dirty=true;renderContractTemplateFormClean();};
-    row.append(num2,tx,rm,grip2);group.appendChild(row);
+    const rowActions=document.createElement('div');rowActions.className='ctf-row-actions';rowActions.append(grip2,rm);
+    row.append(num2,tx,rowActions);group.appendChild(row);
   });
   const adding=inlineAddState?.parentId===item.id;
   // این ردیف دقیقاً جای علامت + است؛ با زدن + همان ردیف به فیلد ورود ماده تبدیل می‌شود.
@@ -187,9 +188,34 @@ function renderContractTemplateFormClean(){
   list.appendChild(addBand); body.appendChild(list);
   st.paymentItems=[];
   const previewTitle=document.createElement('div');previewTitle.className='ctf-section-title';previewTitle.textContent='پیش‌نمایش';body.appendChild(previewTitle);const preview=document.createElement('div');preview.className='ctf-preview';preview.innerHTML=ctfPreview();body.appendChild(preview);
-  const actions=document.getElementById('contractTemplateFormActions');actions.innerHTML='';const save=document.createElement('button');save.className='if-save';save.textContent='ذخیره';save.onclick=()=>contractTemplateFormModule.save(null,false);const draft=document.createElement('button');draft.className='if-draft';draft.textContent='پیش‌نویس';draft.onclick=()=>{try{localStorage.setItem(helper("getContractTemplateDraftKey",),JSON.stringify(st));helper("showToast",'پیش‌نویس ذخیره شد');dirty=false;}catch(e){helper("showToast",'ذخیره پیش‌نویس انجام نشد');}};const cancel=document.createElement('button');cancel.className='if-cancel';cancel.textContent='انصراف';cancel.onclick=()=>contractTemplateFormModule.close(false);actions.append(save,draft,cancel);
+  const actions=document.getElementById('contractTemplateFormActions');actions.innerHTML='';const save=document.createElement('button');save.className='if-save';save.textContent='ذخیره';save.onclick=()=>contractTemplateFormModule.save(null,false);const draft=document.createElement('button');draft.className='if-draft';draft.textContent='پیش‌نویس';draft.onclick=()=>contractTemplateFormModule.saveDraft(null,false);const cancel=document.createElement('button');cancel.className='if-cancel';cancel.textContent='انصراف';cancel.onclick=()=>contractTemplateFormModule.close(false);actions.append(save,draft,cancel);
 }
 
+
+function persistTemplate(projectId=null, silent=false, status='final'){
+  if(!state) return false;
+  const p=activeProject(projectId);
+  if(!p) return false;
+  if(!state.activityId){
+    helper("showToast",'ابتدا فعالیت را انتخاب کنید');
+    return false;
+  }
+  const activities=Array.isArray(p.activityTemplates)?p.activityTemplates:[];
+  const activity=activities.find(a=>String(a.id)===String(state.activityId));
+  const activityName=activity?.name || '';
+  const saved=saveContractTemplate(p.id,state,activityName,{status});
+  if(!saved){
+    helper("showToast",status==='draft'?'ذخیره پیش‌نویس انجام نشد':'ذخیره قالب قرارداد انجام نشد');
+    return false;
+  }
+  state=saved;
+  dirty=false;
+  try{ localStorage.removeItem(helper("getContractTemplateDraftKey")); }catch(e){}
+  helper("markDirty",p.id);
+  helper("closeContractTemplateForm");
+  if(!silent) helper("showToast",status==='draft'?'پیش‌نویس ذخیره شد':'قالب قرارداد ذخیره شد');
+  return true;
+}
 
 export const contractTemplateFormModule={
   id:'contract-template-form',
@@ -216,27 +242,11 @@ export const contractTemplateFormModule={
   },
 
   save(projectId=null, silent=false){
-    if(!state) return false;
-    const p=activeProject(projectId);
-    if(!p) return false;
-    if(!state.activityId){
-      helper("showToast",'ابتدا فعالیت را انتخاب کنید');
-      return false;
-    }
-    const activities=Array.isArray(p.activityTemplates)?p.activityTemplates:[];
-    const activity=activities.find(a=>String(a.id)===String(state.activityId));
-    const activityName=activity?.name || '';
-    const saved=saveContractTemplate(p.id,state,activityName);
-    if(!saved) return false;
-    state=saved;
-    dirty=false;
-    try{
-      localStorage.removeItem(helper("getContractTemplateDraftKey"));
-    }catch(e){}
-    helper("markDirty",p.id);
-    helper("closeContractTemplateForm");
-    if(!silent) helper("showToast",'قالب قرارداد ذخیره شد');
-    return true;
+    return persistTemplate(projectId,silent,'final');
+  },
+
+  saveDraft(projectId=null, silent=false){
+    return persistTemplate(projectId,silent,'draft');
   },
 
   getState(){ return state; },
