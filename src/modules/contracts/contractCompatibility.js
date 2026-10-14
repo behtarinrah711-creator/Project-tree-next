@@ -22,6 +22,7 @@ function closeContractTemplateForm(fromPopState=false){return window.KarhaContra
 function requestCloseContractTemplateForm(fromPopState=false){return window.KarhaContractTemplateForm?.close?.(fromPopState);}
 function renderContractTemplateFormClean(...args){return window.KarhaContractTemplateForm?.render?.(...args);}
 function renderContractTemplateForm(){return renderContractTemplateFormClean();}
+function renderContractTemplatesPage(){return window.KarhaApp?.modules?.get('contracts')?.renderTemplates?.(getCurrentProject()?.id);}
 function saveContractTemplateClean(silent=false){return window.KarhaContractTemplateForm?.save?.(getCurrentProject()?.id,silent)||false;}
 function openContractsPage(projectId=getCurrentProjectScopeId(),options={}){return window.KarhaContractShell?.openContractsPage?.(projectId,options);}
 function closeContractsPage(){return window.KarhaContractShell?.closeContractsPage?.();}
