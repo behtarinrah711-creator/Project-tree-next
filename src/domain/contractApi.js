@@ -153,7 +153,7 @@ export const contractApi = {
     return (project?.contractTemplates || []).find(t => String(t.id) === String(templateId)) || null;
   },
 
-  saveTemplate(projectId, draft, activityName = ''){
+  saveTemplate(projectId, draft, activityName = '', { status = 'final' } = {}){
     if(isOffline()) return deny('offline', 'برای ثبت تغییرات به اینترنت متصل شوید');
     if(!projectId || !draft) return deny('invalid', 'قالب قرارداد نامعتبر است');
     const project = projectRepository.find(projectId);
@@ -173,6 +173,8 @@ export const contractApi = {
         children: (x.children || []).filter(c => String(c?.text || '').trim()),
       }));
     record.paymentItems = [];
+    record.status = status;
+    record.isDraft = status === 'draft';
     record.updatedAt = Date.now();
     record.trashed = false;
     if(!current) record.createdAt = record.createdAt || Date.now();
