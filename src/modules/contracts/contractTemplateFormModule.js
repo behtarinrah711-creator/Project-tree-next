@@ -1,7 +1,7 @@
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { saveContractTemplate } from './contractTemplatePersistence.js';
-import { appendContractChild } from './contractTemplatesDomain.js';
+import { appendContractChild } from './contractTemplateItems.js';
 
 let state=null;
 let dirty=false;
@@ -42,7 +42,13 @@ function ctfAddRow(parentId){
 
 function ctfCommitChild(parentId,text,keep=true){
   const v=String(text||'').trim(); if(!v)return false;
-  const st=state; if(!st || !appendContractChild(st.items,parentId,v))return false;
+  const st=state; if(!st || !appendContractChild(
+    st.items,
+    parentId,
+    v,
+    value=>helper("makeContractItem",value),
+    items=>helper("renumberContractItems",items)
+  ))return false;
   dirty=true;
   inlineAddState=keep?{parentId}:null; renderContractTemplateFormClean(); if(keep) ctfFocus('#ctf-child-input-'+CSS.escape(String(parentId))); return true;
 }
