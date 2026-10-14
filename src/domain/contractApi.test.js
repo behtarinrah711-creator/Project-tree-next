@@ -46,6 +46,27 @@ test('contract template form uses module save actions and exposes inline clause 
   assert.match(source, /save\.onclick=\(\)=>contractTemplateFormModule\.save\(null,false\)/);
   assert.match(source, /confirm\.textContent='ثبت'/);
   assert.doesNotMatch(source, /save\.onclick=\(\)=>saveContractTemplateClean/);
-  assert.match(source, /band\.append\(num,text,del,grip\)/);
-  assert.match(source, /row\.append\(num2,tx,rm,grip2\)/);
+  assert.match(source, /actions\.append\(grip,del\)/);
+  assert.match(source, /rowActions\.append\(grip2,rm\)/);
+  assert.doesNotMatch(source, /e\.key==='Enter'.*handleCommit/);
+  assert.doesNotMatch(source, /insertLineBreak/);
+  assert.match(source, /saveDraft\(null,false\)/);
+});
+
+
+test('contract template drafts persist as project records and list rerenders after closing', async () => {
+  const api = await readFile(new URL('./contractApi.js', import.meta.url), 'utf8');
+  const compatibility = await readFile(new URL('../modules/contracts/contractCompatibility.js', import.meta.url), 'utf8');
+  const list = await readFile(new URL('../modules/contracts/contractsModule.js', import.meta.url), 'utf8');
+  assert.match(api, /record\.status = status/);
+  assert.match(api, /record\.isDraft = status === 'draft'/);
+  assert.match(compatibility, /function renderContractTemplatesPage\(\)/);
+  assert.match(list, /t\.isDraft\|\|t\.status==='draft'\?'پیش‌نویس'/);
+});
+
+test('contract template mobile styles keep row actions together and remove resize grip', async () => {
+  const css = await readFile(new URL('../styles/features/contracts.css', import.meta.url), 'utf8');
+  assert.match(css, /\.ctf-row-actions\{[^}]*direction:ltr/);
+  assert.match(css, /\.ctf-inline-input\{[^}]*resize:none/);
+  assert.match(css, /font-family:IRANSansX,IRANSans,Arial,sans-serif/);
 });

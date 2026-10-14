@@ -7,10 +7,10 @@ function activeId(projectId = null){
 }
 
 /** Thin adapter: template writes go through contractApi only. */
-export function saveContractTemplate(projectId, template, activityName = ''){
+export function saveContractTemplate(projectId, template, activityName = '', options = {}){
   const id = activeId(projectId);
   if(!id || !template) return false;
-  const result = contractApi.saveTemplate(id, template, activityName);
+  const result = contractApi.saveTemplate(id, template, activityName, options);
   return result.ok ? result.template : false;
 }
 
