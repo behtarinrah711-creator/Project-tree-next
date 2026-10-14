@@ -569,7 +569,7 @@
 .ctf-material-row{padding-right:12px !important;padding-left:110px !important;align-items:flex-start;}
 .ctf-material-row .ctf-material-actions{left:12px;top:50%;z-index:2;}
 .ctf-material-row .ctf-grip:not(.is-inert-handle){display:flex;visibility:visible;opacity:1;align-self:center;}
-.ctf-material-row .ctf-text{min-height:44px;height:auto;line-height:1.9;font-size:10px;white-space:pre-wrap;overflow:hidden;padding-top:7px !important;padding-bottom:7px !important;resize:none!important;}
+.ctf-material-row .ctf-text{min-height:44px;height:auto;line-height:1.9;font-size:12px;white-space:pre-wrap;overflow:hidden;padding-top:7px !important;padding-bottom:7px !important;resize:none!important;}
 .ctf-material-row textarea.ctf-text::-webkit-resizer{display:none;}
 .ctf-material-row .ctf-delete{align-self:center;}
 .ctf-preview-viewport{position:relative;width:100%;max-width:794px;margin:0 auto;overflow:hidden;}
