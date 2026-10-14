@@ -34,8 +34,9 @@ function ctfAddRow(parentId){
   const handleCommit=(e)=>{ if(e){e.preventDefault();e.stopPropagation();} if(committed)return; if(!String(input.value||'').trim())return; committed=true; commit(); setTimeout(()=>{committed=false;},100); };
   input.onkeydown=e=>{if(e.key==='Enter'){handleCommit(e);}else if(e.key==='Escape'){inlineAddState=null;renderContractTemplateFormClean();}};
   input.onbeforeinput=e=>{if(e.inputType==='insertLineBreak'){handleCommit(e);}};
+  const confirm=document.createElement('button'); confirm.type='button'; confirm.className='ctf-inline-confirm'; confirm.textContent='ثبت'; confirm.onclick=handleCommit;
   const cancel=document.createElement('button'); cancel.type='button'; cancel.className='ctf-inline-cancel'; cancel.textContent='لغو'; cancel.onclick=()=>{inlineAddState=null;renderContractTemplateFormClean();};
-  row.append(input,cancel); setTimeout(grow,0); return row;
+  row.append(input,confirm,cancel); setTimeout(grow,0); return row;
 }
 
 function ctfCommitChild(parentId,text,keep=true){
@@ -188,7 +189,7 @@ function renderContractTemplateFormClean(){
   list.appendChild(addBand); body.appendChild(list);
   st.paymentItems=[];
   const previewTitle=document.createElement('div');previewTitle.className='ctf-section-title';previewTitle.textContent='پیش‌نمایش';body.appendChild(previewTitle);const preview=document.createElement('div');preview.className='ctf-preview';preview.innerHTML=ctfPreview();body.appendChild(preview);
-  const actions=document.getElementById('contractTemplateFormActions');actions.innerHTML='';const save=document.createElement('button');save.className='if-save';save.textContent='ذخیره';save.onclick=()=>saveContractTemplateClean(false);const draft=document.createElement('button');draft.className='if-draft';draft.textContent='پیش‌نویس';draft.onclick=()=>{try{localStorage.setItem(helper("getContractTemplateDraftKey",),JSON.stringify(st));helper("showToast",'پیش‌نویس ذخیره شد');dirty=false;}catch(e){helper("showToast",'ذخیره پیش‌نویس انجام نشد');}};const cancel=document.createElement('button');cancel.className='if-cancel';cancel.textContent='انصراف';cancel.onclick=()=>requestCloseContractTemplateForm(false);actions.append(save,draft,cancel);
+  const actions=document.getElementById('contractTemplateFormActions');actions.innerHTML='';const save=document.createElement('button');save.className='if-save';save.textContent='ذخیره';save.onclick=()=>contractTemplateFormModule.save(null,false);const draft=document.createElement('button');draft.className='if-draft';draft.textContent='پیش‌نویس';draft.onclick=()=>{try{localStorage.setItem(helper("getContractTemplateDraftKey",),JSON.stringify(st));helper("showToast",'پیش‌نویس ذخیره شد');dirty=false;}catch(e){helper("showToast",'ذخیره پیش‌نویس انجام نشد');}};const cancel=document.createElement('button');cancel.className='if-cancel';cancel.textContent='انصراف';cancel.onclick=()=>contractTemplateFormModule.close(false);actions.append(save,draft,cancel);
 }
 
 
@@ -249,7 +250,7 @@ export const contractTemplateFormModule={
       return true;
     }
     helper("showIncompleteFormExitChoice",{
-      onYes:()=>helper("saveContractTemplateClean",true),
+      onYes:()=>contractTemplateFormModule.save(null,true),
       onNo:()=>helper("closeContractTemplateForm",fromPopState)
     });
     return true;
