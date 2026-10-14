@@ -70,4 +70,6 @@ test('contract template mobile styles keep row actions together and remove resiz
   assert.match(css, /\.ctf-row\{[^}]*padding:0 12px 0 110px/);
   assert.match(css, /\.ctf-inline-input\{[^}]*resize:none/);
   assert.match(css, /font-family:IRANSansX,IRANSans,Arial,sans-serif/);
+  assert.match(css, /\.ctf-preview\{[^}]*width:min\(100%,210mm\)[^}]*aspect-ratio:210\/297/);
+  assert.match(css, /\.ctf-preview\{[^}]*padding:6\.667%/);
 });
