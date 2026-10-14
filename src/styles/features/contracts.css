@@ -527,9 +527,9 @@
 .ctf-group{border-bottom:1px solid var(--divider);}
 .ctf-group:last-child{border-bottom:0;}
 .ctf-even{background:#fff;}.ctf-odd{background:#f1f2f3;}
-.ctf-row{display:grid;grid-template-columns:48px minmax(0,1fr) auto;align-items:center;gap:8px;min-height:58px;padding:0 12px;box-sizing:border-box;direction:rtl;font-family:IRANSansX,IRANSans,Arial,sans-serif;}
+.ctf-row{position:relative;display:grid;grid-template-columns:48px minmax(0,1fr);align-items:center;gap:8px;min-height:58px;padding:0 12px 0 110px;box-sizing:border-box;direction:rtl;font-family:IRANSansX,IRANSans,Arial,sans-serif;}
 .ctf-band-row{font-weight:600;}.ctf-material-row{min-height:52px;padding-right:38px;border-top:1px solid rgba(0,0,0,.07);font-weight:600;}
-.ctf-row-actions{display:flex;align-items:center;justify-content:flex-start;justify-self:start;gap:6px;direction:ltr;font-family:IRANSansX,IRANSans,Arial,sans-serif;}
+.ctf-row-actions{position:absolute;left:12px;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:flex-start;gap:6px;direction:ltr;font-family:IRANSansX,IRANSans,Arial,sans-serif;}
 .ctf-grip{border:0;background:transparent;color:#b9bdc1;width:30px;height:34px;display:flex;align-items:center;justify-content:center;padding:0;touch-action:none;cursor:grab;}
 .ctf-grip:active{cursor:grabbing;}.ctf-grip svg{width:16px;height:22px;}
 .ctf-num{font-size:15px;color:var(--text);white-space:nowrap;text-align:center;direction:rtl;}
@@ -570,9 +570,9 @@
 .ctf-material-row .ctf-grip{align-self:center;}
 .ctf-material-row .ctf-text{min-height:44px;height:auto;line-height:1.9;font-size:10px;white-space:pre-wrap;overflow:hidden;padding-top:7px !important;padding-bottom:7px !important;}
 .ctf-material-row .ctf-delete{align-self:center;}
-.ctf-preview{max-width:720px;margin:0 auto;border:1px solid #cfd2d5;background:#fff;border-radius:4px;padding:24px;box-sizing:border-box;direction:rtl;}
+.ctf-preview{width:min(100%,210mm);aspect-ratio:210/297;margin:0 auto;border:1px solid #cfd2d5;background:#fff;border-radius:4px;padding:6.667%;box-sizing:border-box;overflow:hidden;direction:rtl;}
 .ctf-preview-head{position:relative;min-height:92px;border-bottom:1px solid #ddd;padding-bottom:12px;margin-bottom:14px;}.ctf-preview-title{text-align:center;font-size:13px;font-weight:800;padding-top:10px;margin-top:8px;}.ctf-preview-meta{position:absolute;left:0;top:0;text-align:left;font-size:11px;line-height:2;color:#555;direction:rtl;}.ctf-preview-meta span{color:#777;}.ctf-preview-band{font-size:14px;line-height:2;padding:7px 0;border-bottom:1px solid #eee;}.ctf-preview-material{padding-right:22px;font-size:13px;}.ctf-preview-band:last-child{border-bottom:0;}
-@media(max-width:520px){.ctf-row{grid-template-columns:30px 42px minmax(0,1fr) auto;gap:5px;padding:0 8px;}.ctf-material-row{padding-right:26px;}.ctf-preview{padding:18px;}.ctf-preview-title{font-size:13px;margin-top:8px;padding-top:10px;}.ctf-preview-meta{font-size:10px;}.ctf-body{padding-left:10px!important;padding-right:10px!important;}}
+@media(max-width:520px){.ctf-row{grid-template-columns:42px minmax(0,1fr);gap:5px;padding:0 8px 0 104px;}.ctf-material-row{padding-right:26px;}.ctf-row-actions{left:8px;}.ctf-preview-title{font-size:13px;margin-top:8px;padding-top:10px;}.ctf-preview-meta{font-size:10px;}.ctf-body{padding-left:10px!important;padding-right:10px!important;}}
 
 /* legacy style anonymous */
 /* نسخه ۲۲۵ — عنوان قرارداد + فعالیت */
