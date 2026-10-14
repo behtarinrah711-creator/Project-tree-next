@@ -164,6 +164,12 @@ export const contractApi = {
     if(!activityId) return deny('invalid', 'فعالیت قالب قرارداد را انتخاب کنید');
     const id = draft.id || makeId();
     const current = draft.id ? this.getTemplate(projectId, draft.id) : null;
+    const duplicate = (project.contractTemplates || []).find(template =>
+      !template.trashed
+      && String(template.activityId || '') === activityId
+      && String(template.id) !== String(id)
+    );
+    if(duplicate) return deny('duplicate_activity', 'برای این فعالیت قبلاً قالب قرارداد ساخته شده است', { templateId: duplicate.id });
     const record = JSON.parse(JSON.stringify({ ...(current || {}), ...draft, id, activityId }));
     record.title = `قرارداد ${activityName || record.title || ''}`.trim();
     record.items = (record.items || [])
