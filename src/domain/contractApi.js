@@ -160,9 +160,11 @@ export const contractApi = {
     const access = canWriteProject(project);
     if(!access.ok) return access;
 
+    const activityId = String(draft.activityId || '').trim();
+    if(!activityId) return deny('invalid', 'فعالیت قالب قرارداد را انتخاب کنید');
     const id = draft.id || makeId();
     const current = draft.id ? this.getTemplate(projectId, draft.id) : null;
-    const record = JSON.parse(JSON.stringify({ ...(current || {}), ...draft, id }));
+    const record = JSON.parse(JSON.stringify({ ...(current || {}), ...draft, id, activityId }));
     record.title = `قرارداد ${activityName || record.title || ''}`.trim();
     record.items = (record.items || [])
       .filter(x => String(x?.text || '').trim())
