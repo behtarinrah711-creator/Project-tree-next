@@ -37,4 +37,25 @@ describe('KarhaRealContractForm global bridge', () => {
     assert.match(src, /getElementById\('closeContractsPage'\)/, 'contracts list header Back must remain wired');
     assert.match(src, /contractsBackButton\.onclick=requestCanonicalBack/, 'contracts list header Back must use canonical Browser History');
   });
+  it('uses the template clause layout while preserving editing and drag behavior', () => {
+    const src = readFileSync(join(dir, 'realContractFormModule.js'), 'utf8');
+    assert.match(src, /row\.className = isChild \? 'ctf-row ctf-material-row' : 'ctf-row ctf-band-row'/);
+    assert.match(src, /actions\.className = isChild \? 'ctf-row-actions ctf-material-actions' : 'ctf-row-actions'/);
+    assert.match(src, /actions\.append\(grip, remove\)/);
+    assert.match(src, /group\.appendChild\(renderRealContractItem\(child, children, childIndex, true\)\)/);
+    assert.match(src, /group\.appendChild\(addChild\)/);
+    assert.match(src, /contractItemInteractions\.updateItemText/);
+    assert.match(src, /contractItemInteractions\.attachPointerDrag/);
+    assert.match(src, /items\.className = 'ctf-groups real-contract-items'/);
+    assert.match(src, /preview\.className = 'ctf-preview contract-doc-preview contract-real-print-preview'/);
+    assert.match(src, /available \/ 794/);
+  });
+
+  it('shares the template A4 dimensions and pinned row actions', () => {
+    const css = readFileSync(join(dir, '../../styles/features/contracts.css'), 'utf8');
+    assert.match(css, /\.contract-real-print-preview\{[\s\S]*width:794px!important;[\s\S]*height:1123px!important;/);
+    assert.match(css, /\.ctf-row-actions\{[^}]*position:absolute;left:12px/);
+    assert.match(css, /\.ctf-material-row \.ctf-material-actions\{left:12px/);
+  });
+
 });
