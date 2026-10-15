@@ -8,6 +8,7 @@ import * as contractPickers from './contractPickers.js';
 import * as contractTemplatesDomain from './contractTemplatesDomain.js';
 import * as paymentStagesModule from './paymentStagesModule.js';
 import * as contractItemInteractions from './contractItemInteractions.js';
+import { mountContractPrintPage } from './contractTemplateFormModule.js';
 
 let state = null;
 let dirty = false;
@@ -259,11 +260,6 @@ function renderContractInlineAddRow(parentId = null) {
   input.rows = 1;
   input.wrap = 'soft';
   input.enterKeyHint = 'enter';
-  const grow = () => {
-    input.style.height = 'auto';
-    input.style.height = Math.max(42, input.scrollHeight) + 'px';
-  };
-  input.addEventListener('input', grow);
   input.onkeydown = event => {
     if (event.key === 'Escape') {
       inlineAddState = null;
@@ -291,7 +287,6 @@ function renderContractInlineAddRow(parentId = null) {
   };
 
   row.append(input, confirm, cancel);
-  setTimeout(grow, 0);
   return row;
 }
 
@@ -349,16 +344,10 @@ function renderRealContractRow(item, list, index, isChild) {
   input.placeholder = isChild ? 'متن بند را وارد کنید…' : 'عنوان ماده را وارد کنید…';
   input.rows = 1;
   input.wrap = 'soft';
-  const resize = () => {
-    input.style.height = 'auto';
-    input.style.height = Math.max(44, input.scrollHeight) + 'px';
-  };
   input.oninput = () => {
     contractItemInteractions.updateItemText(item, input.value, { dirty: true });
     dirty = true;
-    resize();
   };
-  setTimeout(resize, 0);
 
   const remove = document.createElement('button');
   remove.type = 'button';
@@ -575,8 +564,6 @@ function renderContractForm() {
 
   const formattedAmount = state.amount ? (helper('formatCost', state.amount) ?? state.amount) : '................................';
   const formattedRetention = helper('formatCost', retentionAmount) ?? retentionAmount;
-  const previewViewport = document.createElement('div');
-  previewViewport.className = 'ctf-preview-viewport contract-real-preview-viewport';
   const preview = document.createElement('div');
   preview.className = 'ctf-preview contract-doc-preview contract-real-print-preview';
   preview.innerHTML = '<div class="doc-title">' + escape('قرارداد ' + activityName) + '</div>' +
@@ -600,20 +587,7 @@ function renderContractForm() {
     '<div class="doc-clauses">' + (clausesHtml || '<div class="doc-clause">........................................................</div>') + '</div>' +
     '<div class="doc-payment"><b>شرایط پرداخت</b>' + (paymentHtml || '<div>........................................................</div>') + '</div>' +
     '<div class="doc-signatures"><div class="signature-box">امضا و اثر انگشت کارفرما<br>................................</div><div class="signature-box">امضا و اثر انگشت پیمانکار<br>................................</div></div>';
-  previewViewport.appendChild(preview);
-  body.appendChild(previewViewport);
-  const resizePreview = () => {
-    const available = Math.max(0, previewViewport.clientWidth);
-    const scale = Math.min(1, available / 794);
-    preview.style.left = Math.max(0, (available - (794 * scale)) / 2) + 'px';
-    preview.style.transform = 'scale(' + scale + ')';
-    previewViewport.style.height = Math.ceil(1123 * scale) + 'px';
-  };
-  if (typeof ResizeObserver === 'function') {
-    const observer = new ResizeObserver(resizePreview);
-    observer.observe(previewViewport);
-  }
-  requestAnimationFrame(resizePreview);
+  mountContractPrintPage(body, preview, 'contract-real-preview-viewport');
 
   const actions = document.getElementById('contractFormActions');
   if (actions) {
