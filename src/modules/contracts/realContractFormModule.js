@@ -8,6 +8,7 @@ import * as contractPickers from './contractPickers.js';
 import * as contractTemplatesDomain from './contractTemplatesDomain.js';
 import * as paymentStagesModule from './paymentStagesModule.js';
 import * as contractItemInteractions from './contractItemInteractions.js';
+import { mountContractPrintPage } from './contractTemplateFormModule.js';
 
 let state = null;
 let dirty = false;
@@ -251,87 +252,78 @@ function commitContractInlineAdd(kind, parentId, input, keepFocus) {
 
 function renderContractInlineAddRow(parentId = null) {
   const row = document.createElement('div');
-  row.className = 'inline-add-row active contract-inline-add-row';
+  row.className = 'ctf-add-input-row contract-inline-add-row';
 
-  const input = document.createElement('input');
-  input.className = 'real-contract-inline-add-input';
-  input.placeholder = parentId ? 'بند جدید…' : 'ماده جدید…';
-
-  let ignoreBlur = false;
-  const commit = keepFocus => {
-    const ok = commitContractInlineAdd('real', parentId, input, keepFocus);
-    if (ok) {
-      ignoreBlur = true;
-      setTimeout(() => { ignoreBlur = false; }, 100);
-    }
-  };
-
+  const input = document.createElement('textarea');
+  input.className = 'ctf-inline-input real-contract-inline-add-input';
+  input.placeholder = parentId ? 'بند را وارد کنید…' : 'ماده را وارد کنید…';
+  input.rows = 1;
+  input.wrap = 'soft';
+  input.enterKeyHint = 'enter';
   input.onkeydown = event => {
-    if (event.key === 'Enter') {
-      event.preventDefault();
-      event.stopPropagation();
-      commit(true);
-    } else if (event.key === 'Escape') {
+    if (event.key === 'Escape') {
       inlineAddState = null;
       renderContractForm();
     }
   };
 
-  input.onblur = () => {
-    if (ignoreBlur) return;
-    setTimeout(() => {
-      if (ignoreBlur || document.activeElement === input) return;
-      if (input.value.trim()) commit(false);
-    }, 120);
+  const confirm = document.createElement('button');
+  confirm.type = 'button';
+  confirm.className = 'ctf-inline-confirm';
+  confirm.textContent = 'ثبت';
+  confirm.onclick = event => {
+    event.preventDefault();
+    event.stopPropagation();
+    commitContractInlineAdd('real', parentId, input, false);
   };
 
   const cancel = document.createElement('button');
   cancel.type = 'button';
-  cancel.className = 'x-btn';
-  cancel.textContent = '×';
+  cancel.className = 'ctf-inline-cancel';
+  cancel.textContent = 'لغو';
   cancel.onclick = () => {
     inlineAddState = null;
     renderContractForm();
   };
 
-  row.append(input, cancel);
+  row.append(input, confirm, cancel);
   return row;
 }
 
 function renderContractRootInlineAddRow() {
   if (inlineAddState?.parentId === null) {
     const row = renderContractInlineAddRow(null);
-    row.classList.add('contract-root-inline-add-row-active');
-    const input = row.querySelector('input');
+    const input = row.querySelector('textarea');
     if (input) input.id = 'realContractRootInlineAddInput';
     setTimeout(() => input?.focus(), 0);
     return row;
   }
 
-  const row = document.createElement('div');
-  row.className = 'inline-add-row';
-  row.innerHTML = '<span class="plus-circle">' + (helper('svgPlus') || '+') + '</span><span>افزودن ماده</span>';
-  row.onclick = () => {
+  const add = document.createElement('button');
+  add.type = 'button';
+  add.className = 'ctf-add-band';
+  add.textContent = '+ افزودن ماده';
+  add.onclick = () => {
     inlineAddState = { parentId: null };
     renderContractForm();
     focusInlineAdd();
   };
-  return row;
+  return add;
 }
 
-function renderRealContractItem(item, list, index, isChild = false) {
-  const card = document.createElement('div');
-  card.className = 'real-contract-item contract-work-item' + (isChild ? ' contract-item-card-child' : '') + (!isChild ? ` contract-group-${index % 2 === 0 ? 'even' : 'odd'}` : '');
-  card.dataset.realContractDragId = item.id;
-  card.dataset.contractDragId = item.id;
-
+function renderRealContractRow(item, list, index, isChild) {
   const row = document.createElement('div');
-  row.className = 'real-contract-item-row contract-work-row';
+  row.className = isChild ? 'ctf-row ctf-material-row' : 'ctf-row ctf-band-row';
+  if (isChild) {
+    row.dataset.realContractDragId = item.id;
+    row.dataset.contractDragId = item.id;
+  }
 
-  const grip = document.createElement('span');
-  grip.className = 'real-contract-grip contract-work-grip';
+  const grip = document.createElement('button');
+  grip.type = 'button';
+  grip.className = 'ctf-grip';
   grip.innerHTML = helper('svgGrip') || '⋮⋮';
-  grip.title = 'جابه‌جایی';
+  grip.title = isChild ? 'جابه‌جایی بند' : 'جابه‌جایی ماده';
   grip.onpointerdown = event => contractItemInteractions.attachPointerDrag({
     handle: event.currentTarget,
     list,
@@ -341,26 +333,25 @@ function renderRealContractItem(item, list, index, isChild = false) {
     onDirty: () => { dirty = true; },
     onRender: () => renderContractForm()
   });
-  row.appendChild(grip);
 
-  const number = document.createElement('div');
-  number.className = 'real-contract-num contract-work-number';
+  const number = document.createElement('span');
+  number.className = 'ctf-num';
   number.textContent = helper('toPersianDigits', item.number || '') ?? item.number ?? '';
-  row.appendChild(number);
 
   const input = document.createElement('textarea');
-  input.className = 'real-contract-text contract-work-input';
+  input.className = 'ctf-text';
   input.value = item.text || '';
-  input.placeholder = isChild ? 'متن بند را وارد کنید…' : 'متن ماده را وارد کنید…';
+  input.placeholder = isChild ? 'متن بند را وارد کنید…' : 'عنوان ماده را وارد کنید…';
+  input.rows = 1;
+  input.wrap = 'soft';
   input.oninput = () => {
     contractItemInteractions.updateItemText(item, input.value, { dirty: true });
     dirty = true;
   };
-  row.appendChild(input);
 
   const remove = document.createElement('button');
   remove.type = 'button';
-  remove.className = 'real-contract-btn danger contract-inline-delete';
+  remove.className = 'ctf-delete';
   remove.textContent = 'حذف';
   remove.onclick = event => {
     event.preventDefault();
@@ -369,37 +360,47 @@ function renderRealContractItem(item, list, index, isChild = false) {
     dirty = true;
     renderContractForm();
   };
-  row.appendChild(remove);
-  card.appendChild(row);
 
-  if (!isChild) {
-    if (inlineAddState?.parentId === item.id) {
-      card.appendChild(renderContractInlineAddRow(item.id));
-    } else {
-      const addChild = document.createElement('button');
-      addChild.type = 'button';
-      addChild.className = 'contract-add-child-row';
-      addChild.title = 'افزودن بند';
-      addChild.innerHTML = helper('svgPlus') || '+';
-      addChild.onclick = event => {
-        event.preventDefault();
-        event.stopPropagation();
-        inlineAddState = { parentId: item.id };
-        renderContractForm();
-        focusInlineAdd();
-      };
-      card.appendChild(addChild);
-    }
+  const actions = document.createElement('div');
+  actions.className = isChild ? 'ctf-row-actions ctf-material-actions' : 'ctf-row-actions';
+  actions.append(grip, remove);
+  row.append(number, input, actions);
+  return row;
+}
 
-    const children = document.createElement('div');
-    children.className = 'real-contract-child contract-work-child-list';
-    (item.children || []).forEach((child, childIndex) => {
-      children.appendChild(renderRealContractItem(child, item.children, childIndex, true));
-    });
-    card.appendChild(children);
+function renderRealContractItem(item, list, index, isChild = false) {
+  if (isChild) return renderRealContractRow(item, list, index, true);
+
+  const group = document.createElement('div');
+  group.className = 'ctf-group ' + (index % 2 === 0 ? 'ctf-even' : 'ctf-odd');
+  group.dataset.realContractDragId = item.id;
+  group.dataset.contractDragId = item.id;
+  group.appendChild(renderRealContractRow(item, list, index, false));
+
+  const children = item.children || [];
+  children.forEach((child, childIndex) => {
+    group.appendChild(renderRealContractItem(child, children, childIndex, true));
+  });
+
+  if (inlineAddState?.parentId === item.id) {
+    group.appendChild(renderContractInlineAddRow(item.id));
+  } else {
+    const addChild = document.createElement('button');
+    addChild.type = 'button';
+    addChild.className = 'ctf-add-material';
+    addChild.title = 'افزودن بند';
+    addChild.innerHTML = '<span>افزودن بند</span><span class="ctf-add-plus">+</span>';
+    addChild.onclick = event => {
+      event.preventDefault();
+      event.stopPropagation();
+      inlineAddState = { parentId: item.id };
+      renderContractForm();
+      focusInlineAdd();
+    };
+    group.appendChild(addChild);
   }
 
-  return card;
+  return group;
 }
 
 function renderContractForm() {
@@ -530,7 +531,7 @@ function renderContractForm() {
   } else {
     realContractDomain.renumberRealContractItems(state.items);
     const items = document.createElement('div');
-    items.className = 'real-contract-items';
+    items.className = 'ctf-groups real-contract-items';
     state.items.forEach((item, index) => items.appendChild(renderRealContractItem(item, state.items, index, false)));
     items.appendChild(renderContractRootInlineAddRow());
     body.appendChild(items);
@@ -564,7 +565,7 @@ function renderContractForm() {
   const formattedAmount = state.amount ? (helper('formatCost', state.amount) ?? state.amount) : '................................';
   const formattedRetention = helper('formatCost', retentionAmount) ?? retentionAmount;
   const preview = document.createElement('div');
-  preview.className = 'contract-doc-preview';
+  preview.className = 'ctf-preview contract-doc-preview contract-real-print-preview';
   preview.innerHTML = '<div class="doc-title">' + escape('قرارداد ' + activityName) + '</div>' +
     '<div class="doc-meta">' +
       '<div>شماره قرارداد: <span class="doc-line">' + blank(state.contractNo) + '</span></div>' +
@@ -586,7 +587,7 @@ function renderContractForm() {
     '<div class="doc-clauses">' + (clausesHtml || '<div class="doc-clause">........................................................</div>') + '</div>' +
     '<div class="doc-payment"><b>شرایط پرداخت</b>' + (paymentHtml || '<div>........................................................</div>') + '</div>' +
     '<div class="doc-signatures"><div class="signature-box">امضا و اثر انگشت کارفرما<br>................................</div><div class="signature-box">امضا و اثر انگشت پیمانکار<br>................................</div></div>';
-  body.appendChild(preview);
+  mountContractPrintPage(body, preview, 'contract-real-preview-viewport');
 
   const actions = document.getElementById('contractFormActions');
   if (actions) {

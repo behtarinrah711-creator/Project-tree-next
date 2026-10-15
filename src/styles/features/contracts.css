@@ -1701,3 +1701,52 @@ textarea.contract-project-item-input{
 }
 
 /* legacy style search-template-v274 */
+
+
+/* Real contracts share the template clause editor geometry and A4 preview. */
+.contract-form-body .real-contract-items.ctf-groups{
+  max-width:720px;
+  margin:0 auto;
+  padding:0;
+  overflow:hidden;
+  border:1px solid var(--divider);
+  border-radius:12px;
+  background:var(--surface);
+}
+.contract-form-body .real-contract-items.ctf-groups + .ctf-add-band{
+  max-width:720px;
+  margin:10px auto 0;
+}
+.contract-real-preview-viewport{position:relative;width:100%;max-width:794px;margin:0 auto;overflow:hidden;}
+.contract-real-print-preview{
+  position:absolute!important;
+  top:0;
+  width:794px!important;
+  height:1123px!important;
+  margin:0!important;
+  border:1px solid #cfd2d5!important;
+  border-radius:0!important;
+  background:#fff!important;
+  padding:53px!important;
+  box-sizing:border-box!important;
+  overflow:hidden!important;
+  direction:rtl;
+  transform-origin:top left;
+  color:#202124!important;
+  font-family:IRANSansX,IRANSans,Tahoma,sans-serif!important;
+  font-size:13px!important;
+  line-height:1.7!important;
+}
+.contract-real-print-preview .doc-title{font-size:21px;font-weight:600;margin:10px 0 18px;text-align:center;}
+.contract-real-print-preview .doc-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;margin-bottom:16px;font-size:13px;}
+.contract-real-print-preview .doc-parties{margin-bottom:16px;}
+.contract-real-print-preview .doc-parties .party{margin-bottom:5px;}
+.contract-real-print-preview .doc-clauses{border-top:1px solid #ddd;padding-top:12px;}
+.contract-real-print-preview .doc-clause{margin-bottom:8px;border-bottom:1px solid #ddd;padding:0 6px 8px;}
+.contract-real-print-preview .doc-child{padding-right:22px;font-size:13px;font-weight:400;margin-top:3px;}
+.contract-real-print-preview .doc-payment{margin-top:16px;}
+.contract-real-print-preview .doc-signatures{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:30px;text-align:center;}
+.contract-real-print-preview .signature-box{padding-top:12px;border-top:1px dotted #777;min-height:58px;}
+
+.contract-form-body .ctf-text,
+.contract-form-body .ctf-inline-input{field-sizing:content;overflow:hidden;resize:none;}

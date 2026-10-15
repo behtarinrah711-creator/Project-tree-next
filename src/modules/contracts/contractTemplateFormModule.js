@@ -62,9 +62,11 @@ function ctfCommitRoot(text,keep=true){
 
 function ctfFocus(selector){ setTimeout(()=>{const el=document.querySelector(selector); if(el){el.focus(); const v=el.value.length; try{el.setSelectionRange(v,v)}catch(e){}}},0); }
 
-function mountCtfPrintPreview(body){
-  const viewport=document.createElement('div');viewport.className='ctf-preview-viewport';
-  const page=document.createElement('div');page.className='ctf-preview';page.innerHTML=ctfPreview();viewport.appendChild(page);body.appendChild(viewport);
+export function mountContractPrintPage(body,page,viewportClass=''){
+  const viewport=document.createElement('div');
+  viewport.className='ctf-preview-viewport'+(viewportClass?' '+viewportClass:'');
+  viewport.appendChild(page);
+  body.appendChild(viewport);
   const resize=()=>{
     const available=Math.max(0,viewport.clientWidth);
     const scale=Math.min(1,available/794);
@@ -78,6 +80,14 @@ function mountCtfPrintPreview(body){
     previewResizeObserver.observe(viewport);
   }
   requestAnimationFrame(resize);
+  return viewport;
+}
+
+function mountCtfPrintPreview(body){
+  const page=document.createElement('div');
+  page.className='ctf-preview';
+  page.innerHTML=ctfPreview();
+  mountContractPrintPage(body,page);
 }
 
 function ctfPreview(){
