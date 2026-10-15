@@ -316,11 +316,13 @@ function renderContractRootInlineAddRow() {
   return add;
 }
 
-function renderRealContractRow(item, list, index, isChild, dragOwner) {
+function renderRealContractRow(item, list, index, isChild) {
   const row = document.createElement('div');
   row.className = isChild ? 'ctf-row ctf-material-row' : 'ctf-row ctf-band-row';
-  row.dataset.realContractDragId = item.id;
-  row.dataset.contractDragId = item.id;
+  if (isChild) {
+    row.dataset.realContractDragId = item.id;
+    row.dataset.contractDragId = item.id;
+  }
 
   const grip = document.createElement('button');
   grip.type = 'button';
