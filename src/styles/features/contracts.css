@@ -1747,3 +1747,6 @@ textarea.contract-project-item-input{
 .contract-real-print-preview .doc-payment{margin-top:16px;}
 .contract-real-print-preview .doc-signatures{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:30px;text-align:center;}
 .contract-real-print-preview .signature-box{padding-top:12px;border-top:1px dotted #777;min-height:58px;}
+
+.contract-form-body .ctf-text,
+.contract-form-body .ctf-inline-input{field-sizing:content;overflow:hidden;resize:none;}
