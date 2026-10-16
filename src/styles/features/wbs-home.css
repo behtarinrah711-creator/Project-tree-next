@@ -293,6 +293,7 @@ body:has(.wbs-home-root){background:#fff;}
 /* Base-mode grouping stage creation. Native buttons previously used 13.333px. */
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .wbs-sheet-save{font-size:calc(13.333px + 3px);font-weight:700;}
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay){bottom:auto;}
+:is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .wbs-sheet{max-height:min(88vh,100%);}
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay) .sheet-caption{font-size:15px;font-weight:700;}
 /* Mobile keyboard scrolling can leave space below the visual viewport. */
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay)::after{content:"";position:absolute;top:100%;left:0;right:0;height:100vh;background:#fff;pointer-events:none;}
