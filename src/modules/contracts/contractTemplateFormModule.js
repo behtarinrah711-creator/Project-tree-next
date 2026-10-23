@@ -74,12 +74,13 @@ export function mountContractPrintPage(body,page,viewportClass=''){
     const scale=Math.min(1,available/794);
     page.style.left=Math.max(0,(available-(794*scale))/2)+'px';
     page.style.transform='scale('+scale+')';
-    viewport.style.height=Math.ceil(1123*scale)+'px';
+    viewport.style.height=Math.ceil(Math.max(1123,page.scrollHeight,page.offsetHeight)*scale)+'px';
   };
   if(previewResizeObserver) previewResizeObserver.disconnect();
   if(typeof ResizeObserver==='function'){
     previewResizeObserver=new ResizeObserver(resize);
     previewResizeObserver.observe(viewport);
+    previewResizeObserver.observe(page);
   }
   requestAnimationFrame(resize);
   return viewport;

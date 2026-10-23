@@ -82,7 +82,11 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
     documentRef.body.appendChild(capture);
     try{
       await windowRef.document?.fonts?.ready;
-      const canvas=await windowRef.html2canvas(capture,{scale:2,backgroundColor:'#fff',useCORS:true,logging:false,windowWidth:800});
+      // Bound the raster size for long contracts while capturing the full document.
+      const height=capture.scrollHeight || 1132;
+      const width=capture.scrollWidth || 800;
+      const scale=documentBuilder ? Math.min(2,16384/Math.max(width,height),Math.sqrt(16000000/(width*height))) : 2;
+      const canvas=await windowRef.html2canvas(capture,{scale,backgroundColor:'#fff',useCORS:true,logging:false,windowWidth:800,...(documentBuilder?{width,height,scrollX:0,scrollY:0}:{})});
       const link=documentRef.createElement('a'); link.href=canvas.toDataURL('image/jpeg',.92); link.download=`${list.title||'notebook'}.jpg`; link.click();
       notify('تصویر JPEG ذخیره شد');
     }catch(error){console.error(error);notify('ساخت تصویر ناموفق بود');}finally{capture.remove();}

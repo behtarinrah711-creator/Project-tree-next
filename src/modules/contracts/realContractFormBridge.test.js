@@ -56,7 +56,7 @@ describe('KarhaRealContractForm global bridge', () => {
 
   it('shares the template A4 dimensions and pinned row actions', () => {
     const css = readFileSync(join(dir, '../../styles/features/contracts.css'), 'utf8');
-    assert.match(css, /\.contract-real-print-preview\{[\s\S]*width:794px!important;[\s\S]*height:1123px!important;/);
+    assert.match(css, /\.contract-real-print-preview\{[\s\S]*width:794px!important;[\s\S]*min-height:1123px!important;[\s\S]*height:auto!important;/);
     assert.match(css, /\.ctf-row-actions\{[^}]*position:absolute;left:12px/);
     assert.match(css, /\.ctf-material-row \.ctf-material-actions\{left:12px/);
   });
