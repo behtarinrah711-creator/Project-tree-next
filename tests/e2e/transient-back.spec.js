@@ -29,6 +29,20 @@ async function openContractsList(page, project = baseProject){
   await expect(page.locator('#contractsPage')).toBeVisible();
 }
 
+
+async function previewThenEdit(page, contractRow){
+  await contractRow.locator('.contract-main').click();
+  const preview = page.locator('#contractPreviewPage');
+  await expect(preview).toBeVisible();
+  await expect(preview.locator('h2')).toHaveText('پیش‌نمایش قرارداد');
+  await expect(page.locator('#contractFormPage')).toBeHidden();
+  await expect(preview.locator('input, textarea, [contenteditable="true"]')).toHaveCount(0);
+  await preview.getByRole('button', { name: 'بازگشت', exact: true }).click();
+  await expect(preview).toBeHidden();
+  await contractRow.getByRole('button', { name: 'عملیات قرارداد', exact: true }).click();
+  await contractRow.getByRole('menuitem', { name: 'ویرایش', exact: true }).click();
+}
+
 async function openDirtyNewContract(page){
   await openContractsList(page);
   await page.locator('#contractAddBtn').click();
@@ -121,7 +135,7 @@ test('Yes persists a visible project-scoped Draft row and reopening it uses the 
   expect(savedDraft?.contractPlace).toBe('کارگاه مرکزی');
   expect(savedDraft?.isDraft).toBe(true);
 
-  await draftRow.locator('.contract-main').click();
+  await previewThenEdit(page, draftRow);
   await expect(page.locator('#contractFormPage')).toBeVisible();
   await expect(row(page, 'محل انعقاد قرارداد').locator('input')).toHaveValue('کارگاه مرکزی');
   await expect.poll(() => page.evaluate(() => window.KarhaRealContractForm?.getLifecycleMode?.()))
@@ -145,7 +159,7 @@ test('saved contract and draft contract share History ownership but keep differe
     }]
   };
   await openContractsList(page, project);
-  await page.locator('.contract-row').filter({ hasText: 'قرارداد ذخیره‌شده' }).locator('.contract-main').click();
+  await previewThenEdit(page, page.locator('.contract-row').filter({ hasText: 'قرارداد ذخیره‌شده' }));
   await expect(page.locator('#contractFormPage')).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.KarhaRealContractForm?.getLifecycleMode?.()))
     .toBe('saved');
