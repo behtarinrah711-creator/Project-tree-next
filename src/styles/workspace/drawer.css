@@ -81,17 +81,7 @@
     cursor:pointer;
     touch-action:manipulation;
   }
-  .drawer-menu-row::after{
-    content:'';
-    margin-inline-start:auto;
-    color:var(--text-dim);
-    width:8px;
-    height:8px;
-    border-left:2px solid currentColor;
-    border-bottom:2px solid currentColor;
-    transform:rotate(45deg);
-    flex:none;
-  }
+  .drawer-menu-row .drawer-menu-arrow{width:24px;height:24px;margin-inline-start:auto;flex:none;color:var(--text-dim);transform:none;}
   .drawer-menu-row:active{
     background:transparent;
     border-radius:0;

@@ -1,3 +1,6 @@
+import { contractActionsMenu } from './contractActionsMenu.js';
+import { openContractExport } from './contractExportView.js';
+import { openConfirm } from '../../ui/confirm.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { contractApi } from '../../domain/contractApi.js';
@@ -81,10 +84,19 @@ export const contractsModule={
       const t=document.createElement('div'); t.className='contract-title'; t.textContent=title;
       const m=document.createElement('div'); m.className='contract-meta'; m.textContent=meta; main.append(t,m);
       const actions=document.createElement('div'); actions.className='contract-actions';
-      const edit=document.createElement('button'); edit.className='contract-action'; edit.textContent='✎'; edit.title='ویرایش'; edit.onclick=e=>{e.stopPropagation();legacy('openContractForm',c.id);};
-      const del=document.createElement('button'); del.className='contract-action danger'; del.textContent='×'; del.title='حذف';
-      del.onclick=e=>{e.stopPropagation();if(!confirm('آیا از حذف این قرارداد اطمینان دارید؟'))return;const result=contractApi.trash(id,c.id);if(!result.ok){if(result.code==='in_use')window.KarhaLegacy?.showRecordDeleteBlocked?.('contract',result.refs);else window.KarhaLegacy?.showToast?.(result.message||'حذف قرارداد انجام نشد');return;}this.render(id);};
-      actions.append(edit,del);
+      actions.appendChild(contractActionsMenu({
+        onEdit:()=>legacy('openContractForm',c.id),
+        onExport:trigger=>openContractExport(p,c,{trigger}),
+        onDelete:()=>openConfirm('آیا از حذف این قرارداد اطمینان دارید؟',()=>{
+          const result=contractApi.trash(id,c.id);
+          if(!result.ok){
+            if(result.code==='in_use')window.KarhaLegacy?.showRecordDeleteBlocked?.('contract',result.refs);
+            else window.KarhaLegacy?.showToast?.(result.message||'حذف قرارداد انجام نشد');
+            return;
+          }
+          this.render(id);
+        },'حذف'),
+      }));
       if(created){
         const createdBox=document.createElement('div'); createdBox.className='contract-created';
         const date=document.createElement('div'); date.className='contract-created-date'; date.textContent=created.date;
