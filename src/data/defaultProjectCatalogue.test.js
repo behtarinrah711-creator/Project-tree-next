@@ -36,5 +36,17 @@ test('template contains only general provisions and employer supplied materials'
   assert.deepEqual(t.paymentItems,[]);
   const text=JSON.stringify(t.items);
   assert.match(text,/تأمین تمامی مصالح مصرفی بر عهده کارفرماست/);
-  assert.doesNotMatch(text,/ریال|تومان|درصد|متر مکعب|مدت قرارداد|شرایط پرداخت|حسن انجام|عیار/);
+  assert.doesNotMatch(text,/ریال|تومان|درصد|متر مکعب|حسن انجام|عیار/);
+});
+
+ test('foundation preserves the site twelve-article structure and project-specific terms stay empty',()=>{
+  const template=makeProject('p').contractTemplates[0];
+  assert.deepEqual(template.items.map(x=>x.text),[
+    'موضوع قرارداد:','اسناد و مدارک قرارداد:','مدت قرارداد:','شرایط پرداخت:',
+    'تعهدات پیمانکار:','تعهدات کارفرما:','فسخ:','شرایط غیرمترقبه:',
+    'کسورات قانونی:','حل اختلافات:','جریمه:','دوره تضمین:'
+  ]);
+  for(const i of [2,3,7,8,9,10,11]) assert.deepEqual(template.items[i].children,[]);
+  const duties=template.items[4].children.map(x=>x.text).join(' ');
+  for(const word of ['قالب','میلگرد','بتن','گروت','واتراستاپ','ایمنی','تحویل']) assert.ok(duties.includes(word));
 });

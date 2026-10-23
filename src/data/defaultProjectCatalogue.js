@@ -1,5 +1,5 @@
 /** Shared built-in catalogue; records are materialized only inside real projects. */
-const foundationSections = [
+const foundationSourceSections = [
   ['موضوع قرارداد', [
     'اجرای عملیات فونداسیون مطابق نقشه‌ها، مشخصات فنی و دستورکارهای ابلاغی، شامل بتن مگر، قالب‌بندی، آرماتوربندی، بتن‌ریزی، تراکم و عمل‌آوری بتن است.',
     'نصب و تنظیم صفحه‌ستون‌ها و قطعات مدفون، اجرای گروت و نصب اسلیو و واتراستاپ، در صورت پیش‌بینی در نقشه‌ها و محدوده کار، جزو عملیات اجرایی است.',
@@ -52,6 +52,32 @@ const foundationSections = [
     'پیمانکار موظف است پیش از پوشاندن بخش‌های اجراشده، امکان بازدید و کنترل دستگاه نظارت را فراهم کند.',
     'نواقص اجرایی منتسب به عملکرد پیمانکار باید طبق دستورکار اصلاح شوند و تحویل کار پس از کنترل و ثبت صورت‌جلسه انجام شود.'
   ]]
+];
+
+// Keep the site's twelve articles in their original order. Project-specific
+// terms remain empty; they are supplied by the actual contract form.
+const foundationSections = [
+  ['موضوع قرارداد:', foundationSourceSections[0][1]],
+  ['اسناد و مدارک قرارداد:', foundationSourceSections[1][1]],
+  ['مدت قرارداد:', []],
+  ['شرایط پرداخت:', []],
+  ['تعهدات پیمانکار:', [
+    ...foundationSourceSections[2][1],
+    ...foundationSourceSections[3][1],
+    ...foundationSourceSections[4][1],
+    ...foundationSourceSections[5][1],
+    ...foundationSourceSections[6][1],
+    ...foundationSourceSections[8][1],
+  ]],
+  ['تعهدات کارفرما:', foundationSourceSections[7][1]],
+  ['فسخ:', [
+    'واگذاری قرارداد یا عملیات به غیر بدون موافقت کتبی کارفرما، عدم اجرای تعهدات، تأخیر غیرمجاز در شروع یا پیشرفت کار و تعطیل‌کردن کار بدون اجازه کتبی، از موارد فسخ مطابق شرایط قرارداد هستند.'
+  ]],
+  ['شرایط غیرمترقبه:', []],
+  ['کسورات قانونی:', []],
+  ['حل اختلافات:', []],
+  ['جریمه:', []],
+  ['دوره تضمین:', []],
 ];
 
 export const DEFAULT_PROJECT_CATALOGUE = [{
