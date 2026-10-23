@@ -119,6 +119,8 @@ function openSearchTemplate(opts){
   const items=(Array.isArray(opts.items)?opts.items:[]).map(it=>({
     id:it.id,
     name:it.name,
+    disabled:!!it.disabled,
+    disabledReason:it.disabledReason||'',
     starred:!!starMap[String(it.id)],
     _raw:it
   }));
@@ -199,7 +201,8 @@ function renderSearchTemplateBody(){
 
 function makeSearchTemplateRow(item){
   const row=document.createElement('div');
-  row.className='stpl-row';
+  row.className='stpl-row'+(item.disabled?' stpl-row-disabled':'');
+  if(item.disabled) row.setAttribute('aria-disabled','true');
   row.dataset.id=String(item.id||'');
 
   const av=document.createElement('div');
@@ -209,11 +212,16 @@ function makeSearchTemplateRow(item){
   const name=document.createElement('div');
   name.className='stpl-name';
   name.textContent=item.name||'—';
+  if(item.disabledReason){
+    const reason=document.createElement('div');reason.className='stpl-disabled-reason';
+    reason.textContent=item.disabledReason;name.appendChild(reason);
+  }
   row.append(av, name);
 
   if(searchTemplateState.showStar){
     const star=document.createElement('button');
     star.type='button';
+    star.disabled=!!item.disabled;
     star.className='stpl-star'+(item.starred?' on':'');
     star.innerHTML=stplStarSvg(!!item.starred);
     star.onclick=(e)=>{
@@ -228,6 +236,7 @@ function makeSearchTemplateRow(item){
   }
 
   row.onclick=()=>{
+    if(item.disabled) return;
     const handler=searchTemplateState && searchTemplateState.onSelect;
     // اول تمپلیت را ببند (با سرکوب بک فرم)، بعد انتخاب را اعمال کن تا روی فرم بمانیم
     closeSearchTemplate(false);

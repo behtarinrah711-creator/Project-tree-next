@@ -136,3 +136,8 @@
 .search-template-page.hidden .stpl-fab{display:none !important;}
 .search-template-page:not(.hidden) .stpl-fab{display:flex !important;}
 
+
+.stpl-row-disabled{color:var(--text-dim);background:#f5f5f5;cursor:default;}
+.stpl-row-disabled .stpl-avatar{background:#e5e7eb;color:#9ca3af;}
+.stpl-row-disabled .stpl-name,.stpl-row-disabled .stpl-star{color:#9ca3af;}
+.stpl-disabled-reason{font-size:12px;line-height:1.7;font-weight:400;color:var(--text-dim);margin-top:4px;}

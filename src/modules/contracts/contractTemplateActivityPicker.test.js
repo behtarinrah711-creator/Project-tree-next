@@ -39,3 +39,55 @@ test('template uses shared activity picker and selects newly created activity wi
     assert.deepEqual(form.getState().items,[{id:'clause',text:'Keep me'}]);
   }finally{registerSearchPicker();}
 });
+
+test('existing templates disable activities except the template being edited',async()=>{
+  const store=createAppDataStore({storage:{getItem(){return null;},setItem(){}}});
+  store.replaceSnapshot({schemaVersion:8,projects:[{
+    id:'p',tasks:[],activityTemplates:[{id:'a',name:'A'},{id:'b',name:'B'},{id:'c',name:'C'}],
+    contractTemplates:[{id:'tpl-a',activityId:'a'},{id:'tpl-b',activityId:'b',status:'draft'},{id:'trash',activityId:'c',trashed:true}],
+  }],activeTab:'p',viewMode:'simple',starredOrder:[]});
+  let options;
+  globalThis.KarhaAppData=store;
+  globalThis.document={getElementById(){return null;}};
+  globalThis.window={location:{hash:'',search:''},KarhaAppData:store,
+    findContractTemplate:id=>({id,activityId:'a'}),
+    makeContractTemplateDraftClean:existing=>existing||{id:'new-template',activityId:'',items:[]}};
+  registerSearchPicker({open:opts=>{options=opts;return true;}});
+  try{
+    const {contractTemplateFormModule:form}=await import('./contractTemplateFormModule.js');
+    form.open(null,'p');form.openActivityPicker();
+    assert.deepEqual(options.items.map(x=>x.disabled),[true,true,false]);
+    assert.equal(options.items[0].disabledReason,'قالب قرارداد قبلاً ساخته شده است');
+    options.onSelect(options.items[0]);
+    assert.equal(form.getState().activityId,'');
+    options.onSelect(options.items[2]);
+    assert.equal(form.getState().activityId,'c');
+    form.open('tpl-a','p');form.openActivityPicker();
+    assert.deepEqual(options.items.map(x=>x.disabled),[false,true,false]);
+    options.onSelect(options.items[0]);
+    assert.equal(form.getState().activityId,'a');
+  }finally{registerSearchPicker();}
+});
+
+test('shared picker renders disabled rows and ignores their clicks',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const {runInNewContext}=await import('node:vm');
+  const make=()=>({children:[],dataset:{},classList:{add(){},remove(){},toggle(){}},
+    append(...xs){this.children.push(...xs);},appendChild(x){this.children.push(x);},
+    setAttribute(k,v){this[k]=v;}});
+  const body=make(),page=make();let selected=0,closed=0;
+  const context={document:{readyState:'loading',addEventListener(){},createElement:make,
+    getElementById:id=>id==='searchTemplatePage'?page:id==='searchTemplateBody'?body:null},
+    window:{KarhaChildHistory:{register(){},open(){},isOpen(){return false;},consume(){closed++;}}},
+    getCurrentProject:()=>({}),setTimeout(){}};
+  runInNewContext(readFileSync(new URL('./searchTemplateModule.js',import.meta.url),'utf8'),context);
+  context.window.KarhaSearchTemplate.open({items:[{id:'a',name:'A',disabled:true,disabledReason:'Already created'},{id:'b',name:'B'}],onSelect(){selected++;}});
+  const rows=body.children.filter(x=>x.className?.startsWith('stpl-row'));
+  assert.equal(rows[0]['aria-disabled'],'true');
+  assert.equal(rows[0].children[1].children[0].textContent,'Already created');
+  assert.equal(rows[0].children[2].disabled,true);
+  rows[0].onclick();
+  assert.equal(selected,0);assert.equal(closed,0);
+  rows[1].onclick();
+  assert.equal(selected,1);assert.ok(closed>0);
+});
