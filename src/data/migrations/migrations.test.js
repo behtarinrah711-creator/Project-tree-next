@@ -17,7 +17,8 @@ test('v8 project and legacy global workspace data migrate without shape loss',()
   assert.equal(snapshot.projects[0].tasks[0].completedAt,0);
   assert.equal(snapshot.projects[0].archived,false);
   assert.equal(snapshot.projects[0].trashed,false);
-  assert.deepEqual(snapshot.projects[0].activityTemplates,[activity]);
+  assert.equal(snapshot.projects[0].activityTemplates[0],activity);
+  assert.equal(snapshot.projects[0].activityTemplates[1].name,'اجرای فونداسیون');
   assert.deepEqual(snapshot.projects[1].contacts,[contact]);
   assert.equal('deletedProjectId' in contact,false);
   assert.deepEqual(dirty,['p1','p2','p2','p1']);
