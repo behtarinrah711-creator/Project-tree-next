@@ -1,3 +1,4 @@
+import { paginateContract } from './contractPagination.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { saveContractTemplate } from './contractTemplatePersistence.js';
@@ -67,6 +68,9 @@ function ctfFocus(selector){ setTimeout(()=>{const el=document.querySelector(sel
 export function mountContractPrintPage(body,page,viewportClass=''){
   const viewport=document.createElement('div');
   viewport.className='ctf-preview-viewport'+(viewportClass?' '+viewportClass:'');
+  const source=page;
+  const paginated=!!viewportClass;
+  if(paginated){page=paginateContract(source);page.style.position='absolute';page.style.transformOrigin='top left';}
   viewport.appendChild(page);
   body.appendChild(viewport);
   const resize=()=>{
@@ -83,6 +87,11 @@ export function mountContractPrintPage(body,page,viewportClass=''){
     previewResizeObserver.observe(page);
   }
   requestAnimationFrame(resize);
+  if(paginated) document.fonts?.ready.then(()=>{
+    if(!viewport.isConnected)return;
+    const updated=paginateContract(source);updated.style.position='absolute';updated.style.transformOrigin='top left';
+    previewResizeObserver?.unobserve(page);page.replaceWith(updated);page=updated;previewResizeObserver?.observe(page);resize();
+  });
   return viewport;
 }
 
