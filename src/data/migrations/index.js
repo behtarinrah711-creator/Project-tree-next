@@ -1,3 +1,4 @@
+import { ensureDefaultProjectCatalogue } from '../defaultProjectCatalogue.js';
 import { normalizeProjectData, normalizeProjectScopedData } from './normalizeProjectData.js';
 import { migrateLegacyGlobalWorkspaceData } from './legacyWorkspaceMigration.js';
 import { resetLegacyFunding } from '../../domain/wbs/fundingReceipts.js';
@@ -11,6 +12,7 @@ export function runDataMigrations(snapshot,{schemaVersion,activeProjectId,markDi
     rememberProjectTasks(project);
   });
   migrateLegacyGlobalWorkspaceData(snapshot,{activeProjectId,markDirty});
+  snapshot.projects.forEach(ensureDefaultProjectCatalogue);
   return snapshot;
 }
 

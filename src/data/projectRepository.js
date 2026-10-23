@@ -1,3 +1,4 @@
+import { ensureDefaultProjectCatalogue } from './defaultProjectCatalogue.js';
 import { localStorageAdapter } from './storageAdapter.js';
 import { STORAGE_KEYS } from '../config/deploymentConfig.js';
 
@@ -51,10 +52,10 @@ export class ProjectRepository{
 
   find(projectId){
     if(!projectId) return null;
-    return this.all().find(project =>
+    return ensureDefaultProjectCatalogue(this.all().find(project =>
       String(project.id) === String(projectId) ||
       String(project.projectId) === String(projectId)
-    ) || null;
+    ) || null);
   }
 
   getActiveProject(projectId){
