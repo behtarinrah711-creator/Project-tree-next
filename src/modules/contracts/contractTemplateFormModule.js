@@ -253,8 +253,10 @@ export const contractTemplateFormModule={
     const p=activeProject(formProjectId);
     const draft=state;
     if(!p || !draft) return false;
+    const hasTemplate=id=>(activeProject(formProjectId)?.contractTemplates||[]).some(t=>!t.trashed
+      && String(t.activityId)===String(id) && String(t.id)!==String(draft.id));
     const select=activity=>{
-      if(state!==draft || !activity?.id) return;
+      if(state!==draft || !activity?.id || hasTemplate(activity.id)) return;
       draft.activityId=activity.id;
       draft.title='قرارداد '+(activity.name||activity.title||'');
       dirty=true;
@@ -264,7 +266,8 @@ export const contractTemplateFormModule={
       title:'انتخاب فعالیت',listTitle:'فعالیت‌ها',selectedTitle:'فعالیت‌های منتخب',
       resourceType:'activity',contextKey:'contract-template:activity',
       items:(p.activityTemplates||[]).filter(a=>!a.trashed)
-        .map(a=>({id:a.id,name:a.name||a.title||'فعالیت'})),
+        .map(a=>({id:a.id,name:a.name||a.title||'فعالیت',disabled:hasTemplate(a.id),
+          disabledReason:hasTemplate(a.id)?'قالب قرارداد قبلاً ساخته شده است':''})),
       showStar:true,showAdd:true,onSelect:select,
       onAdd:()=>{
         if(typeof window.KarhaSearchTemplate?.close==='function') window.KarhaSearchTemplate.close(false);
