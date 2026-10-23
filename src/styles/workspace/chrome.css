@@ -183,7 +183,8 @@
   .workspace-option-main{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-width:0;flex:1;}
   .workspace-option-title{font-size:15px;font-weight:600;}
   .workspace-option-meta{font-size:12px;color:var(--text-dim);}
-  .workspace-option-arrow{font-size:26px;line-height:1;color:var(--text-dim);flex:none;transform:translateY(-1px);}
+  .workspace-option-arrow{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;color:var(--text-dim);flex:none;}
+  .workspace-option-arrow svg{display:block;width:24px;height:24px;}
 
   .workspace-search{padding:10px 12px;background:var(--bg);border-bottom:1px solid var(--divider);}
   .workspace-search input{width:100%;height:42px;box-sizing:border-box;border:1px solid var(--divider);border-radius:10px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;padding:0 12px;outline:none;text-align:right;}

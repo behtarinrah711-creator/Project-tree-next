@@ -72,7 +72,7 @@ test('Back from project trash returns to the settings list',async({page})=>{
 test('header arrows return from contracts and project trash with one click',async({page})=>{
   await page.locator('#projectSettingsTrigger').click();
 
-  await page.getByRole('button',{name:'قراردادها'}).click();
+  await page.getByRole('button',{name:'قالب‌های قرارداد',exact:true}).click();
   await expect(page.locator('#contractTemplatesPage')).toBeVisible();
   await page.locator('#closeContractTemplatesPage').click();
   await expect(page.locator('#settingsPage')).toBeVisible();
