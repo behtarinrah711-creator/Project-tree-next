@@ -52,7 +52,7 @@ function renderAccountingRoot(projectId){
         <span class="workspace-option-title">${section.title}</span>
         <span class="workspace-option-meta">${section.meta}</span>
       </span>
-      <span class="workspace-option-arrow">›</span>
+      <span class="workspace-option-arrow"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span>
     `;
     row.addEventListener('click', () => {
       window.KarhaApp?.router?.navigate(projectId, section.id);

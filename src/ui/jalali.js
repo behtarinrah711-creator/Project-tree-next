@@ -99,9 +99,9 @@ function renderJalaliPicker({ documentRef = document, windowRef = window } = {})
   const keyCompare = (a,b)=>String(a).localeCompare(String(b));
 
   let html = '<div class="jalali-head">';
-  html += '<button type="button" id="jalaliNext" title="ماه بعد">‹</button>';
+  html += '<button type="button" id="jalaliNext" title="ماه بعد"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></button>';
   html += '<span>'+JALALI_MONTHS[m-1]+' '+toPersianDigits(y)+'</span>';
-  html += '<button type="button" id="jalaliPrev" title="ماه قبل">›</button></div>';
+  html += '<button type="button" id="jalaliPrev" title="ماه قبل"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m9 6 6 6-6 6"/></svg></button></div>';
   html += '<div class="jalali-week"><span>ش</span><span>ی</span><span>د</span><span>س</span><span>چ</span><span>پ</span><span>ج</span></div>';
   html += '<div class="jalali-days">';
   for(let i=0;i<start;i++) html += '<button type="button" class="muted"> </button>';

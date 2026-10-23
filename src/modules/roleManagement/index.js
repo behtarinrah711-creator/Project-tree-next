@@ -189,7 +189,7 @@ export function createRoleManagementModule({
       const row=documentRef.createElement('button');row.type='button';row.className='role-member-row';
       const contact=(project.contacts || []).find(contactItem=>contactItem.id===member.contactId || (contactItem.phones || [contactItem.phone]).includes(member.mobile));
       const name=[contact?.firstName,contact?.lastName].filter(Boolean).join(' ') || member.mobile;
-      row.innerHTML=`<span class="role-member-main"><strong></strong><small></small></span><span class="role-status"></span><span class="workspace-option-arrow">›</span>`;
+      row.innerHTML=`<span class="role-member-main"><strong></strong><small></small></span><span class="role-status"></span><span class="workspace-option-arrow"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span>`;
       row.querySelector('strong').textContent=name;row.querySelector('small').textContent=member.mobile;row.querySelector('.role-status').textContent=statusMap.get(member.status) || member.status;
       row.onclick=()=>openMemberSheet(projectId,registry,member);
       const actions=documentRef.createElement('div');actions.className='role-member-actions';

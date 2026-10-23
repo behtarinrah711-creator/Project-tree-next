@@ -82,12 +82,15 @@
     touch-action:manipulation;
   }
   .drawer-menu-row::after{
-    content:'‹';
+    content:'';
     margin-inline-start:auto;
     color:var(--text-dim);
-    font-size:24px;
-    font-weight:400;
-    line-height:1;
+    width:8px;
+    height:8px;
+    border-left:2px solid currentColor;
+    border-bottom:2px solid currentColor;
+    transform:rotate(45deg);
+    flex:none;
   }
   .drawer-menu-row:active{
     background:transparent;
