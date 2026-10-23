@@ -1,3 +1,4 @@
+import { openContractPreview } from './contractPreviewView.js';
 import { contractActionsMenu } from './contractActionsMenu.js';
 import { openContractExport } from './contractExportView.js';
 import { openConfirm } from '../../ui/confirm.js';
@@ -106,7 +107,7 @@ export const contractsModule={
       }else{
         row.append(main,actions);
       }
-      main.onclick=()=>legacy('openContractForm',c.id); listWrap.appendChild(row);
+      row.onclick=()=>openContractPreview(p,c,{trigger:main}); listWrap.appendChild(row);
     };
     contracts.forEach(appendContract);
     if(firstPage.cursor != null){
