@@ -14,6 +14,7 @@ const {
   selectContractor,
   selectContractTemplate,
   openContractTemplatePicker,
+  openActivityPicker,
   contractActivityChoices,
 } = await import('./contractPickers.js');
 
@@ -156,4 +157,32 @@ test('system contract picker immediately syncs activity and contractor to its wo
   assert.deepEqual(task.activityIds,['act-new']);
   assert.equal(task.counterpartyContactId,'contact-new');
 });
+});
+
+test('standalone contract can reopen all activities and switch templates repeatedly', () => {
+  boot({
+    id:'p-independent', tasks:[],
+    activityTemplates:[
+      {id:'a',name:'A'}, {id:'b',name:'B'}, {id:'c',name:'C'},
+      {id:'deleted',name:'Deleted',trashed:true},
+    ],
+    contractTemplates:[
+      {id:'tpl-a',activityId:'a',items:[{text:'Article A'}],paymentItems:[{id:'pay-a'}]},
+      {id:'tpl-b',activityId:'b',items:[{text:'Article B'}],paymentItems:[{id:'pay-b'}]},
+    ],
+  });
+  const state={projectItemId:'',activityIds:[]};
+  let opened;
+  window.KarhaSearchTemplate={open(opts){opened=opts;return true;}};
+  for(const id of ['a','b','c','a']){
+    openActivityPicker('p-independent',state);
+    assert.deepEqual(opened.items.map(x=>x.id),['a','b','c']);
+    opened.onSelect({id});
+    assert.equal(state.activityId,id);
+    assert.equal(state.templateId,id==='c'?'':'tpl-'+id);
+    assert.deepEqual(state.items.map(x=>x.text),id==='c'?[]:['Article '+id.toUpperCase()]);
+    assert.deepEqual(state.paymentItems,id==='c'?[]:[{id:'pay-'+id}]);
+  }
+  openActivityPicker('p-independent',state);
+  assert.deepEqual(opened.items.map(x=>x.id),['a','b','c']);
 });

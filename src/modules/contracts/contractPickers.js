@@ -168,7 +168,7 @@ export function openEmployerPicker(projectId,state,onChange,onAdd){
 }
 export function contractActivityChoices(projectId,state){
   const p=getProject(projectId); if(!p) return [];
-  if(state?.workTaskId) return activities(p);
+  if(state?.workTaskId || !state?.projectItemId) return activities(p);
   const ids=Array.isArray(state?.activityIds)?state.activityIds.map(String):[];
   const pool=activities(p);
   return ids.length ? pool.filter(a=>ids.some(id=>String(a.id)===id)) : pool;
