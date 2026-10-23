@@ -1,9 +1,11 @@
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { saveContractTemplate } from './contractTemplatePersistence.js';
+import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 import { appendContractChild } from './contractTemplateItems.js';
 
 let state=null;
+let formProjectId=null;
 let dirty=false;
 let inlineAddState=null;
 let dragHandlesVisible=true;
@@ -171,42 +173,11 @@ function renderContractTemplateFormClean(){
   const body=document.getElementById('contractTemplateFormBody'); if(!body||!state)return; body.innerHTML=''; const st=state;
   const activity=document.createElement('div');activity.className='ctf-field ctf-activity-field';
   const lab=document.createElement('label');lab.textContent='فعالیت';activity.appendChild(lab);
-  const activities=helper("getActivityTemplates",helper("getCurrentProject",)).filter(a=>!a.trashed);
   const selectedName=ctfActivityName()||'';
-  const searchWrap=document.createElement('div');searchWrap.className='ctf-activity-search-wrap';
-  const search=document.createElement('input');search.type='search';search.className='ctf-activity-search';search.placeholder='جستجوی فعالیت...';search.autocomplete='off';search.enterKeyHint='search';search.value=selectedName;
-  const results=document.createElement('div');results.className='ctf-activity-results-inline';
-  const renderResults=(term='')=>{
-    results.innerHTML='';
-    const q=String(term||'').trim().toLocaleLowerCase();
-    const matches=(q?activities.filter(a=>String(a.name||'').toLocaleLowerCase().includes(q)):activities).slice(0,4);
-    if(!matches.length){const empty=document.createElement('div');empty.className='ctf-activity-empty';empty.textContent='فعالیتی پیدا نشد.';results.appendChild(empty);}
-    else matches.forEach(a=>{
-      const b=document.createElement('button');b.type='button';b.className='ctf-activity-option';b.textContent=a.name||'فعالیت';
-      b.onclick=()=>{
-        st.activityId=a.id;
-        st.title='قرارداد '+(a.name||'');
-        dirty=true;
-        renderContractTemplateFormClean();
-      };
-      results.appendChild(b);
-    });
-  };
-  const openResults=()=>{renderResults(search.value);results.classList.add('open');};
-  search.onfocus=openResults;
-  search.oninput=()=>{
-    if(String(search.value||'')!==selectedName){st.activityId='';st.title='';}
-    renderResults(search.value);results.classList.add('open');
-  };
-  search.onkeydown=e=>{
-    if(e.key==='Escape'){results.classList.remove('open');search.blur();}
-    if(e.key==='Enter'){
-      const first=results.querySelector('.ctf-activity-option');
-      if(first){e.preventDefault();first.click();}
-    }
-  };
-  search.onblur=()=>setTimeout(()=>results.classList.remove('open'),120);
-  searchWrap.append(search,results);activity.appendChild(searchWrap);
+  const trigger=document.createElement('button');trigger.type='button';trigger.className='ctf-activity-search';
+  trigger.textContent=selectedName||'انتخاب فعالیت';
+  trigger.onclick=()=>contractTemplateFormModule.openActivityPicker();
+  activity.appendChild(trigger);
   if(selectedName){const selected=document.createElement('div');selected.className='ctf-selected-activity';selected.textContent='قرارداد '+selectedName;activity.appendChild(selected);}
   body.appendChild(activity);
   const materialHeader=document.createElement('div');materialHeader.className='ctf-material-header';
@@ -266,6 +237,7 @@ export const contractTemplateFormModule={
   open(id=null, projectId=null){
     const p=activeProject(projectId);
     if(!p) return false;
+    formProjectId=p.id;
     editingId=id||null;
     const existing=id ? helper("findContractTemplate",id,p) : null;
     state=helper("makeContractTemplateDraftClean",existing);
@@ -275,6 +247,33 @@ export const contractTemplateFormModule={
     if(title) title.textContent=id?'ویرایش قالب قرارداد':'قالب قرارداد جدید';
     this.render(projectId);
     return true;
+  },
+
+  openActivityPicker(){
+    const p=activeProject(formProjectId);
+    const draft=state;
+    if(!p || !draft) return false;
+    const select=activity=>{
+      if(state!==draft || !activity?.id) return;
+      draft.activityId=activity.id;
+      draft.title='قرارداد '+(activity.name||activity.title||'');
+      dirty=true;
+      renderContractTemplateFormClean();
+    };
+    return openSearchPicker({
+      title:'انتخاب فعالیت',listTitle:'فعالیت‌ها',selectedTitle:'فعالیت‌های منتخب',
+      resourceType:'activity',contextKey:'contract-template:activity',
+      items:(p.activityTemplates||[]).filter(a=>!a.trashed)
+        .map(a=>({id:a.id,name:a.name||a.title||'فعالیت'})),
+      showStar:true,showAdd:true,onSelect:select,
+      onAdd:()=>{
+        if(typeof window.KarhaSearchTemplate?.close==='function') window.KarhaSearchTemplate.close(false);
+        else helper('closeSearchTemplate',false);
+        window.KarhaApp?.modules?.get('activities')?.openActivityForm?.({
+          pickerMode:true,onCreated:select,
+        });
+      },
+    });
   },
 
   render(projectId=null){
