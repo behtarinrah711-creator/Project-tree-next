@@ -122,3 +122,25 @@ export function resolveProjectItemActivityTemplate(project, projectItemId){
     : null;
   return {projectItem:found,activity,template,activityIds};
 }
+
+/** Resolve lazy template content consistently without writing to stored records. */
+export function resolveContractDocumentDraft(contract, project, today=''){
+  const draft=makeRealContractDraft(contract,today);
+  if(!draft.items.length && project){
+    const templates=(project.contractTemplates||[]).filter(t=>!t.trashed);
+    const template=draft.templateId
+      ? templates.find(t=>String(t.id)===String(draft.templateId)
+        && (!draft.activityId || String(t.activityId)===String(draft.activityId)))
+      : (()=>{
+        const matching=templates.filter(t=>draft.activityId && String(t.activityId)===String(draft.activityId));
+        return matching.length===1 ? matching[0] : null;
+      })();
+    if(template){
+      draft.templateId=template.id;
+      draft.items=cloneTemplateIntoContract(template);
+      draft.paymentItems=JSON.parse(JSON.stringify(template.paymentItems||[]));
+      renumberRealContractItems(draft.items);
+    }
+  }
+  return syncContractPartyData(draft,project);
+}
