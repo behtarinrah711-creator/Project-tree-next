@@ -329,3 +329,21 @@ export default contractTemplateFormModule;
 if(typeof window!=='undefined'){
   window.KarhaContractTemplateForm = contractTemplateFormModule;
 }
+
+/** Reuse the presentation owner rules in standalone print/image documents. */
+export function getContractPageStyles(documentRef=globalThis.document){
+  const rules=[];
+  const visited=new Set();
+  const collect=sheet=>{
+    if(!sheet || visited.has(sheet))return;
+    visited.add(sheet);
+    let entries;
+    try{entries=sheet.cssRules;}catch{return;}
+    for(const rule of entries || []){
+      if(rule.styleSheet)collect(rule.styleSheet);
+      if(/\.contract-(?:pages|sheet)/.test(rule.cssText)) rules.push(rule.cssText);
+    }
+  };
+  for(const sheet of documentRef.styleSheets || [])collect(sheet);
+  return rules.join('\n');
+}

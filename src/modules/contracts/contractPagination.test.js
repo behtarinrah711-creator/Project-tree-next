@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {paginateContract,contractPageStyles} from './contractPagination.js';
+import {paginateContract} from './contractPagination.js';
+globalThis.window={location:{hash:'',search:''}};
+const {getContractPageStyles}=await import('./contractTemplateFormModule.js');
 // Deterministic layout fixture: ten characters per line, twenty pixels per line.
 class Element{
   constructor(tag='div'){this.tag=tag;this.children=[];this.style={};this.ownText='';this.className='';this.classList={contains:name=>this.className.split(' ').includes(name)};}
@@ -26,6 +28,12 @@ test('pagination preserves all long text, keeps short blocks whole and labels al
   assert.ok(contents.every(x=>x.scrollHeight<=x.clientHeight));
   assert.equal(pages.querySelectorAll('.contract-sheet-number').length,contents.length);
   assert.equal(doc.body.children.length,0);
-  assert.match(contractPageStyles,/padding:76px/);
-  assert.match(contractPageStyles,/inset:38px;border:1px/);
+
+});
+
+ test('standalone exports reuse the CSS presentation owner rules',()=>{
+  const pageRule='.contract-sheet { padding:76px; }';
+  const printRule='@media print { .contract-sheet { margin:0; } }';
+  const styles=getContractPageStyles({styleSheets:[{cssRules:[{styleSheet:{cssRules:[{cssText:'.contract-pages { width:794px; }'}]},cssText:'@import url(contracts.css);'},{cssText:pageRule},{cssText:'.unrelated { color:red; }'},{cssText:printRule}]}]});
+  assert.ok(styles.includes('.contract-pages'));assert.ok(styles.includes(pageRule));assert.ok(styles.includes(printRule));assert.ok(!styles.includes('unrelated'));
 });
