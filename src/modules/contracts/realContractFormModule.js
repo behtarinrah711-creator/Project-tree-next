@@ -620,8 +620,9 @@ export const realContractFormModule = {
     }
 
     editingId = id || null;
-    state = realContractDomain.makeRealContractDraft(
+    state = realContractDomain.resolveContractDocumentDraft(
       id ? realContractDomain.findProjectContract(id, project) : null,
+      project,
       helper('todayJalaliStr')
     );
     dirty = false;

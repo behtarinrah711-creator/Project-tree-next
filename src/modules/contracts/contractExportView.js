@@ -2,7 +2,7 @@ import { paginateContractMarkup } from './contractPagination.js';
 import { getContractPageStyles } from './contractTemplateFormModule.js';
 import { installNotebookExportView } from '../notebook/notebookExportView.js';
 import { contractDocumentMarkup } from './contractDocument.js';
-import { syncContractPartyData } from './realContractDomain.js';
+import { resolveContractDocumentDraft } from './realContractDomain.js';
 
 let view=null;
 export function openContractExport(project,contract,{trigger=null}={}){
@@ -20,9 +20,7 @@ export function openContractExport(project,contract,{trigger=null}={}){
       extraStyles:getContractPageStyles(),
     });
   }
-  const draft=JSON.parse(JSON.stringify(contract));
-  draft.contractorId=draft.contractorId||draft.contactId;
-  syncContractPartyData(draft,project);
+  const draft=resolveContractDocumentDraft(contract,project);
   const activityName=(project.activityTemplates||[]).find(a=>String(a.id)===String(contract.activityId))?.name||'بدون فعالیت';
   const person=draft.contractorName||'بدون پیمانکار';
   return view.open({title:'قرارداد '+activityName+' + '+person,activityName,contract:draft,items:[]},{trigger});

@@ -1,5 +1,5 @@
 import { contractDocumentMarkup } from './contractDocument.js';
-import { syncContractPartyData } from './realContractDomain.js';
+import { resolveContractDocumentDraft } from './realContractDomain.js';
 import { mountContractPrintPage } from './contractTemplateFormModule.js';
 
 let view=null;
@@ -28,9 +28,7 @@ export function createContractPreviewView({documentRef=globalThis.document,windo
       windowRef.KarhaChildHistory?.register?.('contract-preview',{onPop:()=>close(true)});
     }
     returnFocus=trigger;
-    const draft=JSON.parse(JSON.stringify(contract));
-    draft.contractorId=draft.contractorId||draft.contactId;
-    syncContractPartyData(draft,project);
+    const draft=resolveContractDocumentDraft(contract,project);
     const activity=(project.activityTemplates||[]).find(a=>String(a.id)===String(contract.activityId));
     const preview=documentRef.createElement('div');
     preview.className='ctf-preview contract-doc-preview contract-real-print-preview';
