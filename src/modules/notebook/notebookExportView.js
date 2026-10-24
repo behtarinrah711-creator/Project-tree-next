@@ -27,7 +27,7 @@ function numbering(rows){
   }));
 }
 
-export function installNotebookExportView({documentRef=globalThis.document,windowRef=globalThis.window,idPrefix='notebookExport',historyKey='notebook-export',documentBuilder=null,extraStyles=''}={}){
+export function installNotebookExportView({documentRef=globalThis.document,windowRef=globalThis.window,idPrefix='notebookExport',historyKey='notebook-export',documentBuilder=null,extraStyles='',paginateDocument=null}={}){
   const get=id=>documentRef.getElementById(id.replace('notebookExport',idPrefix));
   const page=get('notebookExportPage');
   if(!page) return {open(){return false;}};
@@ -60,7 +60,7 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
     const profile=loadProfile(), includeSignature=!!e.signature?.checked;
     const signature=includeSignature&&profile.name&&profile.signature?`<div class="signature"><img src="${profile.signature}" alt="امضا"><span>${esc(profile.name)}</span></div>`:'';
     const note=String(e.note?.value||'').trim();
-    if(documentBuilder) return documentBuilder(list)+ (note?`<p class="note">${esc(note)}</p>`:'')+signature;
+    if(documentBuilder){const html=documentBuilder(list)+(note?`<p class="note">${esc(note)}</p>`:'')+signature;return paginateDocument?paginateDocument(html):html;}
     return `<section class="nb-export-document" dir="rtl"><header><h1>${esc(list.title)}</h1><time>${new Intl.DateTimeFormat('fa-IR').format(new Date())}</time></header><table><thead><tr><th>مورد</th>${showCost?'<th class="cost">هزینه</th>':''}</tr></thead><tbody>${body}${showCost?`<tr class="total"><td>جمع کل</td><td class="cost">${money(total)} <small>تومان</small></td></tr>`:''}</tbody></table>${note?`<p class="note">${esc(note)}</p>`:''}${signature}</section>`;
   }
   const fontBase=iranSansFontBase(windowRef);
@@ -82,8 +82,16 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
     documentRef.body.appendChild(capture);
     try{
       await windowRef.document?.fonts?.ready;
-      const canvas=await windowRef.html2canvas(capture,{scale:2,backgroundColor:'#fff',useCORS:true,logging:false,windowWidth:800});
-      const link=documentRef.createElement('a'); link.href=canvas.toDataURL('image/jpeg',.92); link.download=`${list.title||'notebook'}.jpg`; link.click();
+      // Bound the raster size for long contracts while capturing the full document.
+      const height=capture.scrollHeight || 1132;
+      const width=capture.scrollWidth || 800;
+      const scale=paginateDocument?2:documentBuilder ? Math.min(2,16384/Math.max(width,height),Math.sqrt(16000000/(width*height))) : 2;
+      const sheets=paginateDocument?[...capture.querySelectorAll('.contract-sheet')]:[];
+      const targets=sheets.length?sheets:[capture];
+      for(const [index,target] of targets.entries()){
+      const canvas=await windowRef.html2canvas(target,{scale,backgroundColor:'#fff',useCORS:true,logging:false,windowWidth:800,...(documentBuilder?{width:sheets.length?794:width,height:sheets.length?1123:height,scrollX:0,scrollY:0}:{})});
+      const link=documentRef.createElement('a'); link.href=canvas.toDataURL('image/jpeg',.92); link.download=`${list.title||'notebook'}${sheets.length?'-'+(index+1):''}.jpg`; link.click();
+      }
       notify('تصویر JPEG ذخیره شد');
     }catch(error){console.error(error);notify('ساخت تصویر ناموفق بود');}finally{capture.remove();}
   }

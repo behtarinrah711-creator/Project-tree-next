@@ -92,10 +92,12 @@ test('contract template mobile styles keep row actions together and remove resiz
   assert.match(css, /textarea\.ctf-text::\-webkit-resizer\{display:none/);
   assert.match(css, /\.ctf-inline-input\{[^}]*resize:none/);
   assert.match(css, /font-family:IRANSansX,IRANSans,Arial,sans-serif/);
-  assert.match(css, /\.ctf-preview\{[^}]*width:794px;height:1123px[^}]*padding:53px/);
+  assert.match(css, /\.ctf-preview\{[^}]*width:794px;min-height:1123px;height:auto[^}]*padding:53px/);
+  assert.match(css, /\.contract-sheet\{[^}]*width:794px;height:1123px[^}]*padding:76px/);
+  assert.match(css, /\.contract-sheet-content\{height:971px/);
   assert.match(css, /\.ctf-preview-title\{[^}]*font-size:21px/);
   assert.match(css, /\.ctf-preview-band\{[^}]*font-size:13px/);
   const form = await readFile(new URL('../modules/contracts/contractTemplateFormModule.js', import.meta.url), 'utf8');
   assert.match(form, /const scale=Math\.min\(1,available\/794\)/);
-  assert.match(form, /viewport\.style\.height=Math\.ceil\(1123\*scale\)/);
+  assert.match(form, /viewport\.style\.height=Math\.ceil\(Math\.max\(1123,page\.scrollHeight,page\.offsetHeight\)\*scale\)/);
 });

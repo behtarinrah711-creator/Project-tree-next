@@ -1,3 +1,4 @@
+import { paginateContract } from './contractPagination.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { saveContractTemplate } from './contractTemplatePersistence.js';
@@ -67,6 +68,9 @@ function ctfFocus(selector){ setTimeout(()=>{const el=document.querySelector(sel
 export function mountContractPrintPage(body,page,viewportClass=''){
   const viewport=document.createElement('div');
   viewport.className='ctf-preview-viewport'+(viewportClass?' '+viewportClass:'');
+  const source=page;
+  const paginated=!!viewportClass;
+  if(paginated){page=paginateContract(source);page.style.position='absolute';page.style.transformOrigin='top left';}
   viewport.appendChild(page);
   body.appendChild(viewport);
   const resize=()=>{
@@ -74,14 +78,20 @@ export function mountContractPrintPage(body,page,viewportClass=''){
     const scale=Math.min(1,available/794);
     page.style.left=Math.max(0,(available-(794*scale))/2)+'px';
     page.style.transform='scale('+scale+')';
-    viewport.style.height=Math.ceil(1123*scale)+'px';
+    viewport.style.height=Math.ceil(Math.max(1123,page.scrollHeight,page.offsetHeight)*scale)+'px';
   };
   if(previewResizeObserver) previewResizeObserver.disconnect();
   if(typeof ResizeObserver==='function'){
     previewResizeObserver=new ResizeObserver(resize);
     previewResizeObserver.observe(viewport);
+    previewResizeObserver.observe(page);
   }
   requestAnimationFrame(resize);
+  if(paginated) document.fonts?.ready.then(()=>{
+    if(!viewport.isConnected)return;
+    const updated=paginateContract(source);updated.style.position='absolute';updated.style.transformOrigin='top left';
+    previewResizeObserver?.unobserve(page);page.replaceWith(updated);page=updated;previewResizeObserver?.observe(page);resize();
+  });
   return viewport;
 }
 
@@ -318,4 +328,22 @@ export default contractTemplateFormModule;
 
 if(typeof window!=='undefined'){
   window.KarhaContractTemplateForm = contractTemplateFormModule;
+}
+
+/** Reuse the presentation owner rules in standalone print/image documents. */
+export function getContractPageStyles(documentRef=globalThis.document){
+  const rules=[];
+  const visited=new Set();
+  const collect=sheet=>{
+    if(!sheet || visited.has(sheet))return;
+    visited.add(sheet);
+    let entries;
+    try{entries=sheet.cssRules;}catch{return;}
+    for(const rule of entries || []){
+      if(rule.styleSheet)collect(rule.styleSheet);
+      if(/\.contract-(?:pages|sheet)/.test(rule.cssText)) rules.push(rule.cssText);
+    }
+  };
+  for(const sheet of documentRef.styleSheets || [])collect(sheet);
+  return rules.join('\n');
 }

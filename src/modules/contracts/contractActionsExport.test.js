@@ -40,15 +40,15 @@ test('contract export keeps PDF/JPEG, note and signature without notebook select
     querySelector(){return {};},querySelectorAll(){return [];},closest(){return this.label||{outerHTML:'<textarea id="contractExportNote"></textarea>'};}});
   const ids={};for(const suffix of ['Page','Title','Toolbar','Body','Numbered','Cost','Signature','SignatureHint','Note'])ids['contractExport'+suffix]=make();
   ids.contractExportNumbered.label={};ids.contractExportCost.label={};
-  let printed='',captured='',download='',opened='';
+  let printed='',captured='',download='',opened='',captureOptions=null;
   const documentRef={getElementById:id=>ids[id],body:{appendChild(){}},createElement:tag=>{
-    const el=make();el.remove=()=>{};el.click=()=>{download=el.download;};return el;
+    const el=make();el.scrollHeight=30000;el.scrollWidth=800;el.remove=()=>{};el.click=()=>{download=el.download;};return el;
   }};
   const windowRef={location:{href:'http://localhost/',hash:'#/projects/p/contracts'},document:{fonts:{ready:Promise.resolve()}},
     KarhaChildHistory:{register(){},open:k=>{opened=k;}},
     open:()=>({document:{write:s=>{printed=s;},close(){}}}),
-    html2canvas:async node=>{captured=node.innerHTML;return {toDataURL:()=> 'data:image/jpeg;base64,x'};}};
-  const view=installNotebookExportView({documentRef,windowRef,idPrefix:'contractExport',historyKey:'contract-export',documentBuilder:()=>'<article>Complete contract</article>'});
+    html2canvas:async (node,options)=>{captureOptions=options;captured=node.innerHTML;return {toDataURL:()=> 'data:image/jpeg;base64,x'};}};
+  const view=installNotebookExportView({documentRef,windowRef,idPrefix:'contractExport',historyKey:'contract-export',documentBuilder:()=>'<article>Complete contract'+ '<p>Clause</p>'.repeat(2000)+'<p>Last clause and signatures</p></article>'});
   view.open({title:'قرارداد نقاشی + پیمانکار',items:[]});
   assert.equal(ids.contractExportTitle.textContent,'قرارداد نقاشی + پیمانکار');
   assert.equal(opened,'contract-export');
@@ -60,4 +60,8 @@ test('contract export keeps PDF/JPEG, note and signature without notebook select
   ids.contractExportNote.value='Final note';
   view.printPdf();assert.match(printed,/Complete contract/);assert.match(printed,/Final note/);
   await view.saveJpeg();assert.match(captured,/Complete contract/);assert.match(download,/\.jpg$/);
+  assert.match(printed,/Last clause and signatures/);assert.match(captured,/Last clause and signatures/);
+  assert.equal(captureOptions.height,30000);assert.equal(captureOptions.width,800);
+  assert.ok(captureOptions.height*captureOptions.scale<=16384);
+  assert.ok(captureOptions.width*captureOptions.height*captureOptions.scale**2<=16000001);
 });
