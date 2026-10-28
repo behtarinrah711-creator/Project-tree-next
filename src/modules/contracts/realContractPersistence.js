@@ -1,3 +1,4 @@
+import { syncPaymentStages } from './paymentStagesModule.js';
 import { contractApi } from '../../domain/contractApi.js';
 import * as realContractDomain from './realContractDomain.js';
 
@@ -54,6 +55,7 @@ export function saveRealContract(projectId, draft, helpers={}){
   const finalRetention=(Number(s.amount)||0)*(Number(s.retentionPercent)||0)/100;
   s.retentionAmount=String(Math.round(finalRetention));
   s.amountAfterRetention=String(Math.max(0,Math.round((Number(s.amount)||0)-finalRetention)));
+  syncPaymentStages(s);
   s.updatedAt=Date.now();
   s.trashed=false;
 

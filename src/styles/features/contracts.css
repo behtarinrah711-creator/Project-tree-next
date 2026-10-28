@@ -1783,3 +1783,6 @@ textarea.contract-project-item-input{
 .contract-pages .doc-contract-meta>div{align-self:flex-end;}
 .contract-real-print-preview .doc-introduction,
 .contract-pages .doc-introduction{display:block;margin:0 0 16px;text-align:justify;white-space:normal;line-height:2;}
+
+.contract-payment-stage.contract-payment-calculated{grid-template-columns:1fr 2fr;line-height:1.8;font-size:12px}
+.contract-payment-calculated input{grid-column:1 / -1;width:100%}
