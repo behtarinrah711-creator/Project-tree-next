@@ -5,6 +5,7 @@ import { localStorageAdapter } from '../../data/storageAdapter.js';
 import { STORAGE_KEYS } from '../../config/deploymentConfig.js';
 import * as realContractDomain from './realContractDomain.js';
 import { saveRealContract } from './realContractPersistence.js';
+import { openRetentionBasisPicker } from './retentionBasisPicker.js';
 import * as contractPickers from './contractPickers.js';
 import * as contractTemplatesDomain from './contractTemplatesDomain.js';
 import * as paymentStagesModule from './paymentStagesModule.js';
@@ -483,14 +484,8 @@ function renderContractForm() {
   ftCalcRow(form, 'مبلغ حسن انجام کار: ' + (retentionAmount ? (helper('formatCost', retentionAmount) ?? retentionAmount) : '۰') + ' تومان');
   ftCalcRow(form, 'مبلغ قرارداد پس از کسر حسن انجام کار: ' + (netAmount ? (helper('formatCost', netAmount) ?? netAmount) : '۰') + ' تومان');
 
-  const basisOptions = [
-    { value: 'پایان قرارداد', label: 'تاریخ پایان قرارداد' },
-    { value: 'تحویل موقت', label: 'تحویل موقت' },
-    { value: 'تحویل قطعی', label: 'تحویل قطعی' },
-    { value: 'تسویه نهایی', label: 'تسویه نهایی' }
-  ];
   ftSelectRow(form, 'مبنای شروع مدت نگهداری حسن انجام کار', state.retentionBasis || '', () => {
-    contractPickers.openStaticChoicePicker('مبنای شروع نگهداری', 'گزینه‌ها', basisOptions, state.retentionBasis, value => {
+    openRetentionBasisPicker(activeProjectId, state.retentionBasis, value => {
       state.retentionBasis = value;
       dirty = true;
       renderContractForm();
