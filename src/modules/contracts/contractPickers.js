@@ -224,13 +224,13 @@ export function openProjectItemPicker(projectId,state,onChange,onAddActivity){
     }
   });
 }
-export function openStaticChoicePicker(title,listTitle,options,currentValue,onPick){
+export function openStaticChoicePicker(title,listTitle,options,currentValue,onPick,onAdd){
   return openSearch({
     title,listTitle,selectedTitle:listTitle+' منتخب',
     contextKey:'static:'+title,
     items:(options||[]).filter(o=>String(o.value||'')!=='')
       .map(o=>({id:String(o.value),name:String(o.label||o.value)})),
-    showStar:false,showAdd:false,
+    showStar:false,showAdd:typeof onAdd==='function',onAdd,
     onSelect:item=>onPick?.(item.id)
   });
 }
