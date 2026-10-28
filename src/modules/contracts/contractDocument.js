@@ -24,26 +24,22 @@ export function contractDocumentMarkup(state,activityName=''){
     paymentHtml += '<div><b>' + persian(index + 1) + '.</b> پس از ' + persian(progress) + '٪ پیشرفت، ' + persian(paymentPercent) + '٪ از مبلغ قرارداد پرداخت می‌شود' + (stage.description ? ' — ' + escape(stage.description) : '') + '</div>';
   });
 
-  const formattedAmount = state.amount ? formatCost(state.amount) : '................................';
-  const formattedRetention = formatCost(retentionAmount);
-  return '<div class="doc-title">' + escape('قرارداد ' + activityName) + '</div>' +
-    '<div class="doc-meta">' +
-      '<div>شماره قرارداد: <span class="doc-line">' + blank(state.contractNo) + '</span></div>' +
-      '<div>تاریخ تنظیم: <span class="doc-line">' + blank(formatJalaliDisplay(state.contractDate)) + '</span></div>' +
-      '<div>تاریخ شروع: <span class="doc-line">' + blank(formatJalaliDisplay(state.startDate)) + '</span></div>' +
-      '<div>تاریخ پایان: <span class="doc-line">' + blank(formatJalaliDisplay(state.endDate)) + '</span></div>' +
-      '<div>محل انعقاد: <span class="doc-line">' + blank(state.contractPlace) + '</span></div>' +
+  const hasValue=value=>value!=null && String(value).trim()!=='';
+  const formattedAmount = hasValue(state.amount) ? formatCost(state.amount) : blank('');
+  const formattedRetention = hasValue(state.amount) && hasValue(state.retentionPercent) ? formatCost(retentionAmount) : blank('');
+  return '<div class="doc-meta doc-contract-meta">' +
+      '<div>شماره قرارداد: <bdi>' + blank(state.contractNo) + '</bdi></div>' +
+      '<div>تاریخ قرارداد: <bdi>' + blank(formatJalaliDisplay(state.contractDate)) + '</bdi></div>' +
     '</div>' +
-    '<div class="doc-parties">' +
-      '<div class="party"><span class="doc-party-label">این قرارداد فی‌مابین کارفرما:</span> ' + blank(state.employerName) + '</div>' +
-      '<div class="party"><span class="doc-party-label">و پیمانکار:</span> ' + blank(state.contractorName) + '</div>' +
-      '<div class="party">موضوع فعالیت: ' + blank(activityName) + '</div>' +
-      '<div class="party">آیتم پروژه: ' + blank(state.projectItemPath || '') + '</div>' +
-      '<div class="party">مبلغ کل قرارداد: ' + formattedAmount + ' تومان</div>' +
-      '<div class="party">حسن انجام کار: ٪' + persian(state.retentionPercent || '۰') + '، معادل ' + formattedRetention + ' تومان</div>' +
-      '<div class="party">مبنای شروع نگهداری حسن انجام کار: ' + blank(state.retentionBasis) + '</div>' +
-      '<div class="party">مدت نگهداری: ' + blank(state.retentionDuration) + '</div>' +
-    '</div>' +
+    '<div class="doc-title">' + escape('قرارداد ' + activityName) + '</div>' +
+    '<p class="doc-parties doc-introduction">این قرارداد در ' + blank(state.contractPlace) +
+      ' فی‌مابین ' + blank(state.employerName) + ' به‌عنوان کارفرما و ' + blank(state.contractorName) +
+      ' به‌عنوان پیمانکار، با موضوع ' + blank(activityName) + ' در بخش ' + blank(state.projectItemPath) +
+      ' پروژه، به مبلغ کل ' + formattedAmount + ' تومان، برای اجرا از تاریخ ' + blank(formatJalaliDisplay(state.startDate)) +
+      ' تا تاریخ ' + blank(formatJalaliDisplay(state.endDate)) + ' منعقد گردید. حسن انجام کار برابر با ' +
+      blank(persian(state.retentionPercent)) + '٪ از مبلغ قرارداد، معادل ' + formattedRetention +
+      ' تومان است که مبنای شروع نگهداری آن ' + blank(state.retentionBasis) + ' و مدت نگهداری آن ' +
+      blank(state.retentionDuration) + ' تعیین می‌شود. طرفین متعهد به رعایت مفاد زیر هستند.</p>' +
     '<div class="doc-clauses">' + (clausesHtml || '<div class="doc-clause">........................................................</div>') + '</div>' +
     '<div class="doc-payment"><b>شرایط پرداخت</b>' + (paymentHtml || '<div>........................................................</div>') + '</div>' +
     '<div class="doc-signatures"><div class="signature-box">امضا و اثر انگشت کارفرما<br>................................</div><div class="signature-box">امضا و اثر انگشت پیمانکار<br>................................</div></div>';
