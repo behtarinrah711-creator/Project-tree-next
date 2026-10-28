@@ -1,3 +1,4 @@
+import { calculatePaymentStages, retentionMethods } from './paymentStagesModule.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -18,11 +19,17 @@ export function contractDocumentMarkup(state,activityName=''){
   });
 
   let paymentHtml = '';
-  (state.paymentStages || []).forEach((stage, index) => {
+  const stages=state.paymentStageCount ? calculatePaymentStages(state) : (state.paymentStages || []);
+  stages.forEach((stage, index) => {
     const progress = stage.progress || '۰';
     const paymentPercent = stage.paymentPercent || '۰';
     paymentHtml += '<div><b>' + persian(index + 1) + '.</b> پس از ' + persian(progress) + '٪ پیشرفت، ' + persian(paymentPercent) + '٪ از مبلغ قرارداد پرداخت می‌شود' + (stage.description ? ' — ' + escape(stage.description) : '') + '</div>';
   });
+
+  if(state.paymentStageCount){
+    paymentHtml += '<div>' + escape(retentionMethods.find(x=>x.value===(state.retentionMethod||'first'))?.label) + '</div>';
+    paymentHtml += '<div>مبلغ ' + formatCost(Math.round(retentionAmount)) + ' تومان حسن انجام کار پس از تکمیل آخرین صورت‌وضعیت و سپری‌شدن مدت ' + blank(state.retentionDuration) + ' از ' + blank(state.retentionBasis) + ' آزاد می‌شود.</div>';
+  }
 
   const hasValue=value=>value!=null && String(value).trim()!=='';
   const formattedAmount = hasValue(state.amount) ? formatCost(state.amount) : blank('');

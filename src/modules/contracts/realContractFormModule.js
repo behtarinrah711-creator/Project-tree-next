@@ -502,15 +502,24 @@ function renderContractForm() {
     });
   }, { placeholder: 'انتخاب' });
 
-  paymentStagesModule.renderPaymentStages(body, state, {
-    dirty: () => { dirty = true; },
-    toEnglishDigits: value => helper('toEnglishDigits', value),
-    toPersianDigits: value => helper('toPersianDigits', value),
-    openNumpadGeneric: (value, onCommit, opts) => helper('openNumpadGeneric', value, onCommit, opts),
-    onDirty: () => { dirty = true; },
-    onNumpad: (value, onCommit, opts) => helper('openNumpadGeneric', value, onCommit, opts),
-    onRender: () => renderContractForm()
+  const methods = paymentStagesModule.retentionMethods;
+  ftSelectRow(form, 'نحوه کسر حسن انجام کار', methods.find(x=>x.value===(state.retentionMethod||'first')).label, () => {
+    contractPickers.openStaticChoicePicker('نحوه کسر حسن انجام کار', 'روش‌ها', methods, state.retentionMethod||'first', value => {
+      state.retentionMethod=value;
+      pickerChanged();
+    });
   });
+  const stageLabels=['یک مرحله','دو مرحله','سه مرحله','چهار مرحله','پنج مرحله','شش مرحله','هفت مرحله','هشت مرحله','نه مرحله','ده مرحله'];
+  const count=state.paymentStageCount || Math.min(10,state.paymentStages?.length||1);
+  ftSelectRow(form, 'تعداد مراحل پرداخت', stageLabels[count-1], () => {
+    contractPickers.openStaticChoicePicker('تعداد مراحل پرداخت', 'مراحل',
+      stageLabels.map((label,i)=>({value:String(i+1),label})),
+      String(count), value => {
+        state.paymentStageCount=Number(value);
+        pickerChanged();
+      }, null, {preserveOrder:true});
+  });
+  paymentStagesModule.renderPaymentStages(body, state, {onDirty: () => { dirty = true; }});
 
   const clausesHeading = document.createElement('div');
   clausesHeading.className = 'real-contract-section contract-clause-heading';
