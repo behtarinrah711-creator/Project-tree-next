@@ -26,3 +26,24 @@ test('explicit template links are respected; missing, trashed and ambiguous temp
   assert.equal(resolveContractDocumentDraft({activityId:'a'}, {contractTemplates:[{...template,trashed:true}]}).items.length,0);
   assert.equal(resolveContractDocumentDraft({activityId:'a'}, {contractTemplates:[template,{...template,id:'other'}]}).items.length,0);
 });
+
+test('document heading uses stacked metadata and one continuous introduction with filled values',()=>{
+  const html=contractDocumentMarkup({contractNo:'C-17',contractDate:'1405/08/06',contractPlace:'شیراز',employerName:'کارفرما',contractorName:'پیمانکار',projectItemPath:'محوطه',amount:100000,retentionPercent:10,startDate:'1405/08/07',endDate:'1405/09/07',retentionBasis:'تحویل موقت',retentionDuration:'یک سال'},'فونداسیون');
+  const intro=html.match(/<p class="doc-parties doc-introduction">(.*?)<\/p>/s)[1];
+  assert.ok(!intro.includes('...'));
+  assert.ok(!intro.includes('<div'));
+  for(const value of ['کارفرما','پیمانکار','شیراز','محوطه','فونداسیون','۱۰۰٬۰۰۰','۱۰٬۰۰۰','تحویل موقت','یک سال'])assert.ok(intro.includes(value),value);
+  assert.ok(html.indexOf('شماره قرارداد:')<html.indexOf('تاریخ قرارداد:'));
+  assert.ok(html.indexOf('تاریخ قرارداد:')<html.indexOf('doc-title'));
+  assert.ok(!html.includes('doc-line'));
+});
+test('missing values get dots while zero values remain populated and user text is escaped',()=>{
+  const html=contractDocumentMarkup({employerName:'  ',contractorName:'<نام>',amount:0,retentionPercent:0},'کار');
+  const intro=html.match(/<p class="doc-parties doc-introduction">(.*?)<\/p>/s)[1];
+  assert.ok(intro.includes('فی‌مابین ................................................ به‌عنوان کارفرما'));
+  assert.ok(intro.includes('&lt;نام&gt; به‌عنوان پیمانکار'));
+  assert.ok(intro.includes('مبلغ کل ۰ تومان'));
+  assert.ok(intro.includes('۰٪ از مبلغ قرارداد، معادل ۰ تومان'));
+  const emptyIntro=contractDocumentMarkup({},'').match(/<p class="doc-parties doc-introduction">(.*?)<\/p>/s)[1];
+  assert.ok(!emptyIntro.includes('معادل ۰ تومان'));
+});
