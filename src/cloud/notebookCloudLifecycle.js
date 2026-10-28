@@ -7,7 +7,7 @@ export function hasGuestNotebookData(notebook){
   const lists = notebook?.lists || [];
   if(lists.length !== 1) return lists.length > 0;
   const [list] = lists;
-  return list.title !== 'کارهای شخصی' || list.trashed || (list.items || []).length > 0;
+  return list.title !== 'کارهای شخصی' || list.trashed || !!list.exportNote || (list.items || []).length > 0;
 }
 
 export function mergeNotebooks(cloudNotebook, guestNotebook){

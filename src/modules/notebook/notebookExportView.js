@@ -27,7 +27,7 @@ function numbering(rows){
   }));
 }
 
-export function installNotebookExportView({documentRef=globalThis.document,windowRef=globalThis.window,idPrefix='notebookExport',historyKey='notebook-export',documentBuilder=null,extraStyles='',paginateDocument=null}={}){
+export function installNotebookExportView({documentRef=globalThis.document,windowRef=globalThis.window,idPrefix='notebookExport',historyKey='notebook-export',documentBuilder=null,extraStyles='',paginateDocument=null,onNoteChange=null}={}){
   const get=id=>documentRef.getElementById(id.replace('notebookExport',idPrefix));
   const page=get('notebookExportPage');
   if(!page) return {open(){return false;}};
@@ -108,7 +108,15 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
     const note=e.note?.closest?.('.export-note-wrap')?.outerHTML||'';
     e.body.innerHTML=`${note}${documentBuilder?'':all.length?all.map(row=>`<label class="export-row ${row.depth?'sub':''}" style="--export-depth:${row.depth}"><input type="checkbox" data-export-key="${esc(row.key)}" ${selected.has(row.key)?'checked':''}><span class="export-title">${esc(row.item.text)}</span>${e.cost.checked?`<span class="row-cost"><b>${money(notebookItemCost(row.item))}</b><small>تومان</small></span>`:'<span class="row-cost"></span>'}</label>`).join(''):'<div class="mgmt-empty">مورد بازی برای خروجی وجود ندارد.</div>'}`;
     const noteInput=get('notebookExportNote');
-    if(noteInput) noteInput.value=noteValue;
+    if(noteInput){
+      noteInput.value=noteValue;
+      noteInput.oninput=()=>{
+        if(!onNoteChange)return;
+        const value=noteInput.value;
+        onNoteChange(list.id,value);
+        list={...list,exportNote:value};
+      };
+    }
     e.body.querySelectorAll('[data-export-key]').forEach(input=>input.onchange=()=>{
       const key=input.dataset.exportKey;
       const row=all.find(item=>item.key===key);
@@ -122,7 +130,7 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
   function open(nextList,{trigger=null}={}){
     if(!nextList)return false; list=nextList;returnFocus=trigger;selected=new Set(rows().map(row=>row.key));
     const e=els(), profile=loadProfile();e.title.textContent=documentBuilder?list.title:`خروجی: ${list.title}`;
-    e.numbered.closest('label').hidden=!!documentBuilder;e.cost.closest('label').hidden=!!documentBuilder;e.numbered.checked=false;e.cost.checked=false;e.signature.checked=false;e.signature.disabled=!(profile.name&&profile.signature);e.signatureHint.textContent=e.signature.disabled?'برای امضا: منو ← ثبت مشخصات':'';e.note.value='';
+    e.numbered.closest('label').hidden=!!documentBuilder;e.cost.closest('label').hidden=!!documentBuilder;e.numbered.checked=false;e.cost.checked=false;e.signature.checked=false;e.signature.disabled=!(profile.name&&profile.signature);e.signatureHint.textContent=e.signature.disabled?'برای امضا: منو ← ثبت مشخصات':'';e.note.value=onNoteChange?String(list.exportNote??''):'';
     e.numbered.onchange=render;e.cost.onchange=render;page.classList.remove('hidden');windowRef.KarhaChildHistory?.open?.(historyKey);render();return true;
   }
   windowRef.KarhaChildHistory?.register?.(historyKey,{onPop:()=>close(true)});
