@@ -106,6 +106,7 @@ test('remaining direct style mutations are intentional runtime geometry or gener
     'src/modules/export/exportView.js',
     'src/modules/wbs/homeView.js',
     'src/modules/wbs/wbsSheet.js', // Visual viewport geometry above the mobile keyboard.
+    'src/modules/contracts/retentionBasisPicker.js', // Same visual viewport geometry for the retention sheet.
   ]);
   const offenders = jsFiles.filter(path => /\.style(?:\.|\s*=)|cssText/.test(readFileSync(path, 'utf8')))
     .map(path => relative(root, path)).filter(path => !allowlist.has(path));
@@ -130,4 +131,12 @@ test('one central frame owns the responsive column for every page', () => {
   assert.match(frame, /width:var\(--layout-max\)/);
   assert.equal(frame.includes('#projectsPage'), false);
   assert.equal(frame.includes('#profilePage'), false);
+});
+
+// Keep this exception limited to geometry; appearance belongs in the CSS owner.
+test('retention basis sheet mutates only visual viewport top and height', () => {
+  const js = read('src/modules/contracts/retentionBasisPicker.js');
+  const properties = [...js.matchAll(/\.style\.(\w+)\s*=/g)].map(match => match[1]);
+  assert.deepEqual(properties, ['top', 'height']);
+  assert.doesNotMatch(js, /cssText|\.style\s*=|\.style\.setProperty/);
 });
