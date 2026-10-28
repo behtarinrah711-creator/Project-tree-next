@@ -135,6 +135,7 @@ function openSearchTemplate(opts){
     onAdd: typeof opts.onAdd==='function'?opts.onAdd:null,
     showStar: opts.showStar!==false,
     showAdd: ['contact','activity'].includes(opts.resourceType) && typeof opts.onAdd==='function',
+    preserveOrder:opts.preserveOrder===true,
     query:''
   };
   const titleEl=document.getElementById('searchTemplateTitle');
@@ -163,6 +164,11 @@ function renderSearchTemplateBody(){
 
   if(!items.length){
     body.innerHTML='<div class="stpl-empty">موردی یافت نشد.</div>';
+    return;
+  }
+
+  if(searchTemplateState.preserveOrder){
+    items.forEach(it=>body.appendChild(makeSearchTemplateRow(it)));
     return;
   }
 

@@ -514,14 +514,15 @@ function renderContractForm() {
       pickerChanged();
     });
   });
+  const stageLabels=['یک مرحله','دو مرحله','سه مرحله','چهار مرحله','پنج مرحله','شش مرحله','هفت مرحله','هشت مرحله','نه مرحله','ده مرحله'];
   const count=state.paymentStageCount || Math.min(10,state.paymentStages?.length||1);
-  ftSelectRow(form, 'تعداد مراحل پرداخت', helper('toPersianDigits', String(count)) ?? String(count), () => {
+  ftSelectRow(form, 'تعداد مراحل پرداخت', stageLabels[count-1], () => {
     contractPickers.openStaticChoicePicker('تعداد مراحل پرداخت', 'مراحل',
-      Array.from({length:10},(_,i)=>({value:String(i+1),label:(helper('toPersianDigits',String(i+1))??String(i+1))+' مرحله'})),
+      stageLabels.map((label,i)=>({value:String(i+1),label})),
       String(count), value => {
         state.paymentStageCount=Number(value);
         pickerChanged();
-      });
+      }, {preserveOrder:true});
   });
   paymentStagesModule.renderPaymentStages(body, state, {onDirty: () => { dirty = true; }});
 
