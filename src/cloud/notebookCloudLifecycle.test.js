@@ -79,3 +79,18 @@ test('authenticated notebook survives reload when the cloud write is unavailable
   await tick();await tick();
   assert.equal(second.lifecycle.get().lists[0].items[0].text,'نسخه محلی امن');
 });
+
+test('an export note alone is retained through guest login and account writes',async()=>{
+  const h=harness();
+  h.guestRepository.mutate(nb=>{nb.lists[0].exportNote='توضیحات مهم';});
+  assert.equal(hasGuestNotebookData(h.guestRepository.get()),true);
+  h.auth({uid:'u1'});await tick();await tick();
+  assert.equal(h.cloudByUid.u1.notebook.lists[0].exportNote,'توضیحات مهم');
+  h.lifecycle.mutate(nb=>{nb.lists[0].exportNote='آخرین ویرایش';});
+  await tick();
+  assert.equal(h.cloudByUid.u1.notebook.lists[0].exportNote,'آخرین ویرایش');
+  h.lifecycle.mutate(nb=>{nb.lists[0].exportNote='';});
+  await tick();
+  assert.equal(h.cloudByUid.u1.notebook.lists[0].exportNote,'');
+  h.lifecycle.destroy();
+});

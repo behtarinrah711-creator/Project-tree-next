@@ -19,7 +19,12 @@ export function installNotebookWorkspace({documentRef=globalThis.document,window
   const page=documentRef?.getElementById?.('notebookPage');
   if(!page)return null;
   repository.load();
-  const exportView=installNotebookExportView({documentRef,windowRef});
+  const exportView=installNotebookExportView({documentRef,windowRef,onNoteChange:(listId,value)=>{
+    repository.mutate(nb=>{
+      const list=nb.lists.find(item=>item.id===listId);
+      if(list){list.exportNote=value;list.updatedAt=Date.now();}
+    });
+  }});
   let editor=null, sheetItemId=null, menuOpen=false, trashOpen=false, listPrompt=null, orderOpen=false, orderDrag=null;
   let notebookDrag=null;
   const openNotebookOrder=()=>{
