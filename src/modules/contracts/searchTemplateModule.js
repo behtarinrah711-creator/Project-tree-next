@@ -134,7 +134,7 @@ function openSearchTemplate(opts){
     onSelect: typeof opts.onSelect==='function'?opts.onSelect:null,
     onAdd: typeof opts.onAdd==='function'?opts.onAdd:null,
     showStar: opts.showStar!==false,
-    showAdd: ['contact','activity'].includes(opts.resourceType) && typeof opts.onAdd==='function',
+    showAdd: (['contact','activity'].includes(opts.resourceType) || opts.showAdd===true) && typeof opts.onAdd==='function',
     preserveOrder:opts.preserveOrder===true,
     query:''
   };

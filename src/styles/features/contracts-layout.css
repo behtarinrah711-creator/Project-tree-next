@@ -5,3 +5,15 @@
 .contract-row{align-items:flex-start;}
 .contract-created{flex:0 0 auto;display:flex;flex-direction:column;align-items:flex-start;gap:1px;white-space:nowrap;direction:ltr;text-align:left;margin-top:1px;font-size:11px;line-height:1.45;color:var(--text-dim);}
 .contract-created-date,.contract-created-time{display:block;white-space:nowrap;}
+
+.retention-basis-backdrop{position:fixed;inset:0;z-index:10050;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;direction:rtl;}
+.retention-basis-backdrop.hidden{display:none;}
+.retention-basis-sheet{box-sizing:border-box;width:100%;max-width:600px;max-height:100%;overflow:auto;background:var(--surface,#fff);color:var(--text,#202124);border-radius:24px 24px 0 0;padding:24px 20px max(20px,env(safe-area-inset-bottom));font:inherit;}
+.retention-basis-sheet h2{font-size:18px;margin:0 0 24px;}
+.retention-basis-sheet label{display:block;margin-bottom:8px;}
+.retention-basis-sheet input{box-sizing:border-box;width:100%;min-height:52px;border:1px solid var(--divider,#ddd);border-radius:12px;background:var(--surface,#fff);color:inherit;padding:12px;font:inherit;}
+.retention-basis-sheet input:focus{outline:2px solid #08065b;outline-offset:2px;}
+.retention-basis-sheet [role=alert]{min-height:20px;margin:8px 0;color:#b3261e;font-size:13px;}
+.retention-basis-actions{display:flex;gap:12px;}
+.retention-basis-actions button{flex:1;min-height:52px;border:0;border-radius:12px;font:inherit;font-weight:700;background:#08065b;color:white;cursor:pointer;}
+.retention-basis-actions [data-cancel]{background:var(--divider,#eee);color:var(--text,#202124);}
