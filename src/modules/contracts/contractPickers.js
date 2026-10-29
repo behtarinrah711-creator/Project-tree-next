@@ -37,7 +37,8 @@ export function selectContractor(projectId,state,item){
   const p=getProject(projectId); if(!p||!state||!item)return false;
   const contact=findContact(p,item.id);
   const aid=String(state.activityId||'');
-  if(aid && !(contact?.activities||[]).some(x=>String(x)===aid)) return false;
+  const selectedId=String(state.contractorId || state.contactId || '');
+  if(!contact || (String(contact.id)!==selectedId && aid && !(contact.activities||[]).some(x=>String(x)===aid))) return false;
   state.contractorId=item.id; state.contactId=item.id;
   syncContractPartyData(state,p);
   syncWorkTaskFromContract(projectId,state);
@@ -146,7 +147,8 @@ export function selectProjectItem(projectId,state,item){
 export function openContractorPicker(projectId,state,onChange,onAdd){
   const p=getProject(projectId); if(!p)return false;
   const aid=String(state?.activityId||'');
-  const list=contacts(p).filter(c=>!aid || (c.activities||[]).some(x=>String(x)===aid));
+  const selectedId=String(state?.contractorId || state?.contactId || '');
+  const list=contacts(p).filter(c=>String(c.id)===selectedId || !aid || (c.activities||[]).some(x=>String(x)===aid));
   return openSearch({
     title:'انتخاب پیمانکار',listTitle:'پیمانکاران',selectedTitle:'پیمانکاران منتخب',resourceType:'contact',
     contextKey:'contractor:'+aid,

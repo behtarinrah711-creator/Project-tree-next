@@ -15,6 +15,7 @@ const {
   selectContractTemplate,
   openContractTemplatePicker,
   openActivityPicker,
+  openContractorPicker,
   contractActivityChoices,
 } = await import('./contractPickers.js');
 
@@ -185,4 +186,29 @@ test('standalone contract can reopen all activities and switch templates repeate
   }
   openActivityPicker('p-independent',state);
   assert.deepEqual(opened.items.map(x=>x.id),['a','b','c']);
+});
+
+test('contractor picker retains the selected contractor while filtering other contacts by activity',()=>{
+  boot({id:'p-selected',tasks:[],contacts:[
+    {id:'selected',name:'پیمانکار فعلی',activities:['old']},
+    {id:'matching',name:'مرتبط',activities:['new']},
+    {id:'unrelated',name:'نامرتبط',activities:[]},
+    {id:'trashed',name:'حذف‌شده',activities:['new'],trashed:true},
+  ],activityTemplates:[{id:'new',name:'فعالیت جدید'}],contracts:[]});
+  let picker;
+  const previous=window.KarhaSearchTemplate;
+  window.KarhaSearchTemplate={open:opts=>{picker=opts;}};
+  try{
+    const state={contractorId:'selected',activityId:'new'};
+    openContractorPicker('p-selected',state);
+    assert.deepEqual(picker.items.map(x=>x.id),['selected','matching']);
+    assert.equal(selectContractor('p-selected',state,{id:'selected'}),true);
+    assert.equal(selectContractor('p-selected',state,{id:'unrelated'}),false);
+    assert.equal(selectContractor('p-selected',state,{id:'missing'}),false);
+    assert.equal(selectContractor('p-selected',state,{id:'matching'}),true);
+    openContractorPicker('p-selected',state);
+    assert.deepEqual(picker.items.map(x=>x.id),['matching']);
+    openContractorPicker('p-selected',{contactId:'selected',activityId:'new'});
+    assert.deepEqual(picker.items.map(x=>x.id),['selected','matching']);
+  }finally{window.KarhaSearchTemplate=previous;}
 });
