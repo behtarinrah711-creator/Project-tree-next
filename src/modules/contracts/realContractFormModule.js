@@ -488,25 +488,18 @@ function renderContractForm() {
   });
   ftSelectRow(form,'مبنای محاسبه مبلغ کل قرارداد',amountMethods.find(x=>x.value===state.amountMethod)?.label||'',()=>{
     pickFixed('مبنای محاسبه مبلغ کل قرارداد','روش‌ها',amountMethods,state.amountMethod,value=>{
-      if(state.amountMethod==='agreed') state.agreedAmount=state.amount;
       state.amountMethod=value;
-      if(value==='agreed') state.amount=state.agreedAmount||'';
       if(value==='quantity' && !state.amountRows.length) state.amountRows.push({id:'amount_1',description:'',unit:'',quantity:'',unitPrice:''});
       pickerChanged();
     });
   });
   if(state.amountMethod==='quantity'){
     renderRows(form,state.amountRows,{operations:true});
-    syncContractAmount(state);
-    ftAmountSummary(form,'مبلغ کل قرارداد',state.amount);
   }else{
-    ftTextRow(form,'شرح مبلغ قرارداد',state.amountDescription||'',value=>{state.amountDescription=value;});
-    ftNumberRow(form, 'مبلغ کل قرارداد', state.amount, value => {
-      const normalized = helper('toEnglishDigits', String(value)) ?? value;
-      state.amount = String(normalized).replace(/[^\d]/g, '');
-      state.agreedAmount=state.amount;
-    }, { suffix: 'تومان', maxLen: 16, group: true, placeholder: 'وارد کنید' });
+    renderRows(form,state.agreedRows,{operations:true,agreed:true});
   }
+  syncContractAmount(state);
+  ftAmountSummary(form,'مبلغ کل قرارداد',state.amount);
   ftNumberRow(form, 'درصد حسن انجام کار', state.retentionPercent, value => {
     const normalized = helper('toEnglishDigits', String(value)) ?? value;
     state.retentionPercent = String(normalized).replace(/[^\d]/g, '');

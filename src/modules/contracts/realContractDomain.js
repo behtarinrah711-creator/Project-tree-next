@@ -1,3 +1,4 @@
+import { ensureAgreedRows } from './contractPricing.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { contractRepository } from '../../data/contractRepository.js';
@@ -35,6 +36,7 @@ export function makeRealContractDraft(existing=null, today=''){
     c.retentionDuration=c.retentionDuration||'';
     c.contractPlace=c.contractPlace||'';
     c.amountMethod=c.amountMethod||'agreed';
+    ensureAgreedRows(c);
     c.amountRows=Array.isArray(c.amountRows)?c.amountRows:[];
     c.paymentRows=Array.isArray(c.paymentRows)?c.paymentRows:[];
     c.paymentStages=Array.isArray(c.paymentStages)?c.paymentStages:[];
@@ -48,7 +50,7 @@ export function makeRealContractDraft(existing=null, today=''){
     id:'rc_'+Date.now(), employerId:'', contractorId:'', contactId:'', activityId:'',
     activityIds:[], templateId:'', projectItemId:'', projectItemRootTaskId:'',
     projectItemPath:'', title:'', contractNo:'', contractDate:today,
-    startDate:'', endDate:'', amount:'', amountMethod:'agreed', amountDescription:'', amountRows:[], paymentRows:[], paymentMethod:'', retentionPercent:'',
+    startDate:'', endDate:'', amount:'', amountMethod:'agreed', amountDescription:'', agreedRows:[{id:'agreed_1',description:'',agreedPrice:''}], amountRows:[], paymentRows:[], paymentMethod:'', retentionPercent:'',
     retentionBasis:'تحویل موقت', retentionDuration:'', contractPlace:'',
     paymentStages:[], paymentItems:[], items:[], attachments:[],
     employerName:'', employerNationalId:'', employerAddress:'', employerPhone:'',

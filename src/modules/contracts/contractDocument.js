@@ -22,7 +22,8 @@ export function contractDocumentMarkup(state,activityName=''){
   });
 
   const quantityTable=rows=>'<table class="contract-document-quantities"><thead><tr>'+['ردیف','شرح عملیات','واحد','مقدار','بهای واحد (تومان)','بهای کل (تومان)'].map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>'+(rows||[]).map((row,i)=>'<tr><td>'+persian(i+1)+'</td><td>'+escape(row.description)+'</td><td>'+escape(row.unit)+'</td><td>'+persian(row.quantity)+'</td><td>'+formatCost(row.unitPrice)+'</td><td>'+formatCost(rowAmount(row))+'</td></tr>').join('')+'</tbody></table>';
-  const pricingHtml=state.amountMethod==='quantity' ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.amountRows)+'</div>' : (state.amountDescription?'<p>'+escape(state.amountDescription)+'</p>':'');
+  const agreedTable=rows=>'<table class="contract-document-quantities"><thead><tr><th>عملیات</th><th>شرح عملیات</th><th>بهای توافقی (تومان)</th></tr></thead><tbody>'+rows.map((row,i)=>'<tr><td>'+persian(i+1)+'</td><td>'+escape(row.description)+'</td><td>'+formatCost(row.agreedPrice)+'</td></tr>').join('')+'</tbody></table>';
+  const pricingHtml=state.amountMethod==='quantity' ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.amountRows)+'</div>' : (state.amountMethod==='agreed' && Array.isArray(state.agreedRows) ? '<div class="doc-pricing"><b>محاسبه مبلغ کل قرارداد</b>'+agreedTable(state.agreedRows)+'</div>' : state.amountDescription?'<p>'+escape(state.amountDescription)+'</p>':'');
   let paymentHtml = '';
   const stages=state.paymentMethod ? [] : state.paymentStageCount ? calculatePaymentStages(state) : (state.paymentStages || []);
   stages.forEach((stage, index) => {
