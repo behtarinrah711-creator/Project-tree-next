@@ -167,6 +167,15 @@ function ftCalcRow(root, text) {
   return row;
 }
 
+function ftAmountSummary(root,label,amount){
+  const display=(helper('formatCost',amount) ?? String(amount||0))+' تومان';
+  const row=ftSelectRow(root,label,display,null);
+  row.onclick=null;
+  row.classList.remove('ft-tap');
+  row.classList.add('contract-amount-summary');
+  return row;
+}
+
 function contactDisplayName(contact) {
   if (!contact) return 'مخاطب';
   return [contact.firstName, contact.lastName].filter(Boolean).join(' ') || contact.name || 'مخاطب';
@@ -506,16 +515,8 @@ function renderContractForm() {
   const netAmount = Math.max(0, (Number(state.amount) || 0) - retentionAmount);
   state.retentionAmount = String(Math.round(retentionAmount || 0));
   state.amountAfterRetention = String(Math.round(netAmount || 0));
-  ftCalcRow(form, 'مبلغ حسن انجام کار: ' + (retentionAmount ? (helper('formatCost', retentionAmount) ?? retentionAmount) : '۰') + ' تومان');
-  ftCalcRow(form, 'مبلغ قرارداد پس از کسر حسن انجام کار: ' + (netAmount ? (helper('formatCost', netAmount) ?? netAmount) : '۰') + ' تومان');
-
-  ftSelectRow(form, 'مبنای شروع مدت نگهداری حسن انجام کار', state.retentionBasis || '', () => {
-    openRetentionBasisPicker(activeProjectId, state.retentionBasis, value => {
-      state.retentionBasis = value;
-      dirty = true;
-      renderContractForm();
-    });
-  }, { placeholder: 'انتخاب' });
+  ftAmountSummary(form,'مبلغ حسن انجام کار',retentionAmount);
+  ftAmountSummary(form,'مبلغ قرارداد پس از کسر حسن انجام کار',netAmount);
 
   const durationOptions = ['یک هفته', 'دو هفته', 'سه هفته', 'چهار هفته', 'یک ماه', 'یک ماه و نیم', 'دو ماه', 'دو ماه و نیم', 'سه ماه', 'چهار ماه', 'پنج ماه', 'شش ماه']
     .map(value => ({ value, label: value }));
@@ -527,6 +528,15 @@ function renderContractForm() {
     });
   }, { placeholder: 'انتخاب' });
 
+  ftSelectRow(form, 'مبنای شروع مدت نگهداری حسن انجام کار', state.retentionBasis || '', () => {
+    openRetentionBasisPicker(activeProjectId, state.retentionBasis, value => {
+      state.retentionBasis = value;
+      dirty = true;
+      renderContractForm();
+    });
+  }, { placeholder: 'انتخاب' });
+
+
   const methods = paymentStagesModule.retentionMethods;
   ftSelectRow(form, 'نحوه کسر حسن انجام کار', methods.find(x=>x.value===(state.retentionMethod||'first')).label, () => {
     contractPickers.openStaticChoicePicker('نحوه کسر حسن انجام کار', 'روش‌ها', methods, state.retentionMethod||'first', value => {
@@ -534,20 +544,20 @@ function renderContractForm() {
       pickerChanged();
     });
   });
-  const stageCountRow=ftSelectRow(form,'تعداد مراحل پرداخت','فعلاً غیرفعال',null);
-  stageCountRow.onclick=null;
-  stageCountRow.classList.add('contract-field-disabled');
-  stageCountRow.setAttribute('aria-disabled','true');
-  const heading=document.createElement('div');heading.className='real-contract-section';heading.textContent='مراحل پرداخت';
-  body.appendChild(heading);
-  const paymentForm=ftCreateRoot(body);
-  ftSelectRow(paymentForm,'مبنای مراحل پرداخت',paymentMethods.find(x=>x.value===state.paymentMethod)?.label||'',()=>{
+  ftSelectRow(form,'مبنای مراحل پرداخت',paymentMethods.find(x=>x.value===state.paymentMethod)?.label||'',()=>{
     pickFixed('مبنای مراحل پرداخت','روش‌ها',paymentMethods,state.paymentMethod,value=>{
       state.paymentMethod=value;
       if(value==='quantity' && !state.paymentRows.length) state.paymentRows.push({id:'payment_1',description:'',unit:'',quantity:'',unitPrice:''});
       pickerChanged();
     });
   });
+  const heading=document.createElement('div');heading.className='real-contract-section';heading.textContent='مراحل پرداخت';
+  body.appendChild(heading);
+  const paymentForm=ftCreateRoot(body);
+  const stageCountRow=ftSelectRow(paymentForm,'تعداد مراحل پرداخت','فعلاً غیرفعال',null);
+  stageCountRow.onclick=null;
+  stageCountRow.classList.add('contract-field-disabled');
+  stageCountRow.setAttribute('aria-disabled','true');
   if(state.paymentMethod==='quantity'){
     renderRows(paymentForm,state.paymentRows);
     paymentStagesModule.syncPaymentStages(state);
