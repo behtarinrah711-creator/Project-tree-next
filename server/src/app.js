@@ -1,3 +1,4 @@
+import {assignContractNumbers} from './contractNumbering.js';
 import {readJson, route, sendJson} from './http.js';
 import {authenticate} from './auth.js';
 import {createHash, randomBytes, randomInt, randomUUID} from 'node:crypto';
@@ -326,10 +327,11 @@ async function saveWorkspace(pool, accountId, snapshot){
   let committed = false;
   try{
     await client.query('BEGIN');
-    for(const project of snapshot.projects){
+    for(const project of [...snapshot.projects].sort((a,b)=>String(a.id).localeCompare(String(b.id)))){
       const projectId = String(project.id);
       const existing = await client.query('SELECT id,owner_account_id,payload FROM projects WHERE id = $1 FOR UPDATE', [projectId]);
       if(!existing.rowCount){
+        await assignContractNumbers(client,project,accountId);
         await client.query(
           `INSERT INTO projects(id, owner_account_id, payload) VALUES ($1, $2, $3::jsonb)`,
           [projectId, accountId, JSON.stringify(project)],
@@ -373,7 +375,13 @@ async function saveWorkspace(pool, accountId, snapshot){
         // The browser persists one account-wide snapshot. Projects that were
         // only read must not require write permission or roll back a write to
         // another project in the same transaction.
-        if(!projectPayloadChanged(currentPayload,project)) continue;
+        if(!projectPayloadChanged(currentPayload,project)){
+          if((currentPayload.contracts||[]).some(c=>!c.contractUid)){
+            await assignContractNumbers(client,currentPayload,existing.rows[0].owner_account_id);
+            await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[projectId,JSON.stringify(currentPayload)]);
+          }
+          continue;
+        }
         const permissions=membership.rows[0].permissions||{};
         const assignedExecution=!canMutateSharedProject(permissions)
           ? mergeAssignedExecutionPayload(currentPayload,project,membership.rows[0].phone)
@@ -386,6 +394,7 @@ async function saveWorkspace(pool, accountId, snapshot){
           const error=new Error('forbidden_costline_write');error.statusCode=403;throw error;
         }
         const savedProject=assignedExecution?.ok?assignedExecution.project:mergeSharedProjectPayload(currentPayload,project,permissions);
+        await assignContractNumbers(client,savedProject,existing.rows[0].owner_account_id);
         await client.query(
           `UPDATE projects SET payload = $2::jsonb, revision = revision + 1, updated_at = now()
             WHERE id = $1`,
