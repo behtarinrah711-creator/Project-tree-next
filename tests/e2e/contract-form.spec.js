@@ -132,6 +132,9 @@ test('real New Contract preserves its state and owns child Back navigation', asy
   await selectSearchOption(page, 'مدت نگهداری حسن انجام کار', 'دو ماه');
   await expect(row(page, 'مدت نگهداری حسن انجام کار')).toContainText('دو ماه');
 
+  await expect(row(page, 'نحوه محاسبه بها')).toContainText('انتخاب');
+  await expect(page.getByRole('textbox', { name: 'شرح عملیات 1', exact: true })).toHaveCount(0);
+  await selectSearchOption(page, 'نحوه محاسبه بها', 'توافقی');
   await page.getByRole('textbox', { name: 'شرح عملیات 1', exact: true }).fill('عملیات توافقی آزمایشی');
   await enterNumpad(page, 'بهای توافقی', '1250');
   await expect(row(page, 'بهای توافقی')).toContainText(/1[,٬]?250|۱۲۵۰|۱[,٬]?۲۵۰/);

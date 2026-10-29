@@ -47,3 +47,11 @@ test('missing values get dots while zero values remain populated and user text i
   const emptyIntro=contractDocumentMarkup({},'').match(/<p class="doc-parties doc-introduction">(.*?)<\/p>/s)[1];
   assert.ok(!emptyIntro.includes('معادل ۰ تومان'));
 });
+
+test('new contracts require an explicit price method while saved selections are preserved',()=>{
+  assert.equal(resolveContractDocumentDraft(null,{}).amountMethod,'');
+  assert.equal(resolveContractDocumentDraft({amountMethod:''},{}).amountMethod,'');
+  assert.equal(resolveContractDocumentDraft({amountMethod:'agreed'},{}).amountMethod,'agreed');
+  assert.equal(resolveContractDocumentDraft({amountMethod:'quantity'},{}).amountMethod,'quantity');
+  assert.equal(resolveContractDocumentDraft({amount:'100'},{}).amountMethod,'agreed');
+});
