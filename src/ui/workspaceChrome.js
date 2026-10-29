@@ -3,7 +3,7 @@ import { getGlobalRoute, getGlobalRouteByModule } from '../core/globalRoutes.js'
 
 const WORKSPACE_PAGE_IDS = Object.freeze([
   'projectsPage','profilePage','calendarPage','createPage','reportsPage','accountingPage','settingsPage',
-  'projectSettingsPage','projectActivitiesPage','contactsPage','projectTrashPage','contractsPage','contractFormPage','contractPreviewPage',
+  'projectDetailsPage','projectSettingsPage','projectActivitiesPage','contactsPage','projectTrashPage','contractsPage','contractFormPage','contractPreviewPage',
   'roleManagementPage','notificationsPage',
   'contractTemplateFormPage','contractTemplatesPage','activityFormPage',
 ]);
@@ -40,9 +40,9 @@ const ACCOUNTING_SUBPAGE_TITLES = Object.freeze({
 
 const INNER_SECTION_SUBPAGES = new Set([
   'statusList','statusForm','collab','projectTrash','contractTemplates','contractTemplateForm',
-  'statusTest','contracts','contractForm','projectSettings','roleManagement',
+  'statusTest','contracts','contractForm','projectDetails','projectSettings','roleManagement',
 ]);
-const SETTINGS_MODULES = new Set(['people','project-settings','role-management','activities']);
+const SETTINGS_MODULES = new Set(['people','project-details','project-settings','role-management','activities']);
 
 export function installWorkspaceChrome({
   windowRef = globalThis.window,

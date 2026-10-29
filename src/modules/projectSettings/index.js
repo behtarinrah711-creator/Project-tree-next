@@ -14,7 +14,7 @@ export function isProjectOwner(projectId, windowRef = globalThis.window){
 
 export default {
   id:'project-settings',
-  title:'تنظیمات پروژه',
+  title:'تنظیمات درخت پروژه',
   mount({ projectId }){
     const body = document.getElementById('projectSettingsPageBody');
     if(!body) return { projectId, moduleId:this.id };
