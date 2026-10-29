@@ -7,8 +7,7 @@ export const amountMethods = [
 export const paymentMethods = [
   {value:'quantity',label:'بر اساس مقدار کار انجام شده'},
   {value:'percent',label:'بر اساس درصد کار انجام شده'},
-  {value:'stages',label:'بر اساس مراحل انجام شده'},
-  {value:'time',label:'بر اساس مدت زمان انجام شده'}
+  {value:'stages',label:'بر اساس مراحل انجام شده'}
 ];
 export const quantityUnits = ['عدد','متر','مترمربع','مترمکعب','کیلوگرم','تن','لیتر','دستگاه','دست','سری','ساعت','روز']
   .map(value=>({value,label:value}));

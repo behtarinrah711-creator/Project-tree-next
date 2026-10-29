@@ -542,8 +542,8 @@ function renderContractForm() {
       pickerChanged();
     });
   });
-  ftSelectRow(form,'مبنای مراحل پرداخت',paymentMethods.find(x=>x.value===state.paymentMethod)?.label||'',()=>{
-    pickFixed('مبنای مراحل پرداخت','روش‌ها',paymentMethods,state.paymentMethod,value=>{
+  ftSelectRow(form,'نحوه پرداخت',paymentMethods.find(x=>x.value===state.paymentMethod)?.label||'',()=>{
+    pickFixed('نحوه پرداخت','روش‌ها',paymentMethods,state.paymentMethod,value=>{
       state.paymentMethod=value;
       if(value==='quantity' && !state.paymentRows.length) state.paymentRows.push({id:'payment_1',description:'',unit:'',quantity:'',unitPrice:''});
       pickerChanged();
