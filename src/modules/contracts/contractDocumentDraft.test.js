@@ -47,3 +47,17 @@ test('missing values get dots while zero values remain populated and user text i
   const emptyIntro=contractDocumentMarkup({},'').match(/<p class="doc-parties doc-introduction">(.*?)<\/p>/s)[1];
   assert.ok(!emptyIntro.includes('معادل ۰ تومان'));
 });
+
+test('contract venue defaults to project details address and preserves per-contract edits',()=>{
+  const project={settings:{projectDetails:{address:'آدرس مشخصات پروژه'}},address:'آدرس قدیمی'};
+  assert.equal(resolveContractDocumentDraft(null,project).contractPlace,'آدرس مشخصات پروژه');
+  assert.equal(resolveContractDocumentDraft({id:'draft'},project).contractPlace,'آدرس مشخصات پروژه');
+  assert.equal(resolveContractDocumentDraft({contractPlace:'دفتر کارفرما'},project).contractPlace,'دفتر کارفرما');
+  assert.equal(resolveContractDocumentDraft({contractPlace:''},project).contractPlace,'');
+  assert.equal(resolveContractDocumentDraft(null,{address:'آدرس قدیمی'}).contractPlace,'آدرس قدیمی');
+  assert.equal(resolveContractDocumentDraft(null,{}).contractPlace,'');
+  const draft=resolveContractDocumentDraft(null,project);
+  draft.contractPlace='نشانی ویرایش‌شده';
+  assert.equal(project.settings.projectDetails.address,'آدرس مشخصات پروژه');
+  assert.equal(resolveContractDocumentDraft(draft,{settings:{projectDetails:{address:'نشانی جدید پروژه'}}}).contractPlace,'نشانی ویرایش‌شده');
+});

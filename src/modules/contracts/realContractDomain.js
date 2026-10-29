@@ -131,6 +131,10 @@ export function resolveProjectItemActivityTemplate(project, projectItemId){
 /** Resolve lazy template content consistently without writing to stored records. */
 export function resolveContractDocumentDraft(contract, project, today=''){
   const draft=makeRealContractDraft(contract,today);
+  if(contract?.contractPlace == null){
+    draft.contractPlace=project?.settings?.projectDetails?.address
+      || project?.location || project?.address || project?.projectLocation || project?.siteLocation || '';
+  }
   if(!draft.items.length && project){
     const templates=(project.contractTemplates||[]).filter(t=>!t.trashed);
     const template=draft.templateId
