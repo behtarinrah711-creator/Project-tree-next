@@ -300,13 +300,28 @@ test('Planning contains tree, timeline and estimate while Execution and Reports 
   expect(Math.max(...tabRects.map(rect => rect.top)) - Math.min(...tabRects.map(rect => rect.top))).toBeLessThan(2);
   expect(Math.max(...tabRects.map(rect => rect.width)) - Math.min(...tabRects.map(rect => rect.width))).toBeLessThan(2);
   await page.locator('#bottomReportsBtn').click();
-  await page.locator('.reports-workspace-tabs .wbs-tab[aria-label="دیرکردها"]').click();
+  const reportRows = page.locator('#reportsPageBody .workspace-option');
+  await expect(reportRows).toHaveCount(3);
+  await expect(reportRows.locator('.workspace-option-title')).toHaveText([
+    'قرارداد پیمانکاران', 'کارهای انجام‌شده', 'دیرکردها',
+  ]);
+  await expect(reportRows.locator('.workspace-option-arrow svg')).toHaveCount(3);
+  await expect(page.locator('.reports-workspace-tabs')).toHaveCount(0);
+  await reportRows.filter({ has:page.locator('.workspace-option-title', { hasText:'دیرکردها' }) }).click();
+  await expect(page).toHaveURL(/\/work-delays$/);
   const delayFrame = page.locator('.wbs-delay-frame');
   await expect(delayFrame).toBeVisible();
   await expect(delayFrame).toHaveAttribute('data-view', 'delay');
   await expect(delayFrame.locator('.wbs-view-title')).toHaveText('دیرکرد');
   await expect(delayFrame.locator('.wbs-delay-body')).toBeVisible();
   await expect(page.locator('.wbs-tree')).toHaveCount(0);
+
+  await page.locator('#workspaceContextBack').click();
+  await expect(page).toHaveURL(/\/reports$/);
+  await expect(reportRows).toHaveCount(3);
+  await reportRows.filter({ has:page.locator('.workspace-option-title', { hasText:'قرارداد پیمانکاران' }) }).click();
+  await expect(page).toHaveURL(/\/contracts$/);
+  await expect(page.locator('#contractsPage')).toBeVisible();
 
   await page.locator('#bottomPlanningBtn').click();
   const frame = page.locator('.wbs-view-frame.is-standard-view');
