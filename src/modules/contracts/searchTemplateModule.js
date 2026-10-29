@@ -111,6 +111,20 @@ function handleSearchTemplateBack(){
  *   onSelect, onAdd, showStar, showAdd
  * }
  */
+function renderSearchTemplateAddButton(page){
+  document.getElementById('searchTemplateFab')?.remove();
+  if(!searchTemplateState?.showAdd) return;
+  const fab=document.createElement('button');
+  fab.type='button';
+  fab.id='searchTemplateFab';
+  fab.className='stpl-fab';
+  fab.setAttribute('aria-label','افزودن');
+  fab.title='افزودن';
+  fab.innerHTML='<svg width="24" height="24" viewBox="0 0 24 24" fill="none"><path d="M12 5v14M5 12h14" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/></svg>';
+  fab.onclick=()=>searchTemplateState?.onAdd?.();
+  page.appendChild(fab);
+}
+
 function openSearchTemplate(opts){
   const page=document.getElementById('searchTemplatePage');
   if(!page) return;
@@ -134,14 +148,13 @@ function openSearchTemplate(opts){
     onSelect: typeof opts.onSelect==='function'?opts.onSelect:null,
     onAdd: typeof opts.onAdd==='function'?opts.onAdd:null,
     showStar: opts.showStar!==false,
-    showAdd: (['contact','activity'].includes(opts.resourceType) || opts.showAdd===true) && typeof opts.onAdd==='function',
+    showAdd: opts.showAdd!==false && (['contact','activity'].includes(opts.resourceType) || opts.showAdd===true) && typeof opts.onAdd==='function',
     preserveOrder:opts.preserveOrder===true,
     query:''
   };
   const titleEl=document.getElementById('searchTemplateTitle');
   if(titleEl) titleEl.textContent=searchTemplateState.title;
-  const fab=document.getElementById('searchTemplateFab');
-  if(fab) fab.classList.toggle('hidden', !searchTemplateState.showAdd);
+  renderSearchTemplateAddButton(page);
   const top=document.getElementById('searchTemplateTopbar');
   if(top) top.classList.remove('search-mode');
   const inp=document.getElementById('searchTemplateInput');
@@ -257,7 +270,6 @@ function initSearchTemplateUI(){
   const back=document.getElementById('searchTemplateBack');
   const searchBtn=document.getElementById('searchTemplateSearchBtn');
   const inp=document.getElementById('searchTemplateInput');
-  const fab=document.getElementById('searchTemplateFab');
   const top=document.getElementById('searchTemplateTopbar');
   if(back) back.onclick=()=>{ handleSearchTemplateBack(); };
   if(searchBtn) searchBtn.onclick=()=>{ enterSearchTemplateSearchMode(); };
@@ -268,11 +280,6 @@ function initSearchTemplateUI(){
       renderSearchTemplateBody();
     };
   }
-  if(fab) fab.onclick=()=>{
-    if(searchTemplateState && searchTemplateState.onAdd){
-      try{ searchTemplateState.onAdd(); }catch(e){}
-    }
-  };
 }
 if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', initSearchTemplateUI);
 else setTimeout(initSearchTemplateUI,0);

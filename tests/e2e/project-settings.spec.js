@@ -303,7 +303,7 @@ test('project specifications use flat dependent pickers and persist all project 
   await expect(form.getByRole('button',{name:'انتخاب شهر',exact:true})).toBeDisabled();
   const choose = async (label, option) => {
     await form.getByRole('button',{name:label,exact:true}).click();
-    await expect(page.locator('#searchTemplateFab')).toBeHidden();
+    await expect(page.locator('#searchTemplateFab')).toHaveCount(0);
     await expect(page.locator('#searchTemplateBody .stpl-letter')).toHaveCount(0);
     await page.locator('#searchTemplateBody .stpl-row').filter({has:page.getByText(option,{exact:true})}).click();
   };
