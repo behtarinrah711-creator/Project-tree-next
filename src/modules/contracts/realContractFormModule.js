@@ -441,11 +441,11 @@ function renderContractForm() {
   const numberInput=numberRow.querySelector('input');
   numberInput.id='contractNumberDisplay';
   numberInput.dir='ltr';
-  ftDateRow(form, 'تاریخ تنظیم قرارداد', state.contractDate || helper('todayJalaliStr'), value => { state.contractDate = value; }, { maxToday: true });
 
   const projectPlace = project.location || project.address || project.projectLocation || project.siteLocation || '';
   if (!state.contractPlace) state.contractPlace = projectPlace;
   ftTextRow(form, 'محل انعقاد قرارداد', state.contractPlace || '', value => { state.contractPlace = value; }, { placeholder: 'پیش‌فرض: محل پروژه' });
+  ftDateRow(form, 'تاریخ تنظیم قرارداد', state.contractDate || helper('todayJalaliStr'), value => { state.contractDate = value; }, { maxToday: true });
 
   if(state.workTaskId) ftTextRow(form,'آیتم پروژه',state.projectItemPath || '',()=>{}, {readonly:true,placeholder:'توسط سیستم انتخاب شده'});
   else ftSelectRow(form, 'آیتم پروژه', state.projectItemPath || '', () => openContractPicker('projectItem'), { placeholder: 'انتخاب' });
