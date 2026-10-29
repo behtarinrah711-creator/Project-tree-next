@@ -1798,10 +1798,17 @@ textarea.contract-project-item-input{
 .contract-growing-text::after,.contract-growing-text textarea{grid-area:1/1/2/2;white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;line-height:1.8;padding:8px;box-sizing:border-box;border:1px solid var(--divider);border-radius:8px;min-width:0}
 .contract-growing-text::after{content:attr(data-value);visibility:hidden}
 .contract-growing-text textarea{width:100%;resize:none;overflow:hidden;background:var(--surface,#fff);color:var(--text)}
-.contract-document-quantities{width:100%;table-layout:fixed;border-collapse:collapse;margin:8px 0;font-size:11px}
-.contract-document-quantities td,.contract-document-quantities th{border:1px solid #aaa;padding:5px;white-space:pre-wrap;overflow-wrap:anywhere;vertical-align:top}
-.contract-document-quantities th:first-child{width:6%}
-.contract-document-quantities th:nth-child(2){width:30%}
+.contract-pages .contract-document-quantities{width:100%;direction:rtl;table-layout:fixed;border-collapse:collapse;margin:8px 0;font-size:11px}
+.contract-pages .contract-document-quantities td,.contract-pages .contract-document-quantities th{border:1px solid #aaa;padding:5px;white-space:pre-wrap;overflow-wrap:anywhere;vertical-align:top}
+.contract-pages .contract-document-quantities th:first-child{width:10%;white-space:nowrap}
+.contract-pages .contract-document-agreed th:nth-child(2){width:64%}
+.contract-pages .contract-document-agreed th:nth-child(3){width:26%}
+.contract-pages .contract-document-quantity th:nth-child(2){width:40%}
+.contract-pages .contract-document-quantity th:nth-child(3){width:8%}
+.contract-pages .contract-document-quantity th:nth-child(4){width:10%}
+.contract-pages .contract-document-quantity th:nth-child(5),.contract-pages .contract-document-quantity th:nth-child(6){width:16%}
+.contract-pages .contract-document-quantities td:last-child{text-align:left;direction:ltr}
+.contract-pages .contract-document-quantity td:nth-child(4):not([colspan]),.contract-pages .contract-document-quantity td:nth-child(5):not([colspan]){text-align:left;direction:ltr}
 
 /* Read-only totals use the same right-label/left-value layout as other fields. */
 .contract-form-body .contract-amount-summary :is(.ft-label,.ft-value){color:#202124 !important}
@@ -1810,3 +1817,5 @@ textarea.contract-project-item-input{
 .contract-quantity-heading{border-radius:9px 9px 0 0;direction:rtl}
 .contract-form-body .contract-quantity-row > .ft-row{width:calc(100% - 32px) !important;margin:0 16px !important}
 .contract-form-body .contract-quantity-row > .ft-calc{padding:12px 16px !important}
+
+.contract-pages .contract-document-quantities tbody td:first-child:not([colspan]){text-align:center;vertical-align:middle}
