@@ -132,12 +132,14 @@ test('real New Contract preserves its state and owns child Back navigation', asy
   await selectSearchOption(page, 'مدت نگهداری حسن انجام کار', 'دو ماه');
   await expect(row(page, 'مدت نگهداری حسن انجام کار')).toContainText('دو ماه');
 
-  await enterNumpad(page, 'مبلغ کل قرارداد', '1250');
+  await page.getByRole('textbox', { name: 'شرح عملیات 1', exact: true }).fill('عملیات توافقی آزمایشی');
+  await enterNumpad(page, 'بهای توافقی', '1250');
+  await expect(row(page, 'بهای توافقی')).toContainText(/1[,٬]?250|۱۲۵۰|۱[,٬]?۲۵۰/);
   await expect(row(page, 'مبلغ کل قرارداد')).toContainText(/1[,٬]?250|۱۲۵۰|۱[,٬]?۲۵۰/);
   await enterNumpad(page, 'درصد حسن انجام کار', '10');
   await expect(row(page, 'درصد حسن انجام کار')).toContainText(/10|۱۰/);
 
-  await row(page, 'مبلغ کل قرارداد').click();
+  await row(page, 'بهای توافقی').click();
   await expect(page.locator('#numpadOverlay')).toBeVisible();
   await page.goBack();
   await expect(page.locator('#numpadOverlay')).toBeHidden();
