@@ -441,11 +441,11 @@ function renderContractForm() {
   const numberInput=numberRow.querySelector('input');
   numberInput.id='contractNumberDisplay';
   numberInput.dir='ltr';
-  ftDateRow(form, 'تاریخ تنظیم قرارداد', state.contractDate || helper('todayJalaliStr'), value => { state.contractDate = value; }, { maxToday: true });
 
   const projectPlace = project.location || project.address || project.projectLocation || project.siteLocation || '';
   if (!state.contractPlace) state.contractPlace = projectPlace;
   ftTextRow(form, 'محل انعقاد قرارداد', state.contractPlace || '', value => { state.contractPlace = value; }, { placeholder: 'پیش‌فرض: محل پروژه' });
+  ftDateRow(form, 'تاریخ تنظیم قرارداد', state.contractDate || helper('todayJalaliStr'), value => { state.contractDate = value; }, { maxToday: true });
 
   if(state.workTaskId) ftTextRow(form,'آیتم پروژه',state.projectItemPath || '',()=>{}, {readonly:true,placeholder:'توسط سیستم انتخاب شده'});
   else ftSelectRow(form, 'آیتم پروژه', state.projectItemPath || '', () => openContractPicker('projectItem'), { placeholder: 'انتخاب' });
@@ -542,8 +542,8 @@ function renderContractForm() {
       pickerChanged();
     });
   });
-  ftSelectRow(form,'مبنای مراحل پرداخت',paymentMethods.find(x=>x.value===state.paymentMethod)?.label||'',()=>{
-    pickFixed('مبنای مراحل پرداخت','روش‌ها',paymentMethods,state.paymentMethod,value=>{
+  ftSelectRow(form,'نحوه پرداخت',paymentMethods.find(x=>x.value===state.paymentMethod)?.label||'',()=>{
+    pickFixed('نحوه پرداخت','روش‌ها',paymentMethods,state.paymentMethod,value=>{
       state.paymentMethod=value;
       if(value==='quantity' && !state.paymentRows.length) state.paymentRows.push({id:'payment_1',description:'',unit:'',quantity:'',unitPrice:''});
       pickerChanged();
