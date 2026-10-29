@@ -9,8 +9,20 @@ let installed = false;
 export function openNumpadGeneric(initial, onDone, opts, { documentRef = document, windowRef = window } = {}){
   numpadOnDone = onDone;
   numpadOpts = Object.assign({ suffix: ' تومان', prefix: '', maxLen: 16, group: true }, opts || {});
-  const raw = toEnglishDigits(String(initial==null?'':initial)).replace(/[^\d]/g,'');
+  const raw = toEnglishDigits(String(initial==null?'':initial)).replace(numpadOpts.allowDecimal ? /[^\d.]/g : /[^\d]/g,'');
   numpadBuffer = raw;
+  let decimal=documentRef.getElementById('numpadDecimal');
+  if(!decimal && numpadOpts.allowDecimal){
+    decimal=documentRef.createElement('button');
+    decimal.id='numpadDecimal';decimal.type='button';decimal.className='numpad-key';decimal.textContent='٫';
+    decimal.setAttribute('aria-label','ممیز');
+    documentRef.getElementById('numpadBackspace')?.before(decimal);
+    decimal.onclick=()=>{
+      if(!numpadOpts.allowDecimal || numpadBuffer.includes('.') || numpadBuffer.length>=numpadOpts.maxLen) return;
+      numpadBuffer=(numpadBuffer||'0')+'.';updateNumpadDisplay({documentRef});
+    };
+  }
+  if(decimal) decimal.hidden=!numpadOpts.allowDecimal;
   updateNumpadDisplay({ documentRef });
   showNumpadError('', { documentRef });
   const overlay = documentRef.getElementById('numpadOverlay');
@@ -33,7 +45,8 @@ function updateNumpadDisplay({ documentRef = document } = {}){
     el.classList.add('empty');
     el.style.direction = '';
   } else {
-    const shown = numpadOpts.group ? groupWithCommas(numpadBuffer) : numpadBuffer;
+    const [whole,fraction]=numpadBuffer.split('.');
+    const shown=(numpadOpts.group ? groupWithCommas(whole) : whole)+(fraction!==undefined?'٫'+fraction:'');
     el.textContent = (numpadOpts.prefix || '') + toPersianDigits(shown) + (numpadOpts.suffix || '');
     el.classList.remove('empty');
     if(numpadOpts.prefix === '٪'){

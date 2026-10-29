@@ -1,3 +1,4 @@
+import { rowAmount } from './contractPricing.js';
 import { toPersianDigits } from '../../ui/digits.js';
 
 export const retentionMethods = [
@@ -6,6 +7,21 @@ export const retentionMethods = [
 ];
 const percent=value=>Number(value.toFixed(6));
 export function calculatePaymentStages(state){
+  if(state.paymentMethod){
+    const rows=state.paymentMethod==='quantity' ? (state.paymentRows||[]) : [];
+    const amount=Math.max(0,Math.round(Number(state.amount)||0));
+    const rate=Math.min(100,Math.max(0,Number(state.retentionPercent)||0));
+    let remaining=Math.round(amount*rate/100),grossToDate=0,deducted=0,paid=0;
+    return rows.map(row=>{
+      const gross=rowAmount(row);
+      grossToDate+=gross;
+      const deduction=state.retentionMethod==='all'
+        ? Math.min(gross,Math.max(0,Math.round(grossToDate*rate/100)-deducted))
+        : Math.min(gross,remaining);
+      remaining=Math.max(0,remaining-deduction);deducted+=deduction;paid+=gross-deduction;
+      return {...row,grossAmount:gross,retentionAmount:deduction,paymentAmount:gross-deduction,cumulativePaymentAmount:paid};
+    });
+  }
   const previous=Array.isArray(state.paymentStages)?state.paymentStages:[];
   const count=Math.min(10,Math.max(1,Math.trunc(Number(state.paymentStageCount)||previous.length||1)));
   const retention=Math.min(100,Math.max(0,Number(state.retentionPercent)||0));
@@ -31,9 +47,10 @@ export function calculatePaymentStages(state){
 export function syncPaymentStages(state){
   state.retentionMethod=state.retentionMethod==='all'?'all':'first';
   state.paymentStages=calculatePaymentStages(state);
-  state.paymentStageCount=state.paymentStages.length;
-  state.retentionAmount=String(state.paymentStages.reduce((sum,x)=>sum+x.retentionAmount,0));
-  state.amountAfterRetention=String(state.paymentStages.reduce((sum,x)=>sum+x.paymentAmount,0));
+  if(!state.paymentMethod) state.paymentStageCount=state.paymentStages.length;
+  const retained=Math.round((Number(state.amount)||0)*Math.min(100,Math.max(0,Number(state.retentionPercent)||0))/100);
+  state.retentionAmount=String(retained);
+  state.amountAfterRetention=String(Math.max(0,(Number(state.amount)||0)-retained));
   return state.paymentStages;
 }
 export function renderPaymentStages(body,state,{onDirty}={}){
