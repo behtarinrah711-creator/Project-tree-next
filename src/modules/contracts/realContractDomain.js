@@ -35,7 +35,7 @@ export function makeRealContractDraft(existing=null, today=''){
     c.retentionBasis=c.retentionBasis||'تحویل موقت';
     c.retentionDuration=c.retentionDuration||'';
     c.contractPlace=c.contractPlace||'';
-    c.amountMethod=c.amountMethod||'agreed';
+    c.amountMethod=c.amountMethod??'agreed';
     ensureAgreedRows(c);
     c.amountRows=Array.isArray(c.amountRows)?c.amountRows:[];
     c.paymentRows=Array.isArray(c.paymentRows)?c.paymentRows:[];
@@ -50,7 +50,7 @@ export function makeRealContractDraft(existing=null, today=''){
     id:'rc_'+Date.now(), employerId:'', contractorId:'', contactId:'', activityId:'',
     activityIds:[], templateId:'', projectItemId:'', projectItemRootTaskId:'',
     projectItemPath:'', title:'', contractNo:'', contractDate:today,
-    startDate:'', endDate:'', amount:'', amountMethod:'agreed', amountDescription:'', agreedRows:[{id:'agreed_1',description:'',agreedPrice:''}], amountRows:[], paymentRows:[], paymentMethod:'', retentionPercent:'',
+    startDate:'', endDate:'', amount:'', amountMethod:'', amountDescription:'', agreedRows:[{id:'agreed_1',description:'',agreedPrice:''}], amountRows:[], paymentRows:[], paymentMethod:'', retentionPercent:'',
     retentionBasis:'تحویل موقت', retentionDuration:'', contractPlace:'',
     paymentStages:[], paymentItems:[], items:[], attachments:[],
     employerName:'', employerNationalId:'', employerAddress:'', employerPhone:'',
