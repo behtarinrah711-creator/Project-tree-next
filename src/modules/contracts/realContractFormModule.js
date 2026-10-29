@@ -362,14 +362,14 @@ function renderRealContractRow(item, list, index, isChild) {
     dirty = true;
   };
 
-  const remove = document.createElement('button');
-  remove.type = 'button';
-  remove.className = 'ctf-delete';
-  remove.textContent = 'حذف';
-  remove.onclick = event => {
-    event.preventDefault();
-    event.stopPropagation();
-    contractItemInteractions.removeItem(list, index, { items: state.items, dirty: true });
+  const remove = document.createElement('input');
+  remove.type = 'checkbox';
+  remove.className = 'contract-clause-check';
+  remove.checked = item.included !== false;
+  remove.setAttribute('aria-label', (isChild ? 'انتخاب بند ' : 'انتخاب ماده ') + (item.number || index + 1));
+  remove.onchange = () => {
+    item.included = remove.checked;
+    if(!isChild) (item.children || []).forEach(child => { child.included = remove.checked; });
     dirty = true;
     renderContractForm();
   };
@@ -567,6 +567,23 @@ function renderContractForm() {
   const clausesHeading = document.createElement('div');
   clausesHeading.className = 'real-contract-section contract-clause-heading';
   clausesHeading.textContent = 'مواد قرارداد';
+  clausesHeading.style.display = 'flex';
+  clausesHeading.style.justifyContent = 'space-between';
+  clausesHeading.style.alignItems = 'center';
+  const allItems = state.items.flatMap(item => [item, ...(item.children || [])]);
+  const selectAll = document.createElement('input');
+  selectAll.type = 'checkbox';
+  selectAll.className = 'contract-clause-check';
+  selectAll.setAttribute('aria-label', 'انتخاب همه مواد و بندها');
+  selectAll.checked = allItems.every(item => item.included !== false);
+  selectAll.indeterminate = allItems.some(item => item.included !== false) && !selectAll.checked;
+  selectAll.disabled = !allItems.length;
+  selectAll.onchange = () => {
+    allItems.forEach(item => { item.included = selectAll.checked; });
+    dirty = true;
+    renderContractForm();
+  };
+  clausesHeading.appendChild(selectAll);
   body.appendChild(clausesHeading);
 
   if (!state.items.length) {
