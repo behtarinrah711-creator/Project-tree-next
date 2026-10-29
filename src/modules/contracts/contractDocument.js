@@ -1,8 +1,11 @@
+import { rowAmount, syncContractAmount } from './contractPricing.js';
 import { calculatePaymentStages, retentionMethods } from './paymentStagesModule.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function contractDocumentMarkup(state,activityName=''){
+  state={...state};
+  syncContractAmount(state);
   const retentionAmount=(Number(state.amount)||0)*(Number(state.retentionPercent)||0)/100;
   const escape=esc;
   const blank=value=>esc(value).trim()||'................................................';
@@ -18,15 +21,18 @@ export function contractDocumentMarkup(state,activityName=''){
     clausesHtml += '</div>';
   });
 
+  const quantityTable=rows=>'<table class="contract-document-quantities"><thead><tr>'+['ردیف','شرح عملیات','واحد','مقدار','بهای واحد (تومان)','بهای کل (تومان)'].map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>'+(rows||[]).map((row,i)=>'<tr><td>'+persian(i+1)+'</td><td>'+escape(row.description)+'</td><td>'+escape(row.unit)+'</td><td>'+persian(row.quantity)+'</td><td>'+formatCost(row.unitPrice)+'</td><td>'+formatCost(rowAmount(row))+'</td></tr>').join('')+'</tbody></table>';
+  const pricingHtml=state.amountMethod==='quantity' ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.amountRows)+'</div>' : (state.amountDescription?'<p>'+escape(state.amountDescription)+'</p>':'');
   let paymentHtml = '';
-  const stages=state.paymentStageCount ? calculatePaymentStages(state) : (state.paymentStages || []);
+  const stages=state.paymentMethod ? [] : state.paymentStageCount ? calculatePaymentStages(state) : (state.paymentStages || []);
   stages.forEach((stage, index) => {
     const progress = stage.progress || '۰';
     const paymentPercent = stage.paymentPercent || '۰';
     paymentHtml += '<div><b>' + persian(index + 1) + '.</b> پس از ' + persian(progress) + '٪ پیشرفت، ' + persian(paymentPercent) + '٪ از مبلغ قرارداد پرداخت می‌شود' + (stage.description ? ' — ' + escape(stage.description) : '') + '</div>';
   });
 
-  if(state.paymentStageCount){
+  if(state.paymentMethod==='quantity') paymentHtml=quantityTable(state.paymentRows);
+  if(state.paymentStageCount || state.paymentMethod){
     paymentHtml += '<div>' + escape(retentionMethods.find(x=>x.value===(state.retentionMethod||'first'))?.label) + '</div>';
     paymentHtml += '<div>مبلغ ' + formatCost(Math.round(retentionAmount)) + ' تومان حسن انجام کار پس از تکمیل آخرین صورت‌وضعیت و سپری‌شدن مدت ' + blank(state.retentionDuration) + ' از ' + blank(state.retentionBasis) + ' آزاد می‌شود.</div>';
   }
@@ -47,7 +53,8 @@ export function contractDocumentMarkup(state,activityName=''){
       blank(persian(state.retentionPercent)) + '٪ از مبلغ قرارداد، معادل ' + formattedRetention +
       ' تومان است که مبنای شروع نگهداری آن ' + blank(state.retentionBasis) + ' و مدت نگهداری آن ' +
       blank(state.retentionDuration) + ' تعیین می‌شود. طرفین متعهد به رعایت مفاد زیر هستند.</p>' +
+    pricingHtml +
     '<div class="doc-clauses">' + (clausesHtml || '<div class="doc-clause">........................................................</div>') + '</div>' +
-    '<div class="doc-payment"><b>شرایط پرداخت</b>' + (paymentHtml || '<div>........................................................</div>') + '</div>' +
+    '<div class="doc-payment"><b>مراحل پرداخت</b>' + (paymentHtml || '<div>........................................................</div>') + '</div>' +
     '<div class="doc-signatures"><div class="signature-box">امضا و اثر انگشت کارفرما<br>................................</div><div class="signature-box">امضا و اثر انگشت پیمانکار<br>................................</div></div>';
 }

@@ -1,3 +1,4 @@
+import { amountMethods, paymentMethods, renderQuantityRows, syncContractAmount } from './contractPricing.js';
 import { contractDocumentMarkup } from './contractDocument.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
@@ -152,6 +153,7 @@ function ftNumberRow(root, label, value, onChange, opts = {}) {
       suffix: opts.suffix || '',
       maxLen: opts.maxLen || 16,
       group: opts.group !== false,
+      allowDecimal: !!opts.allowDecimal,
       prefix: opts.prefix || ''
     });
   }, { placeholder: opts.placeholder || 'وارد کنید' });
@@ -468,10 +470,33 @@ function renderContractForm() {
 
   ftDateRow(form, 'تاریخ شروع قرارداد', state.startDate || '', value => { state.startDate = value; });
   ftDateRow(form, 'تاریخ پایان قرارداد', state.endDate || '', value => { state.endDate = value; });
-  ftNumberRow(form, 'مبلغ کل قرارداد', state.amount, value => {
-    const normalized = helper('toEnglishDigits', String(value)) ?? value;
-    state.amount = String(normalized).replace(/[^\d]/g, '');
-  }, { suffix: 'تومان', maxLen: 16, group: true, placeholder: 'وارد کنید' });
+  const pickFixed=(title,listTitle,options,current,onPick)=>contractPickers.openStaticChoicePicker(
+    title,listTitle,options,current,onPick,null,{preserveOrder:true});
+  const renderRows=(root,rows)=>renderQuantityRows(root,rows,{
+    selectRow:ftSelectRow,pick:pickFixed,onDirty:()=>{dirty=true;},onChange:pickerChanged,
+    numberRow:(parent,label,value,onChange,opts)=>ftNumberRow(parent,label,value,onChange,opts)
+  });
+  ftSelectRow(form,'مبنای محاسبه مبلغ کل قرارداد',amountMethods.find(x=>x.value===state.amountMethod)?.label||'',()=>{
+    pickFixed('مبنای محاسبه مبلغ کل قرارداد','روش‌ها',amountMethods,state.amountMethod,value=>{
+      if(state.amountMethod==='agreed') state.agreedAmount=state.amount;
+      state.amountMethod=value;
+      if(value==='agreed') state.amount=state.agreedAmount||'';
+      if(value==='quantity' && !state.amountRows.length) state.amountRows.push({id:'amount_1',description:'',unit:'',quantity:'',unitPrice:''});
+      pickerChanged();
+    });
+  });
+  if(state.amountMethod==='quantity'){
+    renderRows(form,state.amountRows);
+    syncContractAmount(state);
+    ftCalcRow(form,'مبلغ کل قرارداد: '+(helper('formatCost',state.amount)??state.amount)+' تومان');
+  }else{
+    ftTextRow(form,'شرح مبلغ قرارداد',state.amountDescription||'',value=>{state.amountDescription=value;});
+    ftNumberRow(form, 'مبلغ کل قرارداد', state.amount, value => {
+      const normalized = helper('toEnglishDigits', String(value)) ?? value;
+      state.amount = String(normalized).replace(/[^\d]/g, '');
+      state.agreedAmount=state.amount;
+    }, { suffix: 'تومان', maxLen: 16, group: true, placeholder: 'وارد کنید' });
+  }
   ftNumberRow(form, 'درصد حسن انجام کار', state.retentionPercent, value => {
     const normalized = helper('toEnglishDigits', String(value)) ?? value;
     state.retentionPercent = String(normalized).replace(/[^\d]/g, '');
@@ -509,17 +534,27 @@ function renderContractForm() {
       pickerChanged();
     });
   });
-  const stageLabels=['یک مرحله','دو مرحله','سه مرحله','چهار مرحله','پنج مرحله','شش مرحله','هفت مرحله','هشت مرحله','نه مرحله','ده مرحله'];
-  const count=state.paymentStageCount || Math.min(10,state.paymentStages?.length||1);
-  ftSelectRow(form, 'تعداد مراحل پرداخت', stageLabels[count-1], () => {
-    contractPickers.openStaticChoicePicker('تعداد مراحل پرداخت', 'مراحل',
-      stageLabels.map((label,i)=>({value:String(i+1),label})),
-      String(count), value => {
-        state.paymentStageCount=Number(value);
-        pickerChanged();
-      }, null, {preserveOrder:true});
+  const stageCountRow=ftSelectRow(form,'تعداد مراحل پرداخت','فعلاً غیرفعال',null);
+  stageCountRow.onclick=null;
+  stageCountRow.classList.add('contract-field-disabled');
+  stageCountRow.setAttribute('aria-disabled','true');
+  const heading=document.createElement('div');heading.className='real-contract-section';heading.textContent='مراحل پرداخت';
+  body.appendChild(heading);
+  const paymentForm=ftCreateRoot(body);
+  ftSelectRow(paymentForm,'مبنای مراحل پرداخت',paymentMethods.find(x=>x.value===state.paymentMethod)?.label||'',()=>{
+    pickFixed('مبنای مراحل پرداخت','روش‌ها',paymentMethods,state.paymentMethod,value=>{
+      state.paymentMethod=value;
+      if(value==='quantity' && !state.paymentRows.length) state.paymentRows.push({id:'payment_1',description:'',unit:'',quantity:'',unitPrice:''});
+      pickerChanged();
+    });
   });
-  paymentStagesModule.renderPaymentStages(body, state, {onDirty: () => { dirty = true; }});
+  if(state.paymentMethod==='quantity'){
+    renderRows(paymentForm,state.paymentRows);
+    paymentStagesModule.syncPaymentStages(state);
+  }else if(state.paymentMethod){
+    const note=document.createElement('div');note.className='contract-form-note';
+    note.textContent='جزئیات این روش در مرحله بعد تکمیل می‌شود.';body.appendChild(note);
+  }
 
   const clausesHeading = document.createElement('div');
   clausesHeading.className = 'real-contract-section contract-clause-heading';
