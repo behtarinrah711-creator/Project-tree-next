@@ -451,7 +451,7 @@ function renderContractForm() {
   else ftSelectRow(form, 'آیتم پروژه', state.projectItemPath || '', () => openContractPicker('projectItem'), { placeholder: 'انتخاب' });
   ftSelectRow(form, 'کارفرما', state.employerId ? contactDisplayName(findContact(state.employerId)) : '', () => openContractPicker('employer'), { placeholder: 'انتخاب' });
   ftSelectRow(form, 'پیمانکار', state.contractorId ? contactDisplayName(findContact(state.contractorId)) : '', () => openContractPicker('contractor'), { placeholder: 'انتخاب' });
-  ftSelectRow(form, 'فعالیت', activityName, () => openContractPicker('activity'), { placeholder: 'انتخاب' });
+  ftSelectRow(form, 'فعالیت/قالب قرارداد', activityName, () => openContractPicker('activity'), { placeholder: 'انتخاب' });
 
   const templates = contractTemplatesDomain.getContractTemplates(project).filter(template => !template.trashed);
   const matchingTemplates = templates.filter(template => String(template.activityId) === String(state.activityId));
