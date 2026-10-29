@@ -481,7 +481,8 @@ function renderContractForm() {
   ftDateRow(form, 'تاریخ پایان قرارداد', state.endDate || '', value => { state.endDate = value; });
   const pickFixed=(title,listTitle,options,current,onPick)=>contractPickers.openStaticChoicePicker(
     title,listTitle,options,current,onPick,null,{preserveOrder:true});
-  const renderRows=(root,rows)=>renderQuantityRows(root,rows,{
+  const renderRows=(root,rows,options={})=>renderQuantityRows(root,rows,{
+    ...options,
     selectRow:ftSelectRow,pick:pickFixed,onDirty:()=>{dirty=true;},onChange:pickerChanged,
     numberRow:(parent,label,value,onChange,opts)=>ftNumberRow(parent,label,value,onChange,opts)
   });
@@ -495,9 +496,9 @@ function renderContractForm() {
     });
   });
   if(state.amountMethod==='quantity'){
-    renderRows(form,state.amountRows);
+    renderRows(form,state.amountRows,{single:true});
     syncContractAmount(state);
-    ftCalcRow(form,'مبلغ کل قرارداد: '+(helper('formatCost',state.amount)??state.amount)+' تومان');
+    ftAmountSummary(form,'مبلغ کل قرارداد',state.amount);
   }else{
     ftTextRow(form,'شرح مبلغ قرارداد',state.amountDescription||'',value=>{state.amountDescription=value;});
     ftNumberRow(form, 'مبلغ کل قرارداد', state.amount, value => {
