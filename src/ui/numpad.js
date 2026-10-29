@@ -16,7 +16,7 @@ export function openNumpadGeneric(initial, onDone, opts, { documentRef = documen
     decimal=documentRef.createElement('button');
     decimal.id='numpadDecimal';decimal.type='button';decimal.className='numpad-key';decimal.textContent='٫';
     decimal.setAttribute('aria-label','ممیز');
-    documentRef.getElementById('numpadBackspace')?.before(decimal);
+    documentRef.getElementById('numpadBackspace')?.after(decimal);
     decimal.onclick=()=>{
       if(!numpadOpts.allowDecimal || numpadBuffer.includes('.') || numpadBuffer.length>=numpadOpts.maxLen) return;
       numpadBuffer=(numpadBuffer||'0')+'.';updateNumpadDisplay({documentRef});

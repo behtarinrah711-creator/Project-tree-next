@@ -40,3 +40,9 @@
     display:flex;align-items:center;gap:8px;margin-bottom:16px;font-size:14px;color:var(--text-dim);cursor:pointer;
   }
   .detail-star-row .star-icon{width:22px;height:22px;}
+
+/* Keep decimal quantities within the same four rows as the money keypad. */
+#numpadDecimal[hidden]{display:none}
+.numpad-grid:has(#numpadDecimal:not([hidden])){grid-template-columns:repeat(12,minmax(0,1fr))}
+.numpad-grid:has(#numpadDecimal:not([hidden])) .numpad-key{grid-column:span 4}
+.numpad-grid:has(#numpadDecimal:not([hidden])) :is(#numpadBackspace,#numpadDecimal,[data-d="0"],#numpadDoneBtn){grid-column:span 3}

@@ -1802,5 +1802,3 @@ textarea.contract-project-item-input{
 .contract-document-quantities td,.contract-document-quantities th{border:1px solid #aaa;padding:5px;white-space:pre-wrap;overflow-wrap:anywhere;vertical-align:top}
 .contract-document-quantities th:first-child{width:6%}
 .contract-document-quantities th:nth-child(2){width:30%}
-#numpadDecimal[hidden]{display:none}
-#numpadDecimal{grid-column:1 / -1}
