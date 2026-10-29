@@ -57,7 +57,10 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
     selectRow(card,'واحد',row.unit,()=>pick('انتخاب واحد','واحدها',quantityUnits,row.unit,value=>{row.unit=value;onChange();}));
     numberRow(card,'مقدار',row.quantity,value=>{row.quantity=value;},{suffix:row.unit||'',allowDecimal:true});
     numberRow(card,'بهای واحد',row.unitPrice,value=>{row.unitPrice=value;},{suffix:'تومان'});
-    const total=document.createElement('div');total.className='ft-calc';total.textContent='بهای کل: '+money(rowAmount(row));
+    const total=document.createElement('div');total.className='ft-row';
+    const totalLabel=document.createElement('div');totalLabel.className='ft-label';totalLabel.textContent='بهای کل:';
+    const totalValue=document.createElement('div');totalValue.className='ft-value';totalValue.textContent=money(rowAmount(row));
+    total.append(totalLabel,totalValue);
     card.appendChild(total);list.appendChild(card);
   });
   const add=document.createElement('button');add.type='button';add.className='ctf-add-material';add.textContent='+ افزودن ردیف';
