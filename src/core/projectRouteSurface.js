@@ -4,6 +4,8 @@ export const PROJECT_ROUTE_SURFACES = Object.freeze({
   execution: Object.freeze({ pageId:null, footer:'Execution', subpage:null }),
   tasks: Object.freeze({ pageId:null, footer:'Execution', subpage:null }),
   reports: Object.freeze({ pageId:'reportsPage', footer:'Reports', subpage:null }),
+  'done-works': Object.freeze({ pageId:'reportsPage', footer:'Reports', subpage:'done-works' }),
+  'work-delays': Object.freeze({ pageId:'reportsPage', footer:'Reports', subpage:'work-delays' }),
   contracts: Object.freeze({ pageId:'contractsPage', footer:'Reports', subpage:'contracts' }),
   accounting: Object.freeze({ pageId:'accountingPage', footer:'Financial', subpage:null }),
   'accounting-statements': Object.freeze({ pageId:'accountingPage', footer:'Financial', subpage:'accounting-statements' }),

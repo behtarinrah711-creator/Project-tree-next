@@ -1,13 +1,14 @@
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
-import { renderDelayView, DELAY_ICON } from '../wbs/delayView.js';
+import { renderDelayView } from '../wbs/delayView.js';
 import { renderDoneWorks } from './doneWorksView.js';
 import { openProjectFinishSheet } from '../wbs/homeView.js';
 
-const REPORT_ICON = 'M160-120v-80h640v80H160Zm40-160q-33 0-56.5-23.5T120-360v-400q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v400q0 33-23.5 56.5T760-280H200Zm0-80h560v-400H200v400Zm80-80h80v-160h-80v160Zm160 0h80v-280h-80v280Zm160 0h80v-80h-80v80Z';
-let activeReportView = 'reports';
-
-function icon(path){ return `<svg viewBox="0 -960 960 960" aria-hidden="true"><path d="${path}"/></svg>`; }
+export const REPORT_SECTIONS = Object.freeze([
+  { id:'contracts', title:'قرارداد پیمانکاران', meta:'ایجاد و مدیریت قراردادهای واقعی پیمانکاران' },
+  { id:'done-works', title:'کارهای انجام‌شده', meta:'مشاهده گزارش کارهای تکمیل‌شده پروژه' },
+  { id:'work-delays', title:'دیرکردها', meta:'مشاهده کارهای عقب‌افتاده پروژه' },
+]);
 
 function getProjectId(explicitProjectId = null){
   return explicitProjectId
@@ -33,11 +34,11 @@ export const reportsModule = {
   route: 'reports',
 
   mount({ projectId } = {}){
-    this.render(projectId);
+    this.render(projectId, 'reports');
     return { projectId: getProjectId(projectId), moduleId: 'reports' };
   },
 
-  render(projectId = null){
+  render(projectId = null, viewId = window.KarhaRoute?.moduleId || 'reports'){
     const body = document.getElementById('reportsPageBody');
     if(!body) return;
 
@@ -53,58 +54,49 @@ export const reportsModule = {
       return;
     }
 
-    const tabs=document.createElement('div');
-    tabs.className='wbs-tabs reports-workspace-tabs';
-    tabs.setAttribute('role','tablist');
-    [
-      {id:'reports',label:'قراردادها',icon:REPORT_ICON},
-      {id:'delay',label:'دیرکردها',icon:DELAY_ICON},
-      {id:'done',label:'کارهای انجام‌شده',icon:DELAY_ICON},
-    ].forEach(view=>{
-      const button=document.createElement('button');
-      button.type='button';
-      button.className='wbs-tab'+(activeReportView===view.id?' active':'');
-      button.setAttribute('role','tab');
-      button.setAttribute('aria-selected',activeReportView===view.id?'true':'false');
-      button.setAttribute('aria-label',view.label);
-      button.title=view.label;
-      button.innerHTML=`${icon(view.icon)}<span class="wbs-tab-label">${view.label}</span>`;
-      button.addEventListener('click',()=>{ activeReportView=view.id; this.render(activeProjectId); });
-      tabs.appendChild(button);
-    });
-    body.appendChild(tabs);
-
-    if(activeReportView === 'delay'){
+    if(viewId === 'work-delays'){
       body.appendChild(renderDelayView(project, document, openProjectFinishSheet));
       return;
     }
-    if(activeReportView === 'done'){
-      body.appendChild(renderDoneWorks(project, document, () => this.render(activeProjectId)));
+    if(viewId === 'done-works'){
+      body.appendChild(renderDoneWorks(project, document, () => this.render(activeProjectId, viewId)));
       return;
     }
 
     const wrap = document.createElement('div');
     wrap.className = 'workspace-option-list';
 
-    const row = document.createElement('button');
-    row.type = 'button';
-    row.className = 'workspace-option';
-    row.innerHTML = `
-      <span class="workspace-option-main">
-        <span class="workspace-option-title">قرارداد پیمانکاران</span>
-        <span class="workspace-option-meta">ایجاد و مدیریت قراردادهای واقعی پیمانکاران</span>
-      </span>
-      <span class="workspace-option-arrow"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span>
-    `;
+    REPORT_SECTIONS.forEach(section => {
+      const row = document.createElement('button');
+      row.type = 'button';
+      row.className = 'workspace-option';
+      row.innerHTML = `
+        <span class="workspace-option-main">
+          <span class="workspace-option-title">${section.title}</span>
+          <span class="workspace-option-meta">${section.meta}</span>
+        </span>
+        <span class="workspace-option-arrow"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span>
+      `;
 
-    row.addEventListener('click', () => {
-      if(!window.KarhaApp?.projectWorkspace?.selectProject?.(activeProjectId,{moduleId:'contracts'}))
-        goToProjectModule(activeProjectId, 'contracts');
+      row.addEventListener('click', () => {
+        if(!window.KarhaApp?.projectWorkspace?.selectProject?.(activeProjectId,{moduleId:section.id}))
+          goToProjectModule(activeProjectId, section.id);
+      });
+
+      wrap.appendChild(row);
     });
-
-    wrap.appendChild(row);
     body.appendChild(wrap);
   },
 };
+
+export const reportSectionModules = REPORT_SECTIONS.filter(section => section.id !== 'contracts').map(section => ({
+  id: section.id,
+  title: section.title,
+  route: section.id,
+  mount({ projectId } = {}){
+    reportsModule.render(projectId, section.id);
+    return { projectId: getProjectId(projectId), moduleId: section.id };
+  },
+}));
 
 export default reportsModule;

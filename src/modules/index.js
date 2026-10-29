@@ -4,7 +4,7 @@ import planning from './planning/index.js';
 import execution from './execution/index.js';
 import contracts from './contracts/index.js';
 import accounting, { accountingSectionModules } from './accounting/index.js';
-import reports from './reports/index.js';
+import reports, { reportSectionModules } from './reports/index.js';
 import people from './people/index.js';
 import activities from './activities/index.js';
 import projectSettings from './projectSettings/index.js';
@@ -23,6 +23,7 @@ export const projectModules = [
   accounting,
   ...accountingSectionModules,
   reports,
+  ...reportSectionModules,
   people,
   activities,
   projectSettings,

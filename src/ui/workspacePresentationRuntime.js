@@ -167,6 +167,14 @@ function closeBottomPages(){
 }
 
 function handleWorkspaceContextBack(){
+  if(workspaceSubpage === 'done-works' || workspaceSubpage === 'work-delays'){
+    if(window.KarhaBrowserHistory?.back) window.KarhaBrowserHistory.back();
+    else {
+      const projectId = getActiveTab();
+      if(projectId) window.KarhaApp?.router?.navigate(projectId, 'reports', { replace:true });
+    }
+    return;
+  }
   if(workspaceSubpage && Object.hasOwn({
     'accounting-statements': true,
     'pending-payments': true,
