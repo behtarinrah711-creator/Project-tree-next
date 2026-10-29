@@ -28,7 +28,7 @@ export function makeQuantityRow(){
 }
 
 // Same row editor for pricing and payment quantities; arrays remain independent.
-export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,onDirty,single=false}){
+export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,onDirty,operations=false}){
   const money=value=>new Intl.NumberFormat('fa-IR').format(value)+' تومان';
   const list=document.createElement('div');
   list.className='contract-quantity-list';
@@ -38,19 +38,19 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
     const header=document.createElement('div');
     header.className='contract-quantity-heading';
     const label=document.createElement('span');
-    label.textContent=single ? 'محاسبه مبلغ کل قرارداد' : 'ردیف '+new Intl.NumberFormat('fa-IR').format(index+1);
+    label.textContent=(operations?'عملیات ':'ردیف ')+new Intl.NumberFormat('fa-IR').format(index+1);
     const remove=document.createElement('button');
-    remove.type='button';remove.textContent='حذف';remove.setAttribute('aria-label','حذف ردیف '+(index+1));
+    remove.type='button';remove.textContent='حذف';remove.setAttribute('aria-label',(operations?'حذف عملیات ':'حذف ردیف ')+(index+1));
     remove.onclick=()=>{rows.splice(index,1);onChange();};
     header.appendChild(label);
-    if(!single || rows.length>1) header.appendChild(remove);
+    header.appendChild(remove);
     card.appendChild(header);
     const descLabel=document.createElement('label');
     descLabel.className='contract-quantity-description';
     const title=document.createElement('span');title.textContent='شرح عملیات';
     const description=document.createElement('textarea');
     description.rows=2;description.value=row.description||'';
-    description.setAttribute('aria-label','شرح عملیات ردیف '+(index+1));
+    description.setAttribute('aria-label',(operations?'شرح عملیات ':'شرح عملیات ردیف ')+(index+1));
     // Mirror wraps in normal document flow, so all text stays visible without timers.
     const wrap=document.createElement('div');wrap.className='contract-growing-text';
     wrap.dataset.value=description.value+' ';
@@ -65,8 +65,8 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
     total.append(totalLabel,totalValue);
     card.appendChild(total);list.appendChild(card);
   });
-  const add=document.createElement('button');add.type='button';add.className='ctf-add-material';add.textContent='+ افزودن ردیف';
+  const add=document.createElement('button');add.type='button';add.className='ctf-add-material';add.textContent=operations?'+ افزودن عملیات':'+ افزودن ردیف';
   add.onclick=()=>{rows.push(makeQuantityRow());onChange();};
-  if(!single) list.appendChild(add);
+  list.appendChild(add);
   root.appendChild(list);
 }

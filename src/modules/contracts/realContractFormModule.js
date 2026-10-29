@@ -496,7 +496,7 @@ function renderContractForm() {
     });
   });
   if(state.amountMethod==='quantity'){
-    renderRows(form,state.amountRows,{single:true});
+    renderRows(form,state.amountRows,{operations:true});
     syncContractAmount(state);
     ftAmountSummary(form,'مبلغ کل قرارداد',state.amount);
   }else{
