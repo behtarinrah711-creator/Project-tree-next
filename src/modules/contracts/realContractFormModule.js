@@ -433,10 +433,14 @@ function renderContractForm() {
   const activityName = activity?.name || activity?.title || '';
   const form = ftCreateRoot(body);
 
-  ftTextRow(form, 'شماره قرارداد', state.contractNo || '', value => { state.contractNo = value; }, {
-    readonly: !state.contractNo,
-    placeholder: state.contractNo ? '' : 'توسط سیستم تولید می‌شود'
+  const numberRow=ftTextRow(form, 'شماره قرارداد', state.contractNo || '', null, {
+    dirty: false,
+    readonly: true,
+    placeholder: state.contractNo ? '' : 'پس از ثبت در سرور تولید می‌شود'
   });
+  const numberInput=numberRow.querySelector('input');
+  numberInput.id='contractNumberDisplay';
+  numberInput.dir='ltr';
   ftDateRow(form, 'تاریخ تنظیم قرارداد', state.contractDate || helper('todayJalaliStr'), value => { state.contractDate = value; }, { maxToday: true });
 
   const projectPlace = project.location || project.address || project.projectLocation || project.siteLocation || '';
@@ -753,3 +757,16 @@ export const realContractFormModule = {
 export default realContractFormModule;
 
 if (typeof window !== 'undefined') window.KarhaRealContractForm = realContractFormModule;
+
+// Server-issued identity can arrive after the form has opened. Refresh only
+// those immutable fields, without replacing the user's in-progress edits.
+globalThis.window?.addEventListener?.('karha:projects-recovered',()=>{
+  if(!state || !activeProjectId)return;
+  const saved=realContractDomain.findProjectContract(state.id,activeProject(activeProjectId));
+  if(!saved?.contractNo)return;
+  state.contractNo=saved.contractNo;
+  state.contractUid=saved.contractUid;
+  state.contractSerial=saved.contractSerial;
+  const input=globalThis.document?.getElementById('contractNumberDisplay');
+  if(input)input.value=saved.contractNo;
+});

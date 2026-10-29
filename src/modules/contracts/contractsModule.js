@@ -57,7 +57,7 @@ function contractRowData(projectId,c){
   const contact=findContact(projectId,c.contractorId||c.contactId);
   const title=c.title || ('قرارداد '+(a?.name||''));
   const person=contact ? ([contact.firstName,contact.lastName].filter(Boolean).join(' ')||contact.name) : 'بدون مخاطب';
-  const meta=[person,a?.name||'بدون فعالیت',money(c.amount),c.isDraft||c.status==='draft'?'در انتظار تکمیل':''].filter(Boolean).join(' · ');
+  const meta=[c.contractNo,person,a?.name||'بدون فعالیت',money(c.amount),c.isDraft||c.status==='draft'?'در انتظار تکمیل':''].filter(Boolean).join(' · ');
   return {title,meta,created:contractCreatedParts(c.createdAt)};
 }
 
@@ -74,13 +74,13 @@ export const contractsModule={
     const head=document.createElement('div'); head.className='contract-list-head';
     const firstPage=contractApi.listPage(id,{cursor:0,limit:50}),contracts=firstPage.items;
     head.innerHTML=`<span class="title">قراردادهای واقعی پیمانکاران</span><span class="mgmt-count">${new Intl.NumberFormat('fa-IR').format(contracts.length)}</span>`; body.append(head);
-    const search=searchInput('جستجوی قرارداد، پیمانکار یا فعالیت…',q=>{[...listWrap.children].forEach(row=>row.hidden=!row.dataset.searchText.includes(q));});
+    const search=searchInput('جستجوی قرارداد، پیمانکار یا فعالیت…',q=>{[...listWrap.children].forEach(row=>row.hidden=!row.dataset.searchText.includes(q.replace(/[-\s]/g,'')));});
     body.append(search.wrap,listWrap);
     if(!contracts.length){const e=document.createElement('div');e.className='contract-empty';e.innerHTML='هنوز قرارداد واقعی ثبت نشده است.<br>از علامت + یک قرارداد ایجاد کنید.';body.appendChild(e);return;}
     const appendContract=c=>{
       const {title,meta,created}=contractRowData(id,c);
       const row=document.createElement('div'); row.className='contract-row';
-      row.dataset.searchText=(title+' '+meta+' '+(created ? `${created.date} ${created.time}` : '')).toLocaleLowerCase('fa');
+      row.dataset.searchText=(title+' '+meta+' '+(created ? `${created.date} ${created.time}` : '')).toLocaleLowerCase('fa').replace(/[-\s]/g,'');
       const main=document.createElement('div'); main.className='contract-main';
       const t=document.createElement('div'); t.className='contract-title'; t.textContent=title;
       const m=document.createElement('div'); m.className='contract-meta'; m.textContent=meta; main.append(t,m);
