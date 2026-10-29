@@ -1,4 +1,4 @@
-import { syncContractAmount, numericValue } from './contractPricing.js';
+import { syncContractAmount, numericValue, ensureAgreedRows } from './contractPricing.js';
 import { syncPaymentStages } from './paymentStagesModule.js';
 import { contractApi } from '../../domain/contractApi.js';
 import * as realContractDomain from './realContractDomain.js';
@@ -31,6 +31,12 @@ export function saveRealContract(projectId, draft, helpers={}){
   if(!draft.endDate){toast('تاریخ پایان قرارداد را انتخاب کنید');return {ok:false};}
   if(draft.endDate && draft.startDate && draft.endDate<draft.startDate){
     toast('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد');return {ok:false};
+  }
+  if(draft.amountMethod==='agreed'){
+    const rows=ensureAgreedRows(draft);
+    if(!rows.length || rows.some(row=>!String(row.description||'').trim() || numericValue(row.agreedPrice)<=0)){
+      toast('شرح عملیات و بهای توافقی عملیات‌ها را کامل کنید');return {ok:false};
+    }
   }
   syncContractAmount(draft);
   for(const rows of [draft.amountMethod==='quantity'?draft.amountRows:null, draft.paymentMethod==='quantity'?draft.paymentRows:null].filter(rows=>rows!==null)){

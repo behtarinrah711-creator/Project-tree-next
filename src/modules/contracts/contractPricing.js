@@ -19,8 +19,16 @@ export function numericValue(value){
 export function rowAmount(row){
   return Math.round(numericValue(row.quantity)*numericValue(row.unitPrice));
 }
+export function ensureAgreedRows(state){
+  if(!Array.isArray(state.agreedRows)){
+    state.agreedRows=[{id:'agreed_1',description:state.amountDescription||'',
+      agreedPrice:state.agreedAmount ?? (state.amountMethod==='quantity'?'':state.amount||'')}];
+  }
+  return state.agreedRows;
+}
 export function syncContractAmount(state){
   if(state.amountMethod==='quantity') state.amount=String((state.amountRows||[]).reduce((sum,row)=>sum+rowAmount(row),0));
+  if(state.amountMethod==='agreed' && Array.isArray(state.agreedRows)) state.amount=String(state.agreedRows.reduce((sum,row)=>sum+Math.round(numericValue(row.agreedPrice)),0));
   return state.amount;
 }
 export function makeQuantityRow(){
@@ -28,7 +36,7 @@ export function makeQuantityRow(){
 }
 
 // Same row editor for pricing and payment quantities; arrays remain independent.
-export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,onDirty,operations=false}){
+export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,onDirty,operations=false,agreed=false}){
   const money=value=>new Intl.NumberFormat('fa-IR').format(value)+' تومان';
   const list=document.createElement('div');
   list.className='contract-quantity-list';
@@ -56,14 +64,19 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
     wrap.dataset.value=description.value+' ';
     description.oninput=()=>{row.description=description.value;wrap.dataset.value=description.value+' ';onDirty();};
     wrap.appendChild(description);descLabel.append(title,wrap);card.appendChild(descLabel);
-    selectRow(card,'واحد',row.unit,()=>pick('انتخاب واحد','واحدها',quantityUnits,row.unit,value=>{row.unit=value;onChange();}));
-    numberRow(card,'مقدار',row.quantity,value=>{row.quantity=value;},{suffix:row.unit||'',allowDecimal:true});
-    numberRow(card,'بهای واحد',row.unitPrice,value=>{row.unitPrice=value;},{suffix:'تومان'});
-    const total=document.createElement('div');total.className='ft-row';
-    const totalLabel=document.createElement('div');totalLabel.className='ft-label';totalLabel.textContent='بهای کل:';
-    const totalValue=document.createElement('div');totalValue.className='ft-value';totalValue.textContent=money(rowAmount(row));
-    total.append(totalLabel,totalValue);
-    card.appendChild(total);list.appendChild(card);
+    if(agreed){
+      numberRow(card,'بهای توافقی',row.agreedPrice,value=>{row.agreedPrice=value;},{suffix:'تومان'});
+    }else{
+      selectRow(card,'واحد',row.unit,()=>pick('انتخاب واحد','واحدها',quantityUnits,row.unit,value=>{row.unit=value;onChange();}));
+      numberRow(card,'مقدار',row.quantity,value=>{row.quantity=value;},{suffix:row.unit||'',allowDecimal:true});
+      numberRow(card,'بهای واحد',row.unitPrice,value=>{row.unitPrice=value;},{suffix:'تومان'});
+      const total=document.createElement('div');total.className='ft-row';
+      const totalLabel=document.createElement('div');totalLabel.className='ft-label';totalLabel.textContent='بهای کل:';
+      const totalValue=document.createElement('div');totalValue.className='ft-value';totalValue.textContent=money(rowAmount(row));
+      total.append(totalLabel,totalValue);
+      card.appendChild(total);
+    }
+    list.appendChild(card);
   });
   const add=document.createElement('button');add.type='button';add.className='ctf-add-material';add.textContent=operations?'+ افزودن عملیات':'+ افزودن ردیف';
   add.onclick=()=>{rows.push(makeQuantityRow());onChange();};

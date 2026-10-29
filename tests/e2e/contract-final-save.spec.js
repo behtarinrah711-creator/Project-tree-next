@@ -44,6 +44,11 @@ test('Save persists a final contract and renders it in the contracts list', asyn
       activityIds: ['activity-1'],
       startDate: '1400/01/02',
       endDate: '1400/01/03',
+      amountMethod: 'agreed',
+      agreedRows: [
+        {id:'agreed-1',description:'عملیات اول',agreedPrice:'600000'},
+        {id:'agreed-2',description:'عملیات دوم',agreedPrice:'400000'}
+      ],
       amount: '1000000',
       retentionPercent: '10',
       retentionBasis: 'تحویل موقت',
@@ -78,6 +83,12 @@ test('Save persists a final contract and renders it in the contracts list', asyn
   }, contractId);
 
   expect(stored).not.toBeNull();
+  expect(stored.amount).toBe('1000000');
+  expect(stored.retentionAmount).toBe('100000');
+  expect(stored.agreedRows).toEqual([
+    {id:'agreed-1',description:'عملیات اول',agreedPrice:'600000'},
+    {id:'agreed-2',description:'عملیات دوم',agreedPrice:'400000'}
+  ]);
   expect(stored.status).toBe('final');
   expect(stored.isDraft).toBe(false);
   expect(stored.contractPlace).toBe('کارگاه تست');
