@@ -1802,3 +1802,11 @@ textarea.contract-project-item-input{
 .contract-document-quantities td,.contract-document-quantities th{border:1px solid #aaa;padding:5px;white-space:pre-wrap;overflow-wrap:anywhere;vertical-align:top}
 .contract-document-quantities th:first-child{width:6%}
 .contract-document-quantities th:nth-child(2){width:30%}
+
+/* Read-only totals use the same right-label/left-value layout as other fields. */
+.contract-form-body .contract-amount-summary :is(.ft-label,.ft-value){color:#202124 !important}
+/* Override shared form padding so the grey header reaches the rounded edges. */
+.contract-form-body .contract-quantity-row.form-template{padding:0 !important}
+.contract-quantity-heading{border-radius:9px 9px 0 0;direction:rtl}
+.contract-form-body .contract-quantity-row > .ft-row{width:calc(100% - 32px) !important;margin:0 16px !important}
+.contract-form-body .contract-quantity-row > .ft-calc{padding:12px 16px !important}
