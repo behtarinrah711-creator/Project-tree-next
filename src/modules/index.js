@@ -8,6 +8,7 @@ import reports, { reportSectionModules } from './reports/index.js';
 import people from './people/index.js';
 import activities from './activities/index.js';
 import projectSettings from './projectSettings/index.js';
+import projectDetails from './projectSettings/projectDetailsModule.js';
 import roleManagement from './roleManagement/index.js';
 import { CONDEMNED_MODULE_IDS, isCondemnedModuleId } from './condemned/index.js';
 
@@ -26,6 +27,7 @@ export const projectModules = [
   ...reportSectionModules,
   people,
   activities,
+  projectDetails,
   projectSettings,
   roleManagement,
 ];

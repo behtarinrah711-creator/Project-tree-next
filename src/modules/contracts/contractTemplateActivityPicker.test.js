@@ -91,3 +91,28 @@ test('shared picker renders disabled rows and ignores their clicks',async()=>{
   rows[1].onclick();
   assert.equal(selected,1);assert.ok(closed>0);
 });
+
+test('shared picker creates the add button only for lists that allow adding',async()=>{
+  const {readFileSync}=await import('node:fs');
+  const {runInNewContext}=await import('node:vm');
+  const make=()=>({children:[],dataset:{},classList:{add(){},remove(){},toggle(){}},
+    append(...xs){xs.forEach(x=>this.appendChild(x));},
+    appendChild(x){x.parent=this;this.children.push(x);},
+    remove(){this.parent.children=this.parent.children.filter(x=>x!==this);},
+    setAttribute(k,v){this[k]=v;}});
+  const page=make(),body=make();let added=0;
+  const context={document:{readyState:'loading',addEventListener(){},createElement:make,
+    getElementById:id=>id==='searchTemplatePage'?page:id==='searchTemplateBody'?body:page.children.find(x=>x.id===id)||null},
+    window:{KarhaChildHistory:{register(){},open(){}}},getCurrentProject:()=>({}),setTimeout(){}};
+  runInNewContext(readFileSync(new URL('./searchTemplateModule.js',import.meta.url),'utf8'),context);
+  const open=context.window.KarhaSearchTemplate.open;
+  const button=()=>page.children.find(x=>x.id==='searchTemplateFab');
+  open({items:[],showAdd:false});assert.equal(button(),undefined);
+  open({items:[],resourceType:'contact',onAdd(){added++;}});
+  assert.ok(button());button().onclick();assert.equal(added,1);
+  open({items:[],resourceType:'contact',showAdd:false,onAdd(){added++;}});
+  assert.equal(button(),undefined);
+  open({items:[],resourceType:'activity',onAdd(){added++;}});
+  assert.ok(button());button().onclick();assert.equal(added,2);
+  open({items:[],resourceType:'other'});assert.equal(button(),undefined);
+});

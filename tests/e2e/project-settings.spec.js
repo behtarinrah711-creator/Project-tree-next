@@ -25,7 +25,7 @@ test('project settings persist and switch the phase add flow without changing ex
   await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(0);
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await page.locator('#projectSettingsTrigger').click();
-  await page.locator('#settingsPageBody').getByRole('button',{name:'تنظیمات پروژه'}).click();
+  await page.locator('#settingsPageBody').getByRole('button',{name:'تنظیمات درخت پروژه'}).click();
   await expect(page.locator('#projectSettingsPage')).toBeVisible();
   const none=page.getByRole('radio',{name:'دو‌مرحله‌ای',exact:true});
   const single=page.getByRole('radio',{name:'سه‌مرحله‌ای',exact:true});
@@ -41,7 +41,7 @@ test('project settings persist and switch the phase add flow without changing ex
   await expect(page.locator('#wbsSheetOverlay .wbs-choice')).toHaveCount(0);
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await page.locator('#projectSettingsTrigger').click();
-  await page.locator('#settingsPageBody').getByRole('button',{name:'تنظیمات پروژه'}).click();
+  await page.locator('#settingsPageBody').getByRole('button',{name:'تنظیمات درخت پروژه'}).click();
   await multiple.check();
   await page.reload();
   await expect(multiple).toBeChecked();
@@ -58,7 +58,7 @@ test('project settings persist and switch the phase add flow without changing ex
 
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await page.locator('#projectSettingsTrigger').click();
-  await page.locator('#settingsPageBody').getByRole('button',{name:'تنظیمات پروژه'}).click();
+  await page.locator('#settingsPageBody').getByRole('button',{name:'تنظیمات درخت پروژه'}).click();
   await none.check();
   await page.reload();
   await expect(none).toBeChecked();
@@ -104,7 +104,7 @@ test('base mode creates work directly from the tree header and retains it when s
   await expect(page.locator('#wbsSheetOverlay .sheet-caption')).toContainText('مرحله:');
   await page.locator('#wbsSheetOverlay .close-btn').click();
   await page.locator('#projectSettingsTrigger').click();
-  await page.locator('#settingsPageBody').getByRole('button',{name:'تنظیمات پروژه'}).click();
+  await page.locator('#settingsPageBody').getByRole('button',{name:'تنظیمات درخت پروژه'}).click();
   await expect(page.getByRole('radio',{name:'تک‌مرحله‌ای',exact:true})).toBeChecked();
   await expect(page.locator('.project-stage-mode')).toHaveCount(4);
   await page.getByRole('radio',{name:'دو‌مرحله‌ای',exact:true}).check();
@@ -282,3 +282,58 @@ for(const [mode, levels] of [['base',1],['none',2],['single',3],['multiple',4]])
     }
   });
 }
+
+test('project specifications use flat dependent pickers and persist all project metadata', async ({ page }) => {
+  await page.addInitScript(() => {
+    if(localStorage.getItem('project-details-seeded')) return;
+    localStorage.setItem('project-details-seeded','1');
+    localStorage.setItem('ptnext-v1:app-data', JSON.stringify({schemaVersion:8,activeTab:'details',viewMode:'simple',starredOrder:[],projects:[
+      {id:'details',name:'پروژه مشخصات',contractProjectCode:'A7B',settings:{stageMode:'multiple'},tasks:[],contacts:[{id:'owner-contact',firstName:'کارفرمای تست'}]}
+    ]}));
+  });
+  await page.goto('/index.html#/projects/details/people');
+  const settings = page.locator('#settingsPageBody');
+  await expect(settings.locator('.workspace-option-title').first()).toHaveText('مشخصات پروژه');
+  await settings.getByRole('button', {name:'مشخصات پروژه',exact:true}).click();
+  await expect(page.locator('#projectDetailsPage')).toBeVisible();
+  const form = page.locator('#projectDetailsPageBody');
+  await expect(form.getByRole('textbox', {name:'شناسه پروژه',exact:true})).toHaveValue('A7B');
+  await expect(form.getByRole('textbox', {name:'شناسه پروژه',exact:true})).toHaveAttribute('readonly','');
+  await form.getByRole('textbox',{name:'نام پروژه',exact:true}).fill('پروژه ویرایش‌شده');
+  await expect(form.getByRole('button',{name:'انتخاب شهر',exact:true})).toBeDisabled();
+  const choose = async (label, option) => {
+    await form.getByRole('button',{name:label,exact:true}).click();
+    await expect(page.locator('#searchTemplateFab')).toHaveCount(0);
+    await expect(page.locator('#searchTemplateBody .stpl-letter')).toHaveCount(0);
+    await page.locator('#searchTemplateBody .stpl-row').filter({has:page.getByText(option,{exact:true})}).click();
+  };
+  await choose('انتخاب استان','فارس');
+  await choose('انتخاب شهر','شیراز');
+  await choose('انتخاب استان','تهران');
+  await expect(form.getByRole('button',{name:'انتخاب شهر',exact:true})).toContainText('انتخاب');
+  await choose('انتخاب استان','فارس');
+  await choose('انتخاب شهر','شیراز');
+  await choose('انتخاب نوع پروژه','ساختمان و ابنیه');
+  await choose('واحد ارزی پروژه','افغانی');
+  await choose('انتخاب کارفرمای پروژه','کارفرمای تست');
+  await form.getByRole('textbox',{name:'آدرس پروژه',exact:true}).fill('شیراز، آدرس تست');
+  await form.getByRole('textbox',{name:'توضیحات پروژه (اختیاری)',exact:true}).fill('توضیح تست');
+  await form.getByRole('button',{name:'تاریخ شروع پروژه',exact:true}).click();
+  await expect(page.locator('#jalaliPop')).toBeVisible();
+  await page.locator('#jalaliPop .jalali-days button[data-d]').first().click();
+  await page.locator('#saveProjectDetails').click();
+  await expect(page).toHaveURL(/\/people$/);
+  await page.reload();
+  await page.locator('#settingsPageBody').getByRole('button',{name:'مشخصات پروژه',exact:true}).click();
+  await expect(form.getByRole('textbox',{name:'نام پروژه',exact:true})).toHaveValue('پروژه ویرایش‌شده');
+  await expect(form.getByRole('button',{name:'انتخاب استان',exact:true})).toContainText('فارس');
+  await expect(form.getByRole('button',{name:'انتخاب شهر',exact:true})).toContainText('شیراز');
+  await expect(form.getByRole('button',{name:'واحد ارزی پروژه',exact:true})).toContainText('افغانی');
+  await expect(form.getByRole('button',{name:'انتخاب کارفرمای پروژه',exact:true})).toContainText('کارفرمای تست');
+  await expect(form.getByRole('textbox',{name:'آدرس پروژه',exact:true})).toHaveValue('شیراز، آدرس تست');
+  await expect(form.getByRole('textbox',{name:'توضیحات پروژه (اختیاری)',exact:true})).toHaveValue('توضیح تست');
+  const project = await page.evaluate(() => window.KarhaAppData.getProjects().find(item => item.id==='details'));
+  expect(project.settings.projectDetails.startDate).toMatch(/^\d{4}\/\d{2}\/01$/);
+  expect(project.settings.stageMode).toBe('multiple');
+  expect(project.contractProjectCode).toBe('A7B');
+});

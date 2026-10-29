@@ -358,8 +358,11 @@ function renderSettingsWorkspace(){
   body.innerHTML='';
   if(!p){ body.innerHTML='<div class="mgmt-empty">برای نمایش تنظیمات، یک پروژه را انتخاب کنید.</div>'; return; }
   const wrap=document.createElement('div'); wrap.className='workspace-option-list';
+  const detailsRow=document.createElement('button'); detailsRow.type='button'; detailsRow.className='workspace-option';
+  detailsRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">مشخصات پروژه</span></span><span class="workspace-option-arrow"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span>';
+  detailsRow.onclick=()=>window.KarhaApp?.router?.navigate(p.id, 'project-details'); wrap.appendChild(detailsRow);
   const projectSettingsRow=document.createElement('button'); projectSettingsRow.type='button'; projectSettingsRow.className='workspace-option';
-  projectSettingsRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">تنظیمات پروژه</span></span><span class="workspace-option-arrow"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span>';
+  projectSettingsRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">تنظیمات درخت پروژه</span></span><span class="workspace-option-arrow"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span>';
   projectSettingsRow.onclick=()=>window.KarhaApp?.router?.navigate(p.id, 'project-settings'); wrap.appendChild(projectSettingsRow);
   const access=window.KarhaSaosaWorkspaceAccess?.[p.id] || null;
   const session=window.KarhaApp?.getSession?.() || {};
@@ -367,15 +370,15 @@ function renderSettingsWorkspace(){
   const isOwner=access?.role === 'owner' || (!access && (!ownerId || (session.uid && String(ownerId)===String(session.uid))));
   if(isOwner){
     const rolesRow=document.createElement('button'); rolesRow.type='button'; rolesRow.className='workspace-option';
-    rolesRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">مدیریت نقش‌ها</span><span class="workspace-option-meta">اعضا، نقش‌ها و سطح دسترسی ماژول‌ها</span></span><span class="workspace-option-arrow"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span>';
+    rolesRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">تنظیمات دسترسی ها</span><span class="workspace-option-meta">اعضا، نقش‌ها و سطح دسترسی ماژول‌ها</span></span><span class="workspace-option-arrow"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span>';
     rolesRow.onclick=()=>window.KarhaApp?.router?.navigate(p.id,'role-management'); wrap.appendChild(rolesRow);
   }
   const contactRow=document.createElement('button'); contactRow.type='button'; contactRow.className='workspace-option';
-  contactRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">مخاطبین</span></span><span class="workspace-option-arrow"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span>';
+  contactRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">لیست مخاطبین</span></span><span class="workspace-option-arrow"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span>';
   contactRow.onclick=()=>openContactsPage(); wrap.appendChild(contactRow);
 
   const activityRow=document.createElement('button'); activityRow.type='button'; activityRow.className='workspace-option';
-  activityRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">فعالیت‌ها</span></span><span class="workspace-option-arrow"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span>';
+  activityRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">لیست فعالیت ها</span></span><span class="workspace-option-arrow"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span>';
   activityRow.onclick=()=>openProjectActivitiesPage(); wrap.appendChild(activityRow);
 
   const contractRow=document.createElement('button'); contractRow.type='button'; contractRow.className='workspace-option';
