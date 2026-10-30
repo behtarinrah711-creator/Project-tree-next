@@ -1844,3 +1844,7 @@ textarea.contract-project-item-input{
   width:auto !important;
   text-align:left !important;
 }
+
+.contract-form-body .contract-operation-method{gap:16px;flex-wrap:wrap;}
+.contract-form-body .contract-operation-method label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;}
+.contract-form-body .contract-operation-method input{accent-color:#1565c0;}
