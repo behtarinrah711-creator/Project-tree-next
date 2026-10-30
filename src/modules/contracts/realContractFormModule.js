@@ -543,7 +543,7 @@ function renderContractForm() {
     const number=helper('toPersianDigits',String(payment.number)) ?? payment.number;
     ftAmountSummary(paymentForm,'مرحله '+number+' واریزی',payment.amount);
   });
-  ftAmountSummary(paymentForm,'مانده مبلغ قرارداد',paymentSummary.remaining);
+  ftAmountSummary(paymentForm,'مانده مبلغ قرارداد',paymentSummary.remaining).classList.add('contract-payment-balance');
 
   const clausesHeading = document.createElement('div');
   clausesHeading.className = 'real-contract-section contract-clause-heading';
