@@ -46,14 +46,14 @@ export function attachPointerDrag({handle,list,id,kind,state,onDirty,onRender}){
       if(e.clientY<r.top+r.height/2){target=el;position='before';break;}
     }
     if(!target&&others.length){target=others[others.length-1];position='after';}
-    others.forEach(el=>el.classList.remove('drag-over-top','drag-over-bottom'));
-    if(target)target.classList.add(position==='before'?'drag-over-top':'drag-over-bottom');
+    others.forEach(el=>el.classList.remove('contract-drag-over-top','contract-drag-over-bottom'));
+    if(target)target.classList.add(position==='before'?'contract-drag-over-top':'contract-drag-over-bottom');
     drag.target=target;drag.position=position;
   };
   const end=()=>{
     document.removeEventListener('pointermove',move);
     wrapper.classList.remove('row-dragging','contract-row-dragging');
-    siblings.forEach(el=>el.classList.remove('drag-over-top','drag-over-bottom'));
+    siblings.forEach(el=>el.classList.remove('contract-drag-over-top','contract-drag-over-bottom'));
     if(drag.moved&&drag.target){
       const targetId=drag.target.dataset.contractDragId;
       if(moveItem(list,id,targetId,drag.position)){

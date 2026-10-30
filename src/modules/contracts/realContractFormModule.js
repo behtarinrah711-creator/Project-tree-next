@@ -1,4 +1,4 @@
-import { amountMethods, paymentMethods, renderQuantityRows, syncContractAmount } from './contractPricing.js';
+import { paymentMethods, renderQuantityRows, syncContractAmount } from './contractPricing.js';
 import { contractDocumentMarkup } from './contractDocument.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
@@ -490,13 +490,6 @@ function renderContractForm() {
     ...options,
     selectRow:ftSelectRow,pick:pickFixed,onDirty:()=>{dirty=true;},onChange:pickerChanged,
     numberRow:(parent,label,value,onChange,opts)=>ftNumberRow(parent,label,value,onChange,opts)
-  });
-  ftSelectRow(form,'نحوه محاسبه بها',amountMethods.find(x=>x.value===state.amountMethod)?.label||'',()=>{
-    pickFixed('نحوه محاسبه بها','روش‌ها',amountMethods,state.amountMethod,value=>{
-      state.amountMethod=value;
-      if(value==='quantity' && !state.amountRows.length) state.amountRows.push({id:'amount_1',description:'',unit:'',quantity:'',unitPrice:''});
-      pickerChanged();
-    });
   });
   if(state.amountMethod==='quantity'){
     renderRows(form,state.amountRows,{operations:true});
