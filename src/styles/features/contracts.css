@@ -1867,3 +1867,9 @@ textarea.contract-project-item-input{
 #contractsPageBody .contract-status-menu{position:absolute;top:calc(100% + 5px);right:0;left:auto;z-index:2;max-height:min(50dvh,360px);}
 #contractsPageBody .contract-filter-dismiss{position:fixed;inset:0;z-index:1;border:0;background:transparent;cursor:default;}
 #contractsPageBody .contract-mine-reset{border:1px solid var(--divider);border-radius:8px;padding:8px;background:var(--surface);color:#1565c0;font:inherit;cursor:pointer;}
+
+#contractsPageBody .contract-history{flex:0 0 calc(100% + 28px);min-width:0;margin:0 -14px;padding:0 14px;border-top:1px solid var(--divider,#e4ddd3);color:var(--text-dim,#77706a);font-size:11px}
+#contractsPageBody .contract-history summary{min-height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#033e8a;font:inherit;font-weight:600}
+#contractsPageBody .contract-history-entry{padding:8px 0;line-height:1.9;overflow-wrap:anywhere}
+#contractsPageBody .contract-history-entry p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+#contractsPageBody .contract-history-empty{padding:8px 0 14px;text-align:center}
