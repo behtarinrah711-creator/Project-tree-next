@@ -1,4 +1,4 @@
-import { ensureOperationRows, paymentMethods, renderQuantityRows, syncContractAmount } from './contractPricing.js';
+import { ensureOperationRows, renderQuantityRows, syncContractAmount } from './contractPricing.js';
 import { contractDocumentMarkup } from './contractDocument.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
@@ -533,27 +533,12 @@ function renderContractForm() {
       pickerChanged();
     });
   });
-  ftSelectRow(form,'نحوه پرداخت',paymentMethods.find(x=>x.value===state.paymentMethod)?.label||'',()=>{
-    pickFixed('نحوه پرداخت','روش‌ها',paymentMethods,state.paymentMethod,value=>{
-      state.paymentMethod=value;
-      if(value==='quantity' && !state.paymentRows.length) state.paymentRows.push({id:'payment_1',description:'',unit:'',quantity:'',unitPrice:''});
-      pickerChanged();
-    });
-  });
   const heading=document.createElement('div');heading.className='real-contract-section';heading.textContent='مراحل پرداخت';
   body.appendChild(heading);
   const paymentForm=ftCreateRoot(body);
-  const stageCountRow=ftSelectRow(paymentForm,'تعداد مراحل پرداخت','فعلاً غیرفعال',null);
-  stageCountRow.onclick=null;
-  stageCountRow.classList.add('contract-field-disabled');
-  stageCountRow.setAttribute('aria-disabled','true');
-  if(state.paymentMethod==='quantity'){
-    renderRows(paymentForm,state.paymentRows);
-    paymentStagesModule.syncPaymentStages(state);
-  }else if(state.paymentMethod){
-    const note=document.createElement('div');note.className='contract-form-note';
-    note.textContent='جزئیات این روش در مرحله بعد تکمیل می‌شود.';body.appendChild(note);
-  }
+  const paymentRows=paymentStagesModule.ensurePaymentRows(state);
+  renderRows(paymentForm,paymentRows,{mixed:true});
+  paymentStagesModule.syncPaymentStages(state);
 
   const clausesHeading = document.createElement('div');
   clausesHeading.className = 'real-contract-section contract-clause-heading';

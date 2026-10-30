@@ -4,11 +4,6 @@ export const amountMethods = [
   {value:'agreed',label:'توافقی'},
   {value:'quantity',label:'بر اساس مقدار'}
 ];
-export const paymentMethods = [
-  {value:'quantity',label:'بر اساس مقدار کار انجام شده'},
-  {value:'percent',label:'بر اساس درصد کار انجام شده'},
-  {value:'stages',label:'بر اساس مراحل انجام شده'}
-];
 export const quantityUnits = ['عدد','متر','مترمربع','مترمکعب','کیلوگرم','تن','لیتر','دستگاه','دست','سری','ساعت','روز']
   .map(value=>({value,label:value}));
 export function numericValue(value){

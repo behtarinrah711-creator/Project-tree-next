@@ -48,7 +48,16 @@ export function saveRealContract(projectId, draft, helpers={}){
     }
   }
   syncContractAmount(draft);
-  for(const rows of [!Array.isArray(draft.operationRows) && draft.amountMethod==='quantity'?draft.amountRows:null, draft.paymentMethod==='quantity'?draft.paymentRows:null].filter(rows=>rows!==null)){
+  if(draft.paymentMethod==='quantity'){
+    const rows=draft.paymentRows;
+    if(!Array.isArray(rows) || !rows.length || rows.some(row=>
+      !String(row.description||'').trim() || (row.pricingMode==='agreed'
+        ? numericValue(row.agreedPrice)<=0
+        : !row.unit || numericValue(row.quantity)<=0 || numericValue(row.unitPrice)<=0))){
+      toast('شرح و بهای مراحل پرداخت و در حالت مقداری، واحد و مقدار را کامل کنید');return {ok:false};
+    }
+  }
+  for(const rows of [!Array.isArray(draft.operationRows) && draft.amountMethod==='quantity'?draft.amountRows:null].filter(rows=>rows!==null)){
     if(!Array.isArray(rows) || !rows.length){toast('حداقل یک ردیف وارد کنید');return {ok:false};}
     if(rows.some(row=>!String(row.description||'').trim() || !row.unit || numericValue(row.quantity)<=0 || numericValue(row.unitPrice)<=0)){
       toast('شرح عملیات، واحد، مقدار و بهای واحد ردیف‌ها را کامل کنید');return {ok:false};
