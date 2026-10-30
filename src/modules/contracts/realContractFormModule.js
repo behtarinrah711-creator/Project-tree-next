@@ -599,17 +599,12 @@ function renderContractForm() {
     save.textContent = 'ذخیره';
     save.onclick = () => realContractFormModule.save(activeProjectId, false);
 
-    const draft = document.createElement('button');
-    draft.className = 'if-draft';
-    draft.textContent = 'پیش‌نویس';
-    draft.onclick = () => realContractFormModule.saveDraft();
-
     const cancel = document.createElement('button');
     cancel.className = 'if-cancel';
     cancel.textContent = 'انصراف';
-    cancel.onclick = () => realContractFormModule.close();
+    cancel.onclick = () => realContractFormModule.requestClose();
 
-    bar.append(save, draft, cancel);
+    bar.append(save, cancel);
     actions.appendChild(bar);
   }
 
@@ -634,15 +629,15 @@ function saveDraft() {
   try {
     const result=contractApi.saveDraft(project.id,state);
     if(!result.ok){
-      helper('showToast',result.message || 'پیش‌نویس ذخیره نشد');
+      helper('showToast',result.message || 'قرارداد ذخیره نشد');
       return false;
     }
     dirty=false;
     realContractFormModule.close(false);
-    helper('showToast','پیش‌نویس ذخیره شد');
+    helper('showToast','قرارداد ذخیره شد؛ در انتظار تکمیل');
     return true;
   } catch {
-    helper('showToast','پیش‌نویس ذخیره نشد');
+    helper('showToast','قرارداد ذخیره نشد');
     return false;
   }
 }
@@ -685,14 +680,18 @@ export const realContractFormModule = {
     if (!project || !state) return false;
 
     const result = saveRealContract(project.id, state, {
-      showToast: message => helper('showToast', message),
+      showToast: () => {},
       todayJalaliStr: () => helper('todayJalaliStr'),
       findActivityTemplate: (id, current) => helper('findActivityTemplate', id, current),
       syncContractPartyData: (draft, current) => realContractDomain.syncContractPartyData(draft, current),
       toEnglishDigits: value => helper('toEnglishDigits', value)
     });
 
-    if (!result.ok) return false;
+    if (!result.ok) {
+      if(result.incomplete) return this.saveDraft();
+      helper('showToast',result.message || 'قرارداد ذخیره نشد');
+      return false;
+    }
     state = result.contract;
     dirty = false;
     this.close(false);
@@ -721,7 +720,7 @@ export const realContractFormModule = {
 
     showExitChoice({
       onYes: () => {
-        const saved=state?.status==='final' && !state?.isDraft ? this.save() : this.saveDraft();
+        const saved=this.save();
         if(!saved) restoreHistory();
       },
       onNo: () => this.close(fromPopState),
