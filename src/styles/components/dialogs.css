@@ -4,6 +4,8 @@
     position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:flex-end;
     z-index:50;
   }
+  /* WBS sheets also open over workspace pages (z-index:55), including contract review. */
+  .wbs-sheet-overlay{z-index:60;}
   .overlay.hidden{display:none;}
   .sheet{
     background:var(--surface);width:100%;max-height:88vh;border-radius:18px 18px 0 0;
