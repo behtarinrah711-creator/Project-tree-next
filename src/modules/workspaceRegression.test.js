@@ -5,8 +5,10 @@ import { createAppDataStore } from '../data/appDataStore.js';
 function element(){
   return {
     children: [], dataset: {}, style:{setProperty(){}}, className: '', hidden: false, innerHTML: '',
-    append(...nodes){ this.children.push(...nodes); },
-    appendChild(node){ this.children.push(node); return node; },
+    append(...nodes){ nodes.forEach(node=>this.appendChild(node)); },
+    appendChild(node){ node.remove?.();Object.defineProperty(node,'parentNode',{value:this,writable:true,configurable:true});this.children.push(node);return node; },
+    remove(){if(this.parentNode)this.parentNode.children=this.parentNode.children.filter(node=>node!==this);this.parentNode=null;},
+    replaceChildren(...nodes){this.children.forEach(node=>{node.parentNode=null;});this.children=[];this.append(...nodes);},
     addEventListener(type, listener){ this[`on${type}`]=listener; },
     querySelector(selector){
       if(selector === '.wbs-row-dragging,.wbs-work-task.is-dragging') return null;
