@@ -37,6 +37,7 @@ export function transitionContractApproval(contract,action,actor,{approverId='',
   }
   const text=String(reason).trim();
   if(action==='reject' && text.length<REJECTION_MIN_LENGTH)return {ok:false,message:'علت رد حداقل '+REJECTION_MIN_LENGTH+' حرف باشد'};
+  if(action==='revoke' && text.length<REJECTION_MIN_LENGTH)return {ok:false,message:'علت لغو تأیید حداقل '+REJECTION_MIN_LENGTH+' حرف باشد'};
   const next={...contract,updatedAt:at,approvalStatus:action==='submit'?'pending':action==='approve'?'approved':'returned'};
   if(action==='submit'){next.approvalContactIds=reviewers;next.approvalContactId=reviewers[0];next.approvedContactIds=[];next.submittedAt=at;next.submittedBy={...actor};}
   if(action==='approve'){
@@ -50,6 +51,6 @@ export function transitionContractApproval(contract,action,actor,{approverId='',
   if(action!=='submit'){next.reviewedAt=at;next.reviewedBy={...actor};}
   if(action==='reject')next.approvalRejectionReason=text;
   if(action==='submit')next.approvalRejectionReason='';
-  next.approvalHistory=[...(contract.approvalHistory||[]),{action,at,actor:{...actor},approverId:next.approvalContactId,reason:action==='reject'?text:''}];
+  next.approvalHistory=[...(contract.approvalHistory||[]),{action,at,actor:{...actor},approverId:next.approvalContactId,reason:['reject','revoke'].includes(action)?text:''}];
   return {ok:true,contract:next};
 }

@@ -80,15 +80,15 @@ test('reviewers can withdraw only their own approval and approve again',()=>{
  let c=transitionContractApproval({status:'final'},'submit',author,{approverIds:['reviewer','employer']}).contract;
  c=transitionContractApproval(c,'approve',manager).contract;
  assert.equal(transitionContractApproval(c,'revoke',employer).ok,false);
- c=transitionContractApproval(c,'revoke',manager,{at:3}).contract;
+ c=transitionContractApproval(c,'revoke',manager,{at:3,reason:'نیاز به بازبینی مبلغ'}).contract;
  assert.equal(c.approvalStatus,'pending');
  assert.deepEqual(c.approvedContactIds,[]);
  assert.equal(c.approvalHistory.at(-1).action,'revoke');
  assert.equal(canReviewContract(c,manager),true);
- assert.equal(transitionContractApproval(c,'revoke',manager).ok,false);
+ assert.equal(transitionContractApproval(c,'revoke',manager,{reason:'نیاز به بازبینی مبلغ'}).ok,false);
  c=transitionContractApproval(c,'approve',manager).contract;
  c=transitionContractApproval(c,'approve',employer).contract;
- c=transitionContractApproval(c,'revoke',manager).contract;
+ c=transitionContractApproval(c,'revoke',manager,{reason:'نیاز به بازبینی مبلغ'}).contract;
  assert.equal(c.approvalStatus,'pending');
  assert.deepEqual(c.approvedContactIds,['employer']);
  assert.equal(transitionContractApproval(c,'revoke',author).ok,false);
@@ -96,10 +96,22 @@ test('reviewers can withdraw only their own approval and approve again',()=>{
 });
 test('legacy approved contracts support withdrawal by the assigned reviewer',()=>{
  const legacy={status:'final',approvalStatus:'approved',approvalContactId:'reviewer'};
- const result=transitionContractApproval(legacy,'revoke',manager);
+ const result=transitionContractApproval(legacy,'revoke',manager,{reason:'نیاز به بازبینی مبلغ'});
  assert.equal(result.ok,true);
  assert.equal(result.contract.approvalStatus,'pending');
  assert.deepEqual(result.contract.approvedContactIds,[]);
  assert.equal(transitionContractApproval(legacy,'revoke',author).ok,false);
- assert.equal(transitionContractApproval({...legacy,approvalStatus:'returned'},'revoke',manager).ok,false);
+ assert.equal(transitionContractApproval({...legacy,approvalStatus:'returned'},'revoke',manager,{reason:'نیاز به بازبینی مبلغ'}).ok,false);
+});
+
+test('withdrawal requires an explanation and records trimmed reason, actor and time',()=>{
+ const c={status:'final',approvalStatus:'approved',approvalContactIds:['reviewer'],approvedContactIds:['reviewer']};
+ for(const reason of [undefined,'','   ','کم']){
+  const result=transitionContractApproval(c,'revoke',manager,{reason,at:7});
+  assert.equal(result.ok,false);
+  assert.equal(c.approvalStatus,'approved');
+  assert.deepEqual(c.approvedContactIds,['reviewer']);
+ }
+ const next=transitionContractApproval(c,'revoke',manager,{reason:'  بازبینی مبلغ لازم است  ',at:7}).contract;
+ assert.deepEqual(next.approvalHistory.at(-1),{action:'revoke',at:7,actor:manager,approverId:undefined,reason:'بازبینی مبلغ لازم است'});
 });

@@ -190,7 +190,11 @@ export const contractsModule={
         else button('ارسال برای تأیید',()=>openStaticChoicePicker('انتخاب مسئول تأیید','مخاطبین',(p.contacts||[]).filter(x=>!x.trashed).map(x=>({value:x.id,label:[x.firstName,x.lastName].filter(Boolean).join(' ')||x.name||'مخاطب'})),c.approvalContactId,value=>run('submit',{approverId:value})));
       }
       if(canRevokeContractApproval(c,actor)){
-        button('لغو تأیید من',()=>openConfirm('تأیید شما لغو و قرارداد به انتظار تأیید برگردد؟',()=>run('revoke'),'لغو تأیید'),true);
+        button('لغو تأیید من',()=>openWbsSheet({
+          title:'لغو تأیید قرارداد',saveLabel:'ثبت لغو تأیید',historyKey:'contract-revoke:'+c.id,
+          body(root){const reason=document.createElement('textarea');reason.className='wbs-input today-textarea';reason.name='revocationReason';reason.required=true;reason.minLength=REJECTION_MIN_LENGTH;root.appendChild(fieldRow('علت لغو تأیید (الزامی)',reason));},
+          onSave:root=>run('revoke',{reason:root.querySelector('[name="revocationReason"]').value})
+        }),true);
       }
       if(canReviewContract(c,actor)){
         button('تأیید',()=>openConfirm('این قرارداد تأیید شود؟',()=>run('approve'),'تأیید'));
