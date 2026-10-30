@@ -1848,3 +1848,5 @@ textarea.contract-project-item-input{
 .contract-form-body .contract-operation-method{gap:16px;flex-wrap:wrap;justify-content:space-between;}
 .contract-form-body .contract-operation-method label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;}
 .contract-form-body .contract-operation-method input{accent-color:#1565c0;}
+
+#contractFormPage .contract-form-body .contract-payment-balance .ft-value{color:var(--danger,#b23b3b) !important;}

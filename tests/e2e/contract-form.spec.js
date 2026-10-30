@@ -139,18 +139,18 @@ test('real New Contract preserves its state and owns child Back navigation', asy
   await expect(row(page, 'واحد')).toBeVisible();
   await expect(row(page, 'مقدار')).toBeVisible();
   await expect(row(page, 'بهای واحد')).toBeVisible();
-  await operation.getByRole('radio', { name: 'مبلغ مقطوع', exact: true }).check();
+  await operation.getByRole('radio', { name: 'مبلغ توافقی', exact: true }).check();
   await expect(row(page, 'واحد')).toHaveCount(0);
   await expect(row(page, 'مقدار')).toHaveCount(0);
   await expect(row(page, 'بهای واحد')).toHaveCount(0);
   await page.getByRole('textbox', { name: 'شرح عملیات 1', exact: true }).fill('عملیات توافقی آزمایشی');
-  await enterNumpad(page, 'بهای کل عملیات', '1250');
-  await expect(row(page, 'بهای کل عملیات')).toContainText(/1[,٬]?250|۱۲۵۰|۱[,٬]?۲۵۰/);
+  await enterNumpad(page, 'بهای عملیات', '1250');
+  await expect(row(page, 'بهای عملیات')).toContainText(/1[,٬]?250|۱۲۵۰|۱[,٬]?۲۵۰/);
   await expect(row(page, 'مبلغ کل قرارداد')).toContainText(/1[,٬]?250|۱۲۵۰|۱[,٬]?۲۵۰/);
   await enterNumpad(page, 'درصد حسن انجام کار', '10');
   await expect(row(page, 'درصد حسن انجام کار')).toContainText(/10|۱۰/);
 
-  await row(page, 'بهای کل عملیات').click();
+  await row(page, 'بهای عملیات').click();
   await expect(page.locator('#numpadOverlay')).toBeVisible();
   await page.goBack();
   await expect(page.locator('#numpadOverlay')).toBeHidden();

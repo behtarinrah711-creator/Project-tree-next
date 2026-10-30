@@ -54,7 +54,7 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
     const header=document.createElement('div');
     header.className='contract-quantity-heading';
     const label=document.createElement('span');
-    label.textContent=(operations?'عملیات ':'ردیف ')+new Intl.NumberFormat('fa-IR').format(index+1);
+    label.textContent=(operations?'عملیات ':'مرحله ')+new Intl.NumberFormat('fa-IR').format(index+1)+(operations?'':' پرداخت');
     const remove=document.createElement('button');
     remove.type='button';remove.textContent='حذف';remove.setAttribute('aria-label',(operations?'حذف عملیات ':'حذف ردیف ')+(index+1));
     remove.onclick=()=>{rows.splice(index,1);onChange();};
@@ -77,7 +77,7 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
       choices.className='ft-row contract-operation-method';
       choices.setAttribute('role','group');
       choices.setAttribute('aria-label','روش محاسبه عملیات '+(index+1));
-      [{value:'agreed',label:'مبلغ مقطوع'},{value:'quantity',label:'بر اساس مقدار'}].forEach(option=>{
+      [{value:'agreed',label:'مبلغ توافقی'},{value:'quantity',label:'بر اساس مقدار'}].forEach(option=>{
         const label=document.createElement('label');
         const radio=document.createElement('input');
         radio.type='radio';radio.name='operation-method-'+row.id;
@@ -88,7 +88,7 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
       card.appendChild(choices);
     }
     if(mixed && row.pricingMode!=='quantity'){
-      numberRow(card,'بهای کل عملیات',row.agreedPrice,value=>{row.agreedPrice=value;},{suffix:'تومان'});
+      numberRow(card,'بهای عملیات',row.agreedPrice,value=>{row.agreedPrice=value;},{suffix:'تومان'});
     }else if(agreed){
       numberRow(card,'بهای توافقی',row.agreedPrice,value=>{row.agreedPrice=value;},{suffix:'تومان'});
     }else{
@@ -96,7 +96,7 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
       numberRow(card,'مقدار',row.quantity,value=>{row.quantity=value;},{suffix:row.unit||'',allowDecimal:true});
       numberRow(card,'بهای واحد',row.unitPrice,value=>{row.unitPrice=value;},{suffix:'تومان'});
       const total=document.createElement('div');total.className='ft-row';
-      const totalLabel=document.createElement('div');totalLabel.className='ft-label';totalLabel.textContent=mixed?'بهای کل عملیات:':'بهای کل:';
+      const totalLabel=document.createElement('div');totalLabel.className='ft-label';totalLabel.textContent=mixed?'بهای عملیات:':'بهای کل:';
       const totalValue=document.createElement('div');totalValue.className='ft-value';totalValue.textContent=money(rowAmount(row));
       total.append(totalLabel,totalValue);
       card.appendChild(total);

@@ -505,7 +505,6 @@ function renderContractForm() {
   state.retentionAmount = String(Math.round(retentionAmount || 0));
   state.amountAfterRetention = String(Math.round(netAmount || 0));
   ftAmountSummary(form,'مبلغ حسن انجام کار',retentionAmount);
-  ftAmountSummary(form,'مبلغ قرارداد پس از کسر حسن انجام کار',netAmount);
 
   const durationOptions = ['یک هفته', 'دو هفته', 'سه هفته', 'چهار هفته', 'یک ماه', 'یک ماه و نیم', 'دو ماه', 'دو ماه و نیم', 'سه ماه', 'چهار ماه', 'پنج ماه', 'شش ماه']
     .map(value => ({ value, label: value }));
@@ -538,7 +537,13 @@ function renderContractForm() {
   const paymentForm=ftCreateRoot(body);
   const paymentRows=paymentStagesModule.ensurePaymentRows(state);
   renderRows(paymentForm,paymentRows,{mixed:true});
-  paymentStagesModule.syncPaymentStages(state);
+  const paymentSummary=paymentStagesModule.paymentBalanceSummary(state);
+  ftAmountSummary(paymentForm,'مبلغ قرارداد پس از کسر حسن انجام کار',paymentSummary.netAmount);
+  paymentSummary.payments.forEach(payment=>{
+    const number=helper('toPersianDigits',String(payment.number)) ?? payment.number;
+    ftAmountSummary(paymentForm,'مرحله '+number+' پرداخت',payment.amount);
+  });
+  ftAmountSummary(paymentForm,'مانده مبلغ قرارداد',paymentSummary.remaining).classList.add('contract-payment-balance');
 
   const clausesHeading = document.createElement('div');
   clausesHeading.className = 'real-contract-section contract-clause-heading';
