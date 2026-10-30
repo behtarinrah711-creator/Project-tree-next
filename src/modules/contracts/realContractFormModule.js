@@ -541,7 +541,7 @@ function renderContractForm() {
   ftAmountSummary(paymentForm,'مبلغ قرارداد پس از کسر حسن انجام کار',paymentSummary.netAmount);
   paymentSummary.payments.forEach(payment=>{
     const number=helper('toPersianDigits',String(payment.number)) ?? payment.number;
-    ftAmountSummary(paymentForm,'مرحله '+number+' واریزی',payment.amount);
+    ftAmountSummary(paymentForm,'مرحله '+number+' پرداخت',payment.amount);
   });
   ftAmountSummary(paymentForm,'مانده مبلغ قرارداد',paymentSummary.remaining).classList.add('contract-payment-balance');
 

@@ -54,7 +54,7 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
     const header=document.createElement('div');
     header.className='contract-quantity-heading';
     const label=document.createElement('span');
-    label.textContent=(operations?'عملیات ':'ردیف ')+new Intl.NumberFormat('fa-IR').format(index+1);
+    label.textContent=(operations?'عملیات ':'مرحله ')+new Intl.NumberFormat('fa-IR').format(index+1)+(operations?'':' پرداخت');
     const remove=document.createElement('button');
     remove.type='button';remove.textContent='حذف';remove.setAttribute('aria-label',(operations?'حذف عملیات ':'حذف ردیف ')+(index+1));
     remove.onclick=()=>{rows.splice(index,1);onChange();};
