@@ -567,9 +567,6 @@ function renderContractForm() {
   const clausesHeading = document.createElement('div');
   clausesHeading.className = 'real-contract-section contract-clause-heading';
   clausesHeading.textContent = 'مواد قرارداد';
-  clausesHeading.style.display = 'flex';
-  clausesHeading.style.justifyContent = 'space-between';
-  clausesHeading.style.alignItems = 'center';
   const allItems = state.items.flatMap(item => [item, ...(item.children || [])]);
   const selectAll = document.createElement('input');
   selectAll.type = 'checkbox';
