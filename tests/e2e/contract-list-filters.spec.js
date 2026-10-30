@@ -26,7 +26,8 @@ test('contract search and status compose and no-results exists only for zero mat
  for(const box of await menu.getByRole('checkbox').all()){
    if(await box.inputValue()!=='ready')await box.uncheck();
  }
- await page.getByRole('button',{name:'بستن فیلتر وضعیت',exact:true}).click();
+ // Tap the outside backdrop, not its center underneath the mobile popover.
+ await page.getByRole('button',{name:'بستن فیلتر وضعیت',exact:true}).click({position:{x:8,y:8}});
  await expect(menu).toHaveCount(0);
  await expect(page.locator('#searchTemplatePage')).toBeHidden();
  await expect(rows).toHaveCount(0);await expect(body.locator('.contract-empty')).toBeVisible();
