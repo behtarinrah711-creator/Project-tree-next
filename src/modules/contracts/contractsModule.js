@@ -1,4 +1,4 @@
-import { approvalLabels, contractApprovalState, canReviewContract, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
+import { approvalLabels, contractApprovalState, canReviewContract, canRevokeContractApproval, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
 import { fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
 import { openStaticChoicePicker } from './contractPickers.js';
@@ -188,6 +188,9 @@ export const contractsModule={
       if(['ready','returned'].includes(contractApprovalState(c)) && !c.isDraft && c.status==='final'){
         if(c.workTaskId || c.contractApproverContactIds?.length)button('ارسال برای تأیید',()=>run('submit'));
         else button('ارسال برای تأیید',()=>openStaticChoicePicker('انتخاب مسئول تأیید','مخاطبین',(p.contacts||[]).filter(x=>!x.trashed).map(x=>({value:x.id,label:[x.firstName,x.lastName].filter(Boolean).join(' ')||x.name||'مخاطب'})),c.approvalContactId,value=>run('submit',{approverId:value})));
+      }
+      if(canRevokeContractApproval(c,actor)){
+        button('لغو تأیید من',()=>openConfirm('تأیید شما لغو و قرارداد به انتظار تأیید برگردد؟',()=>run('revoke'),'لغو تأیید'),true);
       }
       if(canReviewContract(c,actor)){
         button('تأیید',()=>openConfirm('این قرارداد تأیید شود؟',()=>run('approve'),'تأیید'));

@@ -10,6 +10,15 @@ export const approvalLabels={incomplete:'در حال تکمیل',ready:'آماد
 export function contractApproverIds(contract){
   return [...new Set((Array.isArray(contract.approvalContactIds) ? contract.approvalContactIds : [contract.approvalContactId]).filter(Boolean).map(String))];
 }
+export function approvedContractContactIds(contract){
+  if(Array.isArray(contract.approvedContactIds))return contract.approvedContactIds.map(String);
+  return contractApprovalState(contract)==='approved' ? contractApproverIds(contract) : [];
+}
+export function canRevokeContractApproval(contract,actor){
+  return ['pending','approved'].includes(contractApprovalState(contract)) && !!actor?.contactId &&
+    contractApproverIds(contract).includes(String(actor.contactId)) &&
+    approvedContractContactIds(contract).includes(String(actor.contactId));
+}
 export function canReviewContract(contract,actor){
   return contractApprovalState(contract)==='pending' && !!actor?.contactId &&
     contractApproverIds(contract).includes(String(actor.contactId)) && !(contract.approvedContactIds || []).includes(String(actor.contactId));
@@ -21,6 +30,8 @@ export function transitionContractApproval(contract,action,actor,{approverId='',
   if(action==='submit'){
     if(contract.isDraft || contract.status!=='final' || !['ready','returned'].includes(status))return {ok:false,message:'ابتدا اطلاعات قرارداد را تکمیل و ذخیره کنید'};
     if(!reviewers.length)return {ok:false,message:'مسئول تأیید را انتخاب کنید'};
+  }else if(action==='revoke'){
+    if(!canRevokeContractApproval(contract,actor))return {ok:false,message:'فقط می‌توانید تأیید خودتان را لغو کنید'};
   }else if(!['approve','reject'].includes(action) || !canReviewContract(contract,actor)){
     return {ok:false,message:'این درخواست در انتظار تأیید شما نیست'};
   }
@@ -31,6 +42,10 @@ export function transitionContractApproval(contract,action,actor,{approverId='',
   if(action==='approve'){
     next.approvedContactIds=[...new Set([...(contract.approvedContactIds || []),String(actor.contactId)])];
     next.approvalStatus=contractApproverIds(contract).every(id=>next.approvedContactIds.includes(id))?'approved':'pending';
+  }
+  if(action==='revoke'){
+    next.approvedContactIds=approvedContractContactIds(contract).filter(id=>id!==String(actor.contactId));
+    next.approvalStatus='pending';
   }
   if(action!=='submit'){next.reviewedAt=at;next.reviewedBy={...actor};}
   if(action==='reject')next.approvalRejectionReason=text;

@@ -74,3 +74,32 @@ test('all assigned contacts must approve once and rejection resets the next roun
  assert.equal(c.approvalStatus,'approved');
  assert.equal(c.reviewedBy.contactId,'reviewer');
 });
+
+test('reviewers can withdraw only their own approval and approve again',()=>{
+ const employer={id:'employer',contactId:'employer'};
+ let c=transitionContractApproval({status:'final'},'submit',author,{approverIds:['reviewer','employer']}).contract;
+ c=transitionContractApproval(c,'approve',manager).contract;
+ assert.equal(transitionContractApproval(c,'revoke',employer).ok,false);
+ c=transitionContractApproval(c,'revoke',manager,{at:3}).contract;
+ assert.equal(c.approvalStatus,'pending');
+ assert.deepEqual(c.approvedContactIds,[]);
+ assert.equal(c.approvalHistory.at(-1).action,'revoke');
+ assert.equal(canReviewContract(c,manager),true);
+ assert.equal(transitionContractApproval(c,'revoke',manager).ok,false);
+ c=transitionContractApproval(c,'approve',manager).contract;
+ c=transitionContractApproval(c,'approve',employer).contract;
+ c=transitionContractApproval(c,'revoke',manager).contract;
+ assert.equal(c.approvalStatus,'pending');
+ assert.deepEqual(c.approvedContactIds,['employer']);
+ assert.equal(transitionContractApproval(c,'revoke',author).ok,false);
+ assert.equal(transitionContractApproval(c,'approve',manager).contract.approvalStatus,'approved');
+});
+test('legacy approved contracts support withdrawal by the assigned reviewer',()=>{
+ const legacy={status:'final',approvalStatus:'approved',approvalContactId:'reviewer'};
+ const result=transitionContractApproval(legacy,'revoke',manager);
+ assert.equal(result.ok,true);
+ assert.equal(result.contract.approvalStatus,'pending');
+ assert.deepEqual(result.contract.approvedContactIds,[]);
+ assert.equal(transitionContractApproval(legacy,'revoke',author).ok,false);
+ assert.equal(transitionContractApproval({...legacy,approvalStatus:'returned'},'revoke',manager).ok,false);
+});
