@@ -1825,3 +1825,10 @@ textarea.contract-project-item-input{
 .contract-form-body .contract-quantity-list{padding-top:12px}
 .contract-form-body .contract-quantity-row.form-template{margin:0 0 12px !important}
 .contract-form-body .contract-quantity-row > .ft-row:last-child{border-bottom:0 !important}
+
+/* Populated contract form values use the site's navy; labels and placeholders retain their styles. */
+#contractFormPage .contract-form-body .ft-value:not(.ft-placeholder),
+#contractFormPage .contract-form-body .ft-input,
+#contractFormPage .contract-form-body .contract-growing-text textarea{
+  color:var(--primary,#00075D) !important;
+}
