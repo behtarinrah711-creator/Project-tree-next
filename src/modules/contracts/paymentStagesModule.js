@@ -6,6 +6,19 @@ export const retentionMethods = [
   {value:'all',label:'کسر متناسب از تمام پرداخت‌ها'}
 ];
 const percent=value=>Number(value.toFixed(6));
+export function ensurePaymentRows(state){
+  if(state.paymentMethod!=='quantity' && !(state.paymentRows||[]).length){
+    state.paymentRows=(state.paymentStages||[]).map((stage,index)=>({
+      id:stage.id||'payment_'+index,description:stage.description||'',
+      pricingMode:'agreed',agreedPrice:String(stage.grossAmount ??
+        Math.round((Number(state.amount)||0)*(Number(stage.paymentPercent)||0)/100))
+    }));
+  }
+  state.paymentRows=Array.isArray(state.paymentRows)?state.paymentRows:[];
+  state.paymentRows.forEach(row=>{row.pricingMode=row.pricingMode||'quantity';});
+  state.paymentMethod='quantity';
+  return state.paymentRows;
+}
 export function calculatePaymentStages(state){
   if(state.paymentMethod){
     const rows=state.paymentMethod==='quantity' ? (state.paymentRows||[]) : [];

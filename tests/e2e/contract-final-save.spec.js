@@ -48,6 +48,8 @@ test('Save persists a final contract and renders it in the contracts list', asyn
         {id:'agreed-1',description:'عملیات اول',pricingMode:'agreed',agreedPrice:'600000'},
         {id:'quantity-2',description:'عملیات دوم',pricingMode:'quantity',unit:'متر',quantity:'2',unitPrice:'200000'}
       ],
+      paymentMethod:'quantity',
+      paymentRows:[{id:'payment-1',description:'پرداخت مقطوع',pricingMode:'agreed',agreedPrice:'1000000'}],
       amount: '1000000',
       retentionPercent: '10',
       retentionBasis: 'تحویل موقت',
@@ -84,6 +86,8 @@ test('Save persists a final contract and renders it in the contracts list', asyn
   expect(stored).not.toBeNull();
   expect(stored.amount).toBe('1000000');
   expect(stored.retentionAmount).toBe('100000');
+  expect(stored.paymentStages[0].paymentAmount).toBe(900000);
+  expect(stored.paymentRows[0].pricingMode).toBe('agreed');
   expect(stored.operationRows).toEqual([
     {id:'agreed-1',description:'عملیات اول',pricingMode:'agreed',agreedPrice:'600000'},
     {id:'quantity-2',description:'عملیات دوم',pricingMode:'quantity',unit:'متر',quantity:'2',unitPrice:'200000'}
