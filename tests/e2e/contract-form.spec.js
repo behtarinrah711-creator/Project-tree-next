@@ -220,13 +220,13 @@ test('dirty Back restore is consumed after exit and retained once after Stay', a
   expect(errors).toEqual([]);
 });
 
-test('draft button and exit Save preserve incomplete contract fields when reopened', async ({page})=>{
+test('Save button and exit Save preserve incomplete contract fields when reopened', async ({page})=>{
   const errors=[];
   await openRealContractForm(page,errors);
   const id=await page.evaluate(()=>window.KarhaRealContractForm.getState().id);
   await row(page,'محل انعقاد قرارداد').locator('input').fill('کارگاه پیش‌نویس');
   await page.getByRole('textbox',{name:'شرح عملیات 1',exact:true}).fill('عملیات ناتمام');
-  await page.locator('#contractFormActions .if-draft').click();
+  await page.locator('#contractFormActions .if-save').click();
   await expect(page.locator('#contractFormPage')).toBeHidden();
   await page.evaluate(id=>window.KarhaRealContractForm.open(id,'e2e-contract-project'),id);
   await expect(row(page,'محل انعقاد قرارداد').locator('input')).toHaveValue('کارگاه پیش‌نویس');

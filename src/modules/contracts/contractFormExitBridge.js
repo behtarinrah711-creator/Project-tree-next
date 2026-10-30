@@ -55,13 +55,12 @@ function patchExitPrompt({windowRef, form, mode}){
     if(text) text.textContent = 'آیا تغییرات این قرارداد ذخیره شود؟';
   }else{
     if(title) title.textContent = 'قرارداد تکمیل نشده';
-    if(text) text.textContent = 'آیا اطلاعات فعلی به‌صورت پیش‌نویس ذخیره شود؟';
+    if(text) text.textContent = 'آیا اطلاعات فعلی قرارداد ذخیره شود؟';
   }
 
   if(yes){
     yes.onclick = () => runAfterPromptDismiss(overlay, () => {
-      if(mode === 'saved') form.save(null, false);
-      else form.saveDraft?.();
+      form.save(null, false);
     });
   }
 
@@ -138,10 +137,6 @@ export function installContractFormExitBridge({windowRef = window} = {}){
     const state = form.getState?.();
     const targetProjectId = projectId || projectIdForForm();
     const expectedId = state?.id || null;
-    if(state){
-      state.status = 'final';
-      state.isDraft = false;
-    }
 
     // Suppress the legacy success toast until persistence has been verified.
     const saved = originalSave(targetProjectId, true);
@@ -150,14 +145,14 @@ export function installContractFormExitBridge({windowRef = window} = {}){
     const persisted = expectedId && targetProjectId
       ? contractApi.get(targetProjectId, expectedId)
       : null;
-    if(!persisted || persisted.status !== 'final' || persisted.trashed){
+    if(!persisted || !['final','draft'].includes(persisted.status) || persisted.trashed){
       windowRef.KarhaLegacy?.showToast?.('ذخیره قرارداد تایید نشد');
       return false;
     }
 
     try{ windowRef.localStorage?.removeItem?.(LEGACY_DRAFT_KEY); }catch{}
     rerenderContracts(windowRef, targetProjectId);
-    if(!silent) windowRef.KarhaLegacy?.showToast?.('قرارداد ذخیره شد');
+    if(!silent) windowRef.KarhaLegacy?.showToast?.(persisted.status==='draft'?'قرارداد ذخیره شد؛ در انتظار تکمیل':'قرارداد ذخیره شد');
     return true;
   };
 

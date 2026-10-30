@@ -17,20 +17,20 @@ export function saveRealContract(projectId, draft, helpers={}){
   const findActivity=helpers.findActivityTemplate || ((id,p)=>
     (p.activityTemplates||[]).find(a=>String(a.id)===String(id)));
 
-  if(!draft.contractDate){toast('تاریخ تنظیم قرارداد را انتخاب کنید');return {ok:false};}
-  if(draft.contractDate>todayJalali()){toast('تاریخ تنظیم قرارداد نمی‌تواند بعد از امروز باشد');return {ok:false};}
-  if(!draft.projectItemId){toast('ابتدا آیتم پروژه را انتخاب کنید');return {ok:false};}
-  if(!draft.employerId){toast('ابتدا کارفرما را انتخاب کنید');return {ok:false};}
-  if(!draft.contractorId){toast('ابتدا پیمانکار را انتخاب کنید');return {ok:false};}
+  if(!draft.contractDate){toast('تاریخ تنظیم قرارداد را انتخاب کنید');return {ok:false,incomplete:true};}
+  if(draft.contractDate>todayJalali()){toast('تاریخ تنظیم قرارداد نمی‌تواند بعد از امروز باشد');return {ok:false,incomplete:true};}
+  if(!draft.projectItemId){toast('ابتدا آیتم پروژه را انتخاب کنید');return {ok:false,incomplete:true};}
+  if(!draft.employerId){toast('ابتدا کارفرما را انتخاب کنید');return {ok:false,incomplete:true};}
+  if(!draft.contractorId){toast('ابتدا پیمانکار را انتخاب کنید');return {ok:false,incomplete:true};}
   if(String(draft.employerId)===String(draft.contractorId)){
-    toast('کارفرما و پیمانکار نمی‌توانند یک مخاطب باشند');return {ok:false};
+    toast('کارفرما و پیمانکار نمی‌توانند یک مخاطب باشند');return {ok:false,incomplete:true};
   }
-  if(!draft.activityId){toast('ابتدا فعالیت پیمانکار را انتخاب کنید');return {ok:false};}
+  if(!draft.activityId){toast('ابتدا فعالیت پیمانکار را انتخاب کنید');return {ok:false,incomplete:true};}
   draft.activityIds=[draft.activityId];
-  if(!draft.startDate){toast('تاریخ شروع قرارداد را انتخاب کنید');return {ok:false};}
-  if(!draft.endDate){toast('تاریخ پایان قرارداد را انتخاب کنید');return {ok:false};}
+  if(!draft.startDate){toast('تاریخ شروع قرارداد را انتخاب کنید');return {ok:false,incomplete:true};}
+  if(!draft.endDate){toast('تاریخ پایان قرارداد را انتخاب کنید');return {ok:false,incomplete:true};}
   if(draft.endDate && draft.startDate && draft.endDate<draft.startDate){
-    toast('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد');return {ok:false};
+    toast('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد');return {ok:false,incomplete:true};
   }
   if(Array.isArray(draft.operationRows)){
     if(!draft.operationRows.length || draft.operationRows.some(row=>
@@ -38,13 +38,13 @@ export function saveRealContract(projectId, draft, helpers={}){
       (row.pricingMode==='quantity'
         ? !row.unit || numericValue(row.quantity)<=0 || numericValue(row.unitPrice)<=0
         : row.pricingMode!=='agreed' || numericValue(row.agreedPrice)<=0))){
-      toast('شرح و بهای عملیات‌ها و در حالت مقداری، واحد و مقدار را کامل کنید');return {ok:false};
+      toast('شرح و بهای عملیات‌ها و در حالت مقداری، واحد و مقدار را کامل کنید');return {ok:false,incomplete:true};
     }
   }
   if(!Array.isArray(draft.operationRows) && draft.amountMethod==='agreed'){
     const rows=ensureAgreedRows(draft);
     if(!rows.length || rows.some(row=>!String(row.description||'').trim() || numericValue(row.agreedPrice)<=0)){
-      toast('شرح عملیات و بهای توافقی عملیات‌ها را کامل کنید');return {ok:false};
+      toast('شرح عملیات و بهای توافقی عملیات‌ها را کامل کنید');return {ok:false,incomplete:true};
     }
   }
   syncContractAmount(draft);
@@ -54,22 +54,22 @@ export function saveRealContract(projectId, draft, helpers={}){
       !String(row.description||'').trim() || (row.pricingMode==='agreed'
         ? numericValue(row.agreedPrice)<=0
         : !row.unit || numericValue(row.quantity)<=0 || numericValue(row.unitPrice)<=0))){
-      toast('شرح و بهای مراحل پرداخت و در حالت مقداری، واحد و مقدار را کامل کنید');return {ok:false};
+      toast('شرح و بهای مراحل پرداخت و در حالت مقداری، واحد و مقدار را کامل کنید');return {ok:false,incomplete:true};
     }
   }
   for(const rows of [!Array.isArray(draft.operationRows) && draft.amountMethod==='quantity'?draft.amountRows:null].filter(rows=>rows!==null)){
-    if(!Array.isArray(rows) || !rows.length){toast('حداقل یک ردیف وارد کنید');return {ok:false};}
+    if(!Array.isArray(rows) || !rows.length){toast('حداقل یک ردیف وارد کنید');return {ok:false,incomplete:true};}
     if(rows.some(row=>!String(row.description||'').trim() || !row.unit || numericValue(row.quantity)<=0 || numericValue(row.unitPrice)<=0)){
-      toast('شرح عملیات، واحد، مقدار و بهای واحد ردیف‌ها را کامل کنید');return {ok:false};
+      toast('شرح عملیات، واحد، مقدار و بهای واحد ردیف‌ها را کامل کنید');return {ok:false,incomplete:true};
     }
   }
   if(!String(draft.amount||'').trim()||Number(draft.amount)<=0){
-    toast('مبلغ کل قرارداد را وارد کنید');return {ok:false};
+    toast('مبلغ کل قرارداد را وارد کنید');return {ok:false,incomplete:true};
   }
   if(Number(draft.retentionPercent)<0||Number(draft.retentionPercent)>100){
-    toast('درصد حسن انجام کار باید بین صفر تا صد باشد');return {ok:false};
+    toast('درصد حسن انجام کار باید بین صفر تا صد باشد');return {ok:false,incomplete:true};
   }
-  if(!draft.retentionDuration){toast('مدت نگهداری حسن انجام کار را انتخاب کنید');return {ok:false};}
+  if(!draft.retentionDuration){toast('مدت نگهداری حسن انجام کار را انتخاب کنید');return {ok:false,incomplete:true};}
 
   const s=JSON.parse(JSON.stringify(draft));
   s.contactId=s.contractorId;
