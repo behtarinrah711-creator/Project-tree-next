@@ -28,8 +28,10 @@ export function ensureAgreedRows(state){
 }
 export function ensureOperationRows(state){
   if(!Array.isArray(state.operationRows)){
-    const rows=state.amountMethod==='quantity' ? (state.amountRows||[]) : ensureAgreedRows(state);
-    state.operationRows=rows.map(row=>({...row,pricingMode:state.amountMethod==='quantity'?'quantity':'agreed'}));
+    const isNew=state.amountMethod==='';
+    const quantity=isNew || state.amountMethod==='quantity';
+    const rows=isNew ? [makeQuantityRow()] : quantity ? (state.amountRows||[]) : ensureAgreedRows(state);
+    state.operationRows=rows.map(row=>({...row,pricingMode:quantity?'quantity':'agreed'}));
   }
   return state.operationRows;
 }
@@ -107,7 +109,7 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
     list.appendChild(card);
   });
   const add=document.createElement('button');add.type='button';add.className='ctf-add-material';add.textContent=operations?'+ افزودن عملیات':'+ افزودن ردیف';
-  add.onclick=()=>{rows.push({...makeQuantityRow(),...(mixed?{pricingMode:'agreed',agreedPrice:''}:{})});onChange();};
+  add.onclick=()=>{rows.push({...makeQuantityRow(),...(mixed?{pricingMode:'quantity',agreedPrice:''}:{})});onChange();};
   list.appendChild(add);
   root.appendChild(list);
 }

@@ -52,7 +52,7 @@ test('operation editor explicitly switches modes and keeps total field',()=>{
   assert.equal(rows[0].pricingMode,'quantity');assert.equal(changes,1);
   editor=render();assert.deepEqual(editor.fields,['واحد','مقدار','بهای واحد']);
   assert.equal(editor.list.children[0].children.at(-1).children[0].textContent,'بهای کل عملیات:');
-  editor.list.children.at(-1).onclick();assert.equal(rows[1].pricingMode,'agreed');
+  editor.list.children.at(-1).onclick();assert.equal(rows[1].pricingMode,'quantity');
  }finally{globalThis.document=previous;}
 });
 
@@ -74,4 +74,12 @@ test('save/reopen retains mixed modes and validates the active fields',()=>{
   draft.operationRows[1].pricingMode='agreed';draft.operationRows[1].agreedPrice='200';
   assert.equal(saveRealContract('p',draft,helpers).ok,true);
  }finally{projectRepository.getActiveProject=oldProject;contractApi.save=oldSave;}
+});
+
+test('new contracts default to quantity and preserve saved choices',()=>{
+ const fresh={amountMethod:'',amountRows:[]};
+ assert.equal(ensureOperationRows(fresh).length,1);
+ assert.equal(fresh.operationRows[0].pricingMode,'quantity');
+ const saved={operationRows:[{id:'saved',pricingMode:'agreed',agreedPrice:'300'}]};
+ assert.equal(ensureOperationRows(saved)[0].pricingMode,'agreed');
 });

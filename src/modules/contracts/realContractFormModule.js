@@ -443,13 +443,14 @@ function renderContractForm() {
   numberInput.id='contractNumberDisplay';
   numberInput.dir='ltr';
 
+  if(state.workTaskId) ftTextRow(form,'آیتم پروژه',state.projectItemPath || '',()=>{}, {inline:true,readonly:true,placeholder:'توسط سیستم انتخاب شده'});
+  else ftSelectRow(form, 'آیتم پروژه', state.projectItemPath || '', () => openContractPicker('projectItem'), { placeholder: 'انتخاب' });
+
   const projectPlace = project.location || project.address || project.projectLocation || project.siteLocation || '';
   if (!state.contractPlace) state.contractPlace = projectPlace;
   ftTextRow(form, 'محل انعقاد قرارداد', state.contractPlace || '', value => { state.contractPlace = value; }, { inline: true, placeholder: 'پیش‌فرض: محل پروژه' });
   ftDateRow(form, 'تاریخ تنظیم قرارداد', state.contractDate || helper('todayJalaliStr'), value => { state.contractDate = value; }, { maxToday: true });
 
-  if(state.workTaskId) ftTextRow(form,'آیتم پروژه',state.projectItemPath || '',()=>{}, {inline:true,readonly:true,placeholder:'توسط سیستم انتخاب شده'});
-  else ftSelectRow(form, 'آیتم پروژه', state.projectItemPath || '', () => openContractPicker('projectItem'), { placeholder: 'انتخاب' });
   ftSelectRow(form, 'کارفرما', state.employerId ? contactDisplayName(findContact(state.employerId)) : '', () => openContractPicker('employer'), { placeholder: 'انتخاب' });
   ftSelectRow(form, 'پیمانکار', state.contractorId ? contactDisplayName(findContact(state.contractorId)) : '', () => openContractPicker('contractor'), { placeholder: 'انتخاب' });
   ftSelectRow(form, 'فعالیت/قالب قرارداد', activityName, () => openContractPicker('activity'), { placeholder: 'انتخاب' });
