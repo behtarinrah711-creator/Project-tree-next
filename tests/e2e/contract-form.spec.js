@@ -134,7 +134,7 @@ test('real New Contract preserves its state and owns child Back navigation', asy
 
   await expect(row(page, 'نحوه محاسبه بها')).toHaveCount(0);
   const operation = page.locator('.contract-quantity-row').first();
-  await expect(operation.getByRole('radio', { name: 'مبلغ مقطوع', exact: true })).toBeChecked();
+  await expect(operation.getByRole('radio', { name: 'بر اساس مقدار', exact: true })).toBeChecked();
   await operation.getByRole('radio', { name: 'بر اساس مقدار', exact: true }).check();
   await expect(row(page, 'واحد')).toBeVisible();
   await expect(row(page, 'مقدار')).toBeVisible();
