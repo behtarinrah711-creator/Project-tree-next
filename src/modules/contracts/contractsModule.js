@@ -3,6 +3,7 @@ import { currentExecutionActor } from '../wbs/executionActor.js';
 import { fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
 import { openStaticChoicePicker } from './contractPickers.js';
 const contractListViews=new Map();
+let closeContractFilter=null;
 export const normalizeContractSearch=value=>String(value||'').toLocaleLowerCase('fa').replace(/ي/g,'ی').replace(/ك/g,'ک').replace(/[\u200c\s\-٬,]/g,'').replace(/[۰-۹]/g,c=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(c))).replace(/[٠-٩]/g,c=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(c)));
 import { openContractPreview } from './contractPreviewView.js';
 import { contractActionsMenu } from './contractActionsMenu.js';
@@ -74,6 +75,7 @@ export const contractsModule={
     const id=resolveProjectId(explicitProjectId),p=project(id),body=document.getElementById('contractsPageBody');
     if(!body)return;
     const add=document.getElementById('contractAddBtn'); if(add) add.onclick=()=>legacy('openContractForm',null);
+    closeContractFilter?.();closeContractFilter=null;
     body.innerHTML='';
     if(!p){body.innerHTML='<div class="contract-empty">ابتدا یک پروژه را انتخاب کنید.</div>';return;}
     const listWrap=document.createElement('div'); listWrap.className='contract-list';
@@ -81,31 +83,64 @@ export const contractsModule={
     const contracts=[];let cursor=0;
     do{const page=contractApi.listPage(id,{cursor,limit:200});contracts.push(...page.items);cursor=page.cursor;}while(cursor!=null);
     const actor=currentExecutionActor(p);
-    const view=contractListViews.get(id)||{query:'',status:'all'};contractListViews.set(id,view);
+    const view=contractListViews.get(id)||{query:'',statuses:Object.keys(approvalLabels),mine:false};contractListViews.set(id,view);
     head.innerHTML=`<span class="title">قراردادهای واقعی پیمانکاران</span><span class="mgmt-count">${new Intl.NumberFormat('fa-IR').format(contracts.length)}</span>`;body.append(head);
-    const empty=document.createElement('div');empty.className='contract-empty';empty.textContent='قراردادی با این جست‌وجو و وضعیت یافت نشد.';empty.hidden=true;
+    const renderedRows=[];
+    const empty=document.createElement('div');empty.className='contract-empty';empty.textContent='قراردادی با این جست‌وجو و وضعیت یافت نشد.';
     const applyFilters=()=>{
-      let count=0;
-      [...listWrap.children].forEach(row=>{
-        row.hidden=!(row.dataset.searchText.includes(normalizeContractSearch(view.query)) &&
-          (view.status==='all'||(view.status==='mine'?row.dataset.reviewMine==='true':row.dataset.approvalState===view.status)));
-        if(!row.hidden)count++;
-      });empty.hidden=count>0||!contracts.length;
+      const matching=renderedRows.filter(row=>
+        row.dataset.searchText.includes(normalizeContractSearch(view.query)) &&
+        (view.statuses.includes(row.dataset.approvalState) && (!view.mine || row.dataset.reviewMine==='true')));
+      listWrap.replaceChildren(...matching);
+      empty.remove();
+      if(!matching.length && contracts.length)body.appendChild(empty);
     };
     const search=searchInput('جستجوی شماره قرارداد، پیمانکار یا فعالیت…',q=>{view.query=q;applyFilters();});
     search.input.value=view.query;search.input.setAttribute('aria-label','جستجوی قرارداد');body.append(search.wrap);
+    const filterWrap=document.createElement('div');filterWrap.className='contract-filter-wrap';
     const filter=document.createElement('button');filter.type='button';filter.className='contract-status-filter';
-    const filterLabel=()=>{filter.textContent=view.status==='mine'?'منتظر تأیید من ×':'وضعیت: '+(approvalLabels[view.status]||'همه');};
+    filter.setAttribute('aria-expanded','false');filter.setAttribute('aria-controls','contractStatusMenu');
+    const reset=document.createElement('button');reset.type='button';reset.className='contract-mine-reset';reset.textContent='منتظر تأیید من ×';
+    let menu=null,dismiss=null;
+    const closeFilter=(fromPop=false)=>{
+      if(!menu)return;
+      menu.remove();dismiss.remove();menu=null;dismiss=null;filter.setAttribute('aria-expanded','false');
+      window.KarhaChildHistory?.consume?.('contract-status-filter',{fromPopState:fromPop});
+    };
+    closeContractFilter=closeFilter;
+    const filterLabel=()=>{
+      filter.textContent='وضعیت: '+(view.statuses.length===Object.keys(approvalLabels).length?'همه':view.statuses.length?new Intl.NumberFormat('fa-IR').format(view.statuses.length)+' انتخاب':'هیچ‌کدام');
+      reset.remove();if(view.mine)filterWrap.appendChild(reset);
+    };
+    reset.onclick=()=>{view.mine=false;view.statuses=Object.keys(approvalLabels);closeFilter();filterLabel();applyFilters();};
     const mine=contracts.filter(c=>canReviewContract(c,actor)).length;
     if(mine){
       const banner=document.createElement('button');banner.type='button';banner.className='contract-review-banner';banner.textContent=new Intl.NumberFormat('fa-IR').format(mine)+' قرارداد منتظر تأیید شما ‹';
-      banner.onclick=()=>{view.status='mine';filterLabel();applyFilters();};body.appendChild(banner);
+      banner.onclick=()=>{view.mine=true;view.statuses=['pending'];closeFilter();filterLabel();applyFilters();};body.appendChild(banner);
     }
     filter.onclick=()=>{
-      if(view.status==='mine'){view.status='all';filterLabel();applyFilters();return;}
-      openStaticChoicePicker('وضعیت قرارداد','وضعیت‌ها',[{value:'all',label:'همه'},...Object.entries(approvalLabels).map(([value,label])=>({value,label}))],view.status,value=>{view.status=value;filterLabel();applyFilters();},null,{preserveOrder:true});
+      if(menu){closeFilter();return;}
+      dismiss=document.createElement('button');dismiss.type='button';dismiss.className='contract-filter-dismiss';dismiss.setAttribute('aria-label','بستن فیلتر وضعیت');dismiss.onclick=()=>closeFilter();
+      menu=document.createElement('div');menu.id='contractStatusMenu';menu.className='wbs-gantt-header-menu is-open contract-status-menu';
+      menu.setAttribute('role','group');menu.setAttribute('aria-label','نمایش وضعیت قرارداد');
+      const title=document.createElement('div');title.className='wbs-gantt-menu-title';title.textContent='نمایش وضعیت قرارداد';menu.appendChild(title);
+      Object.entries(approvalLabels).forEach(([value,text])=>{
+        const label=document.createElement('label');label.className='wbs-gantt-menu-row';
+        const check=document.createElement('input');check.type='checkbox';check.value=value;check.checked=view.statuses.includes(value);
+        const name=document.createElement('span');name.textContent=text;
+        check.onchange=()=>{
+          view.mine=false;
+          view.statuses=check.checked?[...new Set([...view.statuses,value])]:view.statuses.filter(x=>x!==value);
+          filterLabel();applyFilters();
+        };
+        label.append(check,name);menu.appendChild(label);
+      });
+      filterWrap.append(dismiss,menu);filter.setAttribute('aria-expanded','true');
+      window.KarhaChildHistory?.register?.('contract-status-filter',{onPop:()=>closeFilter(true)});
+      window.KarhaChildHistory?.open?.('contract-status-filter');
     };
-    filterLabel();body.append(filter,listWrap,empty);
+    filterWrap.onkeydown=event=>{if(event.key==='Escape'){closeFilter();filter.focus?.();}};
+    filterWrap.appendChild(filter);filterLabel();body.append(filterWrap,listWrap);
     if(!contracts.length){const e=document.createElement('div');e.className='contract-empty';e.innerHTML='هنوز قرارداد واقعی ثبت نشده است.<br>از علامت + یک قرارداد ایجاد کنید.';body.appendChild(e);return;}
     const appendContract=c=>{
       const {title,meta,created}=contractRowData(id,c);
@@ -164,7 +199,7 @@ export const contractsModule={
         const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='علت برگشت: '+c.approvalRejectionReason;statusRow.appendChild(reason);
       }
       row.appendChild(statusRow);statusRow.onclick=event=>event.stopPropagation();
-      row.onclick=()=>openContractPreview(p,c,{trigger:main}); listWrap.appendChild(row);
+      row.onclick=()=>openContractPreview(p,c,{trigger:main}); renderedRows.push(row);
     };
     contracts.forEach(appendContract);
     applyFilters();

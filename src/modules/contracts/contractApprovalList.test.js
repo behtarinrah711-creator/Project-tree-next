@@ -8,7 +8,8 @@ const {contactApi}=await import('../../domain/contactApi.js');
 const {activityApi}=await import('../../domain/activityApi.js');
 test('shared list filters assigned pending requests, clears filter, and searches beyond first page',()=>{
  const make=tag=>({tag,children:[],dataset:{},hidden:false,listeners:{},className:'',
- append(...xs){this.children.push(...xs);},appendChild(x){this.children.push(x);},
+ append(...xs){xs.forEach(x=>this.appendChild(x));},appendChild(x){x.remove();x.parent=this;this.children.push(x);},
+ replaceChildren(...xs){this.children.forEach(x=>{x.parent=null;});this.children=[];this.append(...xs);},remove(){if(this.parent)this.parent.children=this.parent.children.filter(x=>x!==this);this.parent=null;},
  setAttribute(){},addEventListener(type,fn){this.listeners[type]=fn;},innerHTML:''});
  const body=make('body');globalThis.document={createElement:make,getElementById:id=>id==='contractsPageBody'?body:null};
  const original=[projectRepository.getActiveProject,contractApi.listPage,contactApi.lookup,activityApi.lookup];
@@ -26,13 +27,39 @@ test('shared list filters assigned pending requests, clears filter, and searches
   assert.ok(list.children.every(row=>row.children.at(-1).className==='contract-workflow-row'));
   const banner=body.children.find(x=>x.className==='contract-review-banner');
   assert.match(banner.textContent,/۱ قرارداد/);banner.onclick();
-  assert.equal(list.children.filter(x=>!x.hidden).length,1);
-  body.children.find(x=>x.className==='contract-status-filter').onclick();
-  assert.equal(list.children.filter(x=>!x.hidden).length,205);
+  assert.equal(list.children.length,1);
+  const filterWrap=body.children.find(x=>x.className==='contract-filter-wrap');
+  filterWrap.children.find(x=>x.className==='contract-mine-reset').onclick();
+  assert.equal(list.children.length,205);
   const search=body.children.find(x=>x.className==='workspace-search').children[0];
   search.value='CTR-۲۰۴';search.listeners.input();
-  assert.equal(list.children.filter(x=>!x.hidden).length,1);
-  assert.equal(list.children.find(x=>!x.hidden).dataset.searchText.includes('ctr204'),true);
+  assert.equal(list.children.length,1);
+  assert.equal(list.children[0].dataset.searchText.includes('ctr204'),true);
+  assert.equal(body.children.filter(x=>x.className==='contract-empty').length,0);
+  const filter=filterWrap.children.find(x=>x.className==='contract-status-filter');
+  filter.onclick();
+  let menu=filterWrap.children.find(x=>x.id==='contractStatusMenu');
+  const checks=menu.children.slice(1).map(label=>label.children[0]);
+  assert.equal(checks.length,5);assert.ok(checks.every(check=>check.checked));
+  for(const check of checks){if(check.value!=='pending'){check.checked=false;check.onchange();}}
+  assert.equal(list.children.length,0);
+  assert.equal(body.children.filter(x=>x.className==='contract-empty').length,1);
+  search.value='';search.listeners.input();
+  assert.equal(list.children.length,2);
+  assert.equal(body.children.filter(x=>x.className==='contract-empty').length,0);
+  for(const check of checks){check.checked=true;check.onchange();}
+  assert.equal(list.children.length,205);
+  for(const check of checks){check.checked=false;check.onchange();}
+  assert.equal(list.children.length,0);
+  for(const check of checks){check.checked=true;check.onchange();}
+  filterWrap.children.find(x=>x.className==='contract-filter-dismiss').onclick();
+  assert.equal(filterWrap.children.filter(x=>x.id==='contractStatusMenu').length,0);
+  search.value='not-found';search.listeners.input();
+  assert.equal(list.children.length,0);
+  assert.equal(body.children.filter(x=>x.className==='contract-empty').length,1);
+  search.value='';search.listeners.input();
+  assert.equal(list.children.length,205);
+  assert.equal(body.children.filter(x=>x.className==='contract-empty').length,0);
   assert.equal(normalizeContractSearch('كشتارگاه يک'),'کشتارگاهیک');
  }finally{[projectRepository.getActiveProject,contractApi.listPage,contactApi.lookup,activityApi.lookup]=original;}
 });

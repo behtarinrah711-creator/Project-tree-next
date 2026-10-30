@@ -1861,3 +1861,9 @@ textarea.contract-project-item-input{
 #contractsPageBody .contract-rejection-reason{width:100%;white-space:pre-wrap;overflow-wrap:anywhere;}
 #contractsPageBody .contract-review-banner{display:block;width:calc(100% - 24px);margin:8px 12px;padding:14px;border:1px solid #1565c0;border-radius:10px;background:var(--surface);color:#1565c0;font:inherit;text-align:right;cursor:pointer;}
 #contractsPageBody .contract-status-filter{margin:8px 12px;padding:8px 12px;background:var(--surface);border:1px solid var(--divider);border-radius:8px;color:var(--text);font:inherit;cursor:pointer;}
+
+#contractsPageBody .contract-filter-wrap{position:relative;z-index:6;display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:8px 12px;}
+#contractsPageBody .contract-filter-wrap .contract-status-filter{margin:0;}
+#contractsPageBody .contract-status-menu{position:absolute;top:calc(100% + 5px);right:0;left:auto;z-index:2;max-height:min(50dvh,360px);}
+#contractsPageBody .contract-filter-dismiss{position:fixed;inset:0;z-index:1;border:0;background:transparent;cursor:default;}
+#contractsPageBody .contract-mine-reset{border:1px solid var(--divider);border-radius:8px;padding:8px;background:var(--surface);color:#1565c0;font:inherit;cursor:pointer;}
