@@ -140,6 +140,7 @@ export const contractsModule={
       }
       const statusRow=document.createElement('div');statusRow.className='contract-workflow-row';
       const status=document.createElement('span');status.textContent=approvalLabels[contractApprovalState(c)];statusRow.appendChild(status);
+      if(c.approvalStatus==='pending' && c.approvalContactIds?.length)status.textContent+=' ('+new Intl.NumberFormat('fa-IR').format(c.approvedContactIds?.length || 0)+' از '+new Intl.NumberFormat('fa-IR').format(c.approvalContactIds.length)+')';
       const run=(action,options={})=>{
         const result=contractApi.review(id,c.id,action,actor,options);
         if(!result.ok){window.KarhaLegacy?.showToast?.(result.message||'ثبت تغییرات انجام نشد');return false;}
@@ -150,7 +151,8 @@ export const contractsModule={
         el.onclick=event=>{event.stopPropagation();handler();};statusRow.appendChild(el);
       };
       if(['ready','returned'].includes(contractApprovalState(c)) && !c.isDraft && c.status==='final'){
-        button('ارسال برای تأیید',()=>openStaticChoicePicker('انتخاب مسئول تأیید','مخاطبین',(p.contacts||[]).filter(x=>!x.trashed).map(x=>({value:x.id,label:[x.firstName,x.lastName].filter(Boolean).join(' ')||x.name||'مخاطب'})),c.approvalContactId,value=>run('submit',{approverId:value})));
+        if(c.workTaskId || c.contractApproverContactIds?.length)button('ارسال برای تأیید',()=>run('submit'));
+        else button('ارسال برای تأیید',()=>openStaticChoicePicker('انتخاب مسئول تأیید','مخاطبین',(p.contacts||[]).filter(x=>!x.trashed).map(x=>({value:x.id,label:[x.firstName,x.lastName].filter(Boolean).join(' ')||x.name||'مخاطب'})),c.approvalContactId,value=>run('submit',{approverId:value})));
       }
       if(canReviewContract(c,actor)){
         button('تأیید',()=>openConfirm('این قرارداد تأیید شود؟',()=>run('approve'),'تأیید'));

@@ -30,6 +30,8 @@ function validate(projectId, workId, input){
   const contractorContactId = String(input?.contractorContactId || '');
   const approvalContactId = String(input?.approvalContactId || '');
   const activityId = String(input?.activityId || '');
+  const contractApproverContactIds=[...new Set((Array.isArray(input?.contractApproverContactIds)?input.contractApproverContactIds:[]).map(String).filter(Boolean))];
+  if(input.hasContract && contractApproverContactIds.some(id=>{const contact=contactRepository.get(projectId,id);return !contact || contact.trashed;}))return {ok:false,code:'approver'};
   if(!title) return { ok:false, code:'title' };
   if(input?.type !== '' && !WORK_TYPES.includes(input?.type)) return { ok:false, code:'type' };
   if(!TASK_PRIORITIES.includes(input?.priority)) return { ok:false, code:'priority' };
@@ -44,7 +46,7 @@ function validate(projectId, workId, input){
   return { ok:true, value:{ ...input, title, weight, assigneeContactId, counterpartyContactId, contractorContactId,
     activityId, activityIds:activityId ? [activityId] : [], activities:activityId ? [activityId] : [],
     requiresManagementApproval:Boolean(approvalContactId),
-    approvalContactId,
+    approvalContactId, contractApproverContactIds:input.hasContract?contractApproverContactIds:[],
   } };
 }
 
@@ -103,6 +105,8 @@ export const workTaskApi = {
     if(linkedContract && !(linkedContract.isDraft || linkedContract.status==='draft') && !next.hasContract){
       return {ok:false,code:'contract_locked'};
     }
+    if(linkedContract && ['pending','approved'].includes(linkedContract.approvalStatus) &&
+      JSON.stringify([...(next.contractApproverContactIds || [])].map(String).sort())!==JSON.stringify([...(current.contractApproverContactIds || [])].map(String).sort()))return {ok:false,code:'contract_locked'};
     const dependencyCheck = validatePredecessors(projectRepository.find(projectId)?.tasks || [], taskId, next.predecessorIds || []);
     if(!dependencyCheck.ok) return dependencyCheck;
     const checked = validate(projectId, workId, next);

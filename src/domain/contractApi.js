@@ -1,3 +1,4 @@
+import { workTaskRepository } from '../data/workTaskRepository.js';
 import { transitionContractApproval } from './contractApproval.js';
 import { contractRepository } from '../data/contractRepository.js';
 import { projectRepository } from '../data/projectRepository.js';
@@ -74,7 +75,7 @@ function saveContractRecord(projectId, draft, {status = null} = {}){
   const current = draft.id ? contractRepository.get(projectId, draft.id) : null;
   if(current && ['pending','approved'].includes(current.approvalStatus)) return deny('locked','قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');
   const record = { ...(current || {}), ...draft, id, trashed:false };
-  for(const key of ['approvalStatus','approvalContactId','approvalHistory','approvalRejectionReason','submittedAt','submittedBy','reviewedAt','reviewedBy']) record[key]=current?.[key];
+  for(const key of ['contractApproverContactIds','approvalStatus','approvalContactId','approvalContactIds','approvedContactIds','approvalHistory','approvalRejectionReason','submittedAt','submittedBy','reviewedAt','reviewedBy']) record[key]=current?.[key];
   if(status) record.status = status;
   if(status === 'draft'){
     record.isDraft = true;
@@ -98,7 +99,13 @@ export const contractApi = {
     const access=canWriteProject(project);if(!access.ok)return access;
     const current=contractRepository.get(projectId,contractId);
     if(!current || current.trashed)return deny('not_found','قرارداد پیدا نشد');
-    if(action==='submit' && !(project.contacts||[]).some(c=>!c.trashed && String(c.id)===String(options.approverId)))return deny('invalid','مسئول تأیید معتبر نیست');
+    if(action==='submit'){
+      const task=current.workTaskId && workTaskRepository.get(projectId,current.projectItemId,current.workTaskId);
+      const ids=task ? task.contractApproverContactIds || [] : current.contractApproverContactIds || options.approverIds || [options.approverId];
+      const approverIds=[...new Set(ids.filter(Boolean).map(String))];
+      if(!approverIds.length || approverIds.some(id=>!(project.contacts||[]).some(c=>!c.trashed && String(c.id)===id)))return deny('invalid','مسئولان تأیید قرارداد را در درخت پروژه مشخص کنید');
+      options={...options,approverIds};
+    }
     const result=transitionContractApproval(current,action,actor,options);if(!result.ok)return result;
     if(!contractRepository.save(projectId,result.contract))return deny('conflict','ذخیره تغییرات انجام نشد');
     publishLive(projectId,['contracts']);return result;

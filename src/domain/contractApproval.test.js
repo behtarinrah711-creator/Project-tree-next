@@ -54,3 +54,23 @@ test('project API saves workflow and prevents changing approved content',async()
   assert.equal(record.amount,'200');
  }finally{[projectRepository.find,contractRepository.get,contractRepository.save]=before;}
 });
+
+test('all assigned contacts must approve once and rejection resets the next round',()=>{
+ const second={id:'employer',contactId:'employer'};
+ let c=transitionContractApproval({status:'final'},'submit',author,{approverIds:['reviewer','employer','reviewer']}).contract;
+ assert.deepEqual(c.approvalContactIds,['reviewer','employer']);
+ c=transitionContractApproval(c,'approve',manager,{at:2}).contract;
+ assert.equal(c.approvalStatus,'pending');
+ assert.equal(canReviewContract(c,manager),false);
+ assert.equal(canReviewContract(c,second),true);
+ assert.equal(transitionContractApproval(c,'approve',manager).ok,false);
+ const rejected=transitionContractApproval(c,'reject',second,{reason:'مبلغ نیاز به اصلاح دارد'}).contract;
+ assert.equal(rejected.approvalStatus,'returned');
+ c=transitionContractApproval(rejected,'submit',author,{approverIds:['reviewer','employer']}).contract;
+ assert.deepEqual(c.approvedContactIds,[]);
+ c=transitionContractApproval(c,'approve',second).contract;
+ assert.equal(c.approvalStatus,'pending');
+ c=transitionContractApproval(c,'approve',manager).contract;
+ assert.equal(c.approvalStatus,'approved');
+ assert.equal(c.reviewedBy.contactId,'reviewer');
+});

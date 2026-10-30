@@ -190,6 +190,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       togglesContainer.className = 'wbs-toggles-container';
       const counterpartyContainer = documentRef.createElement('div');
       counterpartyContainer.className = 'wbs-counterparty-container';
+      let paintContractApprovers=()=>{};
       const renderTypeFields = val => {
         renderToggles(togglesContainer, val, task,{
           contractLocked:Boolean(linkedContract && !(linkedContract.isDraft || linkedContract.status==='draft')),
@@ -198,6 +199,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
           type:val, contacts, value:counterpartyContactId, workId:work.id, documentRef,
           onSelect:value => { counterpartyContactId = value; },
         });
+        paintContractApprovers();
       };
       const type=optionButton({name:'taskType',value:task?.type || work.type || WORK_TYPES[0],options:WORK_TYPES.map(value=>({id:value,name:value})), onChange:renderTypeFields});
       root.appendChild(fieldRow('نوع کار',type));
@@ -236,6 +238,37 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       approver.addEventListener('click',()=>openSearchPicker({title:'انتخاب مسئول تأیید',listTitle:'مخاطبین',selectedTitle:'مسئول تأیید منتخب',contextKey:`wbs-task-approver:${work.id}`,items:[{id:'',name:'بدون مسئول تأیید'},...contacts.map(contact=>({id:contact.id,name:contactName(contact)}))],resourceType:'contact',showStar:false,showAdd:true,onAdd:()=>{window.KarhaSearchTemplate?.close(false);window.KarhaApp?.modules?.get('people')?.openContactForm?.(null,{pickerMode:true,onCreated:created=>{contacts.push(created);approver.dataset.value=String(created.id);paintApprover();}});},onSelect:selected=>{approver.dataset.value=String(selected.id);paintApprover();}}));
       paintApprover();
       root.appendChild(fieldRow('مسئول تأیید',approver));
+
+      const contractApprovers=documentRef.createElement('div');
+      let contractApproverContactIds=[...(task?.contractApproverContactIds || [])];
+      const reviewersLocked=['pending','approved'].includes(linkedContract?.approvalStatus);
+      paintContractApprovers=()=>{
+        contractApprovers.replaceChildren();
+        if(!togglesContainer.querySelector('[name="hasContract"]')?.checked)return;
+        const controls=documentRef.createElement('div');
+        contractApproverContactIds.forEach(id=>{
+          const selected=contacts.find(contact=>String(contact.id)===String(id));
+          const row=documentRef.createElement('div');row.className='wbs-contract-approver';
+          const name=documentRef.createElement('span');name.textContent=selected?contactName(selected):'مخاطب حذف‌شده';
+          const remove=documentRef.createElement('button');remove.type='button';remove.textContent='×';remove.disabled=reviewersLocked;
+          remove.setAttribute('aria-label','برداشتن مسئول تأیید قرارداد');
+          remove.addEventListener('click',()=>{contractApproverContactIds=contractApproverContactIds.filter(value=>value!==id);paintContractApprovers();});
+          row.append(name,remove);controls.appendChild(row);
+        });
+        const select=documentRef.createElement('button');select.type='button';select.className='wbs-input';select.disabled=reviewersLocked;
+        select.textContent=contractApproverContactIds.length?'افزودن مسئول تأیید قرارداد':'انتخاب مسئول تأیید قرارداد';
+        select.addEventListener('click',()=>openSearchPicker({
+          title:'انتخاب مسئول تأیید قرارداد',listTitle:'مخاطبین',selectedTitle:'مسئول تأیید قرارداد',
+          contextKey:`wbs-contract-approvers:${work.id}`,
+          items:contacts.filter(contact=>!contractApproverContactIds.includes(String(contact.id))).map(contact=>({id:contact.id,name:contactName(contact)})),
+          resourceType:'contact',showStar:false,showAdd:false,
+          onSelect:selected=>{const id=String(selected.id);if(!contractApproverContactIds.includes(id))contractApproverContactIds.push(id);paintContractApprovers();}
+        }));
+        controls.appendChild(select);contractApprovers.appendChild(fieldRow('مسئول تأیید قرارداد',controls));
+      };
+      togglesContainer.addEventListener('change',paintContractApprovers);
+      root.appendChild(contractApprovers);paintContractApprovers();
+      root._contractApproverIds=()=>contractApproverContactIds;
 
       if(contractor){
         const note = documentRef.createElement('div');
@@ -277,6 +310,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         activityId:root.querySelector('[name="taskActivity"]')?.dataset.value || '',
         counterpartyContactId:root.querySelector('[name="taskCounterparty"]')?.dataset.value || '',
         approvalContactId:root.querySelector('[name="taskApprover"]').dataset.value,
+        contractApproverContactIds:root._contractApproverIds(),
         contractorContactId:'',
         weight:Number(root.querySelector('[name="taskWeight"]').dataset.value),
         amount:Number(root.querySelector('[name="taskAmount"]').dataset.value) || 0,
