@@ -79,7 +79,7 @@ function ftCreateRoot(parent) {
 
 function ftTextRow(root, label, value, onChange, opts = {}) {
   const row = document.createElement('div');
-  row.className = 'ft-row ft-stack';
+  row.className = opts.inline ? 'ft-row contract-inline-text' : 'ft-row ft-stack';
 
   const lab = document.createElement('div');
   lab.className = 'ft-label';
@@ -444,7 +444,7 @@ function renderContractForm() {
 
   const projectPlace = project.location || project.address || project.projectLocation || project.siteLocation || '';
   if (!state.contractPlace) state.contractPlace = projectPlace;
-  ftTextRow(form, 'محل انعقاد قرارداد', state.contractPlace || '', value => { state.contractPlace = value; }, { placeholder: 'پیش‌فرض: محل پروژه' });
+  ftTextRow(form, 'محل انعقاد قرارداد', state.contractPlace || '', value => { state.contractPlace = value; }, { inline: true, placeholder: 'پیش‌فرض: محل پروژه' });
   ftDateRow(form, 'تاریخ تنظیم قرارداد', state.contractDate || helper('todayJalaliStr'), value => { state.contractDate = value; }, { maxToday: true });
 
   if(state.workTaskId) ftTextRow(form,'آیتم پروژه',state.projectItemPath || '',()=>{}, {readonly:true,placeholder:'توسط سیستم انتخاب شده'});
