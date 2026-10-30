@@ -83,14 +83,15 @@ export const contractsModule={
     const actor=currentExecutionActor(p);
     const view=contractListViews.get(id)||{query:'',status:'all'};contractListViews.set(id,view);
     head.innerHTML=`<span class="title">قراردادهای واقعی پیمانکاران</span><span class="mgmt-count">${new Intl.NumberFormat('fa-IR').format(contracts.length)}</span>`;body.append(head);
-    const empty=document.createElement('div');empty.className='contract-empty';empty.textContent='قراردادی با این جست‌وجو و وضعیت یافت نشد.';empty.hidden=true;
+    const renderedRows=[];
+    const empty=document.createElement('div');empty.className='contract-empty';empty.textContent='قراردادی با این جست‌وجو و وضعیت یافت نشد.';
     const applyFilters=()=>{
-      let count=0;
-      [...listWrap.children].forEach(row=>{
-        row.hidden=!(row.dataset.searchText.includes(normalizeContractSearch(view.query)) &&
-          (view.status==='all'||(view.status==='mine'?row.dataset.reviewMine==='true':row.dataset.approvalState===view.status)));
-        if(!row.hidden)count++;
-      });empty.hidden=count>0||!contracts.length;
+      const matching=renderedRows.filter(row=>
+        row.dataset.searchText.includes(normalizeContractSearch(view.query)) &&
+        (view.status==='all'||(view.status==='mine'?row.dataset.reviewMine==='true':row.dataset.approvalState===view.status)));
+      listWrap.replaceChildren(...matching);
+      empty.remove();
+      if(!matching.length && contracts.length)body.appendChild(empty);
     };
     const search=searchInput('جستجوی شماره قرارداد، پیمانکار یا فعالیت…',q=>{view.query=q;applyFilters();});
     search.input.value=view.query;search.input.setAttribute('aria-label','جستجوی قرارداد');body.append(search.wrap);
@@ -105,7 +106,7 @@ export const contractsModule={
       if(view.status==='mine'){view.status='all';filterLabel();applyFilters();return;}
       openStaticChoicePicker('وضعیت قرارداد','وضعیت‌ها',[{value:'all',label:'همه'},...Object.entries(approvalLabels).map(([value,label])=>({value,label}))],view.status,value=>{view.status=value;filterLabel();applyFilters();},null,{preserveOrder:true});
     };
-    filterLabel();body.append(filter,listWrap,empty);
+    filterLabel();body.append(filter,listWrap);
     if(!contracts.length){const e=document.createElement('div');e.className='contract-empty';e.innerHTML='هنوز قرارداد واقعی ثبت نشده است.<br>از علامت + یک قرارداد ایجاد کنید.';body.appendChild(e);return;}
     const appendContract=c=>{
       const {title,meta,created}=contractRowData(id,c);
@@ -164,7 +165,7 @@ export const contractsModule={
         const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='علت برگشت: '+c.approvalRejectionReason;statusRow.appendChild(reason);
       }
       row.appendChild(statusRow);statusRow.onclick=event=>event.stopPropagation();
-      row.onclick=()=>openContractPreview(p,c,{trigger:main}); listWrap.appendChild(row);
+      row.onclick=()=>openContractPreview(p,c,{trigger:main}); renderedRows.push(row);
     };
     contracts.forEach(appendContract);
     applyFilters();
