@@ -2,8 +2,7 @@ import { ensureOperationRows, renderQuantityRows, syncContractAmount } from './c
 import { contractDocumentMarkup } from './contractDocument.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
-import { localStorageAdapter } from '../../data/storageAdapter.js';
-import { STORAGE_KEYS } from '../../config/deploymentConfig.js';
+import { contractApi } from '../../domain/contractApi.js';
 import * as realContractDomain from './realContractDomain.js';
 import { saveRealContract } from './realContractPersistence.js';
 import { openRetentionBasisPicker } from './retentionBasisPicker.js';
@@ -21,7 +20,6 @@ let activeProjectId = null;
 // True only while the current browser entry is owned by this mounted form.
 // A popstate consumes that entry before requestClose runs, so this is ownership
 // of the real stack entry rather than merely a record that open once pushed.
-const REAL_CONTRACT_DRAFT_KEY = STORAGE_KEYS.realContractDraft;
 
 function activeProject(projectId = null) {
   const id =
@@ -604,7 +602,7 @@ function renderContractForm() {
     const draft = document.createElement('button');
     draft.className = 'if-draft';
     draft.textContent = 'پیش‌نویس';
-    draft.onclick = () => saveDraft();
+    draft.onclick = () => realContractFormModule.saveDraft();
 
     const cancel = document.createElement('button');
     cancel.className = 'if-cancel';
@@ -631,18 +629,20 @@ function renderContractForm() {
 }
 
 function saveDraft() {
+  const project=activeProject(activeProjectId);
+  if(!project || !state) return false;
   try {
-    localStorageAdapter.setItem(REAL_CONTRACT_DRAFT_KEY, JSON.stringify(state));
-    dirty = false;
-    helper('showToast', 'پیش‌نویس ذخیره شد');
-    state = null;
-    editingId = null;
-    inlineAddState = null;
-    activeProjectId = null;
-    closeFormShell(false);
+    const result=contractApi.saveDraft(project.id,state);
+    if(!result.ok){
+      helper('showToast',result.message || 'پیش‌نویس ذخیره نشد');
+      return false;
+    }
+    dirty=false;
+    realContractFormModule.close(false);
+    helper('showToast','پیش‌نویس ذخیره شد');
     return true;
   } catch {
-    helper('showToast', 'پیش‌نویس ذخیره نشد');
+    helper('showToast','پیش‌نویس ذخیره نشد');
     return false;
   }
 }
@@ -721,9 +721,8 @@ export const realContractFormModule = {
 
     showExitChoice({
       onYes: () => {
-        try { localStorageAdapter.setItem(REAL_CONTRACT_DRAFT_KEY, JSON.stringify(state)); } catch {}
-        dirty = false;
-        this.close(fromPopState);
+        const saved=state?.status==='final' && !state?.isDraft ? this.save() : this.saveDraft();
+        if(!saved) restoreHistory();
       },
       onNo: () => this.close(fromPopState),
       onStay: restoreHistory

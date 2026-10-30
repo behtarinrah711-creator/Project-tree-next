@@ -83,6 +83,7 @@ export function installContractFormExitBridge({windowRef = window} = {}){
   const originalClose = form.close.bind(form);
   const originalSetDirty = form.setDirty.bind(form);
   const originalSave = form.save.bind(form);
+  const originalSaveDraft = form.saveDraft.bind(form);
 
   let mode = 'new';
   let exitSession = null;
@@ -125,18 +126,10 @@ export function installContractFormExitBridge({windowRef = window} = {}){
   };
 
   form.saveDraft = function(){
-    const state = form.getState?.();
     const projectId = projectIdForForm();
-    if(!state || !projectId) return false;
-    const result = contractApi.saveDraft(projectId, state);
-    if(!result.ok){
-      windowRef.KarhaLegacy?.showToast?.(result.message || 'پیش‌نویس ذخیره نشد');
-      return false;
-    }
+    const saved = originalSaveDraft();
+    if(!saved) return false;
     try{ windowRef.localStorage?.removeItem?.(LEGACY_DRAFT_KEY); }catch{}
-    windowRef.KarhaLegacy?.showToast?.('پیش‌نویس ذخیره شد');
-    mode = 'draft';
-    form.close(false);
     rerenderContracts(windowRef, projectId);
     return true;
   };
