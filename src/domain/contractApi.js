@@ -1,3 +1,4 @@
+import { transitionContractApproval } from './contractApproval.js';
 import { contractRepository } from '../data/contractRepository.js';
 import { projectRepository } from '../data/projectRepository.js';
 import { getSession } from '../core/session.js';
@@ -71,7 +72,9 @@ function saveContractRecord(projectId, draft, {status = null} = {}){
 
   const id = draft.id || makeId();
   const current = draft.id ? contractRepository.get(projectId, draft.id) : null;
+  if(current && ['pending','approved'].includes(current.approvalStatus)) return deny('locked','قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');
   const record = { ...(current || {}), ...draft, id, trashed:false };
+  for(const key of ['approvalStatus','approvalContactId','approvalHistory','approvalRejectionReason','submittedAt','submittedBy','reviewedAt','reviewedBy']) record[key]=current?.[key];
   if(status) record.status = status;
   if(status === 'draft'){
     record.isDraft = true;
@@ -89,6 +92,17 @@ function saveContractRecord(projectId, draft, {status = null} = {}){
 }
 
 export const contractApi = {
+  review(projectId,contractId,action,actor,options={}){
+    if(isOffline()) return deny('offline','برای ثبت تغییرات به اینترنت متصل شوید');
+    const project=projectRepository.find(projectId);
+    const access=canWriteProject(project);if(!access.ok)return access;
+    const current=contractRepository.get(projectId,contractId);
+    if(!current || current.trashed)return deny('not_found','قرارداد پیدا نشد');
+    if(action==='submit' && !(project.contacts||[]).some(c=>!c.trashed && String(c.id)===String(options.approverId)))return deny('invalid','مسئول تأیید معتبر نیست');
+    const result=transitionContractApproval(current,action,actor,options);if(!result.ok)return result;
+    if(!contractRepository.save(projectId,result.contract))return deny('conflict','ذخیره تغییرات انجام نشد');
+    publishLive(projectId,['contracts']);return result;
+  },
   get(projectId, contractId){
     return contractRepository.get(projectId, contractId);
   },
@@ -129,6 +143,7 @@ export const contractApi = {
     if(!check.ok) return deny('in_use', 'این قرارداد قابل حذف نیست؛ هنوز صورت وضعیت به آن وصل است', { refs: check.refs });
 
     const contract=contractRepository.get(projectId,contractId);
+    if(['pending','approved'].includes(contract.approvalStatus))return deny('locked','قرارداد ارسال‌شده یا تأییدشده قابل حذف نیست');
     if(!contractRepository.softDelete(projectId, contractId)) return deny('conflict', 'حذف قرارداد انجام نشد');
     clearWorkTaskContractFlag(projectId,contract);
     publishLive(projectId, ['contracts','tasks']);

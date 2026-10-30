@@ -1850,3 +1850,14 @@ textarea.contract-project-item-input{
 .contract-form-body .contract-operation-method input{accent-color:#1565c0;}
 
 #contractFormPage .contract-form-body .contract-payment-balance .ft-value{color:var(--danger,#b23b3b) !important;}
+
+/* Shared contract list: filters and workflow details stay on the same card. */
+#contractsPageBody .contract-row{flex-wrap:wrap;}
+#contractsPageBody .contract-main{flex-basis:50%;min-width:0;}
+#contractsPageBody .contract-workflow-row{flex:1 0 100%;box-sizing:border-box;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--divider);padding:10px 14px 0;margin:4px -14px 0;min-width:calc(100% + 28px);font-size:12px;}
+#contractsPageBody .contract-workflow-row>span{flex:1;min-width:120px;}
+#contractsPageBody .contract-review-action{border:0;background:transparent;color:#1565c0;font:inherit;padding:6px;cursor:pointer;}
+#contractsPageBody .contract-review-action.danger,#contractsPageBody .contract-rejection-reason{color:var(--danger,#b23b3b);}
+#contractsPageBody .contract-rejection-reason{width:100%;white-space:pre-wrap;overflow-wrap:anywhere;}
+#contractsPageBody .contract-review-banner{display:block;width:calc(100% - 24px);margin:8px 12px;padding:14px;border:1px solid #1565c0;border-radius:10px;background:var(--surface);color:#1565c0;font:inherit;text-align:right;cursor:pointer;}
+#contractsPageBody .contract-status-filter{margin:8px 12px;padding:8px 12px;background:var(--surface);border:1px solid var(--divider);border-radius:8px;color:var(--text);font:inherit;cursor:pointer;}
