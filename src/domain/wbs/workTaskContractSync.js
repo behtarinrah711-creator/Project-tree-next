@@ -65,6 +65,7 @@ export function syncContractFromWorkTask(projectId, workId, task, clock=Date.now
     status:current?.status || 'draft',
     isDraft:current ? Boolean(current.isDraft || current.status==='draft') : true,
     systemGenerated:true,
+    contractApproverContactIds:[...(task.contractApproverContactIds || [])],
     trashed:false,
     createdAt:current?.createdAt || now,
     updatedAt:now,

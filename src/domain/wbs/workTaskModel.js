@@ -64,6 +64,7 @@ export function normalizeWorkTask(task, workId = ''){
       : [],
     counterpartyContactId:String(task.counterpartyContactId || ''),
     approvalContactId:String(task.approvalContactId || ''),
+    contractApproverContactIds:[...new Set((Array.isArray(task.contractApproverContactIds)?task.contractApproverContactIds:[]).map(String).filter(Boolean))],
     requiresManagementApproval:Boolean(task.approvalContactId),
     contractorContactId:String(task.contractorContactId || ''),
     weight:taskWeightOf(task),

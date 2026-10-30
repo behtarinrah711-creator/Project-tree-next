@@ -167,3 +167,20 @@ test('title-only creation under a leaf stage preserves stage identity through ex
   assert.equal(rollupProgress(project().tasks),100);
   assert.equal(stage().kind,'stage');
 });
+
+test('contract reviewers persist from the task and every assigned reviewer must approve',()=>{
+ const store=installFixture();
+ assert.equal(workTaskApi.create('p1','w1',draft({hasContract:true,contractApproverContactIds:['missing']})).code,'approver');
+ const created=workTaskApi.create('p1','w1',draft({hasContract:true,contractApproverContactIds:['c1','c2','c1']}));
+ assert.deepEqual(created.task.contractApproverContactIds,['c1','c2']);
+ let c=store.getSnapshot().projects[0].contracts[0];
+ assert.deepEqual(c.contractApproverContactIds,['c1','c2']);
+ assert.equal(contractApi.save('p1',{...c,status:'final',isDraft:false}).ok,true);
+ const actor={id:'a',contactId:'c1'};
+ let result=contractApi.review('p1',c.id,'submit',actor,{approverIds:['c1']});
+ assert.equal(result.ok,true);
+ assert.deepEqual(result.contract.approvalContactIds,['c1','c2']);
+ assert.equal(workTaskApi.update('p1','w1',created.task.id,{contractApproverContactIds:['c1']}).code,'contract_locked');
+ assert.equal(contractApi.review('p1',c.id,'approve',actor).contract.approvalStatus,'pending');
+ assert.equal(contractApi.review('p1',c.id,'approve',{id:'b',contactId:'c2'}).contract.approvalStatus,'approved');
+});
