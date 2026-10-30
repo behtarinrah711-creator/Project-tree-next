@@ -1807,7 +1807,7 @@ textarea.contract-project-item-input{
 .contract-pages .contract-document-quantity th:nth-child(3){width:8%}
 .contract-pages .contract-document-quantity th:nth-child(4){width:10%}
 .contract-pages .contract-document-quantity th:nth-child(5),.contract-pages .contract-document-quantity th:nth-child(6){width:16%}
-.contract-pages .contract-document-quantities td:last-child{text-align:left;direction:ltr}
+.contract-pages .contract-document-quantities td:last-child{text-align:center;direction:ltr}
 .contract-pages .contract-document-quantity td:nth-child(4):not([colspan]),.contract-pages .contract-document-quantity td:nth-child(5):not([colspan]){text-align:left;direction:ltr}
 
 /* Read-only totals use the same right-label/left-value layout as other fields. */
@@ -1820,6 +1820,7 @@ textarea.contract-project-item-input{
 
 .contract-pages .contract-document-quantities tbody td:first-child:not([colspan]){text-align:center;vertical-align:middle}
 
+.contract-form-body .contract-clause-heading{display:flex;justify-content:space-between;align-items:center}
 /* Keep operation cards clear of field dividers in both pricing modes. */
 .contract-form-body .contract-quantity-list{padding-top:12px}
 .contract-form-body .contract-quantity-row.form-template{margin:0 0 12px !important}

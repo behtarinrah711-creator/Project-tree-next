@@ -13,9 +13,9 @@ export function contractDocumentMarkup(state,activityName=''){
   const formatCost=value=>new Intl.NumberFormat('fa-IR').format(Number(value)||0);
 
   let clausesHtml = '';
-  (state.items||[]).forEach((item, index) => {
+  (state.items||[]).filter(item => item.included !== false).forEach((item, index) => {
     clausesHtml += '<div class="doc-clause"><b>' + persian(index + 1) + '.</b> ' + escape(item.text || '........................................................');
-    (item.children || []).forEach((child, childIndex) => {
+    (item.children || []).filter(child => child.included !== false).forEach((child, childIndex) => {
       clausesHtml += '<div class="doc-child"><b>' + persian(`${index + 1}-${childIndex + 1}`) + '.</b> ' + escape(child.text || '........................................................') + '</div>';
     });
     clausesHtml += '</div>';
