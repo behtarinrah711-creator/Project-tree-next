@@ -219,3 +219,26 @@ test('dirty Back restore is consumed after exit and retained once after Stay', a
   await expect(page.locator('#contractsPage')).toBeVisible();
   expect(errors).toEqual([]);
 });
+
+test('draft button and exit Save preserve incomplete contract fields when reopened', async ({page})=>{
+  const errors=[];
+  await openRealContractForm(page,errors);
+  const id=await page.evaluate(()=>window.KarhaRealContractForm.getState().id);
+  await row(page,'محل انعقاد قرارداد').locator('input').fill('کارگاه پیش‌نویس');
+  await page.getByRole('textbox',{name:'شرح عملیات 1',exact:true}).fill('عملیات ناتمام');
+  await page.locator('#contractFormActions .if-draft').click();
+  await expect(page.locator('#contractFormPage')).toBeHidden();
+  await page.evaluate(id=>window.KarhaRealContractForm.open(id,'e2e-contract-project'),id);
+  await expect(row(page,'محل انعقاد قرارداد').locator('input')).toHaveValue('کارگاه پیش‌نویس');
+  await expect(page.getByRole('textbox',{name:'شرح عملیات 1',exact:true})).toHaveValue('عملیات ناتمام');
+  await row(page,'محل انعقاد قرارداد').locator('input').fill('ویرایش پیش‌نویس هنگام خروج');
+  await page.goBack();
+  const prompt=page.locator('.global-incomplete-exit-choice');
+  await expect(prompt).toBeVisible();
+  await prompt.locator('[data-exit="yes"]').click();
+  await expect(page.locator('#contractFormPage')).toBeHidden();
+  await page.evaluate(id=>window.KarhaRealContractForm.open(id,'e2e-contract-project'),id);
+  await expect(row(page,'محل انعقاد قرارداد').locator('input')).toHaveValue('ویرایش پیش‌نویس هنگام خروج');
+  await expect(page.getByRole('textbox',{name:'شرح عملیات 1',exact:true})).toHaveValue('عملیات ناتمام');
+  expect(errors).toEqual([]);
+});
