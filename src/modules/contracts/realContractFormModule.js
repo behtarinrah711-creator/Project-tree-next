@@ -1,4 +1,4 @@
-import { paymentMethods, renderQuantityRows, syncContractAmount } from './contractPricing.js';
+import { ensureOperationRows, paymentMethods, renderQuantityRows, syncContractAmount } from './contractPricing.js';
 import { contractDocumentMarkup } from './contractDocument.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
@@ -491,11 +491,7 @@ function renderContractForm() {
     selectRow:ftSelectRow,pick:pickFixed,onDirty:()=>{dirty=true;},onChange:pickerChanged,
     numberRow:(parent,label,value,onChange,opts)=>ftNumberRow(parent,label,value,onChange,opts)
   });
-  if(state.amountMethod==='quantity'){
-    renderRows(form,state.amountRows,{operations:true});
-  }else if(state.amountMethod==='agreed'){
-    renderRows(form,state.agreedRows,{operations:true,agreed:true});
-  }
+  renderRows(form,ensureOperationRows(state),{operations:true,mixed:true});
   syncContractAmount(state);
   ftAmountSummary(form,'مبلغ کل قرارداد',state.amount);
   ftNumberRow(form, 'درصد حسن انجام کار', state.retentionPercent, value => {

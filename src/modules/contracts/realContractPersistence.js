@@ -32,14 +32,23 @@ export function saveRealContract(projectId, draft, helpers={}){
   if(draft.endDate && draft.startDate && draft.endDate<draft.startDate){
     toast('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد');return {ok:false};
   }
-  if(draft.amountMethod==='agreed'){
+  if(Array.isArray(draft.operationRows)){
+    if(!draft.operationRows.length || draft.operationRows.some(row=>
+      !String(row.description||'').trim() ||
+      (row.pricingMode==='quantity'
+        ? !row.unit || numericValue(row.quantity)<=0 || numericValue(row.unitPrice)<=0
+        : row.pricingMode!=='agreed' || numericValue(row.agreedPrice)<=0))){
+      toast('شرح و بهای عملیات‌ها و در حالت مقداری، واحد و مقدار را کامل کنید');return {ok:false};
+    }
+  }
+  if(!Array.isArray(draft.operationRows) && draft.amountMethod==='agreed'){
     const rows=ensureAgreedRows(draft);
     if(!rows.length || rows.some(row=>!String(row.description||'').trim() || numericValue(row.agreedPrice)<=0)){
       toast('شرح عملیات و بهای توافقی عملیات‌ها را کامل کنید');return {ok:false};
     }
   }
   syncContractAmount(draft);
-  for(const rows of [draft.amountMethod==='quantity'?draft.amountRows:null, draft.paymentMethod==='quantity'?draft.paymentRows:null].filter(rows=>rows!==null)){
+  for(const rows of [!Array.isArray(draft.operationRows) && draft.amountMethod==='quantity'?draft.amountRows:null, draft.paymentMethod==='quantity'?draft.paymentRows:null].filter(rows=>rows!==null)){
     if(!Array.isArray(rows) || !rows.length){toast('حداقل یک ردیف وارد کنید');return {ok:false};}
     if(rows.some(row=>!String(row.description||'').trim() || !row.unit || numericValue(row.quantity)<=0 || numericValue(row.unitPrice)<=0)){
       toast('شرح عملیات، واحد، مقدار و بهای واحد ردیف‌ها را کامل کنید');return {ok:false};
