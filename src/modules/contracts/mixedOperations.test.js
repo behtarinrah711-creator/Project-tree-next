@@ -45,13 +45,13 @@ test('operation editor explicitly switches modes and keeps total field',()=>{
    return {fields,list:root.children[0]};
   };
   let editor=render();
-  assert.deepEqual(editor.fields,['بهای کل عملیات']);
+  assert.deepEqual(editor.fields,['بهای عملیات']);
   const choices=editor.list.children[0].children[2];
   assert.equal(choices.children[0].children[0].checked,true);
   const radio=choices.children[1].children[0];radio.checked=true;radio.onchange();
   assert.equal(rows[0].pricingMode,'quantity');assert.equal(changes,1);
   editor=render();assert.deepEqual(editor.fields,['واحد','مقدار','بهای واحد']);
-  assert.equal(editor.list.children[0].children.at(-1).children[0].textContent,'بهای کل عملیات:');
+  assert.equal(editor.list.children[0].children.at(-1).children[0].textContent,'بهای عملیات:');
   editor.list.children.at(-1).onclick();assert.equal(rows[1].pricingMode,'quantity');
  }finally{globalThis.document=previous;}
 });
