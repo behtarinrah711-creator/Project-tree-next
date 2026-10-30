@@ -66,6 +66,14 @@ export function syncPaymentStages(state){
   state.amountAfterRetention=String(Math.max(0,(Number(state.amount)||0)-retained));
   return state.paymentStages;
 }
+export function paymentBalanceSummary(state){
+  const stages=syncPaymentStages(state);
+  const netAmount=Number(state.amountAfterRetention)||0;
+  const payments=stages.map((stage,index)=>({
+    number:index+1,amount:stage.paymentAmount
+  }));
+  return {netAmount,payments,remaining:netAmount-payments.reduce((sum,row)=>sum+row.amount,0)};
+}
 export function renderPaymentStages(body,state,{onDirty}={}){
   const stages=syncPaymentStages(state);
   const sec=document.createElement('div');
