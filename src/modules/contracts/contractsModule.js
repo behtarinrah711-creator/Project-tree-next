@@ -1,3 +1,4 @@
+import { renderContractHistory } from './contractHistoryView.js';
 import { approvalLabels, contractApprovalState, canReviewContract, canRevokeContractApproval, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
 import { fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
@@ -208,6 +209,7 @@ export const contractsModule={
         const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='علت برگشت: '+c.approvalRejectionReason;statusRow.appendChild(reason);
       }
       row.appendChild(statusRow);statusRow.onclick=event=>event.stopPropagation();
+      row.appendChild(renderContractHistory(document,c));
       row.onclick=()=>openContractPreview(p,c,{trigger:main}); renderedRows.push(row);
     };
     contracts.forEach(appendContract);
