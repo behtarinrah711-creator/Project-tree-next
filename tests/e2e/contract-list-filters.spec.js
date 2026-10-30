@@ -19,12 +19,23 @@ test('contract search and status compose and no-results exists only for zero mat
  const search=body.getByRole('searchbox',{name:'جستجوی قرارداد'});
  await search.fill('0003');await expect(rows).toHaveCount(1);await expect(rows.first()).toContainText('CTR-0003');
  await body.locator('.contract-status-filter').click();
- await page.locator('#searchTemplatePage').getByText('آماده ارسال برای تأیید',{exact:true}).click();
+ const menu=page.locator('#contractStatusMenu');
+ await expect(menu).toBeVisible();
+ await expect(menu.getByRole('checkbox')).toHaveCount(5);
+ for(const box of await menu.getByRole('checkbox').all())await expect(box).toBeChecked();
+ for(const box of await menu.getByRole('checkbox').all()){
+   if(await box.inputValue()!=='ready')await box.uncheck();
+ }
+ await page.getByRole('button',{name:'بستن فیلتر وضعیت',exact:true}).click();
+ await expect(menu).toHaveCount(0);
+ await expect(page.locator('#searchTemplatePage')).toBeHidden();
  await expect(rows).toHaveCount(0);await expect(body.locator('.contract-empty')).toBeVisible();
  await search.fill('');await expect(rows).toHaveCount(1);await expect(rows.first()).toContainText('CTR-0001');
  await expect(body.locator('.contract-empty')).toHaveCount(0);
  await body.locator('.contract-status-filter').click();
- await page.locator('#searchTemplatePage').getByText('همه',{exact:true}).click();
+ for(const box of await page.locator('#contractStatusMenu').getByRole('checkbox').all())await box.check();
+ await page.keyboard.press('Escape');
+ await expect(page.locator('#contractStatusMenu')).toHaveCount(0);
  await expect(rows).toHaveCount(2);
  await search.fill('بدون نتیجه');await expect(rows).toHaveCount(0);
  await expect(body.locator('.contract-empty')).toHaveCount(1);
