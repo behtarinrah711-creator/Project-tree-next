@@ -1821,3 +1821,7 @@ textarea.contract-project-item-input{
 .contract-pages .contract-document-quantities tbody td:first-child:not([colspan]){text-align:center;vertical-align:middle}
 
 .contract-form-body .contract-clause-heading{display:flex;justify-content:space-between;align-items:center}
+/* Keep operation cards clear of field dividers in both pricing modes. */
+.contract-form-body .contract-quantity-list{padding-top:12px}
+.contract-form-body .contract-quantity-row.form-template{margin:0 0 12px !important}
+.contract-form-body .contract-quantity-row > .ft-row:last-child{border-bottom:0 !important}
