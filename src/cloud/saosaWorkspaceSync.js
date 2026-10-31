@@ -1,3 +1,4 @@
+import { ensureDefaultProjectCatalogue } from '../data/defaultProjectCatalogue.js';
 import { APP_DATA_STORAGE_KEY, createEmptySnapshot } from '../data/appDataStore.js';
 
 export const SAOSA_SESSION_KEY = 'saosa:v1:sms-session';
@@ -40,6 +41,9 @@ async function workspaceRequest(windowRef, session, options = {}){
     error.status = response.status;
     throw error;
   }
+  // Saosa hydrates directly from the workspace API, bypassing Firebase migrations.
+  // Apply defaults on every accepted snapshot, including refreshes and save echoes.
+  if(Array.isArray(payload.snapshot?.projects)) payload.snapshot.projects.forEach(ensureDefaultProjectCatalogue);
   return payload;
 }
 

@@ -146,3 +146,26 @@ test('accepted invitation refreshes membership and enters the project in one tra
   }]);
   assert.equal(drawerRenders,1);
 });
+
+test('Saosa API startup and refresh include the contracting template without reviving deleted defaults',async()=>{
+  const local=storage({[SAOSA_SESSION_KEY]:session});
+  let snapshot={schemaVersion:8,projects:[{id:'old',name:'کشتارگاه',tasks:[],contractTemplates:[{id:'custom',title:'قرارداد کناف کاری',items:[]}]}],activeTab:'old',starredOrder:[]};
+  const win=windowWith({localStorage:local,fetch:async()=>response(200,{accountId:'a',snapshot:JSON.parse(JSON.stringify(snapshot))})});
+  const store=createAppDataStore({storage:local});
+  await prepareSaosaWorkspace({windowRef:win,store});
+  const template=store.getProjects()[0].contractTemplates.find(t=>t.id==='builtin-contracting-contract');
+  assert.equal(template.title,'قرارداد پیمانکاری');
+  assert.equal(template.items.length,12);
+  assert.equal(template.activityId,undefined);
+  assert.equal(store.getProjects()[0].contractTemplates.filter(t=>t.id==='custom').length,1);
+  await refreshSaosaWorkspace({windowRef:win,store});
+  assert.equal(store.getProjects()[0].contractTemplates.filter(t=>t.id===template.id).length,1);
+  snapshot=JSON.parse(JSON.stringify(store.getSnapshot()));
+  const edited=snapshot.projects[0].contractTemplates.find(t=>t.id===template.id);
+  edited.title='عنوان ویرایش‌شده';edited.trashed=true;
+  await refreshSaosaWorkspace({windowRef:win,store});
+  const retained=store.getProjects()[0].contractTemplates.filter(t=>t.id===template.id);
+  assert.equal(retained.length,1);
+  assert.equal(retained[0].trashed,true);
+  assert.equal(retained[0].title,'عنوان ویرایش‌شده');
+});
