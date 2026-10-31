@@ -33,13 +33,13 @@ test('contract row preview is read-only, preserves data and closes with header/d
   assert.deepEqual(events.at(-1),['close','contract-preview',true]);
 });
 
- test('row preview displays lazy default template clauses before editing or saving',()=>{
+ test('legacy saved contract without copied clauses does not import a newer template',()=>{
   const make=()=>({children:[],classList:{add(){},remove(){}},setAttribute(){},append(...x){this.children.push(...x);},appendChild(x){this.children.push(x);},replaceChildren(){this.children=[];}});
   let output='';
   const view=createContractPreviewView({documentRef:{createElement:make,body:make()},windowRef:{},mountPrintPage:(_,preview)=>{output=preview.innerHTML;}});
   const project={activityTemplates:[{id:'a',name:'Foundation'}],contractTemplates:[{id:'t',activityId:'a',items:[{text:'Foundation terms',children:[{text:'Employer supplies materials'}]}]}]};
-  const record={id:'auto',activityId:'a',templateId:'t',items:[]};
+  const record={id:'auto',activityId:'a',templateId:'t'};
   view.open(project,record);
-  assert.match(output,/Foundation terms/);assert.match(output,/Employer supplies materials/);
-  assert.deepEqual(record.items,[]);
+  assert.doesNotMatch(output,/Foundation terms/);assert.doesNotMatch(output,/Employer supplies materials/);
+  assert.equal(record.items,undefined);
  });

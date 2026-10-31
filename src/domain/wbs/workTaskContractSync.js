@@ -66,8 +66,8 @@ export function syncContractFromWorkTask(projectId, workId, task, clock=Date.now
     activityId,
     activityIds:activityId ? [activityId] : [],
     templateId:editable ? templateId : current.templateId,
-    title:(editable ? template?.title : current.title) || current?.title || 'قرارداد '+(task.title || ''),
-    ...(editable && (sourceChanged || !current?.items?.length) ? {
+    title:(editable && (sourceChanged || !current) ? template?.title : current?.title) || 'قرارداد '+(task.title || ''),
+    ...(editable && (sourceChanged || !Array.isArray(current?.items)) ? {
       items:cloneTemplateIntoContract(template),
       paymentItems:JSON.parse(JSON.stringify(template?.paymentItems || [])),
     } : {}),
