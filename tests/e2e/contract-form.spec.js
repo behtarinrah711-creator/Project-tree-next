@@ -8,7 +8,7 @@ const project = {
     { id: 'contractor-1', firstName: 'پیمانکار', lastName: 'آزمایشی', activities: ['activity-1'] }
   ],
   activityTemplates: [{ id: 'activity-1', name: 'اجرای سازه' }],
-  contractTemplates: [], contracts: [], statusForms: [], trashed: false, archived: false
+  contractTemplates: [{id:'independent-template',title:'قرارداد مستقل آزمایشی',items:[{id:'article',text:'ماده مستقل',children:[{id:'clause',text:'بند مستقل',children:[]}]}],paymentItems:[]}], contracts: [], statusForms: [], trashed: false, archived: false
 };
 
 const escapeRegExp = value => String(value).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -116,13 +116,20 @@ test('real New Contract preserves its state and owns child Back navigation', asy
   await expect(page.locator('#contractFormPage')).toBeVisible();
   await expect(place).toHaveValue('کارگاه مرکزی');
 
-  await selectSearchOption(page, 'آیتم پروژه', 'عملیات سازه', { settle: false });
-  // Project-item selection intentionally continues to the activity picker.
-  await expect(page.locator('#searchTemplatePage')).toBeVisible();
-  await page.locator('.stpl-row').filter({ hasText: 'اجرای سازه' }).click();
-  await expect(page.locator('#searchTemplatePage')).toBeHidden();
-  await waitForSearchHistoryToSettle(page);
+  await selectSearchOption(page, 'آیتم پروژه', 'عملیات سازه');
   await expect(row(page, 'آیتم پروژه')).toContainText('عملیات سازه');
+  // The item's activity is inherited; the contract template is explicitly chosen.
+  await expect(row(page, 'فعالیت')).toContainText('اجرای سازه');
+  await expect(row(page, 'قالب قرارداد')).toContainText('انتخاب');
+  await selectSearchOption(page, 'فعالیت', 'اجرای سازه');
+  await selectSearchOption(page, 'قالب قرارداد', 'قرارداد مستقل آزمایشی');
+  await expect(row(page, 'قالب قرارداد')).toContainText('قرارداد مستقل آزمایشی');
+  const clause=page.locator('#contractFormBody .ctf-material-row textarea').first();
+  await expect(clause).toHaveValue('بند مستقل');
+  await clause.fill('بند مستقل ویرایش‌شده');
+  await selectSearchOption(page, 'فعالیت', 'اجرای سازه');
+  await expect(row(page, 'قالب قرارداد')).toContainText('قرارداد مستقل آزمایشی');
+  await expect(clause).toHaveValue('بند مستقل ویرایش‌شده');
   await selectSearchOption(page, 'کارفرما', 'کارفرمای آزمایشی');
   await expect(row(page, 'کارفرما')).toContainText('کارفرمای آزمایشی');
   await selectSearchOption(page, 'پیمانکار', 'پیمانکار آزمایشی');
