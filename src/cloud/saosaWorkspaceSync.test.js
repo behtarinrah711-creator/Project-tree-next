@@ -155,7 +155,7 @@ test('Saosa API startup and refresh include the contracting template without rev
   await prepareSaosaWorkspace({windowRef:win,store});
   const template=store.getProjects()[0].contractTemplates.find(t=>t.id==='builtin-contracting-contract');
   assert.equal(template.title,'قرارداد پیمانکاری');
-  assert.equal(template.items.length,12);
+  assert.equal(template.items.length,10);
   assert.equal(template.activityId,undefined);
   assert.equal(store.getProjects()[0].contractTemplates.filter(t=>t.id==='custom').length,1);
   await refreshSaosaWorkspace({windowRef:win,store});

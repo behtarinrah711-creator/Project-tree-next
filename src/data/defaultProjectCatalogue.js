@@ -80,16 +80,10 @@ const foundationSections = [
   ['دوره تضمین:', []],
 ];
 
-// Source: user-supplied wastewater foundation contract. Its nine articles are
-// mapped into the existing twelve headings; no new legal terms are invented.
+// Reusable contracting clauses; scope, payment and party details belong to the real contract.
 const contractingSections = [
-  ['موضوع قرارداد:', ['اجرای فونداسیون تصفیه‌خانه شامل میلگردگذاری، قالب‌بندی و ریشه‌گذاری، اجرای واتراستاپ، اسلیوگذاری و سایر عملیات لازم طبق نقشه و دستورکار کارفرما و مطابق اصول فنی و اجرایی.']],
   ['اسناد و مدارک قرارداد:', ['این قرارداد در دو نسخه با اعتبار یکسان تنظیم و به امضای طرفین می‌رسد.']],
   ['مدت قرارداد:', ['مدت اجرای قرارداد از تاریخ … تا تاریخ … است و در صورت توافق طرفین قابل تمدید است.']],
-  ['شرایط پرداخت:', [
-    'مبلغ اجرای هر متر فونداسیون ۱۲٬۵۰۰٬۰۰۰ ریال است. مبلغ نهایی قرارداد بر اساس متراژ فونداسیون اجراشده محاسبه خواهد شد.',
-    'پرداخت بر اساس درصد انجام کار تکمیل‌شده و تأییدشده انجام می‌شود و نحوه پرداخت به صورت … خواهد بود.'
-  ]],
   ['تعهدات پیمانکار:', [
     'اجرای کار با کیفیت مناسب و مطابق نقشه و دستورکار کارفرما.',
     'رعایت اصول ایمنی و فنی در زمان اجرای کار.',
@@ -97,7 +91,7 @@ const contractingSections = [
     'تحویل کار در زمان‌بندی مورد توافق طرفین.',
     'پیمانکار موظف است در صورت مشاهده ایراد در نقشه یا شرایط اجرا، پیش از ادامه کار موضوع را به کارفرما اطلاع دهد.',
     'استادکار حق واگذاری کار را به صورت کلی به هیچ شخص حقیقی یا حقوقی ندارد.',
-    'هرگونه اعلام هزینه در شروع قرارداد صرفاً برآورد بوده و تسویه‌حساب نهایی منوط به متراژ دقیق در پایان کار است.'
+    'هرگونه اعلام هزینه در شروع قرارداد صرفاً برآورد بوده و تسویه‌حساب نهایی منوط به تعیین دقیق میزان کار انجام‌شده در پایان کار است.'
   ]],
   ['تعهدات کارفرما:', [
     'تحویل محل کار و فراهم‌کردن مصالح و تجهیزات مورد توافق شامل آب، برق، مصالح و … .',
@@ -118,6 +112,24 @@ export const DEFAULT_PROJECT_CATALOGUE = [
   {id:'builtin-foundation', name:'اجرای فونداسیون', title:'قرارداد اجرای فونداسیون', sections:foundationSections},
   {id:'builtin-contracting', title:'قرارداد پیمانکاری', sections:contractingSections},
 ];
+
+/** Upgrade only the supplied contracting template, once, without touching real contracts. */
+function cleanContractingTemplate(template){
+  if(template.id!=='builtin-contracting-contract' || template.genericContentVersion===1) return;
+  const isPersonal=text=>/قریشی|آدرس|نشانی|شماره\s*(ملی|تماس|شناسنامه)|کد\s*ملی/.test(String(text || ''));
+  template.items=(template.items || []).filter(item=>
+    !['موضوع قرارداد','شرایط پرداخت'].includes(String(item.text || '').replace(/[:：]\s*$/,'').trim())
+    && !isPersonal(item.text)
+  ).map((item,index)=>({...item,number:String(index+1),children:(item.children || [])
+    .filter(child=>!isPersonal(child.text))
+    .map((child,j)=>({...child,number:`${index+1}-${j+1}`}))}));
+  for(const key of Object.keys(template)){
+    if(/^(contractor|employer)(Id|ContactId|Name|NationalId|Address|Phone)$/.test(key)
+      || ['contactId','contractPlace','projectItemPath','address','phone','nationalId'].includes(key)) delete template[key];
+  }
+  template.paymentItems=[];
+  template.genericContentVersion=1;
+}
 
 /** Idempotent: activities and templates are separate catalogues. */
 export function ensureDefaultProjectCatalogue(project){
@@ -141,5 +153,6 @@ export function ensureDefaultProjectCatalogue(project){
       }))
     });
   }
+  project.contractTemplates.forEach(cleanContractingTemplate);
   return project;
 }
