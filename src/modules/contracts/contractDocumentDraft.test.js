@@ -7,7 +7,7 @@ import {contractDocumentMarkup} from './contractDocument.js';
 const template={id:'f',activityId:'a',items:Array.from({length:12},(_,i)=>({text:`Article ${i+1}`,children:[{text:`Clause ${i+1}`}]}))};
 const project={contractTemplates:[template],contacts:[]};
 test('auto-created work contract resolves all twelve articles for document output without modifying storage',()=>{
-  const record={id:'work-contract',activityId:'a',items:[],workTaskId:'task'};
+  const record={id:'work-contract',activityId:'other',templateId:'f',items:[],workTaskId:'task'};
   const before=JSON.stringify({record,project});
   const draft=resolveContractDocumentDraft(record,project);
   assert.equal(draft.items.length,12);assert.equal(draft.templateId,'f');
@@ -21,7 +21,8 @@ test('saved custom clauses take priority over the default template',()=>{
   assert.deepEqual(resolveContractDocumentDraft(record,project).items,record.items);
 });
 test('explicit template links are respected; missing, trashed and ambiguous templates are not silently substituted',()=>{
-  assert.equal(resolveContractDocumentDraft({activityId:'a',templateId:'f'},project).items.length,12);
+  assert.equal(resolveContractDocumentDraft({activityId:'other',templateId:'f'},project).items.length,12);
+  assert.equal(resolveContractDocumentDraft({activityId:'a'},project).items.length,0);
   assert.equal(resolveContractDocumentDraft({activityId:'a',templateId:'missing'},project).items.length,0);
   assert.equal(resolveContractDocumentDraft({activityId:'a'}, {contractTemplates:[{...template,trashed:true}]}).items.length,0);
   assert.equal(resolveContractDocumentDraft({activityId:'a'}, {contractTemplates:[template,{...template,id:'other'}]}).items.length,0);

@@ -1,4 +1,4 @@
-import { activityRepository } from '../../data/activityRepository.js';
+import { cloneTemplateIntoContract } from '../contractTemplateItems.js';
 import { contractRepository } from '../../data/contractRepository.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { workTaskRepository } from '../../data/workTaskRepository.js';
@@ -48,7 +48,11 @@ export function syncContractFromWorkTask(projectId, workId, task, clock=Date.now
   const project=projectRepository.find(projectId);
   if(!project) return null;
   const activityId=String(task.activityId || '');
-  const activity=activityId ? activityRepository.get(projectId,activityId) : null;
+  const templateId=String(task.contractTemplateId || '');
+  const template=(project.contractTemplates || []).find(t=>!t.trashed && String(t.id)===templateId);
+  const sourceChanged=templateId!==String(current?.templateId || '');
+  const editable=!current || current.isDraft || current.status==='draft';
+  if(!editable && ['pending','approved'].includes(current.approvalStatus)) return current;
   const now=clock();
   const record={
     ...(current || {}),
@@ -61,7 +65,12 @@ export function syncContractFromWorkTask(projectId, workId, task, clock=Date.now
     contactId:String(task.counterpartyContactId || ''),
     activityId,
     activityIds:activityId ? [activityId] : [],
-    title:`قرارداد ${activity?.name || task.title || ''}`.trim(),
+    templateId:editable ? templateId : current.templateId,
+    title:(editable ? template?.title : current.title) || current?.title || 'قرارداد '+(task.title || ''),
+    ...(editable && (sourceChanged || !current?.items?.length) ? {
+      items:cloneTemplateIntoContract(template),
+      paymentItems:JSON.parse(JSON.stringify(template?.paymentItems || [])),
+    } : {}),
     status:current?.status || 'draft',
     isDraft:current ? Boolean(current.isDraft || current.status==='draft') : true,
     systemGenerated:true,
@@ -79,6 +88,7 @@ export function syncWorkTaskFromContract(projectId, contract){
   const saved=workTaskRepository.update(projectId,contract.projectItemId,contract.workTaskId,task=>({
     ...task,
     hasContract:true,
+    contractTemplateId:String(contract.templateId || ''),
     activityId,
     activityIds:activityId ? [activityId] : [],
     activities:activityId ? [activityId] : [],

@@ -184,3 +184,35 @@ test('contract reviewers persist from the task and every assigned reviewer must 
  assert.equal(contractApi.review('p1',c.id,'approve',actor).contract.approvalStatus,'pending');
  assert.equal(contractApi.review('p1',c.id,'approve',{id:'b',contactId:'c2'}).contract.approvalStatus,'approved');
 });
+
+test('work task independently persists a template and clones it into its system contract',()=>{
+  const store=installFixture();
+  const project=store.getSnapshot().projects[0];
+  project.contractTemplates=[
+    {id:'foundation',title:'قرارداد فونداسیون',items:[{id:'s',text:'فونداسیون',children:[{id:'c',text:'بند'}]}]},
+    {id:'wall',title:'قرارداد دیوار برشی',items:[{id:'w',text:'دیوار برشی'}]},
+    {id:'deleted',title:'حذف شده',trashed:true},
+  ];
+  assert.equal(workTaskApi.create('p1','w1',draft({hasContract:true,contractTemplateId:'missing'})).code,'contract_template');
+  assert.equal(workTaskApi.create('p1','w1',draft({hasContract:true,contractTemplateId:'deleted'})).code,'contract_template');
+  const created=workTaskApi.create('p1','w1',draft({hasContract:true,activityId:'a1',contractTemplateId:'foundation'}));
+  assert.equal(created.ok,true);
+  assert.equal(created.task.contractTemplateId,'foundation');
+  const contract=()=>store.getSnapshot().projects[0].contracts.find(c=>c.workTaskId===created.task.id);
+  assert.equal(contract().templateId,'foundation');
+  assert.equal(contract().title,'قرارداد فونداسیون');
+  assert.equal(contract().items[0].text,'فونداسیون');
+  assert.notEqual(contract().items[0].id,'s');
+  contract().items[0].children[0].text='ویرایش اختصاصی';
+  assert.equal(workTaskApi.update('p1','w1',created.task.id,{activityId:'a2'}).ok,true);
+  assert.equal(contract().templateId,'foundation');
+  assert.equal(contract().items[0].children[0].text,'ویرایش اختصاصی');
+  assert.equal(workTaskApi.update('p1','w1',created.task.id,{contractTemplateId:'wall'}).ok,true);
+  assert.equal(contract().activityId,'a2');
+  assert.equal(contract().templateId,'wall');
+  assert.equal(contract().items[0].text,'دیوار برشی');
+  assert.equal(contractApi.save('p1',{...contract(),templateId:'foundation',items:[{text:'نهایی'}]}).ok,true);
+  assert.equal(workTaskApi.get('p1','w1',created.task.id).contractTemplateId,'foundation');
+  assert.equal(workTaskApi.update('p1','w1',created.task.id,{contractTemplateId:'wall'}).code,'contract_locked');
+  assert.equal(contract().items[0].text,'نهایی');
+});

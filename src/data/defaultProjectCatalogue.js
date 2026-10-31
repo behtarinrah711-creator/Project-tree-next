@@ -80,28 +80,59 @@ const foundationSections = [
   ['دوره تضمین:', []],
 ];
 
-export const DEFAULT_PROJECT_CATALOGUE = [{
-  id:'builtin-foundation', name:'اجرای فونداسیون', sections:foundationSections,
-}];
+// Source: user-supplied wastewater foundation contract. Its nine articles are
+// mapped into the existing twelve headings; no new legal terms are invented.
+const contractingSections = [
+  ['موضوع قرارداد:', ['اجرای فونداسیون تصفیه‌خانه شامل میلگردگذاری، قالب‌بندی و ریشه‌گذاری، اجرای واتراستاپ، اسلیوگذاری و سایر عملیات لازم طبق نقشه و دستورکار کارفرما و مطابق اصول فنی و اجرایی.']],
+  ['اسناد و مدارک قرارداد:', ['این قرارداد در دو نسخه با اعتبار یکسان تنظیم و به امضای طرفین می‌رسد.']],
+  ['مدت قرارداد:', ['مدت اجرای قرارداد از تاریخ … تا تاریخ … است و در صورت توافق طرفین قابل تمدید است.']],
+  ['شرایط پرداخت:', [
+    'مبلغ اجرای هر متر فونداسیون ۱۲٬۵۰۰٬۰۰۰ ریال است. مبلغ نهایی قرارداد بر اساس متراژ فونداسیون اجراشده محاسبه خواهد شد.',
+    'پرداخت بر اساس درصد انجام کار تکمیل‌شده و تأییدشده انجام می‌شود و نحوه پرداخت به صورت … خواهد بود.'
+  ]],
+  ['تعهدات پیمانکار:', [
+    'اجرای کار با کیفیت مناسب و مطابق نقشه و دستورکار کارفرما.',
+    'رعایت اصول ایمنی و فنی در زمان اجرای کار.',
+    'جبران خسارت ناشی از قصور یا اجرای نادرست پیمانکار.',
+    'تحویل کار در زمان‌بندی مورد توافق طرفین.',
+    'پیمانکار موظف است در صورت مشاهده ایراد در نقشه یا شرایط اجرا، پیش از ادامه کار موضوع را به کارفرما اطلاع دهد.',
+    'استادکار حق واگذاری کار را به صورت کلی به هیچ شخص حقیقی یا حقوقی ندارد.',
+    'هرگونه اعلام هزینه در شروع قرارداد صرفاً برآورد بوده و تسویه‌حساب نهایی منوط به متراژ دقیق در پایان کار است.'
+  ]],
+  ['تعهدات کارفرما:', [
+    'تحویل محل کار و فراهم‌کردن مصالح و تجهیزات مورد توافق شامل آب، برق، مصالح و … .',
+    'پرداخت به‌موقع دستمزد پیمانکار طبق قرارداد.',
+    'ارائه نقشه و دستورکار لازم برای اجرای صحیح پروژه.',
+    'هرگونه تأخیر در تهیه مصالح مورد نیاز، تأخیر در حضور ناظر، روزهای بارندگی و تغییر در نقشه به مدت زمان قرارداد اضافه خواهد کرد.',
+    'در صورت تغییر در نقشه‌ها، هزینه آن باید مازاد بر قرارداد به استادکار پرداخت شود.'
+  ]],
+  ['فسخ:', ['در صورت عدم انجام تعهدات اساسی هر یک از طرفین، طرف مقابل پس از اعلام کتبی و اعطای فرصت مناسب برای رفع مشکل، حق فسخ قرارداد را خواهد داشت.']],
+  ['شرایط غیرمترقبه:', []],
+  ['کسورات قانونی:', []],
+  ['حل اختلافات:', ['در صورت بروز اختلاف، طرفین ابتدا از طریق مذاکره و توافق نسبت به حل موضوع اقدام می‌کنند و در صورت عدم توافق، موضوع از طریق مراجع قانونی صالح پیگیری خواهد شد.']],
+  ['جریمه:', []],
+  ['دوره تضمین:', []],
+];
 
-/** Idempotent: preserve edits, deletions and existing activity/template links. */
+export const DEFAULT_PROJECT_CATALOGUE = [
+  {id:'builtin-foundation', name:'اجرای فونداسیون', title:'قرارداد اجرای فونداسیون', sections:foundationSections},
+  {id:'builtin-contracting', title:'قرارداد پیمانکاری', sections:contractingSections},
+];
+
+/** Idempotent: activities and templates are separate catalogues. */
 export function ensureDefaultProjectCatalogue(project){
   if(!project || project.trashed || project.type === 'notebook') return project;
   project.activityTemplates ||= [];
   project.contractTemplates ||= [];
   for(const entry of DEFAULT_PROJECT_CATALOGUE){
-    let activity = project.activityTemplates.find(a => a.id === entry.id || a.name?.trim() === entry.name);
-    if(!activity){
-      activity = {id:entry.id, name:entry.name, trashed:false};
-      project.activityTemplates.push(activity);
+    if(entry.name && !project.activityTemplates.some(a=>a.id===entry.id || a.name?.trim()===entry.name)){
+      project.activityTemplates.push({id:entry.id,name:entry.name,trashed:false});
     }
-    if(activity.trashed) continue;
-    if(project.contractTemplates.some(t => String(t.activityId) === String(activity.id))) continue;
-    const templateId = entry.id + '-contract';
-    // A template moved to another activity is still a user edit, not a missing seed.
-    if(project.contractTemplates.some(t => t.id === templateId)) continue;
+    const templateId=entry.id+'-contract';
+    // Including trash prevents deleted or edited defaults from being recreated.
+    if(project.contractTemplates.some(t=>t.id===templateId)) continue;
     project.contractTemplates.push({
-      id:templateId, activityId:activity.id, title:'قرارداد ' + entry.name,
+      id:templateId, title:entry.title,
       status:'final', isDraft:false, trashed:false, paymentItems:[],
       items:entry.sections.map(([text, children], index) => ({
         id:templateId + '-' + index, text, children:children.map((text, child) => ({

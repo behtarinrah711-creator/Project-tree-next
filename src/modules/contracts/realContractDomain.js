@@ -1,3 +1,5 @@
+import { cloneTemplateIntoContract } from '../../domain/contractTemplateItems.js';
+export { cloneTemplateIntoContract };
 import { ensureAgreedRows } from './contractPricing.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
@@ -59,16 +61,6 @@ export function makeRealContractDraft(existing=null, today=''){
     trashed:false
   };
 }
-export function cloneTemplateIntoContract(template){
-  return (template?.items||[]).map(x=>({
-    id:'rc_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),
-    text:x.text||'', number:x.number||'',
-    children:(x.children||[]).map(c=>({
-      id:'rc_'+Date.now()+'_'+Math.random().toString(36).slice(2,8),
-      text:c.text||'', number:c.number||'', children:[]
-    }))
-  }));
-}
 export function renumberRealContractItems(items){
   (items||[]).forEach((x,i)=>{
     x.number=String(i+1);
@@ -122,29 +114,24 @@ export function resolveProjectItemActivityTemplate(project, projectItemId){
   const activity=activityIds.length===1
     ? (project.activityTemplates||[]).find(a=>String(a.id)===activityIds[0] && !a.trashed) || null
     : null;
-  const template=activity
-    ? (project.contractTemplates||[]).find(t=>String(t.activityId)===String(activity.id) && !t.trashed) || null
-    : null;
+  const template=(project.contractTemplates||[]).find(t=>String(t.id)===String(found?.contractTemplateId || '') && !t.trashed) || null;
   return {projectItem:found,activity,template,activityIds};
 }
 
 /** Resolve lazy template content consistently without writing to stored records. */
 export function resolveContractDocumentDraft(contract, project, today=''){
   const draft=makeRealContractDraft(contract,today);
-  if(!draft.items.length && project){
+  if(project){
     const templates=(project.contractTemplates||[]).filter(t=>!t.trashed);
-    const template=draft.templateId
-      ? templates.find(t=>String(t.id)===String(draft.templateId)
-        && (!draft.activityId || String(t.activityId)===String(draft.activityId)))
-      : (()=>{
-        const matching=templates.filter(t=>draft.activityId && String(t.activityId)===String(draft.activityId));
-        return matching.length===1 ? matching[0] : null;
-      })();
+    const template=templates.find(t=>String(t.id)===String(draft.templateId || ''));
     if(template){
-      draft.templateId=template.id;
-      draft.items=cloneTemplateIntoContract(template);
-      draft.paymentItems=JSON.parse(JSON.stringify(template.paymentItems||[]));
-      renumberRealContractItems(draft.items);
+      draft.title=draft.title || template.title;
+      if(!draft.items.length){
+        draft.templateId=template.id;
+        draft.items=cloneTemplateIntoContract(template);
+        draft.paymentItems=JSON.parse(JSON.stringify(template.paymentItems||[]));
+        renumberRealContractItems(draft.items);
+      }
     }
   }
   return syncContractPartyData(draft,project);

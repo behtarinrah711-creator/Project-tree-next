@@ -3,70 +3,23 @@ import assert from 'node:assert/strict';
 import { createAppDataStore } from '../../data/appDataStore.js';
 import { registerSearchPicker } from '../../ui/searchPickerAdapter.js';
 
-test('template uses shared activity picker and selects newly created activity without losing clauses', async()=>{
+test('template editor accepts an independent title and saves without an activity', async()=>{
   const store=createAppDataStore({storage:{getItem(){return null;},setItem(){}}});
-  store.replaceSnapshot({schemaVersion:8,projects:[{
-    id:'p',tasks:[],activityTemplates:[{id:'a',name:'A'},{id:'b',name:'B'},{id:'trash',trashed:true}],
-  }],activeTab:'p',viewMode:'simple',starredOrder:[]});
-  let options,creation,closed=false;
-  globalThis.KarhaAppData=store;
-  globalThis.document={getElementById(){return null;}};
-  globalThis.window={
-    location:{hash:'',search:''},KarhaAppData:store,
-    makeContractTemplateDraftClean:()=>({activityId:'',items:[{id:'clause',text:'Keep me'}]}),
-    KarhaSearchTemplate:{close(){closed=true;}},
-    KarhaApp:{modules:{get:id=>id==='activities'?{openActivityForm:opts=>{creation=opts;}}:null}},
-  };
-  registerSearchPicker({open:opts=>{options=opts;return true;}});
-  try{
-    const {contractTemplateFormModule:form}=await import('./contractTemplateFormModule.js');
-    assert.equal(form.open(null,'p'),true);
-    assert.equal(form.openActivityPicker(),true);
-    assert.equal(options.resourceType,'activity');
-    assert.equal(options.showAdd,true);
-    assert.deepEqual(options.items.map(x=>x.id),['a','b']);
-    options.onSelect(options.items[1]);
-    assert.equal(form.getState().activityId,'b');
-    assert.equal(form.isDirty(),true);
-    form.openActivityPicker();
-    assert.deepEqual(options.items.map(x=>x.id),['a','b']);
-    options.onAdd();
-    assert.equal(closed,true);
-    assert.equal(creation.pickerMode,true);
-    creation.onCreated({id:'new',name:'New activity'});
-    assert.equal(form.getState().activityId,'new');
-    assert.equal(form.getState().title,'قرارداد New activity');
-    assert.deepEqual(form.getState().items,[{id:'clause',text:'Keep me'}]);
-  }finally{registerSearchPicker();}
-});
-
-test('existing templates disable activities except the template being edited',async()=>{
-  const store=createAppDataStore({storage:{getItem(){return null;},setItem(){}}});
-  store.replaceSnapshot({schemaVersion:8,projects:[{
-    id:'p',tasks:[],activityTemplates:[{id:'a',name:'A'},{id:'b',name:'B'},{id:'c',name:'C'}],
-    contractTemplates:[{id:'tpl-a',activityId:'a'},{id:'tpl-b',activityId:'b',status:'draft'},{id:'trash',activityId:'c',trashed:true}],
-  }],activeTab:'p',viewMode:'simple',starredOrder:[]});
-  let options;
+  store.replaceSnapshot({schemaVersion:8,projects:[{id:'p',tasks:[],activityTemplates:[],contractTemplates:[]}],activeTab:'p',starredOrder:[]});
   globalThis.KarhaAppData=store;
   globalThis.document={getElementById(){return null;}};
   globalThis.window={location:{hash:'',search:''},KarhaAppData:store,
-    findContractTemplate:id=>({id,activityId:'a'}),
-    makeContractTemplateDraftClean:existing=>existing||{id:'new-template',activityId:'',items:[]}};
-  registerSearchPicker({open:opts=>{options=opts;return true;}});
-  try{
-    const {contractTemplateFormModule:form}=await import('./contractTemplateFormModule.js');
-    form.open(null,'p');form.openActivityPicker();
-    assert.deepEqual(options.items.map(x=>x.disabled),[true,true,false]);
-    assert.equal(options.items[0].disabledReason,'قالب قرارداد قبلاً ساخته شده است');
-    options.onSelect(options.items[0]);
-    assert.equal(form.getState().activityId,'');
-    options.onSelect(options.items[2]);
-    assert.equal(form.getState().activityId,'c');
-    form.open('tpl-a','p');form.openActivityPicker();
-    assert.deepEqual(options.items.map(x=>x.disabled),[false,true,false]);
-    options.onSelect(options.items[0]);
-    assert.equal(form.getState().activityId,'a');
-  }finally{registerSearchPicker();}
+    makeContractTemplateDraftClean:()=>({id:'template-1',title:'',items:[{id:'clause',text:'Keep me'}]})};
+  const {contractTemplateFormModule:form}=await import('./contractTemplateFormModule.js');
+  form.open(null,'p');
+  assert.equal(form.save('p'),false);
+  form.getState().title='قرارداد دیوار برشی';
+  assert.equal(form.save('p'),true);
+  const saved=store.getSnapshot().projects[0].contractTemplates[0];
+  assert.equal(saved.title,'قرارداد دیوار برشی');
+  assert.equal(saved.activityId,undefined);
+  assert.equal(saved.items[0].text,'Keep me');
+  assert.equal(store.getSnapshot().projects[0].activityTemplates.length,0);
 });
 
 test('shared picker renders disabled rows and ignores their clicks',async()=>{
@@ -115,4 +68,20 @@ test('shared picker creates the add button only for lists that allow adding',asy
   open({items:[],resourceType:'activity',onAdd(){added++;}});
   assert.ok(button());button().onclick();assert.equal(added,2);
   open({items:[],resourceType:'other'});assert.equal(button(),undefined);
+});
+
+test('independent templates save, rename and coexist without duplicate-activity restrictions',async()=>{
+  const {contractApi}=await import('../../domain/contractApi.js');
+  const store=createAppDataStore({storage:null});
+  store.replaceSnapshot({schemaVersion:8,projects:[{id:'titles',tasks:[],contractTemplates:[]}],activeTab:'titles',starredOrder:[]});
+  globalThis.KarhaAppData=store;window.KarhaAppData=store;
+  const first=contractApi.saveTemplate('titles',{id:'f',title:'  قرارداد فونداسیون  ',activityId:'a',items:[]},'نام فعالیت');
+  const second=contractApi.saveTemplate('titles',{id:'w',title:'قرارداد دیوار برشی',activityId:'a',items:[]},'نام فعالیت');
+  assert.equal(first.ok,true);assert.equal(second.ok,true);
+  assert.equal(first.template.title,'قرارداد فونداسیون');
+  assert.equal(first.template.activityId,undefined);
+  assert.equal(second.template.title,'قرارداد دیوار برشی');
+  assert.equal(contractApi.saveTemplate('titles',{...first.template,title:'اسکلت بتنی'}).template.title,'اسکلت بتنی');
+  assert.equal(contractApi.saveTemplate('titles',{id:'empty',title:'   '}).ok,false);
+  assert.equal(store.getSnapshot().projects[0].contractTemplates.length,2);
 });

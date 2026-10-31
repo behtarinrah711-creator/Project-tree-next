@@ -54,7 +54,7 @@ test('zero-activity work item persists selected activity back onto the item', ()
   assert.equal(state.activityId, 'act-a');
 });
 
-test('single activity work item consumes that activity and auto-selects its only template', () => {
+test('single activity work item selects activity without inferring any template', () => {
   boot({
     id:'p-c2',
     tasks:[{ id:'w1', text:'کار یک‌فعالیته', activities:['act-b'], subtasks:[] }],
@@ -64,8 +64,8 @@ test('single activity work item consumes that activity and auto-selects its only
   const state = {};
   selectProjectItem('p-c2', state, { name:'کار', _raw:{ id:'w1', activities:['act-b'] } });
   assert.equal(state.activityId, 'act-b');
-  assert.equal(state.templateId, 'tpl-1');
-  assert.equal(state.items.length, 1);
+  assert.equal(state.templateId, undefined);
+  assert.equal(state.items, undefined);
 });
 
 test('multiple activities restrict picker choices to attached ids', () => {
@@ -103,8 +103,8 @@ test('multiple templates for one activity are not auto-selected', () => {
   const state = {};
   selectProjectItem('p-c4', state, { name:'کار', _raw:{ id:'w3', activities:['act-d'] } });
   assert.equal(state.activityId, 'act-d');
-  assert.equal(state.templateId, '');
-  assert.deepEqual(state.items, []);
+  assert.equal(state.templateId, undefined);
+  assert.equal(state.items, undefined);
 });
 
 test('user can pick one of multiple templates into contract state', () => {
@@ -119,7 +119,7 @@ test('user can pick one of multiple templates into contract state', () => {
   });
   const state = {};
   selectProjectItem('p-c5', state, { name:'کار', _raw:{ id:'w5', activities:['act-e'] } });
-  assert.equal(state.templateId, '');
+  assert.equal(state.templateId, undefined);
   let opened = null;
   window.KarhaSearchTemplate = {
     open(opts){ opened = opts; return true; },
@@ -160,32 +160,25 @@ test('system contract picker immediately syncs activity and contractor to its wo
 });
 });
 
-test('standalone contract can reopen all activities and switch templates repeatedly', () => {
-  boot({
-    id:'p-independent', tasks:[],
-    activityTemplates:[
-      {id:'a',name:'A'}, {id:'b',name:'B'}, {id:'c',name:'C'},
-      {id:'deleted',name:'Deleted',trashed:true},
-    ],
-    contractTemplates:[
-      {id:'tpl-a',activityId:'a',items:[{text:'Article A'}],paymentItems:[{id:'pay-a'}]},
-      {id:'tpl-b',activityId:'b',items:[{text:'Article B'}],paymentItems:[{id:'pay-b'}]},
-    ],
-  });
+test('changing activity preserves independently selected template and edited clauses', () => {
+  boot({id:'p-independent',tasks:[],activityTemplates:[{id:'a',name:'A'},{id:'b',name:'B'}],
+    contractTemplates:[{id:'tpl',title:'قرارداد فونداسیون',activityId:'legacy',items:[{text:'Source'}],paymentItems:[]}]});
   const state={projectItemId:'',activityIds:[]};
-  let opened;
-  window.KarhaSearchTemplate={open(opts){opened=opts;return true;}};
-  for(const id of ['a','b','c','a']){
-    openActivityPicker('p-independent',state);
-    assert.deepEqual(opened.items.map(x=>x.id),['a','b','c']);
-    opened.onSelect({id});
-    assert.equal(state.activityId,id);
-    assert.equal(state.templateId,id==='c'?'':'tpl-'+id);
-    assert.deepEqual(state.items.map(x=>x.text),id==='c'?[]:['Article '+id.toUpperCase()]);
-    assert.deepEqual(state.paymentItems,id==='c'?[]:[{id:'pay-'+id}]);
+  selectActivity('p-independent',state,{id:'a'});
+  assert.equal(state.templateId,undefined);
+  assert.equal(selectContractTemplate('p-independent',state,'tpl'),true);
+  assert.equal(state.activityId,'a');
+  assert.equal(state.title,'قرارداد فونداسیون');
+  state.items[0].text='Edited';
+  for(const id of ['b','a']){
+    selectActivity('p-independent',state,{id});
+    assert.equal(state.templateId,'tpl');
+    assert.equal(state.items[0].text,'Edited');
   }
-  openActivityPicker('p-independent',state);
-  assert.deepEqual(opened.items.map(x=>x.id),['a','b','c']);
+  let opened;
+  window.KarhaSearchTemplate={open:opts=>{opened=opts;return true;}};
+  assert.equal(openContractTemplatePicker('p-independent',state),true);
+  assert.deepEqual(opened.items.map(x=>x.id),['tpl']);
 });
 
 test('contractor picker retains the selected contractor while filtering other contacts by activity',()=>{

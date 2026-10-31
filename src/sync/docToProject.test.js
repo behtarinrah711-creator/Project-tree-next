@@ -47,3 +47,18 @@ test('cloud hydration shares receipts and allocations with other project members
   assert.equal(project.fundingAllocations[0].amount,20);
   assert.equal(project.fundingLedgerVersion,1);
 });
+
+test('cloud hydration materializes the independent contracting template and respects deletion',()=>{
+  const doc={id:'p',data:()=>({name:'P',activityTemplates:[],contractTemplates:[]})};
+  const ctx={appDataStore:createAppDataStore({storage:null})};
+  const project=docToProjectFromCloud(doc,null,ctx);
+  const template=project.contractTemplates.find(t=>t.id==='builtin-contracting-contract');
+  assert.equal(template.title,'قرارداد پیمانکاری');
+  assert.equal(template.activityId,undefined);
+  assert.equal(template.items.length,12);
+  template.title='عنوان اختصاصی';template.trashed=true;
+  const restored=docToProjectFromCloud({id:'p',data:()=>project},null,ctx);
+  assert.equal(restored.contractTemplates.filter(t=>t.id===template.id).length,1);
+  assert.equal(restored.contractTemplates.find(t=>t.id===template.id).trashed,true);
+  assert.equal(restored.contractTemplates.find(t=>t.id===template.id).title,'عنوان اختصاصی');
+});

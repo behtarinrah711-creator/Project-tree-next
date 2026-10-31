@@ -46,7 +46,7 @@ export function contractDocumentMarkup(state,activityName=''){
       '<div>شماره قرارداد: <bdi>' + blank(state.contractNo) + '</bdi></div>' +
       '<div>تاریخ قرارداد: <bdi>' + blank(formatJalaliDisplay(state.contractDate)) + '</bdi></div>' +
     '</div>' +
-    '<div class="doc-title">' + escape('قرارداد ' + activityName) + '</div>' +
+    '<div class="doc-title">' + escape(state.title || 'قرارداد ' + activityName) + '</div>' +
     '<p class="doc-parties doc-introduction">این قرارداد در ' + blank(state.contractPlace) +
       ' فی‌مابین ' + blank(state.employerName) + ' به‌عنوان کارفرما و ' + blank(state.contractorName) +
       ' به‌عنوان پیمانکار، با موضوع ' + blank(activityName) + ' در بخش ' + blank(state.projectItemPath) +

@@ -57,3 +57,10 @@ test('activityApi persist after write is cloud-only', async () => {
   assert.match(source, /adapterPersist\(\{\s*local\s*:\s*false\s*\}\)/);
   assert.doesNotMatch(source, /KarhaLegacy\?\.persist/);
 });
+
+test('legacy template activity fields no longer block deleting an independent activity',()=>{
+  const projects=seedProjects();
+  projects[0].tasks=[];
+  assert.equal(canDeleteActivity(projects,'a2').ok,true);
+  assert.deepEqual(findActivityReferences(projects,'a2'),[]);
+});

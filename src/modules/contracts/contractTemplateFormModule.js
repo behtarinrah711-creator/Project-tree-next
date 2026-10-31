@@ -2,7 +2,6 @@ import { paginateContract } from './contractPagination.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { saveContractTemplate } from './contractTemplatePersistence.js';
-import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 import { appendContractChild } from './contractTemplateItems.js';
 
 let state=null;
@@ -25,8 +24,6 @@ function legacy(name,...args){
 }
 
 function helper(name,...args){ return legacy(name,...args); }
-
-function ctfActivityName(){ const p=helper("getCurrentProject",); const a=helper("findActivityTemplate",state?.activityId,p); return a?.name||''; }
 
 function ctfAddRow(parentId){
   const row=document.createElement('div'); row.className='ctf-add-input-row';
@@ -103,7 +100,7 @@ function mountCtfPrintPreview(body){
 }
 
 function ctfPreview(){
-  const st=state; const title=ctfActivityName()?('قرارداد '+ctfActivityName()):'قرارداد + فعالیت';
+  const st=state; const title=st.title || 'عنوان قالب قرارداد';
   let html='<div class="ctf-preview-head"><div class="ctf-preview-title">'+helper("escapeHtml",title)+'</div><div class="ctf-preview-meta"><div>تاریخ: <span>........................</span></div><div>شماره قرارداد: <span>........................</span></div></div></div><div class="ctf-preview-clauses">';
   (st.items||[]).forEach((it,i)=>{html+='<div class="ctf-preview-band"><div><b>ماده '+helper("toPersianDigits",String(i+1))+'- </b>'+helper("escapeHtml",it.text||'')+'</div>';(it.children||[]).forEach((ch,j)=>{html+='<div class="ctf-preview-material"><b>'+helper("toPersianDigits",String(i+1)+'-'+String(j+1))+': </b>'+helper("escapeHtml",ch.text||'')+'</div>';});html+='</div>';});
   html+='</div>'; return html;
@@ -181,15 +178,12 @@ function renderCtfGroup(item,index){
 
 function renderContractTemplateFormClean(){
   const body=document.getElementById('contractTemplateFormBody'); if(!body||!state)return; body.innerHTML=''; const st=state;
-  const activity=document.createElement('div');activity.className='ctf-field ctf-activity-field';
-  const lab=document.createElement('label');lab.textContent='فعالیت';activity.appendChild(lab);
-  const selectedName=ctfActivityName()||'';
-  const trigger=document.createElement('button');trigger.type='button';trigger.className='ctf-activity-search';
-  trigger.textContent=selectedName||'انتخاب فعالیت';
-  trigger.onclick=()=>contractTemplateFormModule.openActivityPicker();
-  activity.appendChild(trigger);
-  if(selectedName){const selected=document.createElement('div');selected.className='ctf-selected-activity';selected.textContent='قرارداد '+selectedName;activity.appendChild(selected);}
-  body.appendChild(activity);
+  const titleField=document.createElement('div');titleField.className='ctf-field';
+  const label=document.createElement('label');label.textContent='عنوان قالب قرارداد';label.htmlFor='ctf-template-title';
+  const input=document.createElement('input');input.id='ctf-template-title';input.className='ctf-inline-input';
+  input.value=st.title || '';input.placeholder='مثلاً قرارداد پیمانکاری';
+  input.oninput=()=>{st.title=input.value;dirty=true;const preview=body.querySelector('.ctf-preview-title');if(preview)preview.textContent=st.title || 'عنوان قالب قرارداد';};
+  titleField.append(label,input);body.appendChild(titleField);
   const materialHeader=document.createElement('div');materialHeader.className='ctf-material-header';
   const heading=document.createElement('div');heading.className='ctf-section-title';heading.textContent='مواد قرارداد';materialHeader.appendChild(heading);
   const controls=document.createElement('div');controls.className='ctf-material-controls';
@@ -213,21 +207,11 @@ function persistTemplate(projectId=null, silent=false, status='final'){
   if(!state) return false;
   const p=activeProject(projectId);
   if(!p) return false;
-  if(!state.activityId){
-    helper("showToast",'ابتدا فعالیت را انتخاب کنید');
+  if(!String(state.title || '').trim()){
+    helper("showToast",'عنوان قالب قرارداد را وارد کنید');
     return false;
   }
-  const activities=Array.isArray(p.activityTemplates)?p.activityTemplates:[];
-  const activity=activities.find(a=>String(a.id)===String(state.activityId));
-  const activityName=activity?.name || '';
-  const duplicate=(p.contractTemplates||[]).find(template=>!template.trashed
-    && String(template.activityId||'')===String(state.activityId)
-    && String(template.id)!==String(state.id));
-  if(duplicate){
-    helper("showToast",'برای این فعالیت قبلاً قالب قرارداد ساخته شده است');
-    return false;
-  }
-  const saved=saveContractTemplate(p.id,state,activityName,{status});
+  const saved=saveContractTemplate(p.id,state,'',{status});
   if(!saved){
     helper("showToast",status==='draft'?'ذخیره پیش‌نویس انجام نشد':'ذخیره قالب قرارداد انجام نشد');
     return false;
@@ -257,36 +241,6 @@ export const contractTemplateFormModule={
     if(title) title.textContent=id?'ویرایش قالب قرارداد':'قالب قرارداد جدید';
     this.render(projectId);
     return true;
-  },
-
-  openActivityPicker(){
-    const p=activeProject(formProjectId);
-    const draft=state;
-    if(!p || !draft) return false;
-    const hasTemplate=id=>(activeProject(formProjectId)?.contractTemplates||[]).some(t=>!t.trashed
-      && String(t.activityId)===String(id) && String(t.id)!==String(draft.id));
-    const select=activity=>{
-      if(state!==draft || !activity?.id || hasTemplate(activity.id)) return;
-      draft.activityId=activity.id;
-      draft.title='قرارداد '+(activity.name||activity.title||'');
-      dirty=true;
-      renderContractTemplateFormClean();
-    };
-    return openSearchPicker({
-      title:'انتخاب فعالیت',listTitle:'فعالیت‌ها',selectedTitle:'فعالیت‌های منتخب',
-      resourceType:'activity',contextKey:'contract-template:activity',
-      items:(p.activityTemplates||[]).filter(a=>!a.trashed)
-        .map(a=>({id:a.id,name:a.name||a.title||'فعالیت',disabled:hasTemplate(a.id),
-          disabledReason:hasTemplate(a.id)?'قالب قرارداد قبلاً ساخته شده است':''})),
-      showStar:true,showAdd:true,onSelect:select,
-      onAdd:()=>{
-        if(typeof window.KarhaSearchTemplate?.close==='function') window.KarhaSearchTemplate.close(false);
-        else helper('closeSearchTemplate',false);
-        window.KarhaApp?.modules?.get('activities')?.openActivityForm?.({
-          pickerMode:true,onCreated:select,
-        });
-      },
-    });
   },
 
   render(projectId=null){
