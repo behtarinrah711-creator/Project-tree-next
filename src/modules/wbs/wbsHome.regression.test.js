@@ -12,6 +12,7 @@ globalThis.document = globalThis.document || { getElementById(){ return null; } 
 
 const {
   selectActivity,
+  selectContractTemplate,
   selectProjectItem,
 } = await import('../contracts/contractPickers.js');
 
@@ -40,8 +41,8 @@ describe('WBS home regression path', { concurrency: false }, () => {
       id:'p-reg',
       name:'رگرسیون',
       tasks:[],
-      activityTemplates:[{ id:'act-1', name:'قالب', trashed:false }],
-      contractTemplates:[{ id:'tpl-1', activityId:'act-1', items:[{ text:'بند' }], paymentItems:[] }],
+      activityTemplates:[{ id:'act-1', name:'قالب', trashed:false },{id:'act-2',name:'آرماتوربندی',trashed:false}],
+      contractTemplates:[{ id:'tpl-1', title:'قرارداد فونداسیون', items:[{ text:'بند' }], paymentItems:[] }],
     });
     const stage = wbsApi.createStage('p-reg', 'فونداسیون');
     const work = wbsApi.createWorkItem('p-reg', 'بتن', stage.id, { quantity:2, unitCost:10 });
@@ -50,7 +51,15 @@ describe('WBS home regression path', { concurrency: false }, () => {
     selectProjectItem('p-reg', state, { name: work.text, _raw: work });
     selectActivity('p-reg', state, { id:'act-1' });
     assert.deepEqual(wbsApi.get('p-reg', work.id).activityIds, ['act-1']);
+    assert.equal(state.templateId, undefined);
+    assert.equal(selectContractTemplate('p-reg', state, 'tpl-1'), true);
     assert.equal(state.templateId, 'tpl-1');
+    assert.equal(state.title, 'قرارداد فونداسیون');
+    state.items[0].text='بند ویرایش‌شده';
+    selectActivity('p-reg',state,{id:'act-2'});
+    assert.equal(state.activityId,'act-2');
+    assert.equal(state.templateId,'tpl-1');
+    assert.equal(state.items[0].text,'بند ویرایش‌شده');
     assert.equal(wbsApi.estimate('p-reg').wbs, 20);
     const payload = exportProjectWbs('p-reg');
     assert.equal(validateWbsExport(payload).ok, true);
