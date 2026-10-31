@@ -6,8 +6,8 @@ import {contractDocumentMarkup} from './contractDocument.js';
 
 const template={id:'f',activityId:'a',items:Array.from({length:12},(_,i)=>({text:`Article ${i+1}`,children:[{text:`Clause ${i+1}`}]}))};
 const project={contractTemplates:[template],contacts:[]};
-test('auto-created work contract resolves all twelve articles for document output without modifying storage',()=>{
-  const record={id:'work-contract',activityId:'other',templateId:'f',items:[],workTaskId:'task'};
+test('saved work contract displays its copied articles without modifying storage',()=>{
+  const record={id:'work-contract',activityId:'other',templateId:'f',items:JSON.parse(JSON.stringify(template.items)),workTaskId:'task'};
   const before=JSON.stringify({record,project});
   const draft=resolveContractDocumentDraft(record,project);
   assert.equal(draft.items.length,12);assert.equal(draft.templateId,'f');
@@ -55,4 +55,12 @@ test('new contracts require an explicit price method while saved selections are 
   assert.equal(resolveContractDocumentDraft({amountMethod:'agreed'},{}).amountMethod,'agreed');
   assert.equal(resolveContractDocumentDraft({amountMethod:'quantity'},{}).amountMethod,'quantity');
   assert.equal(resolveContractDocumentDraft({amount:'100'},{}).amountMethod,'agreed');
+});
+
+test('saved empty clauses and titles are snapshots even after the source template changes',()=>{
+  const project={contractTemplates:[{id:'t',title:'عنوان جدید',items:[{text:'بند جدید'}]}]};
+  const old={templateId:'t',title:'عنوان قبلی',items:[]};
+  const draft=resolveContractDocumentDraft(old,project);
+  assert.deepEqual(draft.items,[]);
+  assert.equal(draft.title,'عنوان قبلی');
 });

@@ -216,3 +216,22 @@ test('work task independently persists a template and clones it into its system 
   assert.equal(workTaskApi.update('p1','w1',created.task.id,{contractTemplateId:'wall'}).code,'contract_locked');
   assert.equal(contract().items[0].text,'نهایی');
 });
+
+test('template edits affect new work contracts while existing drafts keep their snapshots',()=>{
+  const store=installFixture();
+  const project=store.getSnapshot().projects[0];
+  project.contractTemplates=[{id:'tpl',title:'عنوان قدیمی',items:[{text:'بند قدیمی'}]}];
+  const first=workTaskApi.create('p1','w1',draft({hasContract:true,contractTemplateId:'tpl'}));
+  const firstContract=()=>store.getSnapshot().projects[0].contracts.find(c=>c.workTaskId===first.task.id);
+  project.contractTemplates[0]={id:'tpl',title:'عنوان جدید',items:[{text:'بند جدید'}]};
+  workTaskApi.update('p1','w1',first.task.id,{title:'ویرایش کار'});
+  assert.equal(firstContract().title,'عنوان قدیمی');
+  assert.equal(firstContract().items[0].text,'بند قدیمی');
+  firstContract().items=[];
+  workTaskApi.update('p1','w1',first.task.id,{title:'ویرایش دوباره'});
+  assert.deepEqual(firstContract().items,[]);
+  const second=workTaskApi.create('p1','w1',draft({hasContract:true,contractTemplateId:'tpl'}));
+  const next=store.getSnapshot().projects[0].contracts.find(c=>c.workTaskId===second.task.id);
+  assert.equal(next.title,'عنوان جدید');
+  assert.equal(next.items[0].text,'بند جدید');
+});

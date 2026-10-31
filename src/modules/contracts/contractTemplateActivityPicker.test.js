@@ -85,3 +85,30 @@ test('independent templates save, rename and coexist without duplicate-activity 
   assert.equal(contractApi.saveTemplate('titles',{id:'empty',title:'   '}).ok,false);
   assert.equal(store.getSnapshot().projects[0].contractTemplates.length,2);
 });
+
+test('new manual template uses real draft IDs, saves in its opening project and keeps subsequent edits',async()=>{
+  const {makeContractTemplateDraftClean,makeContractItem}=await import('./contractTemplatesDomain.js');
+  const store=createAppDataStore({storage:null});
+  store.replaceSnapshot({schemaVersion:8,projects:[{id:'manual-a',tasks:[],contractTemplates:[]},{id:'manual-b',tasks:[],contractTemplates:[]}],activeTab:'manual-b',starredOrder:[]});
+  globalThis.KarhaAppData=store;
+  globalThis.document={getElementById(){return null;}};
+  globalThis.window={location:{hash:'',search:''},KarhaAppData:store,makeContractTemplateDraftClean};
+  const {contractTemplateFormModule:form}=await import('./contractTemplateFormModule.js');
+  assert.equal(form.open(null,'manual-a'),true);
+  const first=form.getState();
+  assert.ok(first.id);
+  assert.equal(first.items.length,12);
+  assert.equal(new Set(first.items.map(x=>x.id)).size,12);
+  first.title='قرارداد گچ‌کاری';
+  first.items[0].children.push(makeContractItem('بند گچ‌کاری'));
+  assert.equal(form.save(),true);
+  const project=store.getSnapshot().projects.find(p=>p.id==='manual-a');
+  assert.equal(project.contractTemplates[0].title,'قرارداد گچ‌کاری');
+  assert.equal(project.contractTemplates[0].items[0].children[0].text,'بند گچ‌کاری');
+  assert.equal(store.getSnapshot().projects.find(p=>p.id==='manual-b').contractTemplates.length,0);
+  window.findContractTemplate=id=>project.contractTemplates.find(t=>t.id===id);
+  assert.equal(form.open(first.id,'manual-a'),true);
+  form.getState().items[0].children.push(makeContractItem('بند جدید'));
+  assert.equal(form.save(),true);
+  assert.equal(store.getSnapshot().projects.find(p=>p.id==='manual-a').contractTemplates[0].items[0].children.length,2);
+});

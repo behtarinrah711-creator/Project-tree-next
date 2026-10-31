@@ -121,7 +121,7 @@ export function resolveProjectItemActivityTemplate(project, projectItemId){
 /** Resolve lazy template content consistently without writing to stored records. */
 export function resolveContractDocumentDraft(contract, project, today=''){
   const draft=makeRealContractDraft(contract,today);
-  if(project){
+  if(project && !contract?.id && !Array.isArray(contract?.items)){
     const templates=(project.contractTemplates||[]).filter(t=>!t.trashed);
     const template=templates.find(t=>String(t.id)===String(draft.templateId || ''));
     if(template){

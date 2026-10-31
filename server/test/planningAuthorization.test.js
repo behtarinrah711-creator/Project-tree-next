@@ -147,3 +147,29 @@ test('contract creation stores the authenticated creator once and preserves it o
   assert.equal(updated.contracts[0].creationEvent,undefined);
   assert.equal(updated.contracts[0].createdBy,undefined);
 });
+
+test('member template edits are shared only within the saved project and preserve stale or omitted records',()=>{
+  const original={id:'template',title:'قالب اولیه',items:[{text:'بند قبلی'}],updatedAt:1};
+  const a={id:'a',tasks:[],contractTemplates:[structuredClone(original)],contracts:[{id:'old',items:[{text:'نسخه قرارداد قبلی'}]}]};
+  const b={id:'b',tasks:[],contractTemplates:[structuredClone(original)]};
+  const edit={...original,title:'قالب جدید',items:[{text:'بند جدید'}],updatedAt:2};
+  const permissions={edit:true,modules:{'planning:tree':'create'}};
+  const saved=mergeSharedProjectPayload(a,{tasks:[],contractTemplates:[edit]},permissions);
+  assert.equal(saved.contractTemplates[0].title,'قالب جدید');
+  assert.equal(saved.contracts[0].items[0].text,'نسخه قرارداد قبلی');
+  assert.equal(b.contractTemplates[0].title,'قالب اولیه');
+  assert.equal(mergeSharedProjectPayload(saved,{tasks:[],contractTemplates:[original]},permissions).contractTemplates[0].title,'قالب جدید');
+  assert.equal(mergeSharedProjectPayload(saved,{tasks:[]},permissions).contractTemplates.length,1);
+  assert.equal(mergeSharedProjectPayload(a,{tasks:[],contractTemplates:[edit]},{modules:{contracts:'view'}}).contractTemplates[0].title,'قالب اولیه');
+});
+
+test('new member-created manual templates are retained for the project and subsequent revisions',()=>{
+  const permissions={edit:true,modules:{'planning:tree':'create'}};
+  const template={id:'manual-plaster',title:'قرارداد گچ‌کاری',items:[{text:'بند اول'}],updatedAt:100};
+  const saved=mergeSharedProjectPayload({tasks:[],contractTemplates:[]},{tasks:[],contractTemplates:[template]},permissions);
+  assert.equal(saved.contractTemplates.length,1);
+  const revised=mergeSharedProjectPayload(saved,{tasks:[],contractTemplates:[{...template,items:[{text:'بند اول'},{text:'بند دوم'}],updatedAt:200}]},permissions);
+  assert.equal(revised.contractTemplates.length,1);
+  assert.equal(revised.contractTemplates[0].items.length,2);
+  assert.equal(saved.contractTemplates[0].items.length,1);
+});

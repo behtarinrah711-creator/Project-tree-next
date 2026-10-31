@@ -78,7 +78,7 @@ export function saveRealContract(projectId, draft, helpers={}){
 
   const activity=findActivity(s.activityId,project);
   const template=(project.contractTemplates||[]).find(t=>!t.trashed && String(t.id)===String(s.templateId));
-  s.title=template?.title || s.title || 'قرارداد '+(activity?.name||'');
+  s.title=s.title || template?.title || 'قرارداد '+(activity?.name||'');
   s.items=(s.items||[]).map(x=>({...x,children:(x.children||[]).map(c=>({...c,children:[]}))}));
   realContractDomain.renumberRealContractItems(s.items);
 

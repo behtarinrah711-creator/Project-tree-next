@@ -158,6 +158,17 @@ function mergeMemberContracts(current,incoming,tasks,permissions){
   return [...records.values()];
 }
 
+function mergeProjectTemplates(current=[],incoming=[]){
+  const records=new Map(current.map(template=>[String(template.id),template]));
+  for(const template of incoming){
+    if(!template?.id)continue;
+    const previous=records.get(String(template.id));
+    if(previous && Number(template.updatedAt || 0)<=Number(previous.updatedAt || 0))continue;
+    records.set(String(template.id),JSON.parse(JSON.stringify(template)));
+  }
+  return [...records.values()];
+}
+
 export function mergeSharedProjectPayload(current,incoming,permissions){
   if(!modulePermissions(permissions)) return incoming;
   const costline = canWriteProjectCostline(permissions);
@@ -170,6 +181,9 @@ export function mergeSharedProjectPayload(current,incoming,permissions){
     ...current,
     tasks,
     contracts:mergeMemberContracts(current?.contracts,incoming?.contracts,tasks,permissions),
+    contractTemplates:canMutateSharedProject(permissions)
+      ? mergeProjectTemplates(current?.contractTemplates,incoming?.contractTemplates)
+      : current?.contractTemplates || [],
     ...(costline ? {
       fundingReceipts:Array.isArray(incoming?.fundingReceipts)?incoming.fundingReceipts:[],
       fundingAllocations:Array.isArray(incoming?.fundingAllocations)?incoming.fundingAllocations:[],
