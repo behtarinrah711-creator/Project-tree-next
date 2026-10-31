@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {canDeleteProjectTasks,canMutateSharedProject,canWriteProjectCostline,canWriteProjectTasks,mergeAssignedExecutionPayload,mergeSharedProjectPayload,projectFundingChanged,projectPayloadChanged,projectTasksChanged,projectTasksDeleted} from '../src/app.js';
+import {stampContractCreation,canDeleteProjectTasks,canMutateSharedProject,canWriteProjectCostline,canWriteProjectTasks,mergeAssignedExecutionPayload,mergeSharedProjectPayload,projectFundingChanged,projectPayloadChanged,projectTasksChanged,projectTasksDeleted} from '../src/app.js';
 
 test('planning and execution write permissions authorize shared task mutations',()=>{
   assert.equal(canWriteProjectTasks({modules:{
@@ -124,4 +124,26 @@ test('contract member merge rejects unrelated writes, deletion and forged approv
   assert.equal(deleted.contracts[1].trashed,undefined);
   assert.deepEqual(mergeSharedProjectPayload(current,incoming,{modules:{'planning:tree':'view'}}).contracts,current.contracts);
   assert.equal(mergeSharedProjectPayload({tasks:[],contracts:[]},{tasks:[],contracts:[{id:'manual',status:'draft'}]},{modules:{contracts:'create'}}).contracts[0].id,'manual');
+});
+
+
+test('contract creation stores the authenticated creator once and preserves it on completion',()=>{
+  const project={contacts:[{id:'ahmadi',firstName:'سیامند',lastName:'احمدی',phones:['09120000000']}],contracts:[{id:'draft',status:'draft',createdAt:1,createdBy:{name:'جعلی'}}]};
+  stampContractCreation(project,null,'account-ahmadi','09120000000',100);
+  assert.equal(project.contracts[0].createdBy.name,'سیامند احمدی');
+  assert.equal(project.contracts[0].creationEvent.actor.id,'account-ahmadi');
+  assert.equal(project.contracts[0].creationEvent.at,100);
+  const incoming=structuredClone(project);
+  incoming.contracts[0].createdBy={name:'ویرایشگر'};
+  incoming.contracts[0].creationEvent={action:'create',at:200,actor:{name:'ویرایشگر'}};
+  incoming.contracts[0].status='final';
+  stampContractCreation(incoming,project,'other','',200);
+  assert.deepEqual(incoming.contracts[0].creationEvent,project.contracts[0].creationEvent);
+  assert.equal(incoming.contracts[0].createdAt,100);
+  assert.equal(incoming.contracts[0].createdBy.name,'سیامند احمدی');
+  const legacy={contracts:[{id:'old',createdAt:50}]};
+  const updated={contracts:[{id:'old',createdBy:{name:'ساختگی'}}]};
+  stampContractCreation(updated,legacy,'other','',300);
+  assert.equal(updated.contracts[0].creationEvent,undefined);
+  assert.equal(updated.contracts[0].createdBy,undefined);
 });

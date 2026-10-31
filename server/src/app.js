@@ -363,6 +363,32 @@ async function readWorkspace(pool, accountId){
   };
 }
 
+export function stampContractCreation(project,previous,accountId,phone='',now=Date.now()){
+  const existing=new Map((previous?.contracts || []).map(c=>[String(c.id),c]));
+  const member=(project.projectMembers || []).find(m=>String(m.mobile)===String(phone));
+  const contact=(project.contacts || []).find(c=>!c.trashed && (
+    (member?.contactId && String(c.id)===String(member.contactId)) ||
+    (phone && (Array.isArray(c.phones)?c.phones:[c.phone]).map(String).includes(String(phone)))
+  ));
+  const person=contact || member;
+  const name=[person?.firstName,person?.lastName].filter(Boolean).join(' ').trim() || person?.name || phone || 'کاربر';
+  for(const contract of project.contracts || []){
+    const old=existing.get(String(contract.id));
+    if(old){
+      // Never attribute a legacy contract to the person who next edits it.
+      for(const key of ['creationEvent','createdBy','createdAt']){
+        if(Object.hasOwn(old,key))contract[key]=old[key];else delete contract[key];
+      }
+    }else{
+      const actor={id:String(accountId),contactId:String(contact?.id || member?.contactId || ''),name};
+      contract.createdAt=now;
+      contract.createdBy=actor;
+      contract.creationEvent={action:'create',at:now,actor};
+    }
+  }
+  return project;
+}
+
 async function saveWorkspace(pool, accountId, snapshot){
   const client = await pool.connect();
   let committed = false;
@@ -372,6 +398,7 @@ async function saveWorkspace(pool, accountId, snapshot){
       const projectId = String(project.id);
       const existing = await client.query('SELECT id,owner_account_id,payload FROM projects WHERE id = $1 FOR UPDATE', [projectId]);
       if(!existing.rowCount){
+        stampContractCreation(project,null,accountId);
         await assignContractNumbers(client,project,accountId);
         await client.query(
           `INSERT INTO projects(id, owner_account_id, payload) VALUES ($1, $2, $3::jsonb)`,
@@ -435,6 +462,7 @@ async function saveWorkspace(pool, accountId, snapshot){
           const error=new Error('forbidden_costline_write');error.statusCode=403;throw error;
         }
         const savedProject=assignedExecution?.ok?assignedExecution.project:mergeSharedProjectPayload(currentPayload,project,permissions);
+        stampContractCreation(savedProject,currentPayload,accountId,membership.rows[0].phone);
         await assignContractNumbers(client,savedProject,existing.rows[0].owner_account_id);
         await client.query(
           `UPDATE projects SET payload = $2::jsonb, revision = revision + 1, updated_at = now()

@@ -20,3 +20,11 @@ test('history supports absent history and legacy entries without names or valid 
  assert.match(view.children[1].children[0].textContent,/کاربر · زمان نامشخص/);
  assert.equal(view.children[1].children[1].textContent,'اصلاح لازم است');
 });
+
+
+test('creation event appears with its creator and date alongside approval events',()=>{
+ const view=renderContractHistory(documentRef,{creationEvent:{action:'create',at:100,actor:{name:'مهندس احمدی'}},approvalHistory:[{action:'submit',at:200,actor:{name:'مدیر'}}]});
+ assert.match(view.children[1].children[0].textContent,/برای تأیید ارسال شد/);
+ assert.match(view.children[2].children[0].textContent,/ایجاد شد · مهندس احمدی/);
+ assert.ok(!view.children[2].children[0].textContent.includes('زمان نامشخص'));
+});
