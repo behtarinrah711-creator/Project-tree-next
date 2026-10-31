@@ -55,7 +55,7 @@ test('cloud hydration materializes the independent contracting template and resp
   const template=project.contractTemplates.find(t=>t.id==='builtin-contracting-contract');
   assert.equal(template.title,'قرارداد پیمانکاری');
   assert.equal(template.activityId,undefined);
-  assert.equal(template.items.length,12);
+  assert.equal(template.items.length,10);
   template.title='عنوان اختصاصی';template.trashed=true;
   const restored=docToProjectFromCloud({id:'p',data:()=>project},null,ctx);
   assert.equal(restored.contractTemplates.filter(t=>t.id===template.id).length,1);

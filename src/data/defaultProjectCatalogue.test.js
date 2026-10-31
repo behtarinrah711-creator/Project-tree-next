@@ -55,18 +55,40 @@ test('template contains only general provisions and employer supplied materials'
 });
 
 
-test('contracting source maps into the twelve headings and preserves source clauses and currency',()=>{
+test('contracting template is generic and excludes project-specific articles and personal data',()=>{
   const p=makeProject('p');
   const t=p.contractTemplates.find(t=>t.title==='قرارداد پیمانکاری');
-  assert.equal(t.items.length,12);
-  assert.equal(t.items[4].children.length,7);
-  assert.equal(t.items[5].children.length,5);
-  assert.match(t.items[3].children[0].text,/۱۲٬۵۰۰٬۰۰۰ ریال/);
-  assert.match(t.items[1].children[0].text,/دو نسخه/);
-  for(const i of [7,8,10,11])assert.deepEqual(t.items[i].children,[]);
+  assert.equal(t.items.length,10);
+  assert.equal(t.items.find(x=>x.text==='تعهدات پیمانکار:').children.length,7);
+  assert.equal(t.items.find(x=>x.text==='تعهدات کارفرما:').children.length,5);
+  assert.ok(!t.items.some(x=>['موضوع قرارداد:','شرایط پرداخت:'].includes(x.text)));
+  assert.doesNotMatch(JSON.stringify(t),/قریشی|آدرس|۱۲٬۵۰۰٬۰۰۰|ریال|تصفیه/);
   t.title='ویرایش شده';t.trashed=true;
   ensureDefaultProjectCatalogue(p);
   assert.equal(p.contractTemplates.filter(x=>x.id===t.id).length,1);
   assert.equal(p.contractTemplates.find(x=>x.id===t.id).title,'ویرایش شده');
   assert.equal(p.contractTemplates.find(x=>x.id===t.id).trashed,true);
+});
+
+
+test('existing contracting template is cleaned once while other templates and real contracts stay intact',()=>{
+  const personal={id:'builtin-contracting-contract',title:'قرارداد پیمانکاری',contractorName:'جواد قریشی',contractorAddress:'آدرس شخصی',items:[
+    {text:'موضوع قرارداد:',children:[{text:'فونداسیون تصفیه‌خانه'}]},
+    {text:'شرایط پرداخت:',children:[{text:'نرخ قبلی'}]},
+    {text:'تعهدات پیمانکار:',children:[{text:'بند عمومی'},{text:'پیمانکار آقای قریشی، آدرس شخصی'}]},
+  ]};
+  const other={id:'custom',title:'قالب دیگر',items:[{text:'موضوع قرارداد:'}]};
+  const contract={id:'real',contractorName:'قریشی',items:[{text:'موضوع قرارداد:'}]};
+  const project={contractTemplates:[personal,other],contracts:[contract]};
+  ensureDefaultProjectCatalogue(project);
+  assert.equal(personal.items.length,1);
+  assert.deepEqual(personal.items[0].children.map(x=>x.text),['بند عمومی']);
+  assert.equal(personal.contractorName,undefined);
+  assert.equal(personal.contractorAddress,undefined);
+  assert.equal(other.items.length,1);
+  assert.equal(contract.contractorName,'قریشی');
+  personal.items.push({text:'موضوع قرارداد:',children:[]});
+  const once=JSON.stringify(project);
+  ensureDefaultProjectCatalogue(project);
+  assert.equal(JSON.stringify(project),once);
 });
