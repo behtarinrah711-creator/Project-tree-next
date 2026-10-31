@@ -205,7 +205,7 @@ function renderContractTemplateFormClean(){
 
 function persistTemplate(projectId=null, silent=false, status='final'){
   if(!state) return false;
-  const p=activeProject(projectId);
+  const p=activeProject(projectId || formProjectId);
   if(!p) return false;
   if(!String(state.title || '').trim()){
     helper("showToast",'عنوان قالب قرارداد را وارد کنید');

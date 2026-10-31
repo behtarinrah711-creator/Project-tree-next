@@ -1,3 +1,4 @@
+import { uid } from '../../data/projectFactories.js';
 import { STORAGE_KEYS } from '../../config/deploymentConfig.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';

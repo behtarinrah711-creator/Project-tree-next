@@ -162,3 +162,14 @@ test('member template edits are shared only within the saved project and preserv
   assert.equal(mergeSharedProjectPayload(saved,{tasks:[]},permissions).contractTemplates.length,1);
   assert.equal(mergeSharedProjectPayload(a,{tasks:[],contractTemplates:[edit]},{modules:{contracts:'view'}}).contractTemplates[0].title,'قالب اولیه');
 });
+
+test('new member-created manual templates are retained for the project and subsequent revisions',()=>{
+  const permissions={edit:true,modules:{'planning:tree':'create'}};
+  const template={id:'manual-plaster',title:'قرارداد گچ‌کاری',items:[{text:'بند اول'}],updatedAt:100};
+  const saved=mergeSharedProjectPayload({tasks:[],contractTemplates:[]},{tasks:[],contractTemplates:[template]},permissions);
+  assert.equal(saved.contractTemplates.length,1);
+  const revised=mergeSharedProjectPayload(saved,{tasks:[],contractTemplates:[{...template,items:[{text:'بند اول'},{text:'بند دوم'}],updatedAt:200}]},permissions);
+  assert.equal(revised.contractTemplates.length,1);
+  assert.equal(revised.contractTemplates[0].items.length,2);
+  assert.equal(saved.contractTemplates[0].items.length,1);
+});
