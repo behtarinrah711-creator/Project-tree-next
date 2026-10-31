@@ -112,3 +112,23 @@ test('new manual template uses real draft IDs, saves in its opening project and 
   assert.equal(form.save(),true);
   assert.equal(store.getSnapshot().projects.find(p=>p.id==='manual-a').contractTemplates[0].items[0].children.length,2);
 });
+
+test('editor commits real articles and clauses without legacy item factories and retains them on reopen',async()=>{
+  const domain=await import('./contractTemplatesDomain.js');
+  const store=createAppDataStore({storage:null});
+  store.replaceSnapshot({schemaVersion:8,projects:[{id:'clauses',tasks:[],contractTemplates:[]}],activeTab:'clauses',starredOrder:[]});
+  globalThis.KarhaAppData=store;globalThis.document={getElementById(){return null;}};
+  globalThis.window={location:{hash:'',search:''},KarhaAppData:store,makeContractTemplateDraftClean:domain.makeContractTemplateDraftClean};
+  const {contractTemplateFormModule:form}=await import('./contractTemplateFormModule.js');
+  form.open(null,'clauses');form.getState().title='قالب تست';
+  assert.equal(form.commitInput('ماده تست'),true);
+  const parent=form.getState().items.at(-1);
+  assert.equal(form.commitInput('بند تست',parent.id),true);
+  assert.equal(form.save('clauses'),true);
+  const saved=store.getSnapshot().projects[0].contractTemplates[0];
+  assert.equal(saved.items.at(-1).text,'ماده تست');
+  assert.equal(saved.items.at(-1).children[0].text,'بند تست');
+  window.findContractTemplate=id=>saved.id===id?saved:null;
+  form.open(saved.id,'clauses');
+  assert.equal(form.getState().items.at(-1).children[0].text,'بند تست');
+});

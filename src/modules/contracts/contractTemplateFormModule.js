@@ -1,3 +1,4 @@
+import { makeContractItem, renumberContractItems } from './contractTemplatesDomain.js';
 import { paginateContract } from './contractPagination.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
@@ -30,7 +31,7 @@ function ctfAddRow(parentId){
   const input=document.createElement('textarea'); input.id=parentId?'ctf-child-input-'+parentId:'ctf-root-input'; input.className='ctf-inline-input'; input.placeholder=parentId?'بند را وارد کنید…':'ماده را وارد کنید…';
   input.rows=1; input.wrap='soft'; input.inputMode='text'; input.enterKeyHint='enter'; input.setAttribute('enterkeyhint','enter'); input.autocomplete='off'; input.autocapitalize='off'; input.spellcheck=false;
   const grow=()=>{input.style.height='auto';input.style.height=Math.max(42,input.scrollHeight)+'px';};
-  input.addEventListener('input',grow);
+  input.addEventListener('input',()=>{dirty=true;grow();});
   const commit=()=> parentId?ctfCommitChild(parentId,input.value,false):ctfCommitRoot(input.value,true);
   let committed=false;
   const handleCommit=(e)=>{ if(e){e.preventDefault();e.stopPropagation();} if(committed)return; if(!String(input.value||'').trim())return; committed=true; commit(); setTimeout(()=>{committed=false;},100); };
@@ -46,8 +47,8 @@ function ctfCommitChild(parentId,text,keep=true){
     st.items,
     parentId,
     v,
-    value=>helper("makeContractItem",value),
-    items=>helper("renumberContractItems",items)
+    makeContractItem,
+    renumberContractItems
   ))return false;
   dirty=true;
   inlineAddState=keep?{parentId}:null; renderContractTemplateFormClean(); if(keep) ctfFocus('#ctf-child-input-'+CSS.escape(String(parentId))); return true;
@@ -56,7 +57,7 @@ function ctfCommitChild(parentId,text,keep=true){
 function ctfCommitRoot(text,keep=true){
   const v=String(text||'').trim(); if(!v) return false;
   const st=state; if(!st)return false;
-  st.items.push(helper("makeContractItem",v)); helper("renumberContractItems",st.items); dirty=true;
+  st.items.push(makeContractItem(v)); renumberContractItems(st.items); dirty=true;
   inlineAddState=keep?{parentId:null}:null; renderContractTemplateFormClean(); if(keep) ctfFocus('#ctf-root-input'); return true;
 }
 
@@ -205,6 +206,14 @@ function renderContractTemplateFormClean(){
 
 function persistTemplate(projectId=null, silent=false, status='final'){
   if(!state) return false;
+  if(inlineAddState){
+    const parentId=inlineAddState.parentId;
+    const input=document.getElementById(parentId ? 'ctf-child-input-'+parentId : 'ctf-root-input');
+    if(String(input?.value || '').trim()){
+      if(parentId)ctfCommitChild(parentId,input.value,false);
+      else ctfCommitRoot(input.value,false);
+    }
+  }
   const p=activeProject(projectId || formProjectId);
   if(!p) return false;
   if(!String(state.title || '').trim()){
@@ -258,6 +267,7 @@ export const contractTemplateFormModule={
     return persistTemplate(projectId,silent,'draft');
   },
 
+  commitInput(text,parentId=null){return parentId ? ctfCommitChild(parentId,text,false) : ctfCommitRoot(text,false);},
   getState(){ return state; },
   isDirty(){ return dirty; },
 
