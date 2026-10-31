@@ -38,7 +38,7 @@ test('contract row preview is read-only, preserves data and closes with header/d
   let output='';
   const view=createContractPreviewView({documentRef:{createElement:make,body:make()},windowRef:{},mountPrintPage:(_,preview)=>{output=preview.innerHTML;}});
   const project={activityTemplates:[{id:'a',name:'Foundation'}],contractTemplates:[{id:'t',activityId:'a',items:[{text:'Foundation terms',children:[{text:'Employer supplies materials'}]}]}]};
-  const record={id:'auto',activityId:'a',items:[]};
+  const record={id:'auto',activityId:'a',templateId:'t',items:[]};
   view.open(project,record);
   assert.match(output,/Foundation terms/);assert.match(output,/Employer supplies materials/);
   assert.deepEqual(record.items,[]);

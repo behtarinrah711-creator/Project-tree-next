@@ -4,13 +4,15 @@ import { ensureDefaultProjectCatalogue } from './defaultProjectCatalogue.js';
 import { makeProject } from './projectFactories.js';
 import { ProjectRepository } from './projectRepository.js';
 
-test('catalogue requires a project and seeds linked independent defaults in each project',()=>{
+test('catalogue requires a project and seeds independent defaults in each project',()=>{
   assert.equal(ensureDefaultProjectCatalogue(null),null);
   const repo=new ProjectRepository({getItem:()=>null});
   assert.deepEqual(repo.all(),[]);
   assert.equal(repo.find('missing'),null);
   const a=makeProject('a'), b=makeProject('b');
-  assert.equal(a.contractTemplates[0].activityId,a.activityTemplates[0].id);
+  assert.equal(a.contractTemplates[0].activityId,undefined);
+  assert.equal(a.contractTemplates[1].title,'قرارداد پیمانکاری');
+  assert.equal(a.activityTemplates.some(a=>a.name==='پیمانکاری'),false);
   a.contractTemplates[0].items[0].children[0].text='edited';
   assert.notEqual(a.contractTemplates[0].items[0].children[0].text,b.contractTemplates[0].items[0].children[0].text);
 });
@@ -19,7 +21,8 @@ test('existing project defaults preserve edits, trash and existing activity link
   const p={id:'old',activityTemplates:[{id:'custom',name:'اجرای فونداسیون'}]};
   ensureDefaultProjectCatalogue(p);
   assert.equal(p.activityTemplates.length,1);
-  assert.equal(p.contractTemplates[0].activityId,'custom');
+  assert.equal(p.contractTemplates[0].activityId,undefined);
+  assert.equal(p.contractTemplates.length,2);
   p.contractTemplates[0].items[0].text='edited';
   p.contractTemplates[0].trashed=true;
   const once=JSON.stringify(p);
@@ -49,4 +52,21 @@ test('template contains only general provisions and employer supplied materials'
   for(const i of [2,3,7,8,9,10,11]) assert.deepEqual(template.items[i].children,[]);
   const duties=template.items[4].children.map(x=>x.text).join(' ');
   for(const word of ['قالب','میلگرد','بتن','گروت','واتراستاپ','ایمنی','تحویل']) assert.ok(duties.includes(word));
+});
+
+
+test('contracting source maps into the twelve headings and preserves source clauses and currency',()=>{
+  const p=makeProject('p');
+  const t=p.contractTemplates.find(t=>t.title==='قرارداد پیمانکاری');
+  assert.equal(t.items.length,12);
+  assert.equal(t.items[4].children.length,7);
+  assert.equal(t.items[5].children.length,5);
+  assert.match(t.items[3].children[0].text,/۱۲٬۵۰۰٬۰۰۰ ریال/);
+  assert.match(t.items[1].children[0].text,/دو نسخه/);
+  for(const i of [7,8,10,11])assert.deepEqual(t.items[i].children,[]);
+  t.title='ویرایش شده';t.trashed=true;
+  ensureDefaultProjectCatalogue(p);
+  assert.equal(p.contractTemplates.filter(x=>x.id===t.id).length,1);
+  assert.equal(p.contractTemplates.find(x=>x.id===t.id).title,'ویرایش شده');
+  assert.equal(p.contractTemplates.find(x=>x.id===t.id).trashed,true);
 });

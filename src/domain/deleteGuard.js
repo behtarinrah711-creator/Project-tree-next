@@ -43,12 +43,6 @@ export function findActivityReferences(projects, activityId){
       }
     });
 
-    live(project.contractTemplates).forEach(template => {
-      if(String(template.activityId || '') === target){
-        add(project, 'contractTemplate', template.id, 'قالب قرارداد');
-      }
-    });
-
     live(project.contracts).forEach(contract => {
       const ids = [
         contract.activityId,

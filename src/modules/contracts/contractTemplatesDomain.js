@@ -68,7 +68,7 @@ export function makeContractTemplateDraftClean(existing=null){
     renumberContractItems(copy.items);
     return copy;
   }
-  return {id:uid(),activityId:'',title:'',items:getDefaultContractTemplateItems(),paymentItems:[],createdAt:Date.now(),updatedAt:Date.now(),trashed:false};
+  return {id:uid(),title:'',items:getDefaultContractTemplateItems(),paymentItems:[],createdAt:Date.now(),updatedAt:Date.now(),trashed:false};
 }
 
 export function getContractTemplateDraftKey(){

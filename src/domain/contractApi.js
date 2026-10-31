@@ -182,18 +182,12 @@ export const contractApi = {
     const access = canWriteProject(project);
     if(!access.ok) return access;
 
-    const activityId = String(draft.activityId || '').trim();
-    if(!activityId) return deny('invalid', 'فعالیت قالب قرارداد را انتخاب کنید');
+    const title = String(draft.title || '').trim();
+    if(!title) return deny('invalid', 'عنوان قالب قرارداد را وارد کنید');
     const id = draft.id || makeId();
     const current = draft.id ? this.getTemplate(projectId, draft.id) : null;
-    const duplicate = (project.contractTemplates || []).find(template =>
-      !template.trashed
-      && String(template.activityId || '') === activityId
-      && String(template.id) !== String(id)
-    );
-    if(duplicate) return deny('duplicate_activity', 'برای این فعالیت قبلاً قالب قرارداد ساخته شده است', { templateId: duplicate.id });
-    const record = JSON.parse(JSON.stringify({ ...(current || {}), ...draft, id, activityId }));
-    record.title = `قرارداد ${activityName || record.title || ''}`.trim();
+    const record = JSON.parse(JSON.stringify({ ...(current || {}), ...draft, id, title }));
+    delete record.activityId;
     record.items = (record.items || [])
       .filter(x => String(x?.text || '').trim())
       .map(x => ({

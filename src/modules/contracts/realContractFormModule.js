@@ -451,35 +451,13 @@ function renderContractForm() {
 
   ftSelectRow(form, 'کارفرما', state.employerId ? contactDisplayName(findContact(state.employerId)) : '', () => openContractPicker('employer'), { placeholder: 'انتخاب' });
   ftSelectRow(form, 'پیمانکار', state.contractorId ? contactDisplayName(findContact(state.contractorId)) : '', () => openContractPicker('contractor'), { placeholder: 'انتخاب' });
-  ftSelectRow(form, 'فعالیت/قالب قرارداد', activityName, () => openContractPicker('activity'), { placeholder: 'انتخاب' });
+  ftSelectRow(form, 'فعالیت', activityName, () => openContractPicker('activity'), { placeholder: 'انتخاب' });
 
   const templates = contractTemplatesDomain.getContractTemplates(project).filter(template => !template.trashed);
-  const matchingTemplates = templates.filter(template => String(template.activityId) === String(state.activityId));
-  if (state.activityId && matchingTemplates.length > 1) {
-    const label = matchingTemplates.find(template => String(template.id) === String(state.templateId))?.title || '';
-    ftSelectRow(form, 'قالب قرارداد', label, () => {
-      contractPickers.openStaticChoicePicker(
-        'انتخاب قالب قرارداد',
-        'قالب‌ها',
-        matchingTemplates.map(template => ({ value: template.id, label: template.title || 'قالب قرارداد' })),
-        state.templateId,
-        id => {
-          state.templateId = id;
-          const template = matchingTemplates.find(item => String(item.id) === String(id));
-          if (template) {
-            state.items = realContractDomain.cloneTemplateIntoContract(template);
-            state.paymentItems = JSON.parse(JSON.stringify(template.paymentItems || []));
-          }
-          dirty = true;
-          renderContractForm();
-        }
-      );
-    }, { placeholder: 'انتخاب' });
-  } else if (state.activityId && matchingTemplates.length === 1 && !state.templateId) {
-    state.templateId = matchingTemplates[0].id;
-    state.items = realContractDomain.cloneTemplateIntoContract(matchingTemplates[0]);
-    state.paymentItems = JSON.parse(JSON.stringify(matchingTemplates[0].paymentItems || []));
-  }
+  const selectedTemplate=templates.find(template=>String(template.id)===String(state.templateId));
+  ftSelectRow(form, 'قالب قرارداد', selectedTemplate?.title || '', () => {
+    contractPickers.openContractTemplatePicker(project.id,state,pickerChanged);
+  }, { placeholder: 'انتخاب' });
 
   ftDateRow(form, 'تاریخ شروع قرارداد', state.startDate || '', value => { state.startDate = value; });
   ftDateRow(form, 'تاریخ پایان قرارداد', state.endDate || '', value => { state.endDate = value; });
@@ -565,9 +543,7 @@ function renderContractForm() {
   if (!state.items.length) {
     const note = document.createElement('div');
     note.className = 'contract-form-note';
-    note.textContent = state.activityId
-      ? 'برای این فعالیت هنوز قالب قراردادی ثبت نشده است.'
-      : 'پس از انتخاب فعالیت، مواد قرارداد از قالب آن خوانده می‌شوند.';
+    note.textContent = 'قالب قرارداد را جداگانه انتخاب کنید تا مواد آن خوانده شوند.';
     body.appendChild(note);
   } else {
     realContractDomain.renumberRealContractItems(state.items);

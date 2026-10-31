@@ -46,12 +46,11 @@ test('contract clauses append without replacing previous clauses and stay number
   assert.deepEqual(items[0].children.map(child=>child.number),['1-1','1-2']);
 });
 
-test('contract template save keeps a required activity id', async () => {
+test('template saving requires an independent title rather than an activity', async () => {
   const source = await readFile(new URL('./contractApi.js', import.meta.url), 'utf8');
-  assert.match(source, /const activityId = String\(draft\.activityId \|\| ''\)\.trim\(\)/);
-  assert.match(source, /\.\.\.draft, id, activityId/);
-  assert.match(source, /duplicate_activity/);
-  assert.match(source, /String\(template\.activityId \|\| ''\) === activityId/);
+  assert.match(source, /const title = String\(draft\.title \|\| ''\)\.trim\(\)/);
+  assert.match(source, /delete record\.activityId/);
+  assert.doesNotMatch(source, /duplicate_activity/);
 });
 
 test('contract template form uses module save actions and exposes inline clause confirmation', async () => {
@@ -67,7 +66,7 @@ test('contract template form uses module save actions and exposes inline clause 
   assert.match(source, /saveDraft\(null,false\)/);
   assert.match(source, /ctfCommitChild\(parentId,input\.value,false\)/);
   assert.match(source, /appendContractChild\([\s\S]*st\.items,[\s\S]*parentId,[\s\S]*v,[\s\S]*makeContractItem[\s\S]*renumberContractItems/);
-  assert.match(source, /برای این فعالیت قبلاً قالب قرارداد ساخته شده است/);
+  assert.match(source, /عنوان قالب قرارداد را وارد کنید/);
   assert.match(source, /inlineAddState\?\.parentId===item\.id[\s\S]*ctf-add-material/);
 });
 

@@ -16,12 +16,6 @@ function getProject(projectId){
   return projectId ? projectRepository.getActiveProject(projectId) : null;
 }
 
-function getContractTemplates(project){
-  return Array.isArray(project?.contractTemplates)
-    ? project.contractTemplates.filter(t => !t.trashed)
-    : [];
-}
-
 function getContracts(project){
   return Array.isArray(project?.contracts)
     ? project.contracts.filter(c => !c.trashed)
@@ -52,16 +46,12 @@ function appendActivityRow({ list, rows, project, activity, projectId, rerender 
   name.className='activity-name';
   name.textContent=activity.name || 'فعالیت بدون نام';
 
-  const templateCount=getContractTemplates(project)
-    .filter(t=>String(t.activityId)===String(activity.id)).length;
   const contractCount=getContracts(project)
     .filter(c=>String(c.activityId)===String(activity.id)).length;
 
   const meta=document.createElement('div');
   meta.className='activity-contract-meta';
-  meta.textContent=templateCount
-    ? `قالب قرارداد: ${templateCount} · قرارداد واقعی: ${contractCount}`
-    : 'بدون قالب قرارداد';
+  meta.textContent=`قرارداد واقعی: ${contractCount}`;
 
   main.append(name,meta);
 

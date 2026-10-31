@@ -30,6 +30,8 @@ function validate(projectId, workId, input){
   const contractorContactId = String(input?.contractorContactId || '');
   const approvalContactId = String(input?.approvalContactId || '');
   const activityId = String(input?.activityId || '');
+  const contractTemplateId=String(input?.contractTemplateId || '');
+  if(input.hasContract && contractTemplateId && !(projectRepository.find(projectId)?.contractTemplates || []).some(t=>!t.trashed && String(t.id)===contractTemplateId)) return {ok:false,code:'contract_template'};
   const contractApproverContactIds=[...new Set((Array.isArray(input?.contractApproverContactIds)?input.contractApproverContactIds:[]).map(String).filter(Boolean))];
   if(input.hasContract && contractApproverContactIds.some(id=>{const contact=contactRepository.get(projectId,id);return !contact || contact.trashed;}))return {ok:false,code:'approver'};
   if(!title) return { ok:false, code:'title' };
@@ -44,6 +46,7 @@ function validate(projectId, workId, input){
   if(!validDateRange(input.scheduleStart || '', input.scheduleEnd || '')) return { ok:false, code:'dates' };
   if(!workTaskRepository.work(projectId, workId)) return { ok:false, code:'work' };
   return { ok:true, value:{ ...input, title, weight, assigneeContactId, counterpartyContactId, contractorContactId,
+    contractTemplateId:input.hasContract ? contractTemplateId : '',
     activityId, activityIds:activityId ? [activityId] : [], activities:activityId ? [activityId] : [],
     requiresManagementApproval:Boolean(approvalContactId),
     approvalContactId, contractApproverContactIds:input.hasContract?contractApproverContactIds:[],
@@ -100,11 +103,13 @@ export const workTaskApi = {
   update(projectId, workId, taskId, patch, clock = Date.now){
     const current = workTaskRepository.get(projectId, workId, taskId);
     if(!current) return { ok:false, code:'not_found' };
-    const next = { ...current, ...patch };
     const linkedContract=linkedWorkTaskContract(projectId,workId,taskId);
+    const currentTemplateId=String(current.contractTemplateId || linkedContract?.templateId || '');
+    const next = { ...current, contractTemplateId:currentTemplateId, ...patch };
     if(linkedContract && !(linkedContract.isDraft || linkedContract.status==='draft') && !next.hasContract){
       return {ok:false,code:'contract_locked'};
     }
+    if(linkedContract && !(linkedContract.isDraft || linkedContract.status==='draft') && String(next.contractTemplateId || '')!==currentTemplateId) return {ok:false,code:'contract_locked'};
     if(linkedContract && ['pending','approved'].includes(linkedContract.approvalStatus) &&
       JSON.stringify([...(next.contractApproverContactIds || [])].map(String).sort())!==JSON.stringify([...(current.contractApproverContactIds || [])].map(String).sort()))return {ok:false,code:'contract_locked'};
     const dependencyCheck = validatePredecessors(projectRepository.find(projectId)?.tasks || [], taskId, next.predecessorIds || []);

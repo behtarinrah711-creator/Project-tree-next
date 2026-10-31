@@ -1,3 +1,4 @@
+import { ensureDefaultProjectCatalogue } from '../data/defaultProjectCatalogue.js';
 import { isDirty, isPending } from './storeSyncState.js';
 import { mergeTaskRecords } from './taskRecordMerge.js';
 
@@ -70,7 +71,7 @@ export function docToProjectFromCloud(doc, localExisting, ctx = {}){
         sharedWith: (d.sharedWith || []).map(e => normalizeEmail(e)).filter(Boolean),
       };
 
-  return {
+  return ensureDefaultProjectCatalogue({
     id: doc.id,
     name: meta.name,
     type: 'project',
@@ -98,5 +99,5 @@ export function docToProjectFromCloud(doc, localExisting, ctx = {}){
     fundingLedgerVersion: projectDirty
       ? (Number(localExisting?.fundingLedgerVersion) || 0)
       : (Number(d.fundingLedgerVersion) || Number(localExisting?.fundingLedgerVersion) || 0),
-  };
+  });
 }

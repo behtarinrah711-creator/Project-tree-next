@@ -54,16 +54,7 @@ function applyTemplateToState(state, template){
   state.templateId=template.id;
   state.items=cloneTemplateIntoContract(template);
   state.paymentItems=JSON.parse(JSON.stringify(template.paymentItems||[]));
-}
-
-function clearTemplateState(state){
-  state.templateId='';
-  state.items=[];
-  state.paymentItems=[];
-}
-
-function templatesForActivity(p, activityId){
-  return templates(p).filter(t=>String(t.activityId)===String(activityId));
+  state.title=template.title || '';
 }
 
 function relatedActivityIds(projectId, state){
@@ -85,9 +76,6 @@ export function selectActivity(projectId,state,item){
     state.activityIds=ids;
   }
   syncWorkTaskFromContract(projectId,state);
-  const ts=templatesForActivity(p, item.id);
-  if(ts.length===1) applyTemplateToState(state, ts[0]);
-  else clearTemplateState(state);
   return true;
 }
 
@@ -95,24 +83,15 @@ export function selectContractTemplate(projectId,state,templateId){
   const p=getProject(projectId); if(!p||!state||!templateId) return false;
   const template=templates(p).find(t=>String(t.id)===String(templateId));
   if(!template) return false;
-  if(state.activityId && String(template.activityId)!==String(state.activityId)) return false;
   applyTemplateToState(state, template);
+  syncWorkTaskFromContract(projectId,state);
   return true;
 }
 
 export function openContractTemplatePicker(projectId,state,onChange){
   const p=getProject(projectId); if(!p||!state) return false;
-  const ts=templatesForActivity(p, state.activityId);
-  if(!ts.length){
-    clearTemplateState(state);
-    onChange?.(state);
-    return false;
-  }
-  if(ts.length===1){
-    applyTemplateToState(state, ts[0]);
-    onChange?.(state);
-    return true;
-  }
+  const ts=templates(p);
+  if(!ts.length) return false;
   return openStaticChoicePicker(
     'انتخاب قالب قرارداد',
     'قالب‌ها',
@@ -134,9 +113,6 @@ export function selectProjectItem(projectId,state,item){
   state.activityId=ids.length===1 ? ids[0] : '';
   state.activityIds=ids;
   state.workItemId=raw.id;
-  state.templateId='';
-  state.items=[];
-  state.paymentItems=[];
   if(ids.length===1){
     const act=findActivity(p,ids[0]);
     if(act) selectActivity(projectId,state,{id:act.id});
@@ -187,12 +163,6 @@ export function openActivityPicker(projectId,state,onChange,onAdd){
     onSelect:item=>{
       if(!selectActivity(projectId,state,item)) return;
       onChange?.(state);
-      const ts=templatesForActivity(p, state.activityId);
-      if(ts.length>1){
-        const openTemplates=()=>openContractTemplatePicker(projectId,state,onChange);
-        if(window.KarhaChildHistory?.afterNextPop) window.KarhaChildHistory.afterNextPop(openTemplates);
-        else openTemplates();
-      }
     },
     onAdd:onAdd
   });
@@ -208,18 +178,7 @@ export function openProjectItemPicker(projectId,state,onChange,onAddActivity){
     onSelect:item=>{
       if(!selectProjectItem(projectId,state,item))return;
       onChange?.(state);
-      const ids=Array.isArray(state.activityIds)?state.activityIds:[];
-      if(ids.length===1 && state.templateId) return;
-      if(ids.length===1){
-        const ts=templatesForActivity(p, ids[0]);
-        if(ts.length>1){
-          const openTemplates=()=>openContractTemplatePicker(projectId,state,onChange);
-          if(window.KarhaChildHistory?.afterNextPop) window.KarhaChildHistory.afterNextPop(openTemplates);
-          else openTemplates();
-          return;
-        }
-        if(ts.length===1) return;
-      }
+      if(state.activityId) return;
       const openActivity=()=>openActivityPicker(projectId,state,onChange,onAddActivity);
       if(window.KarhaChildHistory?.afterNextPop) window.KarhaChildHistory.afterNextPop(openActivity);
       else openActivity();

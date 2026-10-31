@@ -191,6 +191,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       const counterpartyContainer = documentRef.createElement('div');
       counterpartyContainer.className = 'wbs-counterparty-container';
       let paintContractApprovers=()=>{};
+      let paintTemplate=()=>{};
       const renderTypeFields = val => {
         renderToggles(togglesContainer, val, task,{
           contractLocked:Boolean(linkedContract && !(linkedContract.isDraft || linkedContract.status==='draft')),
@@ -200,6 +201,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
           onSelect:value => { counterpartyContactId = value; },
         });
         paintContractApprovers();
+        paintTemplate();
       };
       const type=optionButton({name:'taskType',value:task?.type || work.type || WORK_TYPES[0],options:WORK_TYPES.map(value=>({id:value,name:value})), onChange:renderTypeFields});
       root.appendChild(fieldRow('نوع کار',type));
@@ -209,6 +211,24 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       const activityContainer=documentRef.createElement('div');
       renderActivity(activityContainer,{activities,value:activityId,workId:work.id,documentRef,onSelect:value=>{activityId=value;}});
       root.appendChild(activityContainer);
+      const templateContainer=documentRef.createElement('div');
+      const templateButton=documentRef.createElement('button');templateButton.type='button';templateButton.name='taskContractTemplate';templateButton.className='wbs-input';
+      templateButton.dataset.value=task?.contractTemplateId || linkedContract?.templateId || '';
+      templateButton.disabled=Boolean(linkedContract && !(linkedContract.isDraft || linkedContract.status==='draft'));
+      const templates=()=> (projectRepository.find(projectId)?.contractTemplates || []).filter(t=>!t.trashed);
+      paintTemplate=()=>{
+        templateContainer.hidden=!togglesContainer.querySelector('[name="hasContract"]')?.checked;
+        templateButton.textContent=templates().find(t=>String(t.id)===templateButton.dataset.value)?.title || 'انتخاب قالب قرارداد';
+      };
+      templateButton.addEventListener('click',()=>openSearchPicker({
+        title:'انتخاب قالب قرارداد',listTitle:'قالب‌های قرارداد',selectedTitle:'قالب منتخب',
+        contextKey:`wbs-task-contract-template:${work.id}`,resourceType:'other',showStar:false,showAdd:false,
+        items:[{id:'',name:'بدون قالب'},...templates().map(t=>({id:t.id,name:t.title || 'قالب قرارداد'}))],
+        onSelect:selected=>{templateButton.dataset.value=String(selected.id);paintTemplate();}
+      }));
+      templateContainer.appendChild(fieldRow('قالب قرارداد',templateButton));root.appendChild(templateContainer);
+      togglesContainer.addEventListener('change',paintTemplate);paintTemplate();
+
       root.appendChild(dateField(documentRef, 'taskStart', 'تاریخ شروع', task?.scheduleStart || ''));
       root.appendChild(dateField(documentRef, 'taskEnd', 'تاریخ پایان', task?.scheduleEnd || ''));
       const priority=optionButton({name:'taskPriority',value:task?.priority || 'normal',options:TASK_PRIORITIES.map(value=>({id:value,name:PRIORITY_LABELS[value]}))});
@@ -308,6 +328,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         priority:root.querySelector('[name="taskPriority"]').value,
         assigneeContactId:root.querySelector('[name="taskAssignee"]').dataset.value,
         activityId:root.querySelector('[name="taskActivity"]')?.dataset.value || '',
+        contractTemplateId:root.querySelector('[name="taskContractTemplate"]')?.dataset.value || '',
         counterpartyContactId:root.querySelector('[name="taskCounterparty"]')?.dataset.value || '',
         approvalContactId:root.querySelector('[name="taskApprover"]').dataset.value,
         contractApproverContactIds:root._contractApproverIds(),

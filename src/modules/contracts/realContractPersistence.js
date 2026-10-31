@@ -77,7 +77,8 @@ export function saveRealContract(projectId, draft, helpers={}){
   if(helpers.syncContractPartyData) helpers.syncContractPartyData(s,project);
 
   const activity=findActivity(s.activityId,project);
-  s.title='قرارداد '+(activity?.name||'');
+  const template=(project.contractTemplates||[]).find(t=>!t.trashed && String(t.id)===String(s.templateId));
+  s.title=template?.title || s.title || 'قرارداد '+(activity?.name||'');
   s.items=(s.items||[]).map(x=>({...x,children:(x.children||[]).map(c=>({...c,children:[]}))}));
   realContractDomain.renumberRealContractItems(s.items);
 
