@@ -99,7 +99,8 @@ export function canWriteProjectCostline(permissions){
 }
 
 export function canMutateSharedProject(permissions){
-  return permissions?.edit===true || canWriteProjectTasks(permissions);
+  return permissions?.edit===true || canWriteProjectTasks(permissions)
+    || ['edit','create','full'].includes(modulePermissions(permissions)?.contracts);
 }
 
 function mergeTaskCollection(currentItems=[],incomingItems=[],allowDelete=false){
@@ -119,16 +120,56 @@ function mergeTaskCollection(currentItems=[],incomingItems=[],allowDelete=false)
   return [...merged,...incomingById.values()];
 }
 
+function mergeMemberContracts(current,incoming,tasks,permissions){
+  const level=modulePermissions(permissions)?.contracts;
+  const contractWrite=['edit','create','full'].includes(level);
+  const taskWrite=canWriteProjectTasks(permissions);
+  const linkedTasks=new Map();
+  const walk=items=>(items || []).forEach(work=>{
+    if(work.trashed)return;
+    for(const task of work.workTasks || []){
+      if(!task.trashed && task.hasContract) linkedTasks.set(`${work.id}:${task.id}`,task);
+    }
+    walk(work.subtasks);
+  });
+  walk(tasks);
+  const records=new Map((current || []).map(c=>[String(c.id),c]));
+  for(const candidate of incoming || []){
+    if(!candidate?.id)continue;
+    const previous=records.get(String(candidate.id));
+    if(previous?.trashed || ['pending','approved'].includes(previous?.approvalStatus))continue;
+    const task=linkedTasks.get(`${candidate.projectItemId}:${candidate.workTaskId}`);
+    if(!contractWrite && !(taskWrite && task))continue;
+    if(!contractWrite && previous && (String(previous.projectItemId)!==String(candidate.projectItemId)
+      || String(previous.workTaskId)!==String(candidate.workTaskId)))continue;
+    if(candidate.trashed && level!=='full')continue;
+    if(previous && Number(candidate.updatedAt || 0)<Number(previous.updatedAt || 0))continue;
+    const record={...previous,...candidate};
+    // Content access does not grant approval or server-issued identity changes.
+    for(const key of ['contractUid','contractNo','legacyContractNo','approvalStatus','approvalContactId',
+      'approvalContactIds','approvedContactIds','approvalHistory','approvalRejectionReason',
+      'submittedAt','submittedBy','reviewedAt','reviewedBy']){
+      if(previous && Object.hasOwn(previous,key))record[key]=previous[key];
+      else delete record[key];
+    }
+    record.contractApproverContactIds=task?.contractApproverContactIds || previous?.contractApproverContactIds || [];
+    records.set(String(record.id),record);
+  }
+  return [...records.values()];
+}
+
 export function mergeSharedProjectPayload(current,incoming,permissions){
   if(!modulePermissions(permissions)) return incoming;
   const costline = canWriteProjectCostline(permissions);
+  const tasks=mergeTaskCollection(
+    Array.isArray(current?.tasks)?current.tasks:[],
+    Array.isArray(incoming?.tasks)?incoming.tasks:[],
+    canDeleteProjectTasks(permissions),
+  );
   return {
     ...current,
-    tasks:mergeTaskCollection(
-      Array.isArray(current?.tasks)?current.tasks:[],
-      Array.isArray(incoming?.tasks)?incoming.tasks:[],
-      canDeleteProjectTasks(permissions),
-    ),
+    tasks,
+    contracts:mergeMemberContracts(current?.contracts,incoming?.contracts,tasks,permissions),
     ...(costline ? {
       fundingReceipts:Array.isArray(incoming?.fundingReceipts)?incoming.fundingReceipts:[],
       fundingAllocations:Array.isArray(incoming?.fundingAllocations)?incoming.fundingAllocations:[],
