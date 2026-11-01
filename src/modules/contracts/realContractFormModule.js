@@ -447,17 +447,17 @@ function renderContractForm() {
   const projectPlace = project.location || project.address || project.projectLocation || project.siteLocation || '';
   if (!state.contractPlace) state.contractPlace = projectPlace;
   ftTextRow(form, 'محل انعقاد قرارداد', state.contractPlace || '', value => { state.contractPlace = value; }, { inline: true, placeholder: 'پیش‌فرض: محل پروژه' });
-  ftDateRow(form, 'تاریخ تنظیم قرارداد', state.contractDate || helper('todayJalaliStr'), value => { state.contractDate = value; }, { maxToday: true });
-
-  ftSelectRow(form, 'کارفرما', state.employerId ? contactDisplayName(findContact(state.employerId)) : '', () => openContractPicker('employer'), { placeholder: 'انتخاب' });
-  ftSelectRow(form, 'پیمانکار', state.contractorId ? contactDisplayName(findContact(state.contractorId)) : '', () => openContractPicker('contractor'), { placeholder: 'انتخاب' });
-  ftSelectRow(form, 'فعالیت', activityName, () => openContractPicker('activity'), { placeholder: 'انتخاب' });
-
   const templates = contractTemplatesDomain.getContractTemplates(project).filter(template => !template.trashed);
   const selectedTemplate=templates.find(template=>String(template.id)===String(state.templateId));
   ftSelectRow(form, 'قالب قرارداد', selectedTemplate?.title || '', () => {
     contractPickers.openContractTemplatePicker(project.id,state,pickerChanged);
   }, { placeholder: 'انتخاب' });
+
+  ftDateRow(form, 'تاریخ تنظیم قرارداد', state.contractDate || helper('todayJalaliStr'), value => { state.contractDate = value; }, { maxToday: true });
+
+  ftSelectRow(form, 'کارفرما', state.employerId ? contactDisplayName(findContact(state.employerId)) : '', () => openContractPicker('employer'), { placeholder: 'انتخاب' });
+  ftSelectRow(form, 'پیمانکار', state.contractorId ? contactDisplayName(findContact(state.contractorId)) : '', () => openContractPicker('contractor'), { placeholder: 'انتخاب' });
+  ftSelectRow(form, 'فعالیت', activityName, () => openContractPicker('activity'), { placeholder: 'انتخاب' });
 
   ftDateRow(form, 'تاریخ شروع قرارداد', state.startDate || '', value => { state.startDate = value; });
   ftDateRow(form, 'تاریخ پایان قرارداد', state.endDate || '', value => { state.endDate = value; });
