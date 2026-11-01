@@ -200,7 +200,7 @@ function renderContractTemplateFormClean(){
   list.appendChild(addBand); body.appendChild(list);
   st.paymentItems=[];
   const previewTitle=document.createElement('div');previewTitle.className='ctf-section-title';previewTitle.textContent='پیش‌نمایش';body.appendChild(previewTitle);mountCtfPrintPreview(body);
-  const actions=document.getElementById('contractTemplateFormActions');actions.innerHTML='';const save=document.createElement('button');save.className='if-save';save.textContent='ذخیره';save.onclick=()=>contractTemplateFormModule.save(null,false);const draft=document.createElement('button');draft.className='if-draft';draft.textContent='پیش‌نویس';draft.onclick=()=>contractTemplateFormModule.saveDraft(null,false);const cancel=document.createElement('button');cancel.className='if-cancel';cancel.textContent='انصراف';cancel.onclick=()=>contractTemplateFormModule.close(false);actions.append(save,draft,cancel);
+  const actions=document.getElementById('contractTemplateFormActions');actions.innerHTML='';const save=document.createElement('button');save.className='if-save';save.textContent='ذخیره';save.onclick=()=>contractTemplateFormModule.save(null,false);const cancel=document.createElement('button');cancel.className='if-cancel';cancel.textContent='انصراف';cancel.onclick=()=>contractTemplateFormModule.close(false);actions.append(save,cancel);
 }
 
 

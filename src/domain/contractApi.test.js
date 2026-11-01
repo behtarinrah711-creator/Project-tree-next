@@ -63,7 +63,8 @@ test('contract template form uses module save actions and exposes inline clause 
   assert.match(source, /rowActions\.className='ctf-row-actions ctf-material-actions'/);
   assert.doesNotMatch(source, /e\.key==='Enter'.*handleCommit/);
   assert.doesNotMatch(source, /insertLineBreak/);
-  assert.match(source, /saveDraft\(null,false\)/);
+  assert.match(source, /actions\.append\(save,cancel\)/);
+  assert.doesNotMatch(source, /draft\.textContent='پیش‌نویس'/);
   assert.match(source, /ctfCommitChild\(parentId,input\.value,false\)/);
   assert.match(source, /appendContractChild\([\s\S]*st\.items,[\s\S]*parentId,[\s\S]*v,[\s\S]*makeContractItem[\s\S]*renumberContractItems/);
   assert.match(source, /عنوان قالب قرارداد را وارد کنید/);
