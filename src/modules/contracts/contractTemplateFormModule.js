@@ -181,7 +181,7 @@ function renderContractTemplateFormClean(){
   const body=document.getElementById('contractTemplateFormBody'); if(!body||!state)return; body.innerHTML=''; const st=state;
   const titleField=document.createElement('div');titleField.className='ctf-field';
   const label=document.createElement('label');label.textContent='عنوان قالب قرارداد';label.htmlFor='ctf-template-title';
-  const input=document.createElement('input');input.id='ctf-template-title';input.className='ctf-inline-input';
+  const input=document.createElement('input');input.id='ctf-template-title';input.className='wbs-input';
   input.value=st.title || '';input.placeholder='مثلاً قرارداد پیمانکاری';
   input.oninput=()=>{st.title=input.value;dirty=true;const preview=body.querySelector('.ctf-preview-title');if(preview)preview.textContent=st.title || 'عنوان قالب قرارداد';};
   titleField.append(label,input);body.appendChild(titleField);
