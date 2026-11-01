@@ -1,4 +1,4 @@
-import { syncContractAmount, numericValue, ensureAgreedRows, hasPaymentRowData } from './contractPricing.js';
+import { syncContractAmount, numericValue, ensureAgreedRows, hasPaymentRowData, isUnmeasuredRow } from './contractPricing.js';
 import { syncPaymentStages } from './paymentStagesModule.js';
 import { contractApi } from '../../domain/contractApi.js';
 import * as realContractDomain from './realContractDomain.js';
@@ -32,11 +32,12 @@ export function saveRealContract(projectId, draft, helpers={}){
   if(draft.endDate && draft.startDate && draft.endDate<draft.startDate){
     toast('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد');return {ok:false,incomplete:true};
   }
+  syncContractAmount(draft);
   if(Array.isArray(draft.operationRows)){
     if(!draft.operationRows.length || draft.operationRows.some(row=>
       !String(row.description||'').trim() ||
       (row.pricingMode==='quantity'
-        ? !row.unit || (!draft.remeasurement && numericValue(row.quantity)<=0) || numericValue(row.unitPrice)<=0
+        ? !row.unit || (!isUnmeasuredRow(row,draft) && numericValue(row.quantity)<=0) || numericValue(row.unitPrice)<=0
         : row.pricingMode!=='agreed' || numericValue(row.agreedPrice)<=0))){
       toast('شرح و بهای عملیات‌ها و در حالت مقداری، واحد و مقدار را کامل کنید');return {ok:false,incomplete:true};
     }
@@ -60,7 +61,7 @@ export function saveRealContract(projectId, draft, helpers={}){
   }
   for(const rows of [!Array.isArray(draft.operationRows) && draft.amountMethod==='quantity'?draft.amountRows:null].filter(rows=>rows!==null)){
     if(!Array.isArray(rows) || !rows.length){toast('حداقل یک ردیف وارد کنید');return {ok:false,incomplete:true};}
-    if(rows.some(row=>!String(row.description||'').trim() || !row.unit || (!draft.remeasurement && numericValue(row.quantity)<=0) || numericValue(row.unitPrice)<=0)){
+    if(rows.some(row=>!String(row.description||'').trim() || !row.unit || (!isUnmeasuredRow(row,draft) && numericValue(row.quantity)<=0) || numericValue(row.unitPrice)<=0)){
       toast('شرح عملیات، واحد، مقدار و بهای واحد ردیف‌ها را کامل کنید');return {ok:false,incomplete:true};
     }
   }

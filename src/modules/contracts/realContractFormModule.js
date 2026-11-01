@@ -468,12 +468,10 @@ function renderContractForm() {
     selectRow:ftSelectRow,pick:pickFixed,onDirty:()=>{dirty=true;},onChange:pickerChanged,
     numberRow:(parent,label,value,onChange,opts)=>ftNumberRow(parent,label,value,onChange,opts)
   });
-  const measurement=document.createElement('label');measurement.className='ft-row';
-  const measurementCheck=document.createElement('input');measurementCheck.type='checkbox';measurementCheck.checked=!!state.remeasurement;
-  measurementCheck.onchange=()=>{state.remeasurement=measurementCheck.checked;if(state.remeasurement)state.retentionMethod='all';pickerChanged();};
-  measurement.append(measurementCheck,document.createTextNode('مقدار نهایی بعداً مشخص می‌شود'));form.appendChild(measurement);
-  renderRows(form,ensureOperationRows(state),{operations:true,mixed:true,rateOnly:!!state.remeasurement});
+  const operationRows=ensureOperationRows(state);
   syncContractAmount(state);
+  renderRows(form,operationRows,{operations:true,mixed:true});
+  if(state.remeasurement)ftAmountSummary(form,'جمع ردیف‌های با مبلغ مشخص',state.knownAmount);
   if(state.remeasurement)ftTextRow(form,'مبلغ کل قرارداد','پس از متره مشخص می‌شود',null,{readonly:true});
   else ftAmountSummary(form,'مبلغ کل قرارداد',state.amount);
   ftNumberRow(form, 'درصد حسن انجام کار', state.retentionPercent, value => {

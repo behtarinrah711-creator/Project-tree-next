@@ -36,3 +36,36 @@ test('save permits unknown quantities and optional payments but validates entere
   const fixed=draft();fixed.remeasurement=false;fixed.operationRows[0].quantity=2;assert.equal(save(fixed).ok,true);
  }finally{projectRepository.getActiveProject=oldProject;contractApi.save=oldSave;}
 });
+
+test('mixed quantities preserve the known subtotal, individual values and unknown final total',()=>{
+ const state=draft();state.remeasurement=false;
+ state.operationRows=[
+  {pricingMode:'quantity',description:'کناف معلوم',unit:'مترمربع',quantity:100,unitPrice:1400000,remeasurement:false},
+  {pricingMode:'quantity',description:'برش لاین',unit:'متر',quantity:'',unitPrice:500,remeasurement:true},
+  {pricingMode:'agreed',description:'تجهیز',agreedPrice:1000000}
+ ];
+ const original=JSON.stringify(state);
+ const html=contractDocumentMarkup(state);
+ assert.equal(JSON.stringify(state),original,'preview must not mutate the saved rows');
+ assert.ok(html.includes('جمع ردیف‌های با مبلغ مشخص'));assert.ok(html.includes('۱۴۱٬۰۰۰٬۰۰۰'));
+ assert.ok(html.includes('<td>۱۰۰</td>'));assert.ok(html.includes('۱۴۰٬۰۰۰٬۰۰۰'));
+ assert.ok(html.includes('پس از متره'));assert.ok(!html.includes('به مبلغ کل'));
+ syncContractAmount(state);assert.equal(state.amount,null);assert.equal(state.knownAmount,'141000000');
+ syncPaymentStages(state);assert.equal(state.retentionAmount,null);
+ state.operationRows[1].remeasurement=false;state.operationRows[1].quantity=20;
+ syncContractAmount(state);assert.equal(state.remeasurement,false);assert.equal(state.amount,'141010000');
+ const final=contractDocumentMarkup(state);assert.ok(final.includes('جمع کل عملیات‌ها'));assert.ok(final.includes('به مبلغ کل'));
+});
+test('saving mixed rows requires quantities only for rows that have a known quantity',()=>{
+ const oldProject=projectRepository.getActiveProject,oldSave=contractApi.save;
+ projectRepository.getActiveProject=()=>({id:'p',activityTemplates:[{id:'a',name:'کناف'}]});
+ contractApi.save=(id,record)=>({ok:true,contract:record});
+ try{
+  const state=draft();state.remeasurement=false;
+  state.operationRows[0].remeasurement=true;
+  state.operationRows.push({pricingMode:'quantity',description:'معلوم',unit:'متر',unitPrice:500,quantity:20,remeasurement:false});
+  const save=()=>saveRealContract('p',state,{todayJalaliStr:()=> '1405/08/07'});
+  const result=save();assert.equal(result.ok,true);assert.equal(result.contract.knownAmount,'10000');assert.equal(result.contract.amount,null);
+  state.operationRows[1].quantity='';assert.equal(save().ok,false);
+ }finally{projectRepository.getActiveProject=oldProject;contractApi.save=oldSave;}
+});

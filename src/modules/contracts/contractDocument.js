@@ -1,10 +1,10 @@
-import { rowAmount, syncContractAmount, numericValue, hasPaymentRowData } from './contractPricing.js';
+import { rowAmount, syncContractAmount, numericValue, hasPaymentRowData, isUnmeasuredRow } from './contractPricing.js';
 import { calculatePaymentStages } from './paymentStagesModule.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function contractDocumentMarkup(state,activityName=''){
-  state={...state};
+  state={...state,...(Array.isArray(state.operationRows)?{operationRows:state.operationRows.map(row=>({...row}))}:{}),...(Array.isArray(state.amountRows)?{amountRows:state.amountRows.map(row=>({...row}))}:{})};
   syncContractAmount(state);
   const retentionAmount=(Number(state.amount)||0)*(Number(state.retentionPercent)||0)/100;
   const escape=esc;
@@ -21,10 +21,10 @@ export function contractDocumentMarkup(state,activityName=''){
     clausesHtml += '</div>';
   });
 
-  const totalRow=(columns,amount)=>'<tr class="doc-operations-total"><td colspan="'+columns+'"><b>جمع کل عملیات‌ها</b></td><td><b>'+formatCost(amount)+'</b></td></tr>';
-  const quantityTable=(rows,showTotal=false,rateOnly=false)=>'<table class="contract-document-quantities contract-document-quantity"><thead><tr>'+['ردیف','شرح عملیات','واحد','مقدار','بهای واحد (تومان)','بهای کل (تومان)'].map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>'+(rows||[]).map((row,i)=>'<tr><td>'+persian(i+1)+'</td><td>'+escape(row.description)+'</td><td>'+(row.pricingMode==='agreed'?'—':escape(row.unit))+'</td><td>'+(row.pricingMode==='agreed'?'—':(rateOnly?'پس از متره':persian(row.quantity)))+'</td><td>'+(row.pricingMode==='agreed'?'—':formatCost(row.unitPrice))+'</td><td>'+(rateOnly && row.pricingMode!=='agreed'?'پس از متره':formatCost(rowAmount(row)))+'</td></tr>').join('')+(showTotal && !rateOnly?totalRow(5,(rows||[]).reduce((sum,row)=>sum+rowAmount(row),0)):'')+'</tbody></table>';
+  const totalRow=(columns,amount,label='جمع کل عملیات‌ها')=>'<tr class="doc-operations-total"><td colspan="'+columns+'"><b>'+label+'</b></td><td><b>'+formatCost(amount)+'</b></td></tr>';
+  const quantityTable=(rows,showTotal=false)=>'<table class="contract-document-quantities contract-document-quantity"><thead><tr>'+['ردیف','شرح عملیات','واحد','مقدار','بهای واحد (تومان)','بهای کل (تومان)'].map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>'+(rows||[]).map((row,i)=>'<tr><td>'+persian(i+1)+'</td><td>'+escape(row.description)+'</td><td>'+(row.pricingMode==='agreed'?'—':escape(row.unit))+'</td><td>'+(row.pricingMode==='agreed'?'—':(showTotal && isUnmeasuredRow(row,state)?'پس از متره':persian(row.quantity)))+'</td><td>'+(row.pricingMode==='agreed'?'—':formatCost(row.unitPrice))+'</td><td>'+(showTotal && isUnmeasuredRow(row,state)?'پس از متره':formatCost(rowAmount(row)))+'</td></tr>').join('')+(showTotal?totalRow(5,(rows||[]).filter(row=>!isUnmeasuredRow(row,state)).reduce((sum,row)=>sum+rowAmount(row),0),state.remeasurement?'جمع ردیف‌های با مبلغ مشخص':'جمع کل عملیات‌ها'):'')+'</tbody></table>';
   const agreedTable=rows=>'<table class="contract-document-quantities contract-document-agreed"><thead><tr><th>عملیات</th><th>شرح عملیات</th><th>بهای توافقی (تومان)</th></tr></thead><tbody>'+rows.map((row,i)=>'<tr><td>'+persian(i+1)+'</td><td>'+escape(row.description)+'</td><td>'+formatCost(row.agreedPrice)+'</td></tr>').join('')+totalRow(2,rows.reduce((sum,row)=>sum+Math.round(numericValue(row.agreedPrice)),0))+'</tbody></table>';
-  const pricingHtml=Array.isArray(state.operationRows) ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.operationRows,true,!!state.remeasurement)+'</div>' : state.amountMethod==='quantity' ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.amountRows,true,!!state.remeasurement)+'</div>' : (state.amountMethod==='agreed' && Array.isArray(state.agreedRows) ? '<div class="doc-pricing"><b>محاسبه مبلغ کل قرارداد</b>'+agreedTable(state.agreedRows)+'</div>' : state.amountDescription?'<p>'+escape(state.amountDescription)+'</p>':'');
+  const pricingHtml=Array.isArray(state.operationRows) ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.operationRows,true)+'</div>' : state.amountMethod==='quantity' ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.amountRows,true)+'</div>' : (state.amountMethod==='agreed' && Array.isArray(state.agreedRows) ? '<div class="doc-pricing"><b>محاسبه مبلغ کل قرارداد</b>'+agreedTable(state.agreedRows)+'</div>' : state.amountDescription?'<p>'+escape(state.amountDescription)+'</p>':'');
   let paymentHtml = '';
   const stages=state.paymentMethod ? [] : state.paymentStageCount ? calculatePaymentStages(state) : (state.paymentStages || []);
   stages.forEach((stage, index) => {

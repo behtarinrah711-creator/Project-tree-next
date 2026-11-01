@@ -30,7 +30,20 @@ export function ensureOperationRows(state){
   }
   return state.operationRows;
 }
+export function isUnmeasuredRow(row,state={}){
+  return row.pricingMode!=='agreed' && !!(row.remeasurement ?? state.remeasurement);
+}
+export function hasUnmeasuredOperations(state){
+  const rows=state.operationRows ?? (state.amountMethod==='quantity'?state.amountRows:null);
+  return Array.isArray(rows) ? rows.some(row=>isUnmeasuredRow(row,state)) : !!state.remeasurement;
+}
 export function syncContractAmount(state){
+  const rows=state.operationRows ?? (state.amountMethod==='quantity'?state.amountRows:null);
+  if(Array.isArray(rows)){
+    rows.forEach(row=>{if(row.remeasurement==null)row.remeasurement=isUnmeasuredRow(row,state);});
+    state.remeasurement=hasUnmeasuredOperations(state);
+    state.knownAmount=String(rows.filter(row=>!isUnmeasuredRow(row)).reduce((sum,row)=>sum+rowAmount(row),0));
+  }
   if(state.remeasurement){state.amount=null;return null;}
   if(Array.isArray(state.operationRows)){
     state.amount=String(state.operationRows.reduce((sum,row)=>sum+rowAmount(row),0));
@@ -41,11 +54,11 @@ export function syncContractAmount(state){
   return state.amount;
 }
 export function makeQuantityRow(){
-  return {id:'qr_'+crypto.randomUUID(),description:'',unit:'',quantity:'',unitPrice:''};
+  return {id:'qr_'+crypto.randomUUID(),description:'',unit:'',quantity:'',unitPrice:'',remeasurement:false};
 }
 
 // Same row editor for pricing and payment quantities; arrays remain independent.
-export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,onDirty,operations=false,agreed=false,mixed=false,rateOnly=false}){
+export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,onDirty,operations=false,agreed=false,mixed=false}){
   const money=value=>new Intl.NumberFormat('fa-IR').format(value)+' تومان';
   const list=document.createElement('div');
   list.className='contract-quantity-list';
@@ -88,6 +101,13 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
       });
       card.appendChild(choices);
     }
+    if(operations && row.pricingMode==='quantity'){
+      const measurement=document.createElement('label');measurement.className='ft-row';
+      const check=document.createElement('input');check.type='checkbox';check.checked=!!row.remeasurement;
+      check.onchange=()=>{row.remeasurement=check.checked;onChange();};
+      measurement.append(check,document.createTextNode('مقدار نهایی بعداً مشخص می‌شود'));card.appendChild(measurement);
+    }
+    const rateOnly=operations && isUnmeasuredRow(row);
     if(mixed && row.pricingMode!=='quantity'){
       numberRow(card,'بهای عملیات',row.agreedPrice,value=>{row.agreedPrice=value;},{suffix:'تومان'});
     }else if(agreed){
