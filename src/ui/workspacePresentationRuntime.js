@@ -101,7 +101,7 @@ function renderAll(){
     return;
   }
   const activeModule = window.KarhaRoute?.moduleId;
-  if(activeModule === 'planning' || activeModule === 'execution'){
+  if(activeModule && activeModule !== 'dashboard'){
     window.KarhaApp?.modules?.get(activeModule)?.mount?.({projectId:getActiveTab()});
     renderDrawerProjectList();
     return;
