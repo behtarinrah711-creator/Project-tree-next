@@ -64,8 +64,8 @@
   .mgmt-section-empty{text-align:center;padding:18px 12px;color:var(--text-dim);font-size:14px;background:var(--surface);border:1px dashed var(--divider);border-radius:12px;}
   .activity-row{display:flex;align-items:center;gap:8px;padding:12px 16px;border-bottom:1px solid var(--divider);background:var(--surface);}
   .activity-name{flex:1;min-width:0;font-size:14px;overflow-wrap:anywhere;}
-  .activity-actions{display:flex;align-items:center;gap:2px;flex-shrink:0;}
-  .activity-action{width:34px;height:34px;border:none;background:transparent;color:var(--text-dim);display:flex;align-items:center;justify-content:center;border-radius:50%;cursor:pointer;}
+   .activity-actions{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+  .activity-action{min-width:44px;min-height:44px;padding:8px;border:none;background:transparent;color:var(--text-dim);display:flex;align-items:center;justify-content:center;border-radius:8px;cursor:pointer;}
   .activity-action.danger{color:var(--danger);}
   .activity-action:active{background:var(--divider);}
   .detail-activities-list{display:flex;flex-direction:column;gap:7px;margin-top:8px;}
