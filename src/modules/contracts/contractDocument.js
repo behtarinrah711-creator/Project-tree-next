@@ -58,7 +58,7 @@ export function contractDocumentMarkup(state,activityName=''){
       ' فی‌مابین ' + blank(state.employerName) + ' به‌عنوان کارفرما و ' + blank(state.contractorName) +
       ' به‌عنوان پیمانکار، با موضوع ' + blank(activityName) + ' در بخش ' + blank(state.projectItemPath) +
       ' پروژه، ' + amountText + '، برای اجرا از تاریخ ' + blank(formatJalaliDisplay(state.startDate)) +
-      ' تا تاریخ ' + blank(formatJalaliDisplay(state.endDate)) + ' منعقد گردید.' + retentionText + ' طرفین متعهد به رعایت مفاد زیر هستند.</p>' +
+      ' تا تاریخ ' + blank(formatJalaliDisplay(state.endDate)) + ' منعقد گردید.' + retentionText + ' طرفین متعهد به رعایت مفاد زیر هستند.' + (state.remeasurement ? ' مبلغ توافق شده جهت عملیات به شرح جدول زیر می باشد، بدیهی است مبلغ نهایی قرارداد در پایان عملیات پس از مشخص شدن مقدار هر عملیات مشخص می گردد.' : '') + '</p>' +
     pricingHtml +
     '<div class="doc-clauses">' + (clausesHtml || '<div class="doc-clause">........................................................</div>') + '</div>' +
     (paymentHtml ? '<div class="doc-payment"><b>مراحل پرداخت</b>' + paymentHtml + '</div>' : '') +
