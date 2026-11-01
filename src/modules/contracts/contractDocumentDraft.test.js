@@ -44,7 +44,7 @@ test('missing values get dots while zero values remain populated and user text i
   assert.ok(intro.includes('فی‌مابین ................................................ به‌عنوان کارفرما'));
   assert.ok(intro.includes('&lt;نام&gt; به‌عنوان پیمانکار'));
   assert.ok(intro.includes('مبلغ کل ۰ تومان'));
-  assert.ok(intro.includes('۰٪ از مبلغ قرارداد، معادل ۰ تومان'));
+  assert.ok(!intro.includes('حسن انجام کار'));
   const emptyIntro=contractDocumentMarkup({},'').match(/<p class="doc-parties doc-introduction">(.*?)<\/p>/s)[1];
   assert.ok(!emptyIntro.includes('معادل ۰ تومان'));
 });

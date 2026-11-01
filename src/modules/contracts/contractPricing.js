@@ -31,6 +31,7 @@ export function ensureOperationRows(state){
   return state.operationRows;
 }
 export function syncContractAmount(state){
+  if(state.remeasurement){state.amount=null;return null;}
   if(Array.isArray(state.operationRows)){
     state.amount=String(state.operationRows.reduce((sum,row)=>sum+rowAmount(row),0));
     return state.amount;
@@ -44,7 +45,7 @@ export function makeQuantityRow(){
 }
 
 // Same row editor for pricing and payment quantities; arrays remain independent.
-export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,onDirty,operations=false,agreed=false,mixed=false}){
+export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,onDirty,operations=false,agreed=false,mixed=false,rateOnly=false}){
   const money=value=>new Intl.NumberFormat('fa-IR').format(value)+' تومان';
   const list=document.createElement('div');
   list.className='contract-quantity-list';
@@ -93,11 +94,11 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
       numberRow(card,'بهای توافقی',row.agreedPrice,value=>{row.agreedPrice=value;},{suffix:'تومان'});
     }else{
       selectRow(card,'واحد',row.unit,()=>pick('انتخاب واحد','واحدها',quantityUnits,row.unit,value=>{row.unit=value;onChange();}));
-      numberRow(card,'مقدار',row.quantity,value=>{row.quantity=value;},{suffix:row.unit||'',allowDecimal:true});
+      if(!rateOnly)numberRow(card,'مقدار',row.quantity,value=>{row.quantity=value;},{suffix:row.unit||'',allowDecimal:true});
       numberRow(card,'بهای واحد',row.unitPrice,value=>{row.unitPrice=value;},{suffix:'تومان'});
       const total=document.createElement('div');total.className='ft-row';
       const totalLabel=document.createElement('div');totalLabel.className='ft-label';totalLabel.textContent=mixed?'بهای عملیات:':'بهای کل:';
-      const totalValue=document.createElement('div');totalValue.className='ft-value';totalValue.textContent=money(rowAmount(row));
+      const totalValue=document.createElement('div');totalValue.className='ft-value';totalValue.textContent=rateOnly?'پس از متره مشخص می‌شود':money(rowAmount(row));
       total.append(totalLabel,totalValue);
       card.appendChild(total);
     }
@@ -107,4 +108,9 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
   add.onclick=()=>{rows.push({...makeQuantityRow(),...(mixed?{pricingMode:'quantity',agreedPrice:''}:{})});onChange();};
   list.appendChild(add);
   root.appendChild(list);
+}
+
+
+export function hasPaymentRowData(row){
+  return ['description','unit','quantity','unitPrice','agreedPrice'].some(key=>String(row?.[key] ?? '').trim()!=='');
 }

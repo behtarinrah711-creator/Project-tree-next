@@ -28,7 +28,7 @@ export function calculatePaymentStages(state){
     return rows.map(row=>{
       const gross=rowAmount(row);
       grossToDate+=gross;
-      const deduction=state.retentionMethod==='all'
+      const deduction=(state.remeasurement || state.retentionMethod==='all')
         ? Math.min(gross,Math.max(0,Math.round(grossToDate*rate/100)-deducted))
         : Math.min(gross,remaining);
       remaining=Math.max(0,remaining-deduction);deducted+=deduction;paid+=gross-deduction;
@@ -62,8 +62,8 @@ export function syncPaymentStages(state){
   state.paymentStages=calculatePaymentStages(state);
   if(!state.paymentMethod) state.paymentStageCount=state.paymentStages.length;
   const retained=Math.round((Number(state.amount)||0)*Math.min(100,Math.max(0,Number(state.retentionPercent)||0))/100);
-  state.retentionAmount=String(retained);
-  state.amountAfterRetention=String(Math.max(0,(Number(state.amount)||0)-retained));
+  state.retentionAmount=state.remeasurement ? null : String(retained);
+  state.amountAfterRetention=state.remeasurement ? null : String(Math.max(0,(Number(state.amount)||0)-retained));
   return state.paymentStages;
 }
 export function paymentBalanceSummary(state){
