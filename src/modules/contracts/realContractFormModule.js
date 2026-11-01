@@ -468,9 +468,12 @@ function renderContractForm() {
     selectRow:ftSelectRow,pick:pickFixed,onDirty:()=>{dirty=true;},onChange:pickerChanged,
     numberRow:(parent,label,value,onChange,opts)=>ftNumberRow(parent,label,value,onChange,opts)
   });
-  renderRows(form,ensureOperationRows(state),{operations:true,mixed:true});
+  const operationRows=ensureOperationRows(state);
   syncContractAmount(state);
-  ftAmountSummary(form,'مبلغ کل قرارداد',state.amount);
+  renderRows(form,operationRows,{operations:true,mixed:true});
+  if(state.remeasurement)ftAmountSummary(form,'جمع ردیف‌های با مبلغ مشخص',state.knownAmount);
+  if(state.remeasurement)ftTextRow(form,'مبلغ کل قرارداد','پس از متره مشخص می‌شود',null,{readonly:true});
+  else ftAmountSummary(form,'مبلغ کل قرارداد',state.amount);
   ftNumberRow(form, 'درصد حسن انجام کار', state.retentionPercent, value => {
     const normalized = helper('toEnglishDigits', String(value)) ?? value;
     state.retentionPercent = String(normalized).replace(/[^\d]/g, '');
@@ -478,9 +481,10 @@ function renderContractForm() {
 
   const retentionAmount = (Number(state.amount) || 0) * (Number(state.retentionPercent) || 0) / 100;
   const netAmount = Math.max(0, (Number(state.amount) || 0) - retentionAmount);
-  state.retentionAmount = String(Math.round(retentionAmount || 0));
-  state.amountAfterRetention = String(Math.round(netAmount || 0));
-  ftAmountSummary(form,'مبلغ حسن انجام کار',retentionAmount);
+  state.retentionAmount = state.remeasurement ? null : String(Math.round(retentionAmount || 0));
+  state.amountAfterRetention = state.remeasurement ? null : String(Math.round(netAmount || 0));
+  if(state.remeasurement)ftTextRow(form,'مبلغ حسن انجام کار','بر اساس صورت‌وضعیت تأییدشده محاسبه می‌شود',null,{readonly:true});
+  else ftAmountSummary(form,'مبلغ حسن انجام کار',retentionAmount);
 
   const durationOptions = ['یک هفته', 'دو هفته', 'سه هفته', 'چهار هفته', 'یک ماه', 'یک ماه و نیم', 'دو ماه', 'دو ماه و نیم', 'سه ماه', 'چهار ماه', 'پنج ماه', 'شش ماه']
     .map(value => ({ value, label: value }));
@@ -501,18 +505,20 @@ function renderContractForm() {
   }, { placeholder: 'انتخاب' });
 
 
-  const methods = paymentStagesModule.retentionMethods;
+  const methods = paymentStagesModule.retentionMethods.filter(method=>!state.remeasurement || method.value==='all');
+  if(state.remeasurement)state.retentionMethod='all';
   ftSelectRow(form, 'نحوه کسر حسن انجام کار', methods.find(x=>x.value===(state.retentionMethod||'first')).label, () => {
     contractPickers.openStaticChoicePicker('نحوه کسر حسن انجام کار', 'روش‌ها', methods, state.retentionMethod||'first', value => {
       state.retentionMethod=value;
       pickerChanged();
     });
   });
-  const heading=document.createElement('div');heading.className='real-contract-section';heading.textContent='مراحل پرداخت';
+  const heading=document.createElement('div');heading.className='real-contract-section';heading.textContent='مراحل پرداخت (اختیاری)';
   body.appendChild(heading);
   const paymentForm=ftCreateRoot(body);
   const paymentRows=paymentStagesModule.ensurePaymentRows(state);
   renderRows(paymentForm,paymentRows,{mixed:true});
+  if(!state.remeasurement){
   const paymentSummary=paymentStagesModule.paymentBalanceSummary(state);
   ftAmountSummary(paymentForm,'مبلغ قرارداد پس از کسر حسن انجام کار',paymentSummary.netAmount);
   paymentSummary.payments.forEach(payment=>{
@@ -520,6 +526,8 @@ function renderContractForm() {
     ftAmountSummary(paymentForm,'مرحله '+number+' پرداخت',payment.amount);
   });
   ftAmountSummary(paymentForm,'مانده مبلغ قرارداد',paymentSummary.remaining).classList.add('contract-payment-balance');
+
+  }
 
   const clausesHeading = document.createElement('div');
   clausesHeading.className = 'real-contract-section contract-clause-heading';

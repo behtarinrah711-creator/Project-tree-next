@@ -89,8 +89,8 @@ test('Save persists a final contract and renders it in the contracts list', asyn
   expect(stored.paymentStages[0].paymentAmount).toBe(900000);
   expect(stored.paymentRows[0].pricingMode).toBe('agreed');
   expect(stored.operationRows).toEqual([
-    {id:'agreed-1',description:'عملیات اول',pricingMode:'agreed',agreedPrice:'600000'},
-    {id:'quantity-2',description:'عملیات دوم',pricingMode:'quantity',unit:'متر',quantity:'2',unitPrice:'200000'}
+    {id:'agreed-1',description:'عملیات اول',pricingMode:'agreed',agreedPrice:'600000',remeasurement:false},
+    {id:'quantity-2',description:'عملیات دوم',pricingMode:'quantity',unit:'متر',quantity:'2',unitPrice:'200000',remeasurement:false}
   ]);
   expect(stored.status).toBe('final');
   expect(stored.isDraft).toBe(false);

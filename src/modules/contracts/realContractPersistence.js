@@ -1,4 +1,4 @@
-import { syncContractAmount, numericValue, ensureAgreedRows } from './contractPricing.js';
+import { syncContractAmount, numericValue, ensureAgreedRows, hasPaymentRowData, isUnmeasuredRow } from './contractPricing.js';
 import { syncPaymentStages } from './paymentStagesModule.js';
 import { contractApi } from '../../domain/contractApi.js';
 import * as realContractDomain from './realContractDomain.js';
@@ -32,11 +32,12 @@ export function saveRealContract(projectId, draft, helpers={}){
   if(draft.endDate && draft.startDate && draft.endDate<draft.startDate){
     toast('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد');return {ok:false,incomplete:true};
   }
+  syncContractAmount(draft);
   if(Array.isArray(draft.operationRows)){
     if(!draft.operationRows.length || draft.operationRows.some(row=>
       !String(row.description||'').trim() ||
       (row.pricingMode==='quantity'
-        ? !row.unit || numericValue(row.quantity)<=0 || numericValue(row.unitPrice)<=0
+        ? !row.unit || (!isUnmeasuredRow(row,draft) && numericValue(row.quantity)<=0) || numericValue(row.unitPrice)<=0
         : row.pricingMode!=='agreed' || numericValue(row.agreedPrice)<=0))){
       toast('شرح و بهای عملیات‌ها و در حالت مقداری، واحد و مقدار را کامل کنید');return {ok:false,incomplete:true};
     }
@@ -48,7 +49,8 @@ export function saveRealContract(projectId, draft, helpers={}){
     }
   }
   syncContractAmount(draft);
-  if(draft.paymentMethod==='quantity'){
+  if(Array.isArray(draft.paymentRows))draft.paymentRows=draft.paymentRows.filter(hasPaymentRowData);
+  if(draft.paymentMethod==='quantity' && draft.paymentRows?.length){
     const rows=draft.paymentRows;
     if(!Array.isArray(rows) || !rows.length || rows.some(row=>
       !String(row.description||'').trim() || (row.pricingMode==='agreed'
@@ -59,17 +61,17 @@ export function saveRealContract(projectId, draft, helpers={}){
   }
   for(const rows of [!Array.isArray(draft.operationRows) && draft.amountMethod==='quantity'?draft.amountRows:null].filter(rows=>rows!==null)){
     if(!Array.isArray(rows) || !rows.length){toast('حداقل یک ردیف وارد کنید');return {ok:false,incomplete:true};}
-    if(rows.some(row=>!String(row.description||'').trim() || !row.unit || numericValue(row.quantity)<=0 || numericValue(row.unitPrice)<=0)){
+    if(rows.some(row=>!String(row.description||'').trim() || !row.unit || (!isUnmeasuredRow(row,draft) && numericValue(row.quantity)<=0) || numericValue(row.unitPrice)<=0)){
       toast('شرح عملیات، واحد، مقدار و بهای واحد ردیف‌ها را کامل کنید');return {ok:false,incomplete:true};
     }
   }
-  if(!String(draft.amount||'').trim()||Number(draft.amount)<=0){
+  if(!draft.remeasurement && (!String(draft.amount||'').trim()||Number(draft.amount)<=0)){
     toast('مبلغ کل قرارداد را وارد کنید');return {ok:false,incomplete:true};
   }
   if(Number(draft.retentionPercent)<0||Number(draft.retentionPercent)>100){
     toast('درصد حسن انجام کار باید بین صفر تا صد باشد');return {ok:false,incomplete:true};
   }
-  if(!draft.retentionDuration){toast('مدت نگهداری حسن انجام کار را انتخاب کنید');return {ok:false,incomplete:true};}
+  if(Number(draft.retentionPercent)>0 && !draft.retentionDuration){toast('مدت نگهداری حسن انجام کار را انتخاب کنید');return {ok:false,incomplete:true};}
 
   const s=JSON.parse(JSON.stringify(draft));
   s.contactId=s.contractorId;
@@ -83,11 +85,12 @@ export function saveRealContract(projectId, draft, helpers={}){
   realContractDomain.renumberRealContractItems(s.items);
 
   const toEnglish=helpers.toEnglishDigits || (v=>String(v??''));
-  s.amount=toEnglish(s.amount||'').replace(/[^\d]/g,'');
+  s.amount=s.remeasurement ? null : toEnglish(s.amount||'').replace(/[^\d]/g,'');
   s.retentionPercent=toEnglish(s.retentionPercent||'').replace(/[^\d]/g,'');
   const finalRetention=(Number(s.amount)||0)*(Number(s.retentionPercent)||0)/100;
   s.retentionAmount=String(Math.round(finalRetention));
   s.amountAfterRetention=String(Math.max(0,Math.round((Number(s.amount)||0)-finalRetention)));
+  if(s.remeasurement)s.retentionMethod='all';
   syncPaymentStages(s);
   s.updatedAt=Date.now();
   s.trashed=false;
