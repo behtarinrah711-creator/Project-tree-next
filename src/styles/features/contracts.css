@@ -1873,3 +1873,5 @@ textarea.contract-project-item-input{
 #contractsPageBody .contract-history-entry{padding:8px 0;line-height:1.9;overflow-wrap:anywhere}
 #contractsPageBody .contract-history-entry p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
 #contractsPageBody .contract-history-empty{padding:8px 0 14px;text-align:center}
+
+.contract-form-body .contract-quantity-list > .contract-quantity-add{color:#1565c0;}
