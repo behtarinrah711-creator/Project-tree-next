@@ -64,3 +64,11 @@ test('saved empty clauses and titles are snapshots even after the source templat
   assert.deepEqual(draft.items,[]);
   assert.equal(draft.title,'عنوان قبلی');
 });
+
+test('contract place uses project details and new contracts have no contractor',async()=>{
+ const {projectContractPlace,makeRealContractDraft}=await import('./realContractDomain.js');
+ assert.equal(projectContractPlace({settings:{projectDetails:{address:' آدرس پروژه '}},location:'قدیمی'}),'آدرس پروژه');
+ assert.equal(projectContractPlace({address:'آدرس قدیمی'}),'آدرس قدیمی');
+ assert.equal(projectContractPlace({}),'');
+ assert.equal(makeRealContractDraft().contractorId,'');
+});

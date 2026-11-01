@@ -444,7 +444,7 @@ function renderContractForm() {
   if(state.workTaskId) ftTextRow(form,'آیتم پروژه',state.projectItemPath || '',()=>{}, {inline:true,readonly:true,placeholder:'توسط سیستم انتخاب شده'});
   else ftSelectRow(form, 'آیتم پروژه', state.projectItemPath || '', () => openContractPicker('projectItem'), { placeholder: 'انتخاب' });
 
-  const projectPlace = project.location || project.address || project.projectLocation || project.siteLocation || '';
+  const projectPlace = realContractDomain.projectContractPlace(project);
   if (!state.contractPlace) state.contractPlace = projectPlace;
   ftTextRow(form, 'محل انعقاد قرارداد', state.contractPlace || '', value => { state.contractPlace = value; }, { inline: true, placeholder: 'پیش‌فرض: محل پروژه' });
   const templates = contractTemplatesDomain.getContractTemplates(project).filter(template => !template.trashed);

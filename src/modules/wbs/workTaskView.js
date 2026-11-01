@@ -174,8 +174,8 @@ function renderActivity(container,{activities,value,onSelect,workId,documentRef}
 function taskForm({ projectId, work, task = null, onChanged, readOnly=false, canDelete=true }){
   const editing = Boolean(task);
   const documentRef = document;
-  const contractor = linkedContractor(projectId, work.id);
   const linkedContract=task ? linkedContractForWork(projectId,work.id,task.id) : null;
+  const contractor=linkedContract ? contactRepository.get(projectId,linkedContract.contractorId || linkedContract.contactId) : null;
   let titleEditor;
   const overlay=openWbsSheet({
     title:'کار:', presentation:'stage-create', autoFocus:false,

@@ -136,3 +136,9 @@ export function resolveContractDocumentDraft(contract, project, today=''){
   }
   return syncContractPartyData(draft,project);
 }
+
+
+export function projectContractPlace(project){
+  return String(project?.settings?.projectDetails?.address || project?.location || project?.address
+    || project?.projectLocation || project?.siteLocation || '').trim();
+}
