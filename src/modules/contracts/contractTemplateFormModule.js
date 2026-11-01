@@ -181,7 +181,7 @@ function renderContractTemplateFormClean(){
   const body=document.getElementById('contractTemplateFormBody'); if(!body||!state)return; body.innerHTML=''; const st=state;
   const titleField=document.createElement('div');titleField.className='ctf-field';
   const label=document.createElement('label');label.textContent='عنوان قالب قرارداد';label.htmlFor='ctf-template-title';
-  const input=document.createElement('input');input.id='ctf-template-title';input.className='ctf-inline-input';
+  const input=document.createElement('input');input.id='ctf-template-title';input.className='wbs-input';
   input.value=st.title || '';input.placeholder='مثلاً قرارداد پیمانکاری';
   input.oninput=()=>{st.title=input.value;dirty=true;const preview=body.querySelector('.ctf-preview-title');if(preview)preview.textContent=st.title || 'عنوان قالب قرارداد';};
   titleField.append(label,input);body.appendChild(titleField);
@@ -200,7 +200,7 @@ function renderContractTemplateFormClean(){
   list.appendChild(addBand); body.appendChild(list);
   st.paymentItems=[];
   const previewTitle=document.createElement('div');previewTitle.className='ctf-section-title';previewTitle.textContent='پیش‌نمایش';body.appendChild(previewTitle);mountCtfPrintPreview(body);
-  const actions=document.getElementById('contractTemplateFormActions');actions.innerHTML='';const save=document.createElement('button');save.className='if-save';save.textContent='ذخیره';save.onclick=()=>contractTemplateFormModule.save(null,false);const draft=document.createElement('button');draft.className='if-draft';draft.textContent='پیش‌نویس';draft.onclick=()=>contractTemplateFormModule.saveDraft(null,false);const cancel=document.createElement('button');cancel.className='if-cancel';cancel.textContent='انصراف';cancel.onclick=()=>contractTemplateFormModule.close(false);actions.append(save,draft,cancel);
+  const actions=document.getElementById('contractTemplateFormActions');actions.innerHTML='';const save=document.createElement('button');save.className='if-save';save.textContent='ذخیره';save.onclick=()=>contractTemplateFormModule.save(null,false);const cancel=document.createElement('button');cancel.className='if-cancel';cancel.textContent='انصراف';cancel.onclick=()=>contractTemplateFormModule.close(false);actions.append(save,cancel);
 }
 
 

@@ -16,12 +16,6 @@ function getProject(projectId){
   return projectId ? projectRepository.getActiveProject(projectId) : null;
 }
 
-function getContracts(project){
-  return Array.isArray(project?.contracts)
-    ? project.contracts.filter(c => !c.trashed)
-    : [];
-}
-
 function deleteActivity(projectId, activityId){
   const result = activityApi.trash(projectId, activityId);
   if(!result.ok){
@@ -46,14 +40,7 @@ function appendActivityRow({ list, rows, project, activity, projectId, rerender 
   name.className='activity-name';
   name.textContent=activity.name || 'فعالیت بدون نام';
 
-  const contractCount=getContracts(project)
-    .filter(c=>String(c.activityId)===String(activity.id)).length;
-
-  const meta=document.createElement('div');
-  meta.className='activity-contract-meta';
-  meta.textContent=`قرارداد واقعی: ${contractCount}`;
-
-  main.append(name,meta);
+  main.appendChild(name);
 
   const actions=document.createElement('div');
   actions.className='activity-actions';
@@ -81,7 +68,7 @@ function appendActivityRow({ list, rows, project, activity, projectId, rerender 
 
   actions.append(edit,del);
   row.append(main,actions);
-  row.dataset.searchText=`${activity.name || ''} ${meta.textContent}`.toLocaleLowerCase('fa');
+  row.dataset.searchText=`${activity.name || ''}`.toLocaleLowerCase('fa');
   row.addEventListener('click',()=>openActivityEditForm(activity));
   rows.push(row);
   list.appendChild(row);

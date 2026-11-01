@@ -103,7 +103,7 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
     }
     list.appendChild(card);
   });
-  const add=document.createElement('button');add.type='button';add.className='ctf-add-material';add.textContent=operations?'+ افزودن عملیات':'+ افزودن ردیف';
+  const add=document.createElement('button');add.type='button';add.className='ctf-add-material contract-quantity-add';add.textContent=operations?'+ افزودن عملیات':'+ افزودن مرحله';
   add.onclick=()=>{rows.push({...makeQuantityRow(),...(mixed?{pricingMode:'quantity',agreedPrice:''}:{})});onChange();};
   list.appendChild(add);
   root.appendChild(list);
