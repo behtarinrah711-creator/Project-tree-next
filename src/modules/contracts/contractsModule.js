@@ -28,10 +28,6 @@ function list(p,key){
 }
 function findActivity(projectId,id){return activityApi.lookup(projectId,id);}
 function findContact(projectId,id){return contactApi.lookup(projectId,id);}
-function money(v){
-  if(v===null||v===undefined||v==='') return 'بدون مبلغ';
-  try { return new Intl.NumberFormat('fa-IR').format(Number(v)); } catch { return String(v); }
-}
 export function contractCreatedParts(value){
   const stamp=Number(value);
   if(!Number.isFinite(stamp)||stamp<=0) return null;
@@ -63,10 +59,12 @@ function softDeleteTemplate(projectId,id){return contractApi.trashTemplate(proje
 function contractRowData(projectId,c){
   const a=findActivity(projectId,c.activityId);
   const contact=findContact(projectId,c.contractorId||c.contactId);
-  const title=c.title || ('قرارداد '+(a?.name||''));
-  const person=contact ? ([contact.firstName,contact.lastName].filter(Boolean).join(' ')||contact.name) : 'بدون مخاطب';
-  const meta=[c.contractNo,person,a?.name||'بدون فعالیت',money(c.amount)].filter(Boolean).join(' · ');
-  return {title,meta,created:contractCreatedParts(c.createdAt)};
+  const person=contact ? ([contact.firstName,contact.lastName].filter(Boolean).join(' ')||contact.name) : c.contractorName || 'بدون پیمانکار';
+  const title=[c.title || 'قرارداد پیمانکاری',person].filter(Boolean).join(' ');
+  const activity=a?.name || a?.title || 'بدون فعالیت';
+  const number=c.contractNo || 'بدون شماره قرارداد';
+  const meta=[number,activity].join(' · ');
+  return {title,meta,number,activity,created:contractCreatedParts(c.createdAt)};
 }
 
 export const contractsModule={
@@ -144,14 +142,16 @@ export const contractsModule={
     filterWrap.appendChild(filter);filterLabel();body.append(filterWrap,listWrap);
     if(!contracts.length){const e=document.createElement('div');e.className='contract-empty';e.innerHTML='هنوز قرارداد واقعی ثبت نشده است.<br>از علامت + یک قرارداد ایجاد کنید.';body.appendChild(e);return;}
     const appendContract=c=>{
-      const {title,meta,created}=contractRowData(id,c);
+      const {title,meta,number,activity,created}=contractRowData(id,c);
       const row=document.createElement('article'); row.className='contract-row';
       const heading=document.createElement('div');heading.className='contract-card-heading';
       row.dataset.searchText=normalizeContractSearch(title+' '+meta+' '+(c.projectItemPath||'')+' '+(created ? `${created.date} ${created.time}` : ''));
       row.dataset.approvalState=contractApprovalState(c);row.dataset.reviewMine=String(canReviewContract(c,actor));
       const main=document.createElement('div'); main.className='contract-main';
       const t=document.createElement('div'); t.className='contract-title'; t.textContent=title;
-      const m=document.createElement('div'); m.className='contract-meta'; m.textContent=meta; main.append(t,m);
+      const numberRow=document.createElement('div');numberRow.className='contract-meta contract-number';numberRow.dir='ltr';numberRow.textContent=number;
+      const activityRow=document.createElement('div');activityRow.className='contract-meta contract-activity';activityRow.textContent=activity;
+      main.append(t,numberRow,activityRow);
       const actions=document.createElement('div'); actions.className='contract-actions';
       actions.appendChild(contractActionsMenu({
         onEdit:()=>{if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
@@ -177,7 +177,11 @@ export const contractsModule={
       }
       row.appendChild(heading);
       const statusRow=document.createElement('div');statusRow.className='contract-workflow-row';
-      const status=document.createElement('span');status.textContent=approvalLabels[contractApprovalState(c)];statusRow.appendChild(status);
+      const status=document.createElement('span');
+      const approvalState=contractApprovalState(c);
+      const statusLabel=approvalState==='incomplete'?'ناقص':approvalState==='approved'?'تأیید شده است':['ready','unapproved','returned'].includes(approvalState)?'تأیید نشده است':approvalLabels[approvalState];
+      status.className='contract-status-badge '+(approvalState==='approved'?'is-approved':['ready','unapproved','returned'].includes(approvalState)?'is-unapproved':'is-incomplete');
+      status.textContent='وضعیت: '+statusLabel;statusRow.appendChild(status);
       if(c.approvalStatus==='pending' && c.approvalContactIds?.length)status.textContent+=' ('+new Intl.NumberFormat('fa-IR').format(c.approvedContactIds?.length || 0)+' از '+new Intl.NumberFormat('fa-IR').format(c.approvalContactIds.length)+')';
       const run=(action,options={})=>{
         const result=contractApi.review(id,c.id,action,actor,options);
