@@ -1880,3 +1880,9 @@ textarea.contract-project-item-input{
 #contractsPageBody .contract-history-empty{padding:8px 0 14px;text-align:center}
 
 .contract-form-body .contract-quantity-list > .contract-quantity-add{color:#1565c0;}
+
+/* Contract-owned presentation matches the execution work-card design. */
+#contractsPageBody .contract-row{margin:12px 0;padding:0 12px;border:1px solid #e5ded3;border-radius:var(--wbs-frame-radius,5px);background:#fff}
+#contractsPageBody .contract-card-heading{margin-inline:-12px;padding:10px 12px;background:#f4f1ec;border-radius:var(--wbs-frame-radius,5px) var(--wbs-frame-radius,5px) 0 0}
+#contractsPageBody .contract-title{font-size:13px;font-weight:600;color:#4d4741;text-align:center;overflow-wrap:anywhere}
+#contractsPageBody .contract-meta{font-size:11px;color:#4d4741;text-align:center}
