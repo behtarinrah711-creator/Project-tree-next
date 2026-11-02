@@ -148,7 +148,7 @@ function mergeMemberContracts(current,incoming,tasks,permissions){
     // Content access does not grant approval or server-issued identity changes.
     for(const key of ['contractUid','contractNo','legacyContractNo','approvalStatus','approvalContactId',
       'approvalContactIds','approvedContactIds','approvalHistory','approvalRejectionReason',
-      'submittedAt','submittedBy','reviewedAt','reviewedBy']){
+      'submittedAt','submittedBy','reviewedAt','reviewedBy','revisionBaseline']){
       if(previous && Object.hasOwn(previous,key))record[key]=previous[key];
       else delete record[key];
     }

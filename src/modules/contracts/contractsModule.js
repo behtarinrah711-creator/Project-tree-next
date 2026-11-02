@@ -1,5 +1,5 @@
 import { renderContractHistory } from './contractHistoryView.js';
-import { approvalLabels, contractApprovalState, canReviewContract, canRevokeContractApproval, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
+import { approvalLabels, contractApprovalState, canReviewContract, canRevokeContractApproval, canSubmitContract, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
 import { fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
 import { openStaticChoicePicker } from './contractPickers.js';
@@ -186,9 +186,10 @@ export const contractsModule={
         const el=document.createElement('button');el.type='button';el.className='contract-review-action'+(danger?' danger':'');el.textContent=label;
         el.onclick=event=>{event.stopPropagation();handler();};statusRow.appendChild(el);
       };
-      if(['ready','returned'].includes(contractApprovalState(c)) && !c.isDraft && c.status==='final'){
-        if(c.workTaskId || c.contractApproverContactIds?.length)button('ارسال برای تأیید',()=>run('submit'));
-        else button('ارسال برای تأیید',()=>openStaticChoicePicker('انتخاب مسئول تأیید','مخاطبین',(p.contacts||[]).filter(x=>!x.trashed).map(x=>({value:x.id,label:[x.firstName,x.lastName].filter(Boolean).join(' ')||x.name||'مخاطب'})),c.approvalContactId,value=>run('submit',{approverId:value})));
+      if(canSubmitContract(c)){
+        const submitLabel=contractApprovalState(c)==='unapproved'?'ارسال مجدد برای تأیید':'ارسال برای تأیید';
+        if(c.workTaskId || c.contractApproverContactIds?.length)button(submitLabel,()=>run('submit'));
+        else button(submitLabel,()=>openStaticChoicePicker('انتخاب مسئول تأیید','مخاطبین',(p.contacts||[]).filter(x=>!x.trashed).map(x=>({value:x.id,label:[x.firstName,x.lastName].filter(Boolean).join(' ')||x.name||'مخاطب'})),c.approvalContactId,value=>run('submit',{approverId:value})));
       }
       if(canRevokeContractApproval(c,actor)){
         button('لغو تأیید من',()=>openWbsSheet({
@@ -199,14 +200,9 @@ export const contractsModule={
       }
       if(canReviewContract(c,actor)){
         button('تأیید',()=>openConfirm('این قرارداد تأیید شود؟',()=>run('approve'),'تأیید'));
-        button('برگشت برای اصلاح',()=>openWbsSheet({
-          title:'رد تأیید قرارداد',saveLabel:'ثبت رد',historyKey:'contract-reject:'+c.id,
-          body(root){const reason=document.createElement('textarea');reason.className='wbs-input today-textarea';reason.name='rejectionReason';reason.required=true;reason.minLength=REJECTION_MIN_LENGTH;root.appendChild(fieldRow('علت رد (الزامی)',reason));},
-          onSave:root=>run('reject',{reason:root.querySelector('[name="rejectionReason"]').value})
-        }),true);
       }
-      if(c.approvalRejectionReason && contractApprovalState(c)==='returned'){
-        const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='علت برگشت: '+c.approvalRejectionReason;statusRow.appendChild(reason);
+      if(c.approvalRejectionReason && contractApprovalState(c)==='unapproved'){
+        const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='علت لغو تأیید: '+c.approvalRejectionReason;statusRow.appendChild(reason);
       }
       row.appendChild(statusRow);statusRow.onclick=event=>event.stopPropagation();
       row.appendChild(renderContractHistory(document,c));

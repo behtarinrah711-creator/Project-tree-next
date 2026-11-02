@@ -1,5 +1,5 @@
 import { workTaskRepository } from '../data/workTaskRepository.js';
-import { transitionContractApproval } from './contractApproval.js';
+import { transitionContractApproval, contractApprovalState, contractRevisionContent } from './contractApproval.js';
 import { contractRepository } from '../data/contractRepository.js';
 import { projectRepository } from '../data/projectRepository.js';
 import { getSession } from '../core/session.js';
@@ -75,7 +75,11 @@ function saveContractRecord(projectId, draft, {status = null} = {}){
   const current = draft.id ? contractRepository.get(projectId, draft.id) : null;
   if(current && ['pending','approved'].includes(current.approvalStatus)) return deny('locked','قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');
   const record = { ...(current || {}), ...draft, id, trashed:false };
-  for(const key of ['contractApproverContactIds','approvalStatus','approvalContactId','approvalContactIds','approvedContactIds','approvalHistory','approvalRejectionReason','submittedAt','submittedBy','reviewedAt','reviewedBy']) record[key]=current?.[key];
+  for(const key of ['contractApproverContactIds','approvalStatus','approvalContactId','approvalContactIds','approvedContactIds','approvalHistory','approvalRejectionReason','submittedAt','submittedBy','reviewedAt','reviewedBy','revisionBaseline']) record[key]=current?.[key];
+  if(current && contractApprovalState(current)==='unapproved'){
+    record.approvalStatus='unapproved';
+    record.revisionBaseline=current.revisionBaseline ?? contractRevisionContent(current);
+  }
   if(status) record.status = status;
   if(status === 'draft'){
     record.isDraft = true;
