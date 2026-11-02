@@ -199,11 +199,6 @@ export const contractsModule={
       }
       if(canReviewContract(c,actor)){
         button('تأیید',()=>openConfirm('این قرارداد تأیید شود؟',()=>run('approve'),'تأیید'));
-        button('برگشت برای اصلاح',()=>openWbsSheet({
-          title:'رد تأیید قرارداد',saveLabel:'ثبت رد',historyKey:'contract-reject:'+c.id,
-          body(root){const reason=document.createElement('textarea');reason.className='wbs-input today-textarea';reason.name='rejectionReason';reason.required=true;reason.minLength=REJECTION_MIN_LENGTH;root.appendChild(fieldRow('علت رد (الزامی)',reason));},
-          onSave:root=>run('reject',{reason:root.querySelector('[name="rejectionReason"]').value})
-        }),true);
       }
       if(c.approvalRejectionReason && contractApprovalState(c)==='returned'){
         const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='علت برگشت: '+c.approvalRejectionReason;statusRow.appendChild(reason);
