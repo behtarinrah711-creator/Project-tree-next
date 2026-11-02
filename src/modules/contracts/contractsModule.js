@@ -145,7 +145,8 @@ export const contractsModule={
     if(!contracts.length){const e=document.createElement('div');e.className='contract-empty';e.innerHTML='هنوز قرارداد واقعی ثبت نشده است.<br>از علامت + یک قرارداد ایجاد کنید.';body.appendChild(e);return;}
     const appendContract=c=>{
       const {title,meta,created}=contractRowData(id,c);
-      const row=document.createElement('div'); row.className='contract-row';
+      const row=document.createElement('article'); row.className='contract-row';
+      const heading=document.createElement('div');heading.className='contract-card-heading';
       row.dataset.searchText=normalizeContractSearch(title+' '+meta+' '+(c.projectItemPath||'')+' '+(created ? `${created.date} ${created.time}` : ''));
       row.dataset.approvalState=contractApprovalState(c);row.dataset.reviewMine=String(canReviewContract(c,actor));
       const main=document.createElement('div'); main.className='contract-main';
@@ -170,10 +171,11 @@ export const contractsModule={
         const date=document.createElement('div'); date.className='contract-created-date'; date.textContent=created.date;
         const time=document.createElement('div'); time.className='contract-created-time'; time.textContent=created.time;
         createdBox.append(date,time);
-        row.append(main,createdBox,actions);
+        heading.append(main,createdBox,actions);
       }else{
-        row.append(main,actions);
+        heading.append(main,actions);
       }
+      row.appendChild(heading);
       const statusRow=document.createElement('div');statusRow.className='contract-workflow-row';
       const status=document.createElement('span');status.textContent=approvalLabels[contractApprovalState(c)];statusRow.appendChild(status);
       if(c.approvalStatus==='pending' && c.approvalContactIds?.length)status.textContent+=' ('+new Intl.NumberFormat('fa-IR').format(c.approvedContactIds?.length || 0)+' از '+new Intl.NumberFormat('fa-IR').format(c.approvalContactIds.length)+')';
