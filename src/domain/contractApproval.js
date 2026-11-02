@@ -3,10 +3,41 @@ export { REJECTION_MIN_LENGTH };
 export function contractApprovalState(contract){
   if(contract.approvalStatus==='pending')return 'pending';
   if(contract.approvalStatus==='approved')return 'approved';
-  if(contract.approvalStatus==='returned')return 'returned';
+  if(['unapproved','returned'].includes(contract.approvalStatus))return 'unapproved';
   return contract.isDraft || contract.status==='draft' ? 'incomplete' : 'ready';
 }
-export const approvalLabels={incomplete:'در حال تکمیل',ready:'آماده ارسال برای تأیید',pending:'در انتظار تأیید',approved:'تأییدشده؛ در انتظار امضا',returned:'برگشت برای اصلاح'};
+export const approvalLabels={incomplete:'در حال تکمیل',ready:'آماده ارسال برای تأیید',pending:'در انتظار تأیید',approved:'تأییدشده؛ در انتظار امضا',unapproved:'تأییدنشده'};
+// Compare editable content, not timestamps, generated numbering or workflow metadata.
+export function contractRevisionContent(contract){
+  const scalar=value=>String(value??'');
+  const rows=list=>(list||[]).map(row=>({
+    description:scalar(row.description),pricingMode:row.pricingMode||'quantity',
+    ...(row.pricingMode==='agreed' ? {agreedPrice:scalar(row.agreedPrice)} : {
+      unit:scalar(row.unit),quantity:scalar(row.quantity),unitPrice:scalar(row.unitPrice),remeasurement:!!row.remeasurement,
+    }),
+  }));
+  const clauses=list=>(list||[]).map(item=>({text:scalar(item.text),included:item.included!==false,children:clauses(item.children)}));
+  const content={};
+  for(const key of ['title','templateId','projectItemId','projectItemPath','workTaskId','activityId',
+    'employerId','contractorId','contractDate','startDate','endDate','contractPlace',
+    'retentionPercent','retentionDuration','retentionBasis'])content[key]=scalar(contract[key]);
+  content.retentionBasis=contract.retentionBasis||'تحویل موقت';
+  content.contractorId=scalar(contract.contractorId||contract.contactId);
+  content.employerId=scalar(contract.employerId||contract.employerContactId);
+  content.retentionMethod=contract.retentionMethod||'first';
+  content.operations=rows(contract.operationRows ?? (contract.amountMethod==='quantity' ? contract.amountRows :
+    (contract.agreedRows ?? [{description:contract.amountDescription||'',agreedPrice:contract.agreedAmount ?? contract.amount ?? ''}]).map(row=>({...row,pricingMode:'agreed'}))));
+  if(!content.operations.length){content.amount=scalar(contract.amount);content.amountDescription=scalar(contract.amountDescription);}
+  content.payments=rows(contract.paymentRows);
+  content.items=clauses(contract.items);
+  return JSON.stringify(content);
+}
+export function canSubmitContract(contract){
+  if(contract.isDraft || contract.status!=='final')return false;
+  const status=contractApprovalState(contract);
+  return status==='ready' || (status==='unapproved' && typeof contract.revisionBaseline==='string' &&
+    contractRevisionContent(contract)!==contract.revisionBaseline);
+}
 export function contractApproverIds(contract){
   return [...new Set((Array.isArray(contract.approvalContactIds) ? contract.approvalContactIds : [contract.approvalContactId]).filter(Boolean).map(String))];
 }
@@ -24,33 +55,32 @@ export function canReviewContract(contract,actor){
     contractApproverIds(contract).includes(String(actor.contactId)) && !(contract.approvedContactIds || []).includes(String(actor.contactId));
 }
 export function transitionContractApproval(contract,action,actor,{approverId='',approverIds=null,reason='',at=Date.now()}={}){
-  const status=contractApprovalState(contract);
   const reviewers=[...new Set((approverIds || [approverId]).filter(Boolean).map(String))];
   if(!actor?.id || actor.id==='guest')return {ok:false,message:'ابتدا وارد حساب کاربری شوید'};
   if(action==='submit'){
-    if(contract.isDraft || contract.status!=='final' || !['ready','returned'].includes(status))return {ok:false,message:'ابتدا اطلاعات قرارداد را تکمیل و ذخیره کنید'};
+    if(!canSubmitContract(contract))return {ok:false,message:'ابتدا اطلاعات قرارداد را تکمیل و ذخیره کنید'};
     if(!reviewers.length)return {ok:false,message:'مسئول تأیید را انتخاب کنید'};
   }else if(action==='revoke'){
     if(!canRevokeContractApproval(contract,actor))return {ok:false,message:'فقط می‌توانید تأیید خودتان را لغو کنید'};
-  }else if(!['approve','reject'].includes(action) || !canReviewContract(contract,actor)){
+  }else if(action!=='approve' || !canReviewContract(contract,actor)){
     return {ok:false,message:'این درخواست در انتظار تأیید شما نیست'};
   }
   const text=String(reason).trim();
-  if(action==='reject' && text.length<REJECTION_MIN_LENGTH)return {ok:false,message:'علت رد حداقل '+REJECTION_MIN_LENGTH+' حرف باشد'};
   if(action==='revoke' && text.length<REJECTION_MIN_LENGTH)return {ok:false,message:'علت لغو تأیید حداقل '+REJECTION_MIN_LENGTH+' حرف باشد'};
-  const next={...contract,updatedAt:at,approvalStatus:action==='submit'?'pending':action==='approve'?'approved':'returned'};
+  const next={...contract,updatedAt:at,approvalStatus:action==='submit'?'pending':action==='approve'?'approved':'unapproved'};
   if(action==='submit'){next.approvalContactIds=reviewers;next.approvalContactId=reviewers[0];next.approvedContactIds=[];next.submittedAt=at;next.submittedBy={...actor};}
   if(action==='approve'){
     next.approvedContactIds=[...new Set([...(contract.approvedContactIds || []),String(actor.contactId)])];
     next.approvalStatus=contractApproverIds(contract).every(id=>next.approvedContactIds.includes(id))?'approved':'pending';
   }
   if(action==='revoke'){
-    next.approvedContactIds=approvedContractContactIds(contract).filter(id=>id!==String(actor.contactId));
-    next.approvalStatus='pending';
+    next.approvedContactIds=[];
+    next.approvalStatus='unapproved';
+    next.approvalRejectionReason=text;
+    next.revisionBaseline=contractRevisionContent(contract);
   }
   if(action!=='submit'){next.reviewedAt=at;next.reviewedBy={...actor};}
-  if(action==='reject')next.approvalRejectionReason=text;
-  if(action==='submit')next.approvalRejectionReason='';
-  next.approvalHistory=[...(contract.approvalHistory||[]),{action,at,actor:{...actor},approverId:next.approvalContactId,reason:['reject','revoke'].includes(action)?text:''}];
+  if(action==='submit'){next.approvalRejectionReason='';next.revisionBaseline=null;}
+  next.approvalHistory=[...(contract.approvalHistory||[]),{action,at,actor:{...actor},approverId:next.approvalContactId,reason:action==='revoke'?text:''}];
   return {ok:true,contract:next};
 }
