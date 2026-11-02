@@ -1886,3 +1886,15 @@ textarea.contract-project-item-input{
 #contractsPageBody .contract-card-heading{margin-inline:-12px;padding:10px 12px;background:#f4f1ec;border-radius:var(--wbs-frame-radius,5px) var(--wbs-frame-radius,5px) 0 0}
 #contractsPageBody .contract-title{font-size:13px;font-weight:600;color:#4d4741;text-align:center;overflow-wrap:anywhere}
 #contractsPageBody .contract-meta{font-size:11px;color:#4d4741;text-align:center}
+
+/* Contract progress uses real saved lifecycle state; it has no manual controls. */
+#contractsPageBody .contract-progress{display:flex;direction:rtl;list-style:none;margin:0;padding:16px 0;border-top:1px solid var(--divider,#e4ddd3);}
+#contractsPageBody .contract-progress-step{position:relative;flex:1;min-width:0;display:grid;grid-template-rows:34px 14px 34px;text-align:center;color:#6b7280;}
+#contractsPageBody .contract-progress-step::after{content:'';position:absolute;top:40px;inset-inline-start:50%;width:100%;height:2px;background:#d1d5db;}
+#contractsPageBody .contract-progress-step:last-child::after{display:none;}
+#contractsPageBody .contract-progress-step.has-complete-next::after{background:#24934f;}
+#contractsPageBody .contract-progress-label{grid-row:1;align-self:center;font-size:10px;line-height:1.5;padding:0 2px;overflow-wrap:anywhere;}
+#contractsPageBody .contract-progress-step:nth-child(even) .contract-progress-label{grid-row:3;}
+#contractsPageBody .contract-progress-dot{grid-row:2;justify-self:center;align-self:center;width:12px;height:12px;border-radius:50%;background:#d1d5db;position:relative;z-index:1;}
+#contractsPageBody .contract-progress-step.is-complete{color:#187638;}
+#contractsPageBody .contract-progress-step.is-complete .contract-progress-dot{background:#24934f;}
