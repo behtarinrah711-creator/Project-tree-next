@@ -1852,9 +1852,14 @@ textarea.contract-project-item-input{
 #contractFormPage .contract-form-body .contract-payment-balance .ft-value{color:var(--danger,#b23b3b) !important;}
 
 /* Shared contract list: filters and workflow details stay on the same card. */
-#contractsPageBody .contract-row{flex-wrap:wrap;}
+#contractsPageBody .contract-list{padding:0 10px 12px;}
+#contractsPageBody .contract-row{display:block;box-sizing:border-box;min-width:0;}
+#contractsPageBody .contract-card-heading{display:grid;grid-template-columns:70px minmax(0,1fr) 34px;align-items:center;gap:8px;}
+#contractsPageBody .contract-card-heading .contract-main{grid-column:2;grid-row:1;text-align:center;}
+#contractsPageBody .contract-card-heading .contract-created{grid-column:1;grid-row:1;text-align:center;}
+#contractsPageBody .contract-card-heading .contract-actions{grid-column:3;grid-row:1;}
 #contractsPageBody .contract-main{flex-basis:50%;min-width:0;}
-#contractsPageBody .contract-workflow-row{flex:1 0 100%;box-sizing:border-box;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--divider);padding:10px 14px 0;margin:4px -14px 0;min-width:calc(100% + 28px);font-size:12px;}
+#contractsPageBody .contract-workflow-row{flex:1 0 100%;box-sizing:border-box;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--divider);padding:12px 0;margin:0;min-width:0;font-size:12px;}
 #contractsPageBody .contract-workflow-row>span{flex:1;min-width:120px;}
 #contractsPageBody .contract-review-action{border:0;background:transparent;color:#1565c0;font:inherit;padding:6px;cursor:pointer;}
 #contractsPageBody .contract-review-action.danger,#contractsPageBody .contract-rejection-reason{color:var(--danger,#b23b3b);}
@@ -1868,10 +1873,16 @@ textarea.contract-project-item-input{
 #contractsPageBody .contract-filter-dismiss{position:fixed;inset:0;z-index:1;border:0;background:transparent;cursor:default;}
 #contractsPageBody .contract-mine-reset{border:1px solid var(--divider);border-radius:8px;padding:8px;background:var(--surface);color:#1565c0;font:inherit;cursor:pointer;}
 
-#contractsPageBody .contract-history{flex:0 0 calc(100% + 28px);min-width:0;margin:0 -14px;padding:0 14px;border-top:1px solid var(--divider,#e4ddd3);color:var(--text-dim,#77706a);font-size:11px}
+#contractsPageBody .contract-history{min-width:0;margin:0;padding:0;border-top:1px solid var(--divider,#e4ddd3);color:var(--text-dim,#77706a);font-size:11px}
 #contractsPageBody .contract-history summary{min-height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#033e8a;font:inherit;font-weight:600}
 #contractsPageBody .contract-history-entry{padding:8px 0;line-height:1.9;overflow-wrap:anywhere}
 #contractsPageBody .contract-history-entry p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
 #contractsPageBody .contract-history-empty{padding:8px 0 14px;text-align:center}
 
 .contract-form-body .contract-quantity-list > .contract-quantity-add{color:#1565c0;}
+
+/* Contract-owned presentation matches the execution work-card design. */
+#contractsPageBody .contract-row{margin:12px 0;padding:0 12px;border:1px solid #e5ded3;border-radius:var(--wbs-frame-radius,5px);background:#fff}
+#contractsPageBody .contract-card-heading{margin-inline:-12px;padding:10px 12px;background:#f4f1ec;border-radius:var(--wbs-frame-radius,5px) var(--wbs-frame-radius,5px) 0 0}
+#contractsPageBody .contract-title{font-size:13px;font-weight:600;color:#4d4741;text-align:center;overflow-wrap:anywhere}
+#contractsPageBody .contract-meta{font-size:11px;color:#4d4741;text-align:center}
