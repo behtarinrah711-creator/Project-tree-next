@@ -152,6 +152,7 @@ test('saved contract and draft contract share History ownership but keep differe
     ...baseProject,
     contracts: [{
       id: 'saved-contract-1', title: 'قرارداد ذخیره‌شده', status: 'final', isDraft: false,
+      approvalStatus: 'unapproved', approvalRejectionReason: 'نیاز به اصلاح محل قرارداد',
       contractPlace: 'محل قبلی', contractDate: '1405/06/05', startDate: '', endDate: '', amount: '',
       employerId: '', contractorId: '', contactId: '', activityId: '', projectItemId: '',
       items: [], paymentStages: [], paymentItems: [], attachments: [], trashed: false,

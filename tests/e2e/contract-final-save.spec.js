@@ -95,6 +95,9 @@ test('Declare completion persists a final contract and renders it in the contrac
   ]);
   expect(stored.status).toBe('final');
   expect(stored.isDraft).toBe(false);
+  expect(stored.completedAt).toBeGreaterThan(0);
+  expect(stored.completedBy.id).toBe('writer');
+  expect(stored.approvalHistory.some(entry => entry.action === 'complete' && entry.actor.id === 'writer')).toBe(true);
   expect(stored.contractPlace).toBe('کارگاه تست');
 
   const exitGuardActive = await page.evaluate(() => {
