@@ -153,6 +153,13 @@ function mergeMemberContracts(current,incoming,tasks,permissions){
       else delete record[key];
     }
     record.contractApproverContactIds=task?.contractApproverContactIds || previous?.contractApproverContactIds || [];
+    if(task && record.status==='final' && !record.isDraft && !record.contractApproverContactIds.length){
+      record.approvalStatus='approved';
+      record.approvalContactIds=[];
+      record.approvalContactId='';
+      record.approvedContactIds=[];
+      record.approvalRejectionReason='';
+    }
     records.set(String(record.id),record);
   }
   return [...records.values()];

@@ -87,6 +87,18 @@ function saveContractRecord(projectId, draft, {status = null} = {}){
   }else if(status === 'final'){
     record.isDraft = false;
   }
+  // Only an existing linked task with an explicitly empty reviewer list bypasses review.
+  const linkedTask=record.workTaskId && workTaskRepository.get(projectId,record.projectItemId,record.workTaskId);
+  if(linkedTask){
+    record.contractApproverContactIds=[...(linkedTask.contractApproverContactIds || [])];
+    if(record.status==='final' && !record.isDraft && !record.contractApproverContactIds.length){
+      record.approvalStatus='approved';
+      record.approvalContactIds=[];
+      record.approvalContactId='';
+      record.approvedContactIds=[];
+      record.approvalRejectionReason='';
+    }
+  }
   if(!current) record.createdAt = record.createdAt || Date.now();
   record.updatedAt = Date.now();
 
