@@ -1,6 +1,6 @@
 import { renderContractProgress } from './contractProgressView.js';
 import { renderContractHistory } from './contractHistoryView.js';
-import { approvalLabels, contractApprovalState, canReviewContract, canRevokeContractApproval, canSubmitContract, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
+import { approvalLabels, contractApprovalState, canReviewContract, canRevokeContractApproval, canSubmitContract, canCancelContractCompletion, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
 import { fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
 import { openStaticChoicePicker } from './contractPickers.js';
@@ -155,7 +155,7 @@ export const contractsModule={
       main.append(t,numberRow,activityRow);
       const actions=document.createElement('div'); actions.className='contract-actions';
       actions.appendChild(contractActionsMenu({
-        onEdit:()=>{if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
+        onEdit:()=>{if(c.status==='final' && contractApprovalState(c)==='ready'){window.KarhaLegacy?.showToast?.('برای ویرایش ابتدا اعلام تکمیل را لغو کنید');return;}if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
         onExport:trigger=>openContractExport(p,c,{trigger}),
         onDelete:()=>openConfirm('آیا از حذف این قرارداد اطمینان دارید؟',()=>{
           const result=contractApi.trash(id,c.id);
@@ -198,6 +198,14 @@ export const contractsModule={
         if(c.workTaskId || c.contractApproverContactIds?.length)button(submitLabel,()=>run('submit'));
         else button(submitLabel,()=>openStaticChoicePicker('انتخاب مسئول تأیید','مخاطبین',(p.contacts||[]).filter(x=>!x.trashed).map(x=>({value:x.id,label:[x.firstName,x.lastName].filter(Boolean).join(' ')||x.name||'مخاطب'})),c.approvalContactId,value=>run('submit',{approverId:value})));
       }
+      if(canCancelContractCompletion(c) || (contractApprovalState(c)==='pending' && c.submittedBy?.id===actor.id)){
+        const action=contractApprovalState(c)==='pending'?'withdraw_submission':'cancel_completion';
+        button(action==='withdraw_submission'?'پس‌گرفتن از تأیید':'لغو اعلام تکمیل',()=>openWbsSheet({
+          title:action==='withdraw_submission'?'پس‌گرفتن از تأیید':'لغو اعلام تکمیل',saveLabel:'ثبت برگشت',historyKey:'contract-cancel-completion:'+c.id,
+          body(root){const reason=document.createElement('textarea');reason.className='wbs-input today-textarea';reason.name='completionReason';root.appendChild(fieldRow('علت برگشت (الزامی)',reason));},
+          onSave:root=>run(action,{reason:root.querySelector('[name="completionReason"]').value})
+        }),true);
+      }
       if(canRevokeContractApproval(c,actor)){
         button('لغو تأیید من',()=>openWbsSheet({
           title:'لغو تأیید قرارداد',saveLabel:'ثبت لغو تأیید',historyKey:'contract-revoke:'+c.id,
@@ -208,7 +216,7 @@ export const contractsModule={
       if(canReviewContract(c,actor)){
         button('تأیید',()=>openConfirm('این قرارداد تأیید شود؟',()=>run('approve'),'تأیید'));
       }
-      if(c.approvalRejectionReason && contractApprovalState(c)==='unapproved'){
+      if(c.approvalRejectionReason && ['unapproved','incomplete'].includes(contractApprovalState(c))){
         const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='علت لغو تأیید: '+c.approvalRejectionReason;statusRow.appendChild(reason);
       }
       row.appendChild(statusRow);statusRow.onclick=event=>event.stopPropagation();
