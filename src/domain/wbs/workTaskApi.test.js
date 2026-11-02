@@ -59,7 +59,7 @@ test('task API validates references and dates and persists a canonical Work refe
 
 test('contract toggle creates one system draft and contract edits sync activity back to the task',()=>{
   const store=installFixture();
-  const created=workTaskApi.create('p1','w1',draft({counterpartyContactId:'c1',activityId:'a1',hasContract:true}),()=>100);
+  const created=workTaskApi.create('p1','w1',draft({counterpartyContactId:'c1',activityId:'a1',hasContract:true,contractApproverContactIds:['c1']}),()=>100);
   assert.equal(created.ok,true);
   let project=store.getSnapshot().projects[0];
   assert.equal(project.contracts.length,1);
@@ -79,6 +79,19 @@ test('contract toggle creates one system draft and contract edits sync activity 
   assert.equal(contractApi.trash('p1',draftContract.id).ok,true);
   synced=workTaskApi.get('p1','w1',created.task.id);
   assert.equal(synced.hasContract,false);
+});
+
+test('completed contract without task reviewers is approved and cannot be deleted',()=>{
+  const store=installFixture();
+  const created=workTaskApi.create('p1','w1',draft({counterpartyContactId:'c1',activityId:'a1',hasContract:true}),()=>100);
+  assert.equal(created.ok,true);
+  const contract=store.getSnapshot().projects[0].contracts[0];
+  const saved=contractApi.save('p1',contract);
+  assert.equal(saved.ok,true);
+  assert.equal(saved.contract.approvalStatus,'approved');
+  assert.deepEqual(saved.contract.approvalContactIds,[]);
+  assert.equal(contractApi.trash('p1',contract.id).code,'locked');
+  assert.equal(workTaskApi.get('p1','w1',created.task.id).hasContract,true);
 });
 
 test('task weight edits and weighted completion drive Work completion', () => {
