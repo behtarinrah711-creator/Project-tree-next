@@ -9,6 +9,7 @@ test('incomplete contracts cannot be submitted and only designated reviewer can 
  const result=transitionContractApproval({id:'c',status:'final'},'submit',author,{approverId:'reviewer',at:1});
  assert.equal(contractApprovalState(result.contract),'pending');
  assert.equal(canReviewContract(result.contract,manager),true);
+ assert.equal(transitionContractApproval(result.contract,'reject',manager,{reason:'اصلاح مبلغ قرارداد'}).ok,false);
  assert.equal(canReviewContract(result.contract,author),false);
  assert.equal(transitionContractApproval(result.contract,'approve',author).ok,false);
  const approved=transitionContractApproval(result.contract,'approve',manager,{at:2});
@@ -16,16 +17,17 @@ test('incomplete contracts cannot be submitted and only designated reviewer can 
  assert.equal(approved.contract.approvalHistory.length,2);
  assert.equal(transitionContractApproval(approved.contract,'reject',manager,{reason:'دلیل کافی'}).ok,false);
 });
-test('rejection reason is mandatory and survives resubmission in audit history',()=>{
+test('revocation reason is mandatory and survives resubmission in audit history',()=>{
  const pending=transitionContractApproval({status:'final'},'submit',author,{approverId:'reviewer',at:1}).contract;
- for(const reason of ['', '   ','کم'])assert.equal(transitionContractApproval(pending,'reject',manager,{reason}).ok,false);
- const rejected=transitionContractApproval(pending,'reject',manager,{reason:'اصلاح مبلغ قرارداد',at:2}).contract;
+ for(const reason of ['', '   ','کم'])assert.equal(transitionContractApproval(transitionContractApproval(pending,'approve',manager).contract,'revoke',manager,{reason}).ok,false);
+ const approved=transitionContractApproval(pending,'approve',manager).contract;
+ const rejected=transitionContractApproval(approved,'revoke',manager,{reason:'اصلاح مبلغ قرارداد',at:2}).contract;
  assert.equal(contractApprovalState(rejected),'returned');
  assert.equal(rejected.approvalRejectionReason,'اصلاح مبلغ قرارداد');
  const resubmitted=transitionContractApproval(rejected,'submit',author,{approverId:'reviewer',at:3}).contract;
  assert.equal(resubmitted.approvalRejectionReason,'');
- assert.equal(resubmitted.approvalHistory[1].reason,'اصلاح مبلغ قرارداد');
- assert.equal(resubmitted.approvalHistory.length,3);
+ assert.equal(resubmitted.approvalHistory[2].reason,'اصلاح مبلغ قرارداد');
+ assert.equal(resubmitted.approvalHistory.length,4);
  assert.equal(transitionContractApproval(rejected,'submit',{id:'guest'},{approverId:'reviewer'}).ok,false);
 });
 
@@ -45,7 +47,8 @@ test('project API saves workflow and prevents changing approved content',async()
   assert.equal(contractApi.save('p',{...record,amount:'999'}).ok,false);
   assert.equal(record.amount,'100');
   assert.equal(contractApi.review('p','c','reject',author,{reason:'دلیل رد طولانی'}).ok,false);
-  assert.equal(contractApi.review('p','c','reject',manager,{reason:'مبلغ اصلاح شود'}).ok,true);
+  assert.equal(contractApi.review('p','c','approve',manager).ok,true);
+  assert.equal(contractApi.review('p','c','revoke',manager,{reason:'مبلغ اصلاح شود'}).ok,true);
   assert.equal(contractApi.save('p',{...record,amount:'200',approvalStatus:'approved'}).ok,true);
   assert.equal(record.approvalStatus,'returned');
   assert.equal(contractApi.review('p','c','submit',author,{approverId:'reviewer'}).ok,true);
@@ -55,7 +58,7 @@ test('project API saves workflow and prevents changing approved content',async()
  }finally{[projectRepository.find,contractRepository.get,contractRepository.save]=before;}
 });
 
-test('all assigned contacts must approve once and rejection resets the next round',()=>{
+test('all assigned contacts must approve once and revocation resets the next round',()=>{
  const second={id:'employer',contactId:'employer'};
  let c=transitionContractApproval({status:'final'},'submit',author,{approverIds:['reviewer','employer','reviewer']}).contract;
  assert.deepEqual(c.approvalContactIds,['reviewer','employer']);
@@ -64,7 +67,7 @@ test('all assigned contacts must approve once and rejection resets the next roun
  assert.equal(canReviewContract(c,manager),false);
  assert.equal(canReviewContract(c,second),true);
  assert.equal(transitionContractApproval(c,'approve',manager).ok,false);
- const rejected=transitionContractApproval(c,'reject',second,{reason:'مبلغ نیاز به اصلاح دارد'}).contract;
+ const rejected=transitionContractApproval(c,'revoke',manager,{reason:'مبلغ نیاز به اصلاح دارد'}).contract;
  assert.equal(rejected.approvalStatus,'returned');
  c=transitionContractApproval(rejected,'submit',author,{approverIds:['reviewer','employer']}).contract;
  assert.deepEqual(c.approvedContactIds,[]);
@@ -75,30 +78,31 @@ test('all assigned contacts must approve once and rejection resets the next roun
  assert.equal(c.reviewedBy.contactId,'reviewer');
 });
 
-test('reviewers can withdraw only their own approval and approve again',()=>{
+test('revocation returns the contract for editing and invalidates the previous approval round',()=>{
  const employer={id:'employer',contactId:'employer'};
  let c=transitionContractApproval({status:'final'},'submit',author,{approverIds:['reviewer','employer']}).contract;
  c=transitionContractApproval(c,'approve',manager).contract;
- assert.equal(transitionContractApproval(c,'revoke',employer).ok,false);
- c=transitionContractApproval(c,'revoke',manager,{at:3,reason:'نیاز به بازبینی مبلغ'}).contract;
- assert.equal(c.approvalStatus,'pending');
- assert.deepEqual(c.approvedContactIds,[]);
- assert.equal(c.approvalHistory.at(-1).action,'revoke');
- assert.equal(canReviewContract(c,manager),true);
- assert.equal(transitionContractApproval(c,'revoke',manager,{reason:'نیاز به بازبینی مبلغ'}).ok,false);
- c=transitionContractApproval(c,'approve',manager).contract;
+ assert.equal(transitionContractApproval(c,'revoke',employer,{reason:'نیاز به بازبینی مبلغ'}).ok,false);
  c=transitionContractApproval(c,'approve',employer).contract;
- c=transitionContractApproval(c,'revoke',manager,{reason:'نیاز به بازبینی مبلغ'}).contract;
+ c=transitionContractApproval(c,'revoke',manager,{at:3,reason:'نیاز به بازبینی مبلغ'}).contract;
+ assert.equal(c.approvalStatus,'returned');
+ assert.deepEqual(c.approvedContactIds,[]);
+ assert.equal(c.approvalRejectionReason,'نیاز به بازبینی مبلغ');
+ assert.equal(c.approvalHistory.at(-1).action,'revoke');
+ assert.equal(canReviewContract(c,manager),false);
+ assert.equal(transitionContractApproval(c,'approve',manager).ok,false);
+ assert.equal(transitionContractApproval(c,'revoke',manager,{reason:'نیاز به بازبینی مبلغ'}).ok,false);
+ c=transitionContractApproval(c,'submit',author,{approverIds:['reviewer','employer']}).contract;
+ c=transitionContractApproval(c,'approve',manager).contract;
  assert.equal(c.approvalStatus,'pending');
- assert.deepEqual(c.approvedContactIds,['employer']);
- assert.equal(transitionContractApproval(c,'revoke',author).ok,false);
- assert.equal(transitionContractApproval(c,'approve',manager).contract.approvalStatus,'approved');
+ c=transitionContractApproval(c,'approve',employer).contract;
+ assert.equal(c.approvalStatus,'approved');
 });
 test('legacy approved contracts support withdrawal by the assigned reviewer',()=>{
  const legacy={status:'final',approvalStatus:'approved',approvalContactId:'reviewer'};
  const result=transitionContractApproval(legacy,'revoke',manager,{reason:'نیاز به بازبینی مبلغ'});
  assert.equal(result.ok,true);
- assert.equal(result.contract.approvalStatus,'pending');
+ assert.equal(result.contract.approvalStatus,'returned');
  assert.deepEqual(result.contract.approvedContactIds,[]);
  assert.equal(transitionContractApproval(legacy,'revoke',author).ok,false);
  assert.equal(transitionContractApproval({...legacy,approvalStatus:'returned'},'revoke',manager,{reason:'نیاز به بازبینی مبلغ'}).ok,false);
