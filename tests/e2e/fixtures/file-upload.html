@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Attachment component test</title>
+<link rel="stylesheet" href="/src/styles/components/forms.css">
+<main id="upload"></main>
+<script type="module">
+import {mountFileUploader} from '/src/modules/files/fileUploader.js';
+window.savedFiles=[];
+window.uploader=mountFileUploader(document.getElementById('upload'),{
+  projectId:'upload-project',recordId:'person-1',files:window.savedFiles,
+  onError:message=>{window.uploadError=message;}
+});
+</script>
+</html>

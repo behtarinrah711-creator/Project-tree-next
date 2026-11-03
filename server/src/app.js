@@ -4,6 +4,7 @@ import {authenticate} from './auth.js';
 import {createHash, randomBytes, randomInt, randomUUID} from 'node:crypto';
 import {constantTimeEqual, hashToken} from './auth.js';
 import {normalizeAccountNotebook, readAccountNotebook, saveAccountNotebook} from './accountNotebook.js';
+import {createFileUploadHandler} from './fileUploads.js';
 
 const SCOPE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/i;
 const IRAN_PHONE_PATTERN = /^09\d{9}$/;
@@ -549,10 +550,12 @@ async function saveWorkspace(pool, accountId, snapshot){
   if(committed) return readWorkspace(pool, accountId);
 }
 
-export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms=async()=>{}, sendInvitationEmail=async()=>({skipped:true}), invitationBaseUrl='https://saosa.ir', logger = console}){
+export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms=async()=>{}, sendInvitationEmail=async()=>({skipped:true}), invitationBaseUrl='https://saosa.ir', fileStorage=null, logger = console}){
+  const handleFiles=createFileUploadHandler({pool,sessionSecret,storage:fileStorage});
   return async function app(request, response){
     try{
       const url = route(request);
+      if(await handleFiles(request,response,url))return;
       if(request.method === 'GET' && url.pathname === '/api/health'){
         await pool.query('SELECT 1');
         return sendJson(response, 200, {ok: true, database: 'ready'});

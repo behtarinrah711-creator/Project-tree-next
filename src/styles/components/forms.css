@@ -1,3 +1,4 @@
+@import url("../../../vendor/filepond/filepond.min.css");
 /* C5 owner module: components/forms.css */
   /* ---------- استاندارد فرم‌های داخلی ---------- */
   .internal-form-body{
@@ -150,3 +151,27 @@
   #projectTrashPage .trash-native-row .restore-btn,
   #projectTrashPage .trash-native-row .perm-del-btn{white-space:nowrap;}
 
+
+
+/* Shared local attachment uploader and viewer. */
+.saosa-file-uploader{direction:rtl;margin-block:12px;min-width:0;}
+.saosa-file-uploader .filepond--root{font-family:inherit;text-align:right;}
+.saosa-file-uploader .filepond--panel-root{background:var(--surface,#fff);border:1px dashed var(--divider,#ddd);}
+.saosa-file-uploader .filepond--drop-label{color:var(--text,#333);}
+.saosa-file-note{font-size:12px;color:var(--muted,#666);line-height:1.8;}
+.saosa-file-gallery{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;}
+.saosa-file-card{position:relative;border:1px solid var(--divider,#ddd);border-radius:10px;background:var(--surface,#fff);overflow:hidden;min-width:0;}
+.saosa-file-open{display:flex;align-items:center;justify-content:center;width:100%;height:120px;padding:5px;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;overflow-wrap:anywhere;}
+.saosa-file-open img{display:block;width:100%;height:100%;object-fit:contain;}
+.saosa-file-card small{display:block;padding:4px;text-align:center;font-size:11px;}
+.saosa-file-remove{position:absolute;top:4px;left:4px;width:36px;height:36px;border:0;border-radius:50%;background:#333c;color:#fff;font-size:24px;cursor:pointer;}
+.saosa-file-viewer{position:fixed;inset:0;width:100%;max-width:none;height:100dvh;max-height:none;padding:0;margin:0;border:0;background:var(--surface,#fff);color:var(--text,#222);direction:rtl;}
+.saosa-file-viewer::backdrop{background:#0008;}
+.saosa-file-viewer-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:12px;padding-top:max(12px,env(safe-area-inset-top));background:var(--primary,#080855);color:white;}
+.saosa-file-viewer-head span{flex:1;min-width:100px;overflow-wrap:anywhere;}
+.saosa-file-viewer-head button{min-height:44px;padding:8px;border:0;border-radius:6px;background:transparent;color:inherit;font:inherit;cursor:pointer;}
+.saosa-file-viewer-head button:disabled{opacity:.5;}
+.saosa-file-viewer-body{height:calc(100% - 110px);overflow:auto;display:grid;align-items:center;justify-items:center;padding:12px;touch-action:pan-x pan-y pinch-zoom;}
+.saosa-file-viewer-body img{display:block;max-width:100%;max-height:100%;object-fit:contain;}
+.saosa-file-viewer-body.is-zoomed{display:block;}
+.saosa-file-viewer-body.is-zoomed img{max-width:none;max-height:none;}
