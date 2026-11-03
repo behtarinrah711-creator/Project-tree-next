@@ -24,6 +24,7 @@ export function contractProgressSteps(contract,project){
   ];
   if(reviewers.filter(Boolean).length)steps.push({id:'approved',label:'تأیید قرارداد',done:complete && contractApprovalState(contract)==='approved'});
   steps.push({id:'signed',label:'امضای قرارداد',done:complete && contract.approvalStatus==='approved' && isContractSigned(contract)},{id:'finance',label:'ارسال به مالی',done:isContractInFinance(contract)});
+  steps.push({id:'finance-approved',label:'تأیید بخش مالی',done:isContractInFinance(contract) && contract.accountingStatus==='accepted'});
   return steps;
 }
 

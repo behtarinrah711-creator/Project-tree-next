@@ -3,8 +3,6 @@ import {mountFileUploader} from '../files/fileUploader.js';
 import {openWbsSheet,closeWbsSheet,fieldRow} from '../wbs/wbsSheet.js';
 import {openConfirm} from '../../ui/confirm.js';
 import {saveContractHandoff} from './contractHandoffApi.js';
-import {openContractPreview} from './contractPreviewView.js';
-import {openContractExport} from './contractExportView.js';
 const toast=message=>window.KarhaLegacy?.showToast?.(message);
 function canWrite(project){
   const access=window.KarhaSaosaWorkspaceAccess?.[project.id];
@@ -46,14 +44,10 @@ export function renderContractSignedSection(project,contract,{onChanged=()=>{},f
   else count.textContent='پس از تکمیل و تأیید قرارداد، امکان افزودن نسخه امضاشده فعال می‌شود.';
   if(sent){
     const notice=document.createElement('p');notice.textContent='ارسال‌شده به واحد مالی؛ پیوست‌ها قفل هستند.';section.appendChild(notice);
-    if(writable)button('پس‌گرفتن از مالی',()=>{const sheet=openWbsSheet({title:'پس‌گرفتن قرارداد از مالی',saveLabel:'ثبت برگشت',historyKey:'withdraw-finance:'+contract.id,
+    if(writable && !finance)button('پس‌گرفتن از مالی',()=>{const sheet=openWbsSheet({title:'پس‌گرفتن قرارداد از مالی',saveLabel:'ثبت برگشت',historyKey:'withdraw-finance:'+contract.id,
       body(root){const reason=document.createElement('textarea');reason.className='wbs-input today-textarea';reason.name='reason';root.appendChild(fieldRow('دلیل پس‌گرفتن (الزامی)',reason));},
       onSave(root){const reason=root.querySelector('[name="reason"]').value;if(reason.trim().length<5){toast('دلیل پس‌گرفتن حداقل ۵ حرف باشد');return false;}run('withdraw_finance',{reason}).then(ok=>{if(ok && sheet.isConnected)closeWbsSheet();});return false;}
     });});
   }else if(writable && ready && isContractSigned(contract))button('ارسال به واحد مالی',()=>openConfirm('قرارداد تنظیم‌شده به همراه نسخه امضاشده به واحد مالی ارسال شود؟',()=>run('send_finance'),'ارسال'));
-  if(finance && contract.accountingPackage){
-    button('مشاهده قرارداد تنظیم‌شده',()=>openContractPreview(project,contract.accountingPackage.contract,{frozen:true}));
-    button('خروجی قرارداد تنظیم‌شده',()=>openContractExport(project,contract.accountingPackage.contract,{frozen:true}));
-  }
   return section;
 }

@@ -35,3 +35,22 @@ test('old workspace snapshots cannot erase signatures, forge finance state or de
   const forged=preserveContractHandoff({contracts:[{...base(),signedAt:4,signedFiles:[file()],accountingStatus:'sent',approvalHistory:[{action:'send_finance',actor}]}]},{contracts:[base()]}).contracts[0];
   assert.equal(forged.signedAt,undefined);assert.equal(forged.accountingStatus,undefined);assert.deepEqual(forged.approvalHistory,[]);
 });
+test('financial acceptance is reversible by its reviewer; rejection resets the contract to editable creation',()=>{
+  let c=transition(base(),'save_signed',actor,{files:[file()],at:10}).contract;
+  c=transition(c,'send_finance',actor,{at:20}).contract;
+  const sent=c;
+  c=transition(c,'approve_finance',actor,{at:30}).contract;
+  assert.equal(c.accountingStatus,'accepted');assert.equal(isContractInFinance(c),true);
+  assert.equal(transition(c,'reject_finance',actor,{reason:'اصلاح'}).ok,false);
+  assert.equal(transition(c,'revoke_finance',{id:'other'}).ok,false);
+  c=transition(c,'revoke_finance',actor,{at:40}).contract;
+  assert.equal(c.accountingStatus,'sent');assert.equal(c.accountingDecision,null);
+  assert.equal(transition(c,'reject_finance',actor,{reason:'کم'}).ok,false);
+  c=transition(c,'reject_finance',actor,{reason:'صفحه امضا کامل نیست',at:50}).contract;
+  assert.equal(c.status,'draft');assert.equal(c.isDraft,true);assert.equal(c.approvalStatus,null);
+  assert.deepEqual(c.approvedContactIds,[]);assert.equal(c.completedAt,null);assert.equal(c.signedAt,null);assert.deepEqual(c.signedFiles,[]);
+  assert.equal(isContractInFinance(c),false);assert.equal(c.financeRejection.reason,'صفحه امضا کامل نیست');
+  assert.deepEqual(c.accountingPackage,sent.accountingPackage);
+  assert.deepEqual(c.financeHistory.map(e=>e.action),['send_finance','approve_finance','revoke_finance','reject_finance']);
+  assert.deepEqual(preserveContractHandoff({contracts:[sent]},{contracts:[c]}).contracts,[c]);
+});

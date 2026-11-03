@@ -22,8 +22,8 @@ export function contractActionsMenu({onEdit,onExport,onDelete}){
     dismiss.setAttribute('aria-label','بستن منو');dismiss.onclick=shut;
     menu=document.createElement('div');menu.className='nb-project-menu';menu.setAttribute('role','menu');
     for(const [title,icon,handler,danger] of [
-      ['ویرایش',notebookIcons.edit,onEdit],['خروجی',notebookIcons.export,()=>onExport(toggle)],['حذف',notebookIcons.trash,onDelete,true],
-    ]){
+      ['ویرایش',notebookIcons.edit,onEdit],['خروجی',notebookIcons.export,onExport?()=>onExport(toggle):null],['حذف',notebookIcons.trash,onDelete,true],
+    ].filter(item=>typeof item[2]==='function')){
       const button=document.createElement('button');button.type='button';button.className='nb-action-icon'+(danger?' danger':'');
       button.title=title;button.setAttribute('aria-label',title);button.setAttribute('role','menuitem');button.innerHTML=icon;
       button.onclick=event=>{event.stopPropagation();shut();handler?.();};

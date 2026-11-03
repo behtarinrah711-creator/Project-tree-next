@@ -1,3 +1,4 @@
+import {renderContractFinanceReview} from './contractFinanceReviewView.js';
 import {renderContractSignedSection} from './contractSignedView.js';
 import { renderContractProgress } from './contractProgressView.js';
 import { renderContractHistory } from './contractHistoryView.js';
@@ -83,9 +84,9 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
       main.append(t,numberRow,activityRow);
       const actions=document.createElement('div'); actions.className='contract-actions';
       actions.appendChild(contractActionsMenu({
-        onEdit:()=>{if(c.status==='final' && contractApprovalState(c)==='ready'){window.KarhaLegacy?.showToast?.('برای ویرایش ابتدا اعلام تکمیل را لغو کنید');return;}if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
+        onEdit:finance?undefined:()=>{if(c.status==='final' && contractApprovalState(c)==='ready'){window.KarhaLegacy?.showToast?.('برای ویرایش ابتدا اعلام تکمیل را لغو کنید');return;}if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
         onExport:trigger=>openContractExport(p,finance?c.accountingPackage.contract:c,{trigger,frozen:finance}),
-        onDelete:()=>openConfirm('آیا از حذف این قرارداد اطمینان دارید؟',()=>{
+        onDelete:finance?undefined:()=>openConfirm('آیا از حذف این قرارداد اطمینان دارید؟',()=>{
           const result=contractApi.trash(id,c.id);
           if(!result.ok){
             if(result.code==='in_use')window.KarhaLegacy?.showRecordDeleteBlocked?.('contract',result.refs);
@@ -105,10 +106,11 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
         heading.append(main,actions);
       }
       row.appendChild(heading);
+      if(!finance){
       const statusRow=document.createElement('div');statusRow.className='contract-workflow-row';
       const status=document.createElement('span');
       const approvalState=contractApprovalState(c);
-      const statusLabel=approvalState==='incomplete'?'ناقص':approvalState==='approved'?'تأیید شده است':['ready','unapproved','returned'].includes(approvalState)?'تأیید نشده است':approvalLabels[approvalState];
+      const statusLabel=c.accountingStatus==='accepted'?'تأیید شده توسط بخش مالی':approvalState==='incomplete'?'ناقص':approvalState==='approved'?'تأیید شده است':['ready','unapproved','returned'].includes(approvalState)?'تأیید نشده است':approvalLabels[approvalState];
       status.className='contract-status-badge '+(approvalState==='approved'?'is-approved':['ready','unapproved','returned'].includes(approvalState)?'is-unapproved':'is-incomplete');
       status.textContent='وضعیت: '+statusLabel;statusRow.appendChild(status);
       if(c.approvalStatus==='pending' && c.approvalContactIds?.length)status.textContent+=' ('+new Intl.NumberFormat('fa-IR').format(c.approvedContactIds?.length || 0)+' از '+new Intl.NumberFormat('fa-IR').format(c.approvalContactIds.length)+')';
@@ -147,11 +149,13 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
       if(c.approvalRejectionReason && ['unapproved','incomplete'].includes(contractApprovalState(c))){
         const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='علت لغو تأیید: '+c.approvalRejectionReason;statusRow.appendChild(reason);
       }
+      if(c.financeRejection?.reason && c.accountingStatus==='rejected'){const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='دلیل رد توسط بخش مالی: '+c.financeRejection.reason;statusRow.appendChild(reason);}
       row.appendChild(statusRow);statusRow.onclick=event=>event.stopPropagation();
       row.appendChild(renderContractProgress(document,c,p));
-      row.appendChild(renderContractSignedSection(p,c,{finance,onChanged}));
-      row.appendChild(renderContractHistory(document,c));
-      row.onclick=()=>openContractPreview(p,finance?c.accountingPackage.contract:c,{trigger:main,frozen:finance});
+      row.appendChild(renderContractSignedSection(p,c,{onChanged}));
+      }else row.appendChild(renderContractFinanceReview(p,c,{onChanged}));
+      row.appendChild(renderContractHistory(document,c,{finance}));
+      row.onclick=()=>openContractPreview(p,finance?c.accountingPackage.contract:c,{trigger:main,frozen:finance,signedFiles:finance?c.accountingPackage.signedFiles:null});
       return row;
 }
 

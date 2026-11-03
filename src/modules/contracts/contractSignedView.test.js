@@ -16,15 +16,15 @@ test('incomplete and approved cards offer the appropriate separate attachment an
   assert.deepEqual(labels(renderContractSignedSection(project,c)),['افزودن نسخه امضاشده']);
   c={...c,signedAt:1,signedFiles:[file]};
   assert.deepEqual(labels(renderContractSignedSection(project,c)),['مشاهده و اصلاح نسخه امضاشده','ارسال به واحد مالی']);
-  assert.deepEqual(contractProgressSteps(c).map(s=>s.done),[true,true,true,false]);
+  assert.deepEqual(contractProgressSteps(c).map(s=>s.done),[true,true,true,false,false]);
   c={...c,sentToAccountingAt:2,accountingStatus:'sent',accountingPackage:{contract:{...c},signedFiles:[file]}};
   assert.deepEqual(labels(renderContractSignedSection(project,c)),['مشاهده نسخه امضاشده','پس‌گرفتن از مالی']);
-  assert.deepEqual(contractProgressSteps(c).map(s=>s.done),[true,true,true,true]);
+  assert.deepEqual(contractProgressSteps(c).map(s=>s.done),[true,true,true,true,false]);
 });
 test('read-only project members cannot see mutation actions on signed or finance cards',()=>{
   globalThis.document=documentRef;window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'view'}}}};
   const c={id:'c',status:'final',approvalStatus:'approved',signedAt:1,signedFiles:[file]};
   assert.deepEqual(labels(renderContractSignedSection(project,c)),['مشاهده نسخه امضاشده']);
-  assert.deepEqual(labels(renderContractSignedSection(project,{...c,accountingStatus:'sent',sentToAccountingAt:2,accountingPackage:{contract:c}},{finance:true})),['مشاهده نسخه امضاشده','مشاهده قرارداد تنظیم‌شده','خروجی قرارداد تنظیم‌شده']);
+  assert.deepEqual(labels(renderContractSignedSection(project,{...c,accountingStatus:'sent',sentToAccountingAt:2,accountingPackage:{contract:c}},{finance:true})),['مشاهده نسخه امضاشده']);
   delete window.KarhaSaosaWorkspaceAccess;
 });
