@@ -75,7 +75,9 @@ fi
 for migration in "$APP_ROOT"/sql/*.sql; do
   PGPASSWORD="$DB_PASSWORD" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME" -f "$migration"
 done
+node -e 'const [major,minor]=process.versions.node.split(".").map(Number);if(major<20 || (major===20 && minor<9)){console.error("Saosa uploads require Node.js 20.9 or newer. Upgrade Node.js before deploying.");process.exit(1);}'
 npm --prefix "$APP_ROOT" ci --omit=dev --no-audit --no-fund
+install -d -m 700 -o "$SERVICE_USER" -g "$SERVICE_USER" /var/lib/saosa/uploads
 
 cat > /etc/systemd/system/saosa-api.service <<EOF
 [Unit]
@@ -96,7 +98,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/tmp
+ReadWritePaths=/tmp /var/lib/saosa/uploads
 
 [Install]
 WantedBy=multi-user.target

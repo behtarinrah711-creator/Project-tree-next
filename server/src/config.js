@@ -10,6 +10,7 @@ export function loadConfig(){
   return Object.freeze({
     port: Number(process.env.PORT || 3000),
     databaseUrl: required('DATABASE_URL'),
+    uploadRoot:process.env.UPLOAD_ROOT || '/var/lib/saosa/uploads',
     sessionSecret,
     kavenegarApiKey: required('KAVENEGAR_API_KEY'),
     kavenegarTemplate: process.env.KAVENEGAR_TEMPLATE || 'saosalogin',

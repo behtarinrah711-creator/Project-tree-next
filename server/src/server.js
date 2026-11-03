@@ -2,6 +2,7 @@ import {createServer} from 'node:http';
 import pg from 'pg';
 import {createApp} from './app.js';
 import {loadConfig} from './config.js';
+import {createLocalFileStorage} from './fileStorage.js';
 
 const config = loadConfig();
 const pool = new pg.Pool({
@@ -37,7 +38,7 @@ async function sendInvitationEmail({email,projectName,acceptUrl}){
   if(!response.ok){const error=new Error('email_provider_error');error.statusCode=502;throw error;}
   return response.json().catch(()=>({ok:true}));
 }
-const server = createServer(createApp({pool,sessionSecret:config.sessionSecret,sendLoginCode,sendInvitationSms,sendInvitationEmail,invitationBaseUrl:config.invitationBaseUrl}));
+const server = createServer(createApp({pool,sessionSecret:config.sessionSecret,sendLoginCode,sendInvitationSms,sendInvitationEmail,invitationBaseUrl:config.invitationBaseUrl,fileStorage:createLocalFileStorage(config.uploadRoot)}));
 server.listen(config.port, '127.0.0.1', () => {
   console.log(`Saosa API listening on 127.0.0.1:${config.port}`);
 });

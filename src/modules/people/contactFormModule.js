@@ -3,6 +3,7 @@ import { contactApi } from '../../domain/contactApi.js';
 import { localStorageAdapter } from '../../data/storageAdapter.js';
 import { STORAGE_KEYS } from '../../config/deploymentConfig.js';
 import { enterContactFormShell, leaveContactFormShell } from './contactFormBridge.js';
+import { mountFileUploader } from '../files/fileUploader.js';
 
 const CONTACT_DRAFT_KEY=STORAGE_KEYS.contactDraft;
 const runtime=new Proxy({}, { get(_target,key){ return window.KarhaApp?.getContactFormRuntime?.()?.[key]; } });
@@ -21,14 +22,14 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null,pic
   const storedContact=contact?.id ? contactApi.get(projectId, contact.id) : null;
   contact=storedContact || contact;
   const isEdit=!!contact;
-  const c=contact||{
+  const c=contact?structuredClone(contact):{
     id:runtime.uid(), nationalityType:'ایرانی', nationality:'', foreignId:'', foreignIdImages:[],
     iranianDocumentImages:[], firstName:'', lastName:'', fatherName:'', nationalId:'', address:'', postalCode:'',
     phones:[], type:'', activities:[], bankAccounts:[], pending:true
   };
   if(!contact){
     const existingDraft=contactApi.listPage(projectId,{ limit:200 }).items.find(x=>x.pending===true && x.source!=='member-invitation');
-    if(existingDraft) Object.assign(c,existingDraft);
+    if(existingDraft) Object.assign(c,structuredClone(existingDraft));
   }
   if(!contact && activityId) c.activities=[String(activityId)];
   if(!Array.isArray(c.phones)) c.phones=c.phone?[c.phone]:[];
@@ -55,10 +56,13 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null,pic
   if(!enterContactFormShell({page,body,title:h2,addButton:addBtn,isEdit,setFormMode:runtime.setInternalFormMode})) return;
 
   const wrap=document.createElement('div'); wrap.className='contacts-page-form form-template';
+  const uploaders=[];
+  const uploadsPending=()=>uploaders.some(uploader=>uploader.isBusy());
 
   // اطلاعات فرم فقط با «پیش‌نویس» ذخیره می‌شود؛ تایپ کردن، رکوردی ایجاد یا به‌روزرسانی نمی‌کند.
   let draftTimer=null;
   const writeCurrentContactDraft=()=>{
+    if(uploadsPending()){runtime.showToast('ابتدا بارگذاری فایل‌ها را کامل یا لغو کنید');return false;}
     try{
       const first=String(wrap.querySelector('[data-key="firstName"]')?.value||'').trim();
       const last=String(wrap.querySelector('[data-key="lastName"]')?.value||'').trim();
@@ -85,7 +89,7 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null,pic
       return true;
     }catch(e){ return false; }
   };
-  const commitDraftNow=()=>{ clearTimeout(draftTimer); writeCurrentContactDraft(); };
+  const commitDraftNow=()=>{ clearTimeout(draftTimer); return writeCurrentContactDraft(); };
   window.__commitContactDraft=commitDraftNow;
 
   const saveContactDraft=()=>{ formIsDirty=true; };
@@ -132,16 +136,12 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null,pic
   foreignBox.append(makeInput('تابعیت',c.nationality,'nationality'));
   foreignBox.append(makeInput('شماره اتباع',c.foreignId,'foreignId',{numeric:true,maxLen:20}));
   const foreignUpload=document.createElement('div'); foreignUpload.className='contact-upload';
-  const foreignLabel=document.createElement('label'); foreignLabel.className='contact-upload-btn'; foreignLabel.textContent='افزودن تصاویر مدارک اتباع +';
-  const foreignFile=document.createElement('input'); foreignFile.type='file'; foreignFile.accept='image/*'; foreignFile.multiple=true;
-  const foreignGrid=document.createElement('div'); foreignGrid.className='contact-image-grid'; foreignUpload.append(foreignLabel,foreignGrid); foreignLabel.appendChild(foreignFile); foreignBox.appendChild(foreignUpload); wrap.appendChild(foreignBox);
+  foreignBox.appendChild(foreignUpload); wrap.appendChild(foreignBox);
 
   const iranianDocs=document.createElement('div'); iranianDocs.className='contact-section';
   const iranTitle=document.createElement('div'); iranTitle.className='contact-section-title'; iranTitle.textContent='مدارک هویتی ایرانی'; iranianDocs.appendChild(iranTitle);
   const iranUpload=document.createElement('div'); iranUpload.className='contact-upload';
-  const iranLabel=document.createElement('label'); iranLabel.className='contact-upload-btn'; iranLabel.textContent='افزودن تصاویر مدارک +';
-  const iranFile=document.createElement('input'); iranFile.type='file'; iranFile.accept='image/*'; iranFile.multiple=true;
-  const iranGrid=document.createElement('div'); iranGrid.className='contact-image-grid'; iranUpload.append(iranLabel,iranGrid); iranLabel.appendChild(iranFile); iranianDocs.appendChild(iranUpload); wrap.appendChild(iranianDocs);
+  iranianDocs.appendChild(iranUpload); wrap.appendChild(iranianDocs);
 
   wrap.append(makeInput('نام',c.firstName,'firstName'));
   wrap.append(makeInput('نام خانوادگی',c.lastName,'lastName'));
@@ -221,14 +221,14 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null,pic
 
   const bar=document.createElement('div'); bar.className='contact-savebar'; const save=document.createElement('button'); save.className='mini-btn primary'; save.textContent='ذخیره'; const draftBtn=document.createElement('button'); draftBtn.className='mini-btn'; draftBtn.textContent='پیش‌نویس'; const cancel=document.createElement('button'); cancel.className='mini-btn ghost'; cancel.textContent='انصراف'; bar.append(save,draftBtn,cancel); wrap.appendChild(bar); body.appendChild(wrap);
 
-  const renderImages=(grid,images)=>{grid.innerHTML='';images.forEach((src,idx)=>{const card=document.createElement('div');card.className='contact-image-card';const img=document.createElement('img');img.src=src;const rm=document.createElement('button');rm.type='button';rm.className='contact-image-remove';rm.textContent='×';rm.onclick=()=>{images.splice(idx,1);renderImages(grid,images);saveContactDraft();};card.append(img,rm);grid.appendChild(card);});};
-  renderImages(foreignGrid,c.foreignIdImages); renderImages(iranGrid,c.iranianDocumentImages);
-  const readImages=(input,target,grid)=>{Array.from(input.files||[]).forEach(f=>{const reader=new FileReader();reader.onload=()=>{target.push(reader.result);renderImages(grid,target);saveContactDraft();};reader.readAsDataURL(f);});input.value='';};
-  foreignFile.addEventListener('change',()=>readImages(foreignFile,c.foreignIdImages,foreignGrid)); iranFile.addEventListener('change',()=>readImages(iranFile,c.iranianDocumentImages,iranGrid));
+  for(const [root,files,label] of [[foreignUpload,c.foreignIdImages,'افزودن عکس یا فایل مدارک اتباع'],[iranUpload,c.iranianDocumentImages,'افزودن عکس یا فایل مدارک']]){
+    uploaders.push(mountFileUploader(root,{projectId,recordId:c.id,files,label,onChange:()=>{formIsDirty=true;saveContactDraft();},onError:message=>runtime.showToast(message)}));
+  }
 
   const toggleNationality=()=>{const iranian=(natRow.querySelector('input:checked')?.value||'ایرانی')==='ایرانی';foreignBox.classList.toggle('hidden',iranian);nationalField.classList.toggle('hidden',!iranian);iranianDocs.classList.toggle('hidden',!iranian);};
   natRow.querySelectorAll('input').forEach(r=>r.addEventListener('change',toggleNationality)); toggleNationality();
   const cleanupContactForm=()=>{
+    uploaders.forEach(uploader=>uploader.destroy());
     clearTimeout(draftTimer);
     document.getElementById('contactFormHeaderConfirm')?.remove();
     window.removeEventListener('beforeunload',contactBeforeUnload);
@@ -269,7 +269,7 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null,pic
     const close=()=>{exitGuardOpen=false;overlay.remove();};
     overlay.querySelector('[data-exit="stay"]').onclick=close;
     overlay.querySelector('[data-exit="discard"]').onclick=()=>{close();discardAndBack();};
-    overlay.querySelector('[data-exit="draft"]').onclick=()=>{commitDraftNow();formIsDirty=false;close();discardAndBack();};
+    overlay.querySelector('[data-exit="draft"]').onclick=()=>{if(!commitDraftNow())return;formIsDirty=false;close();discardAndBack();};
     overlay.addEventListener('pointerdown',e=>{if(e.target===overlay)close();});
   };
   const contactRequiredComplete=()=>{
@@ -290,7 +290,7 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null,pic
     const hasDraftIdentity = contactHasDraftIdentity();
     if(hasDraftIdentity && !contactRequiredComplete()){
       runtime.showIncompleteFormExitChoice({
-        onYes:()=>{commitDraftNow();formIsDirty=false;discardAndBack();},
+        onYes:()=>{if(!commitDraftNow())return;formIsDirty=false;discardAndBack();},
         onNo:()=>{discardAndBack();}
       });
       return;
@@ -302,11 +302,12 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null,pic
   if(header) header.querySelector('.inner-section-back').onclick=backToList;
   window.addEventListener('beforeunload',contactBeforeUnload);
   draftBtn.onclick=()=>{
+    if(uploadsPending()){runtime.showToast('ابتدا بارگذاری فایل‌ها را کامل یا لغو کنید');return;}
     if(!contactHasDraftIdentity()){
       runtime.showToast('برای ذخیره پیش‌نویس حداقل نام یا نام خانوادگی را وارد کنید');
       return;
     }
-    commitDraftNow(); formIsDirty=false; discardAndBack();
+    if(!commitDraftNow())return; formIsDirty=false; discardAndBack();
   };
 
   document.getElementById('contactFormHeaderConfirm')?.remove();
@@ -316,6 +317,7 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null,pic
   const markInvalid=el=>{if(el) el.classList.add('contact-invalid');};
   [ 'lastName','type' ].forEach(k=>{const el=wrap.querySelector(`[data-key="${k}"]`)?.closest('.contact-field'); if(el){const input=wrap.querySelector(`[data-key="${k}"]`); input?.addEventListener('input',()=>clearInvalid(el)); input?.addEventListener('change',()=>clearInvalid(el));}});
   save.onclick=()=>{
+    if(uploadsPending()){runtime.showToast('ابتدا بارگذاری فایل‌ها را کامل یا لغو کنید');return;}
     const get=k=>wrap.querySelector(`[data-key="${k}"]`)?.value.trim()||'';
     const nat=natRow.querySelector('input:checked')?.value||'ایرانی';
     const firstName=get('firstName'),lastName=get('lastName'),nationalId=get('nationalId');
