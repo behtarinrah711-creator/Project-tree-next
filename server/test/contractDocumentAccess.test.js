@@ -20,6 +20,16 @@ test('older contracts can resolve current Iranian/foreign contact photographs, b
   assert.equal(canReadContractDocument(row,'owner','c','person','file'),false);
 });
 
+test('draft contract access follows newly saved contact photos instead of an old empty annex',()=>{
+  const row={owner_account_id:'owner',membership_status:'active',phone:'0912',permissions:{modules:{contracts:'view',people:'none'}},
+    payload:{projectMembers:[{mobile:'0912',status:'active'}],
+      contracts:[{id:'c',status:'draft',isDraft:true,contractorId:'person',contractorDocuments:[],contractorDocumentsContactId:'person'}],
+      contacts:[{id:'person',nationalityType:'ایرانی',iranianDocumentImages:[{id:'new-file',recordId:'person',projectId:'p',mime:'image/jpeg'}]}]}};
+  assert.equal(canReadContractDocument(row,'member','c','person','new-file'),true);
+  assert.equal(canReadContractDocument(row,'member','c','person','unrelated'),false);
+  assert.equal(canReadContractDocument(row,'member','c','other','new-file'),false);
+});
+
 test('GET contract context grants annex reads but cannot grant uploads or unrelated file reads',async()=>{
   const row={owner_account_id:'owner',membership_status:'active',phone:'0912',permissions:{modules:{contracts:'view',people:'none'}},
     payload:{projectMembers:[{mobile:'0912',status:'active'}],contracts:[{id:'c',contractorId:'person',contractorDocumentsContactId:'person',contractorDocuments:[{id:'file',projectId:'p',recordId:'person',mime:'image/jpeg'}]}]}};
