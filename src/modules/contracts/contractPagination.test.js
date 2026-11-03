@@ -65,7 +65,9 @@ test('pagination preserves all long text, keeps short blocks whole and labels al
 
  test('standalone exports reuse the CSS presentation owner rules',()=>{
   const pageRule='.contract-sheet { padding:76px; }';
+  const annexRule='.contract-document-photo-grid { height:684px; display:grid; grid-template-rows:repeat(3,minmax(0,1fr)); }';
+  const fitRule='.contract-document-photo img { object-fit:contain; }';
   const printRule='@media print { .contract-sheet { margin:0; } }';
-  const styles=getContractPageStyles({styleSheets:[{cssRules:[{styleSheet:{cssRules:[{cssText:'.contract-pages { width:794px; }'}]},cssText:'@import url(contracts.css);'},{cssText:pageRule},{cssText:'.unrelated { color:red; }'},{cssText:printRule}]}]});
-  assert.ok(styles.includes('.contract-pages'));assert.ok(styles.includes(pageRule));assert.ok(styles.includes(printRule));assert.ok(!styles.includes('unrelated'));
+  const styles=getContractPageStyles({styleSheets:[{cssRules:[{styleSheet:{cssRules:[{cssText:'.contract-pages { width:794px; }'}]},cssText:'@import url(contracts.css);'},{cssText:pageRule},{cssText:annexRule},{cssText:fitRule},{cssText:'.unrelated { color:red; }'},{cssText:printRule}]}]});
+  assert.ok(styles.includes('.contract-pages'));assert.ok(styles.includes(pageRule));assert.ok(styles.includes(printRule));assert.ok(styles.includes(annexRule));assert.ok(styles.includes(fitRule));assert.ok(!styles.includes('unrelated'));
 });

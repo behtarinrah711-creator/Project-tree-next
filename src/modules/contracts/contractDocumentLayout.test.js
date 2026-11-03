@@ -57,3 +57,11 @@ test('unequal portrait ratios share one height with whitespace between outer ali
   assert.match(html,/preserveAspectRatio="xMaxYMid meet"/);
   assert.match(html,/translate\(0.1833333333333333 1\) rotate\(-90\)/);
 });
+
+test('horizontal document images use an intrinsic SVG viewport so JPEG capture cannot stretch them',()=>{
+  const source='data:image/jpeg;base64,YQ==';
+  const html=contractDocumentMarkup({contractorDocuments:[{width:1200,height:750}],contractorDocumentImages:[{width:1200,height:750,dataUrl:source}]});
+  assert.match(html,/viewBox="0 0 1200 750" preserveAspectRatio="xMidYMid meet"/);
+  assert.match(html,/<image href="data:image\/jpeg;base64,YQ==" width="1200" height="750"/);
+  assert.doesNotMatch(html,/<img /);
+});
