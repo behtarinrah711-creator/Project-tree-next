@@ -1,3 +1,5 @@
+import { currentExecutionActor } from '../wbs/executionActor.js';
+import { fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
 import { ensureOperationRows, renderQuantityRows, syncContractAmount } from './contractPricing.js';
 import { contractDocumentMarkup } from './contractDocument.js';
 import { projectContext } from '../../core/projectContext.js';
@@ -588,7 +590,9 @@ function renderContractForm() {
     cancel.textContent = 'انصراف';
     cancel.onclick = () => realContractFormModule.requestClose();
 
-    bar.append(save, cancel);
+    const complete=document.createElement('button');complete.className='if-complete';complete.textContent='اعلام تکمیل';
+    complete.onclick=()=>realContractFormModule.declareComplete();
+    bar.append(save,complete,cancel);
     actions.appendChild(bar);
   }
 
@@ -659,12 +663,31 @@ export const realContractFormModule = {
     return !!state && renderContractForm();
   },
 
-  save(projectId = null, silent = false) {
+  declareComplete(){
+    if(!state)return false;
+    const fields=[['contractDate','تاریخ تنظیم قرارداد'],['employerId','کارفرما'],['startDate','تاریخ شروع'],['endDate','تاریخ پایان'],...(Number(state.retentionPercent)>0?[['retentionDuration','مدت نگهداری حسن انجام کار']]:[])].filter(([key])=>!String(state[key]??'').trim());
+    if(!state.projectItemId || !state.contractorId || !state.activityId){helper('showToast','آیتم پروژه، پیمانکار و فعالیت را انتخاب کنید');return false;}
+    if(!fields.length)return this.save(activeProjectId,false,true,[]);
+    openWbsSheet({title:'تکمیل دستی پس از چاپ',saveLabel:'اعلام تکمیل',historyKey:'contract-manual-completion',
+      body(root){
+        const note=document.createElement('p');note.textContent='برای هر مورد خالی تأیید کنید که پس از چاپ دستی تکمیل می‌شود؛ یا انصراف بزنید و آن را در فرم وارد کنید.';root.appendChild(note);
+        fields.forEach(([key,label])=>{const check=document.createElement('input');check.type='checkbox';check.name=key;root.appendChild(fieldRow(label,check));});
+      },
+      onSave:root=>{
+        if(fields.some(([key])=>!root.querySelector('[name="'+key+'"]').checked)){helper('showToast','تکمیل دستی تمام موارد را تأیید کنید یا به فرم برگردید');return false;}
+        return this.save(activeProjectId,false,true,fields.map(([key])=>key));
+      }
+    });
+    return false;
+  },
+  save(projectId = null, silent = false, declareCompletion=false, manualFields=[]) {
+    if(!declareCompletion)return this.saveDraft();
     const project = activeProject(projectId || activeProjectId);
     if (!project || !state) return false;
 
     const result = saveRealContract(project.id, state, {
-      showToast: () => {},
+      showToast: text => helper('showToast',text),
+      declareCompletion,manualFields,actor:currentExecutionActor(project),
       todayJalaliStr: () => helper('todayJalaliStr'),
       findActivityTemplate: (id, current) => helper('findActivityTemplate', id, current),
       syncContractPartyData: (draft, current) => realContractDomain.syncContractPartyData(draft, current),
@@ -672,7 +695,7 @@ export const realContractFormModule = {
     });
 
     if (!result.ok) {
-      if(result.incomplete) return this.saveDraft();
+      if(result.incomplete) return false;
       helper('showToast',result.message || 'قرارداد ذخیره نشد');
       return false;
     }

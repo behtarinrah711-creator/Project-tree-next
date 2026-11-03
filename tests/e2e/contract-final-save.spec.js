@@ -25,7 +25,7 @@ async function openNewContract(page){
   await expect(page.locator('#contractFormPage')).toBeVisible();
 }
 
-test('Save persists a final contract and renders it in the contracts list', async ({ page }) => {
+test('Declare completion persists a final contract and renders it in the contracts list', async ({ page }) => {
   await openNewContract(page);
 
   const contractId = await page.evaluate(() => {
@@ -72,7 +72,8 @@ test('Save persists a final contract and renders it in the contracts list', asyn
   await expect(prompt).toBeHidden();
   await expect(page.locator('#contractFormPage')).toBeVisible();
 
-  await page.locator('#contractFormActions .if-save').click();
+  await page.evaluate(()=>localStorage.setItem('saosa:v1:sms-session',JSON.stringify({token:'test',phone:'0912',accountId:'writer',expiresAt:Date.now()+60000})));
+  await page.locator('#contractFormActions .if-complete').click();
   await expect(page.locator('#contractFormPage')).toBeHidden();
   await expect(page.locator('#contractsPage')).toBeVisible();
 
@@ -94,6 +95,9 @@ test('Save persists a final contract and renders it in the contracts list', asyn
   ]);
   expect(stored.status).toBe('final');
   expect(stored.isDraft).toBe(false);
+  expect(stored.completedAt).toBeGreaterThan(0);
+  expect(stored.completedBy.id).toBe('writer');
+  expect(stored.approvalHistory.some(entry => entry.action === 'complete' && entry.actor.id === 'writer')).toBe(true);
   expect(stored.contractPlace).toBe('کارگاه تست');
 
   const exitGuardActive = await page.evaluate(() => {

@@ -1904,3 +1904,5 @@ textarea.contract-project-item-input{
 #contractsPageBody .contract-status-badge.is-incomplete{background:#e5e7eb;color:#374151;}
 #contractsPageBody .contract-status-badge.is-approved{background:#dcfce7;color:#166534;}
 #contractsPageBody .contract-status-badge.is-unapproved{background:#fee2e2;color:#991b1b;}
+
+#contractFormActions .real-contract-savebar .if-complete{order:2!important;background:#1565c0!important;color:#fff!important;border:1px solid #1565c0!important;line-height:1.4!important;}

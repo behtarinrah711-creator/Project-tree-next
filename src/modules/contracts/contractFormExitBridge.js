@@ -133,19 +133,20 @@ export function installContractFormExitBridge({windowRef = window} = {}){
     return true;
   };
 
-  form.save = function(projectId = null, silent = false){
+  form.save = function(projectId = null, silent = false, declareCompletion = false, manualFields = []){
     const state = form.getState?.();
     const targetProjectId = projectId || projectIdForForm();
     const expectedId = state?.id || null;
 
     // Suppress the legacy success toast until persistence has been verified.
-    const saved = originalSave(targetProjectId, true);
+    const saved = originalSave(targetProjectId, true, declareCompletion, manualFields);
     if(!saved) return false;
 
     const persisted = expectedId && targetProjectId
       ? contractApi.get(targetProjectId, expectedId)
       : null;
-    if(!persisted || !['final','draft'].includes(persisted.status) || persisted.trashed){
+    if(!persisted || !['final','draft'].includes(persisted.status) || persisted.trashed ||
+      (declareCompletion && (persisted.status !== 'final' || persisted.isDraft || !persisted.completedAt))){
       windowRef.KarhaLegacy?.showToast?.('ذخیره قرارداد تایید نشد');
       return false;
     }

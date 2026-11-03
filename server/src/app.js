@@ -120,7 +120,7 @@ function mergeTaskCollection(currentItems=[],incomingItems=[],allowDelete=false)
   return [...merged,...incomingById.values()];
 }
 
-function mergeMemberContracts(current,incoming,tasks,permissions){
+function mergeMemberContracts(current,incoming,tasks,permissions,actor=null){
   const level=modulePermissions(permissions)?.contracts;
   const contractWrite=['edit','create','full'].includes(level);
   const taskWrite=canWriteProjectTasks(permissions);
@@ -137,11 +137,30 @@ function mergeMemberContracts(current,incoming,tasks,permissions){
   for(const candidate of incoming || []){
     if(!candidate?.id)continue;
     const previous=records.get(String(candidate.id));
-    if(previous?.trashed || ['pending','approved'].includes(previous?.approvalStatus))continue;
+    if(previous?.trashed)continue;
     const task=linkedTasks.get(`${candidate.projectItemId}:${candidate.workTaskId}`);
     if(!contractWrite && !(taskWrite && task))continue;
     if(!contractWrite && previous && (String(previous.projectItemId)!==String(candidate.projectItemId)
       || String(previous.workTaskId)!==String(candidate.workTaskId)))continue;
+    const request=candidate.completionCancellation;
+    const fresh=request && request.at!==previous?.completionCancellation?.at;
+    if(fresh){
+      const status=previous?.approvalStatus;
+      const reviewers=task?.contractApproverContactIds ?? previous?.contractApproverContactIds ?? previous?.approvalContactIds ?? [];
+      const signed=previous?.signedAt || previous?.sentToAccountingAt || previous?.signatureStatus==='signed' || ['sent','accepted'].includes(previous?.accountingStatus);
+      const cancel=request.action==='cancel_completion' && previous?.status==='final' && status!=='pending' && (status!=='approved' || !reviewers.length);
+      const withdraw=request.action==='withdraw_submission' && status==='pending' && previous?.submittedBy?.id===actor?.id;
+      if(actor?.id && request.by===actor.id && Number(request.at)>=Number(previous?.updatedAt||0) && !signed && (cancel || withdraw) && String(request.reason||'').trim().length>=5){
+        const at=Date.now();
+        const record={...previous,status:'draft',isDraft:true,updatedAt:at,completedAt:null,completedBy:null,approvedContactIds:[],completionCancellation:{...request,reason:String(request.reason).trim()}};
+        if(withdraw){record.approvalStatus='unapproved';record.approvalRejectionReason=record.completionCancellation.reason;record.revisionBaseline=candidate.revisionBaseline;}
+        else if(status==='approved')record.approvalStatus=null;
+        record.approvalHistory=[...(previous.approvalHistory||[]),{action:request.action,at,actor:{...actor},reason:record.completionCancellation.reason}];
+        records.set(String(record.id),record);
+      }
+      continue;
+    }
+    if(['pending','approved'].includes(previous?.approvalStatus))continue;
     if(candidate.trashed && level!=='full')continue;
     if(previous && Number(candidate.updatedAt || 0)<Number(previous.updatedAt || 0))continue;
     const record={...previous,...candidate};
@@ -152,6 +171,7 @@ function mergeMemberContracts(current,incoming,tasks,permissions){
       if(previous && Object.hasOwn(previous,key))record[key]=previous[key];
       else delete record[key];
     }
+    if(previous?.approvalStatus==='unapproved' && previous.revisionBaseline==null && typeof candidate.revisionBaseline==='string')record.revisionBaseline=candidate.revisionBaseline;
     record.contractApproverContactIds=task?.contractApproverContactIds || previous?.contractApproverContactIds || [];
     if(task && record.status==='final' && !record.isDraft && !record.contractApproverContactIds.length){
       record.approvalStatus='approved';
@@ -176,7 +196,7 @@ function mergeProjectTemplates(current=[],incoming=[]){
   return [...records.values()];
 }
 
-export function mergeSharedProjectPayload(current,incoming,permissions){
+export function mergeSharedProjectPayload(current,incoming,permissions,actor=null){
   if(!modulePermissions(permissions)) return incoming;
   const costline = canWriteProjectCostline(permissions);
   const tasks=mergeTaskCollection(
@@ -187,7 +207,7 @@ export function mergeSharedProjectPayload(current,incoming,permissions){
   return {
     ...current,
     tasks,
-    contracts:mergeMemberContracts(current?.contracts,incoming?.contracts,tasks,permissions),
+    contracts:mergeMemberContracts(current?.contracts,incoming?.contracts,tasks,permissions,actor),
     contractTemplates:canMutateSharedProject(permissions)
       ? mergeProjectTemplates(current?.contractTemplates,incoming?.contractTemplates)
       : current?.contractTemplates || [],
@@ -393,8 +413,21 @@ export function stampContractCreation(project,previous,accountId,phone='',now=Da
   ));
   const person=contact || member;
   const name=[person?.firstName,person?.lastName].filter(Boolean).join(' ').trim() || person?.name || phone || 'کاربر';
+  const completionActor={id:String(accountId),contactId:String(contact?.id || member?.contactId || ''),name};
   for(const contract of project.contracts || []){
     const old=existing.get(String(contract.id));
+    if(contract.completionCancellation?.at!==old?.completionCancellation?.at && contract.approvalHistory?.at(-1)?.action===contract.completionCancellation?.action)contract.approvalHistory.at(-1).actor=completionActor;
+    if(contract.status==='final' && contract.completedAt && contract.completionDeclarationId!==old?.completionDeclarationId){
+      const declaredAt=contract.completedAt;
+      contract.completedAt=now;contract.completedBy=completionActor;
+      const allowed=['contractDate','employerId','startDate','endDate','retentionDuration'];
+      contract.manualCompletionFields=(contract.manualCompletionFields||[]).filter(key=>allowed.includes(key) && !String(contract[key]??'').trim());
+      contract.approvalHistory=[...(contract.approvalHistory||old?.approvalHistory||[]).filter(event=>event.action!=='complete' || (event.declarationId?event.declarationId!==contract.completionDeclarationId:event.at!==declaredAt)),{action:'complete',declarationId:contract.completionDeclarationId,at:now,actor:completionActor,manualFields:contract.manualCompletionFields}];
+    }
+
+    if(old && contract.status==='final' && contract.completionDeclarationId===old.completionDeclarationId){
+      for(const key of ['completedAt','completedBy','manualCompletionFields']){if(Object.hasOwn(old,key))contract[key]=old[key];}
+    }
     if(old){
       // Never attribute a legacy contract to the person who next edits it.
       for(const key of ['creationEvent','createdBy','createdAt']){
@@ -482,7 +515,7 @@ async function saveWorkspace(pool, accountId, snapshot){
         if(projectFundingChanged(currentPayload,project) && !canWriteProjectCostline(permissions)){
           const error=new Error('forbidden_costline_write');error.statusCode=403;throw error;
         }
-        const savedProject=assignedExecution?.ok?assignedExecution.project:mergeSharedProjectPayload(currentPayload,project,permissions);
+        const savedProject=assignedExecution?.ok?assignedExecution.project:mergeSharedProjectPayload(currentPayload,project,permissions,{id:String(accountId),name:membership.rows[0].phone});
         stampContractCreation(savedProject,currentPayload,accountId,membership.rows[0].phone);
         await assignContractNumbers(client,savedProject,existing.rows[0].owner_account_id);
         await client.query(

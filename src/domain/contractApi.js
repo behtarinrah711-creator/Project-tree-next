@@ -64,7 +64,7 @@ function publishLive(projectId, fields = ['contracts', 'contractTemplates']){
   }
 }
 
-function saveContractRecord(projectId, draft, {status = null} = {}){
+function saveContractRecord(projectId, draft, {status = null,declareCompletion=false,actor=null,manualFields=[]} = {}){
   if(isOffline()) return deny('offline', 'برای ثبت تغییرات به اینترنت متصل شوید');
   if(!projectId || !draft) return deny('invalid', 'قرارداد نامعتبر است');
   const project = projectRepository.find(projectId);
@@ -75,7 +75,7 @@ function saveContractRecord(projectId, draft, {status = null} = {}){
   const current = draft.id ? contractRepository.get(projectId, draft.id) : null;
   if(current && ['pending','approved'].includes(current.approvalStatus)) return deny('locked','قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');
   const record = { ...(current || {}), ...draft, id, trashed:false };
-  for(const key of ['contractApproverContactIds','approvalStatus','approvalContactId','approvalContactIds','approvedContactIds','approvalHistory','approvalRejectionReason','submittedAt','submittedBy','reviewedAt','reviewedBy','revisionBaseline']) record[key]=current?.[key];
+  for(const key of ['contractApproverContactIds','approvalStatus','approvalContactId','approvalContactIds','approvedContactIds','approvalHistory','approvalRejectionReason','submittedAt','submittedBy','reviewedAt','reviewedBy','revisionBaseline','completedAt','completedBy','manualCompletionFields','completionCancellation','completionDeclarationId']) record[key]=current?.[key];
   if(current && contractApprovalState(current)==='unapproved'){
     record.approvalStatus='unapproved';
     record.revisionBaseline=current.revisionBaseline ?? contractRevisionContent(current);
@@ -98,6 +98,11 @@ function saveContractRecord(projectId, draft, {status = null} = {}){
       record.approvedContactIds=[];
       record.approvalRejectionReason='';
     }
+  }
+  if(declareCompletion){
+    if(!actor?.id || actor.id==='guest')return deny('forbidden','ابتدا وارد حساب کاربری شوید');
+    record.completionDeclarationId=makeId();record.completedAt=Date.now();record.completedBy={...actor};record.manualCompletionFields=[...manualFields];
+    record.approvalHistory=[...(record.approvalHistory||[]),{action:'complete',declarationId:record.completionDeclarationId,at:record.completedAt,actor:{...actor},manualFields:[...manualFields]}];
   }
   if(!current) record.createdAt = record.createdAt || Date.now();
   record.updatedAt = Date.now();
@@ -146,8 +151,8 @@ export const contractApi = {
     };
   },
 
-  save(projectId, draft){
-    return saveContractRecord(projectId, draft, {status:'final'});
+  save(projectId, draft, options={}){
+    return saveContractRecord(projectId, draft, {...options,status:'final'});
   },
 
   saveDraft(projectId, draft){

@@ -14,21 +14,23 @@ export function saveRealContract(projectId, draft, helpers={}){
 
   const toast=helpers.showToast || (()=>{});
   const todayJalali=helpers.todayJalaliStr || today;
+  const manual=new Set(helpers.manualFields || []);
+  const deferred=key=>manual.has(key) && !String(draft[key]??'').trim();
   const findActivity=helpers.findActivityTemplate || ((id,p)=>
     (p.activityTemplates||[]).find(a=>String(a.id)===String(id)));
 
-  if(!draft.contractDate){toast('تاریخ تنظیم قرارداد را انتخاب کنید');return {ok:false,incomplete:true};}
+  if(!draft.contractDate && !deferred('contractDate')){toast('تاریخ تنظیم قرارداد را انتخاب کنید');return {ok:false,incomplete:true};}
   if(draft.contractDate>todayJalali()){toast('تاریخ تنظیم قرارداد نمی‌تواند بعد از امروز باشد');return {ok:false,incomplete:true};}
   if(!draft.projectItemId){toast('ابتدا آیتم پروژه را انتخاب کنید');return {ok:false,incomplete:true};}
-  if(!draft.employerId){toast('ابتدا کارفرما را انتخاب کنید');return {ok:false,incomplete:true};}
+  if(!draft.employerId && !deferred('employerId')){toast('ابتدا کارفرما را انتخاب کنید');return {ok:false,incomplete:true};}
   if(!draft.contractorId){toast('ابتدا پیمانکار را انتخاب کنید');return {ok:false,incomplete:true};}
   if(String(draft.employerId)===String(draft.contractorId)){
     toast('کارفرما و پیمانکار نمی‌توانند یک مخاطب باشند');return {ok:false,incomplete:true};
   }
   if(!draft.activityId){toast('ابتدا فعالیت پیمانکار را انتخاب کنید');return {ok:false,incomplete:true};}
   draft.activityIds=[draft.activityId];
-  if(!draft.startDate){toast('تاریخ شروع قرارداد را انتخاب کنید');return {ok:false,incomplete:true};}
-  if(!draft.endDate){toast('تاریخ پایان قرارداد را انتخاب کنید');return {ok:false,incomplete:true};}
+  if(!draft.startDate && !deferred('startDate')){toast('تاریخ شروع قرارداد را انتخاب کنید');return {ok:false,incomplete:true};}
+  if(!draft.endDate && !deferred('endDate')){toast('تاریخ پایان قرارداد را انتخاب کنید');return {ok:false,incomplete:true};}
   if(draft.endDate && draft.startDate && draft.endDate<draft.startDate){
     toast('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد');return {ok:false,incomplete:true};
   }
@@ -71,10 +73,11 @@ export function saveRealContract(projectId, draft, helpers={}){
   if(Number(draft.retentionPercent)<0||Number(draft.retentionPercent)>100){
     toast('درصد حسن انجام کار باید بین صفر تا صد باشد');return {ok:false,incomplete:true};
   }
-  if(Number(draft.retentionPercent)>0 && !draft.retentionDuration){toast('مدت نگهداری حسن انجام کار را انتخاب کنید');return {ok:false,incomplete:true};}
+  if(Number(draft.retentionPercent)>0 && !draft.retentionDuration && !deferred('retentionDuration')){toast('مدت نگهداری حسن انجام کار را انتخاب کنید');return {ok:false,incomplete:true};}
 
   const s=JSON.parse(JSON.stringify(draft));
   s.contactId=s.contractorId;
+  if(deferred('employerId'))for(const key of ['employerName','employerNationalId','employerAddress','employerPhone'])s[key]='';
 
   if(helpers.syncContractPartyData) helpers.syncContractPartyData(s,project);
 
@@ -95,7 +98,7 @@ export function saveRealContract(projectId, draft, helpers={}){
   s.updatedAt=Date.now();
   s.trashed=false;
 
-  const saved=contractApi.save(project.id,s);
+  const saved=contractApi.save(project.id,s,{declareCompletion:!!helpers.declareCompletion,actor:helpers.actor,manualFields:[...manual].filter(key=>deferred(key))});
   if(!saved.ok) return {ok:false, message:saved.message};
   return {ok:true,contract:saved.contract};
 }
