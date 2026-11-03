@@ -37,5 +37,10 @@ test('fixed row geometry, proportional images and the shared frame fit inside th
   const rule=selector=>css.match(new RegExp(selector.replaceAll('.','\\.')+'\\{([^}]+)\\}'))[1];
   const pixels=(declaration,property)=>Number(declaration.match(new RegExp('(?:^|;)'+property+':([0-9.]+)px'))[1]);
   const header=rule('.contract-document-annex-header'),grid=rule('.contract-document-photo-grid');
+  const sheet=rule('.contract-sheet'),signatures=rule('.contract-sheet-signatures');
+  const contentBottom=pixels(sheet,'padding')+pixels(rule('.contract-sheet-content'),'height');
+  const signatureTop=pixels(sheet,'height')-pixels(signatures,'bottom')-pixels(signatures,'height');
+  assert.ok(contentBottom<signatureTop,'page content must end before the fixed signature frame');
+  assert.match(signatures,/grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
   assert.ok(pixels(header,'height')+pixels(header,'margin-bottom')+pixels(grid,'height')<=pixels(rule('.contract-sheet-content'),'height'));
 });

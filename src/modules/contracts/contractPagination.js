@@ -35,6 +35,7 @@ export function paginateContract(source, documentRef=globalThis.document){
   };
   const blocks=[];
   const flatten=node=>{
+    if(node.classList?.contains('doc-signatures'))return;
     if(node.classList?.contains('doc-clauses')){[...node.children].forEach(flatten);return;}
     if(node.classList?.contains('doc-clause')){
       const title=node.cloneNode(true);title.querySelectorAll('.doc-child').forEach(x=>x.remove());
@@ -47,6 +48,13 @@ export function paginateContract(source, documentRef=globalThis.document){
     next();blocks.forEach(append);
     const sheets=pages.querySelectorAll('.contract-sheet');
     sheets.forEach((sheet,i)=>{
+      const signatures=documentRef.createElement('div');signatures.className='contract-sheet-signatures';
+      for(const party of ['کارفرما','پیمانکار','شاهد']){
+        const box=documentRef.createElement('div');box.className='contract-sheet-signature';
+        box.textContent='نام، نام خانوادگی، امضا و اثر انگشت '+party+':';
+        signatures.appendChild(box);
+      }
+      sheet.appendChild(signatures);
       const label=documentRef.createElement('div');label.className='contract-sheet-number';
       label.textContent=(contractNumber?'شماره قرارداد: '+contractNumber+' — ':'')+`صفحه ${new Intl.NumberFormat('fa-IR').format(i+1)} از ${new Intl.NumberFormat('fa-IR').format(sheets.length)}`;
       sheet.appendChild(label);
