@@ -4,7 +4,7 @@ import { ensureAgreedRows } from './contractPricing.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { contractRepository } from '../../data/contractRepository.js';
-import {contactDocumentImages} from '../../domain/contactDocuments.js';
+import {contractorDocumentImages} from '../../domain/contactDocuments.js';
 
 function activeProjectId(projectId=null){
   return projectId || projectContext.getProjectId?.()
@@ -50,7 +50,7 @@ export function makeRealContractDraft(existing=null, today=''){
     return c;
   }
   return {
-    id:'rc_'+Date.now(), employerId:'', contractorId:'', contactId:'', activityId:'',
+    id:'rc_'+Date.now(), status:'draft', isDraft:true, employerId:'', contractorId:'', contactId:'', activityId:'',
     activityIds:[], templateId:'', projectItemId:'', projectItemRootTaskId:'',
     projectItemPath:'', title:'', contractNo:'', contractDate:today,
     startDate:'', endDate:'', amount:'', amountMethod:'', amountDescription:'', agreedRows:[{id:'agreed_1',description:'',agreedPrice:''}], amountRows:[], paymentRows:[], paymentMethod:'', retentionPercent:'',
@@ -83,10 +83,8 @@ export function syncContractPartyData(state, project){
   const find=id=>contacts.find(c=>String(c.id)===String(id) && !c.trashed);
   const name=c=>[c?.firstName,c?.lastName].filter(Boolean).join(' ') || c?.name || '';
   const e=find(state.employerId), c=find(state.contractorId);
-  if(!Array.isArray(state.contractorDocuments) || String(state.contractorDocumentsContactId || '')!==String(state.contractorId || '') || state.status==='draft' || state.isDraft){
-    state.contractorDocuments=contactDocumentImages(c);
-    state.contractorDocumentsContactId=String(state.contractorId || '');
-  }
+  state.contractorDocuments=contractorDocumentImages(state,project).map(file=>typeof file==='string'?file:{...file});
+  state.contractorDocumentsContactId=String(state.contractorId || '');
   if(e){
     state.employerName=name(e);
     state.employerNationalId=e.nationalId||'';
@@ -140,6 +138,12 @@ export function resolveContractDocumentDraft(contract, project, today=''){
     }
   }
   return syncContractPartyData(draft,project);
+}
+
+export function resolveCurrentContractDocument(project,contract){
+  const current=project?.id ? getProject(project.id) || project : project;
+  const saved=current?.contracts?.find(value=>String(value.id)===String(contract?.id)) || contract;
+  return {project:current,draft:resolveContractDocumentDraft(saved,current)};
 }
 
 

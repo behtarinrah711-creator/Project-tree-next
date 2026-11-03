@@ -18,6 +18,9 @@ export function contactDocumentImages(contact){
 export function contractorDocumentImages(contract,project){
   const id=String(contract?.contractorId || contract?.contactId || '');
   if(!id)return [];
-  if(Array.isArray(contract.contractorDocuments) && String(contract.contractorDocumentsContactId)===id)return contract.contractorDocuments.filter(isDocumentImage);
-  return contactDocumentImages(project?.contacts?.find(contact=>String(contact.id)===id));
+  const snapshot=Array.isArray(contract.contractorDocuments) && String(contract.contractorDocumentsContactId)===id
+    ? contract.contractorDocuments.filter(isDocumentImage):null;
+  const contact=project?.contacts?.find(contact=>String(contact.id)===id);
+  if(contact && (contract.status==='draft' || contract.isDraft))return contactDocumentImages(contact);
+  return snapshot ?? contactDocumentImages(contact);
 }

@@ -426,6 +426,7 @@ function renderContractForm() {
   const project = currentProject();
   if (!project) return false;
 
+  realContractDomain.syncContractPartyData(state,project);
   const scrollHost = body.closest('.page-body') || body;
   const savedScroll = scrollHost.scrollTop || 0;
   body.innerHTML = '';

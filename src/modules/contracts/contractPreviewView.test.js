@@ -2,6 +2,22 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 globalThis.window={location:{hash:'',search:''}};
 const {createContractPreviewView}=await import('./contractPreviewView.js');
+const {projectRepository}=await import('../../data/projectRepository.js');
+
+test('reopening a contract from a cached list reads newly saved contact documents',t=>{
+  const previous=projectRepository.getActiveProject;t.after(()=>{projectRepository.getActiveProject=previous;});
+  const make=()=>({children:[],classList:{add(){},remove(){}},setAttribute(){},append(...x){this.children.push(...x);},appendChild(x){this.children.push(x);},replaceChildren(){this.children=[];}});
+  const contract={id:'c',status:'draft',isDraft:true,contractorId:'person',contractorDocuments:[],contractorDocumentsContactId:'person'};
+  const cached={id:'p',contracts:[contract],contacts:[{id:'person',nationalityType:'ایرانی',iranianDocumentImages:[]}]};
+  const fresh=structuredClone(cached);fresh.contacts[0].iranianDocumentImages=['data:image/jpeg;base64,YQ=='];
+  projectRepository.getActiveProject=()=>fresh;
+  let html;
+  const view=createContractPreviewView({documentRef:{createElement:make,body:make()},windowRef:{},mountPrintPage:(_body,preview)=>{html=preview.innerHTML;}});
+  view.open(cached,contract);view.close();
+  assert.match(html,/contract-document-attachment/);
+  assert.match(html,/src="data:image\/jpeg;base64,YQ=="/);
+  assert.deepEqual(cached.contacts[0].iranianDocumentImages,[]);
+});
 
 test('contract row preview is read-only, preserves data and closes with header/device Back',()=>{
   const make=tag=>({tag,children:[],attrs:{},hidden:true,

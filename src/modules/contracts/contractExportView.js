@@ -2,7 +2,7 @@ import { paginateContractMarkup } from './contractPagination.js';
 import { getContractPageStyles } from './contractTemplateFormModule.js';
 import { installNotebookExportView } from '../notebook/notebookExportView.js';
 import { contractDocumentMarkup } from './contractDocument.js';
-import { resolveContractDocumentDraft } from './realContractDomain.js';
+import { resolveCurrentContractDocument } from './realContractDomain.js';
 import {loadContractDocumentImages} from './contractDocumentAttachments.js';
 
 let view=null;
@@ -23,14 +23,16 @@ export async function openContractExport(project,contract,{trigger=null}={}){
       extraStyles:getContractPageStyles(),
     });
   }
-  let draft=resolveContractDocumentDraft(contract,project);
+  const current=resolveCurrentContractDocument(project,contract);
+  project=current.project;
+  let draft=current.draft;
   if(draft.contractorDocuments?.length){
     window.KarhaLegacy?.showToast?.('در حال دریافت مدارک پیمانکار…');
     try{draft=await loadContractDocumentImages(draft,project.id);}
     catch{window.KarhaLegacy?.showToast?.('دریافت مدارک پیمانکار انجام نشد؛ خروجی ناقص ساخته نمی‌شود. دوباره تلاش کنید');return false;}
     if(request!==exportRequest)return false;
   }
-  const activityName=(project.activityTemplates||[]).find(a=>String(a.id)===String(contract.activityId))?.name||'بدون فعالیت';
+  const activityName=(project.activityTemplates||[]).find(a=>String(a.id)===String(draft.activityId))?.name||'بدون فعالیت';
   const person=draft.contractorName||'بدون پیمانکار';
   return view.open({title:'قرارداد '+activityName+' + '+person,activityName,contract:draft,items:[]},{trigger});
 }
