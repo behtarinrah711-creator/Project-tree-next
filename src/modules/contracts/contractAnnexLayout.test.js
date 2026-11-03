@@ -11,9 +11,9 @@ for(const count of [0,1,2,3,4,7]){
     const html=contractDocumentMarkup({contractorDocuments:photos,projectName:'کشتارگاه',contractNo:'CTR-7',contractorName:'جواد قریشی',contractDate:'1405/08/12'},'آرماتوربندی');
     const groups=[...html.matchAll(/<section class="contract-document-attachment"[\s\S]*?<\/section>/g)].map(match=>match[0]);
     assert.equal(groups.length,Math.ceil(count/3));
-    assert.equal((html.match(/class="contract-document-photo"/g)||[]).length,count);
+    assert.equal((html.match(/class="contract-document-photo(?: |")/g)||[]).length,count);
     groups.forEach((group,index)=>{
-      assert.equal((group.match(/class="contract-document-photo"/g)||[]).length,Math.min(3,count-index*3));
+      assert.equal((group.match(/class="contract-document-photo(?: |")/g)||[]).length,Math.min(3,count-index*3));
       for(const text of ['کشتارگاه','CTR-7','جواد قریشی','آرماتوربندی','تاریخ قرارداد:'])assert.ok(group.includes(text),text);
       assert.ok(group.includes('data-contract-number="CTR-7"'));
     });

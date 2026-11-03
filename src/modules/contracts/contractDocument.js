@@ -2,6 +2,7 @@ import { rowAmount, syncContractAmount, numericValue, hasPaymentRowData, isUnmea
 import { calculatePaymentStages } from './paymentStagesModule.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
+import {planContractAnnexes} from './contractDocumentLayout.js';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 export function contractDocumentMarkup(state,activityName=''){
   state={...state,...(Array.isArray(state.operationRows)?{operationRows:state.operationRows.map(row=>({...row}))}:{}),...(Array.isArray(state.amountRows)?{amountRows:state.amountRows.map(row=>({...row}))}:{})};
@@ -52,14 +53,16 @@ export function contractDocumentMarkup(state,activityName=''){
   const documents=state.contractorDocuments||[];
   const annexPages=[];
   const detail=value=>escape(value).trim()||'—';
-  for(let start=0;start<documents.length;start+=3){
-    const photos=documents.slice(start,start+3).map((file,offset)=>{
-      const index=start+offset,image=state.contractorDocumentImages?.[index];
+  let documentNumber=0;
+  for(const page of planContractAnnexes(documents,state.contractorDocumentImages)){
+    const photos=page.map(({sourceIndex:index,portrait,row,column})=>{
+      const file=documents[index],image=state.contractorDocumentImages?.[index];
       const src=image?.dataUrl || (typeof file==='string'?file:'');
       const safe=/^data:image\/(?:jpeg|jpg|png|webp|gif);base64,/i.test(src);
-      return '<figure class="contract-document-photo"><div class="contract-document-image-box">'+
+      const position=portrait?' contract-document-photo--portrait contract-document-photo--'+(column===1?'left':'right'):' contract-document-photo--landscape contract-document-row-'+row;
+      return '<figure class="contract-document-photo'+position+'"><div class="contract-document-image-box">'+
         (safe?'<img src="'+escape(src)+'" alt="'+escape(image?.name||file.name||'مدرک پیمانکار')+'">':'<p>'+(state.contractorDocumentsError?'دریافت مدرک انجام نشد؛ دوباره تلاش کنید.':'در حال دریافت مدرک…')+'</p>')+
-        '</div><figcaption>تصویر مدرک '+persian(index+1)+'</figcaption></figure>';
+        '</div><figcaption>تصویر مدرک '+persian(++documentNumber)+'</figcaption></figure>';
     }).join('');
     annexPages.push('<section class="contract-document-attachment" data-contract-number="'+escape(state.contractNo||'')+'">'+
       '<header class="contract-document-annex-header"><h3>پیوست '+persian(annexPages.length+1)+' — مدارک پیمانکار</h3>'+
@@ -68,7 +71,7 @@ export function contractDocumentMarkup(state,activityName=''){
       '<div class="contract-document-annex-subject">موضوع / فعالیت: '+detail(activityName)+'</div></div></header>'+
       '<div class="contract-document-photo-grid">'+photos+'</div></section>');
   }
-  return '<div class="doc-meta doc-contract-meta">' +
+  return '<div class="doc-meta doc-contract-meta" data-contract-number="'+escape(state.contractNo||'')+'">' +
       '<div>شماره قرارداد: <bdi>' + blank(state.contractNo) + '</bdi></div>' +
       '<div>تاریخ قرارداد: <bdi>' + blank(formatJalaliDisplay(state.contractDate)) + '</bdi></div>' +
     '</div>' +
@@ -81,6 +84,6 @@ export function contractDocumentMarkup(state,activityName=''){
     pricingHtml +
     '<div class="doc-clauses">' + (clausesHtml || '<div class="doc-clause">........................................................</div>') + '</div>' +
     (paymentHtml ? '<div class="doc-payment"><b>مراحل پرداخت</b>' + paymentHtml + '</div>' : '') +
-    '<div class="doc-signatures"><div class="signature-box">امضا و اثر انگشت کارفرما<br>................................</div><div class="signature-box">امضا و اثر انگشت پیمانکار<br>................................</div></div>'+
+    '<div class="doc-signatures"><div class="signature-box">نام و نام خانوادگی، امضا و اثر انگشت کارفرما:</div><div class="signature-box">نام و نام خانوادگی، امضا و اثر انگشت پیمانکار:</div></div>'+
     annexPages.join('');
 }

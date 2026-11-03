@@ -1,6 +1,21 @@
 import {fetchFile} from '../files/fileApi.js';
 import {contractDocumentMarkup} from './contractDocument.js';
 
+async function documentImageSize(file,dataUrl,signal){
+  if(Number(file?.width)>0 && Number(file?.height)>0)return {width:Number(file.width),height:Number(file.height)};
+  if(typeof Image==='undefined')return {};
+  return new Promise((resolve,reject)=>{
+    const image=new Image();
+    const cleanup=()=>{signal?.removeEventListener('abort',abort);image.onload=null;image.onerror=null;};
+    const abort=()=>{cleanup();image.src='';reject(new DOMException('Aborted','AbortError'));};
+    if(signal?.aborted){abort();return;}
+    signal?.addEventListener('abort',abort,{once:true});
+    image.onload=()=>{cleanup();resolve({width:image.naturalWidth,height:image.naturalHeight});};
+    image.onerror=()=>{cleanup();reject(new Error('ابعاد تصویر مدرک قابل خواندن نیست'));};
+    image.src=dataUrl;
+  });
+}
+
 export async function loadContractDocumentImages(draft,projectId,{signal,fetchImage=fetchFile}={}){
   const images=[];
   for(const file of draft.contractorDocuments || []){
@@ -10,7 +25,8 @@ export async function loadContractDocumentImages(draft,projectId,{signal,fetchIm
     const dataUrl=await new Promise((resolve,reject)=>{
       const reader=new FileReader();reader.onload=()=>resolve(reader.result);reader.onerror=()=>reject(new Error('خواندن مدارک انجام نشد'));reader.readAsDataURL(blob);
     });
-    images.push({name:typeof file==='string'?'مدرک پیمانکار':file.name,dataUrl});
+    const dimensions=await documentImageSize(file,dataUrl,signal);
+    images.push({name:typeof file==='string'?'مدرک پیمانکار':file.name,dataUrl,...dimensions});
   }
   return {...draft,contractorDocumentImages:images};
 }
