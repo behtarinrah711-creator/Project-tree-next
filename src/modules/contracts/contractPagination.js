@@ -45,7 +45,13 @@ export function paginateContract(source, documentRef=globalThis.document){
   try{
     next();blocks.forEach(append);
     const sheets=pages.querySelectorAll('.contract-sheet');
-    sheets.forEach((sheet,i)=>{const label=documentRef.createElement('div');label.className='contract-sheet-number';label.textContent=`صفحه ${new Intl.NumberFormat('fa-IR').format(i+1)} از ${new Intl.NumberFormat('fa-IR').format(sheets.length)}`;sheet.appendChild(label);});
+    sheets.forEach((sheet,i)=>{
+      const annex=sheet.querySelectorAll('.contract-document-attachment')[0];
+      const number=annex?.getAttribute?.('data-contract-number') || '';
+      const label=documentRef.createElement('div');label.className='contract-sheet-number';
+      label.textContent=(number?'شماره قرارداد: '+number+' — ':'')+`صفحه ${new Intl.NumberFormat('fa-IR').format(i+1)} از ${new Intl.NumberFormat('fa-IR').format(sheets.length)}`;
+      sheet.appendChild(label);
+    });
     pages.remove();return pages;
   }finally{measure.remove();}
 }

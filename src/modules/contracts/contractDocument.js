@@ -49,6 +49,25 @@ export function contractDocumentMarkup(state,activityName=''){
       (state.remeasurement?'از مبلغ هر صورت‌وضعیت تأییدشده کسر می‌شود.':'از مبلغ قرارداد، معادل '+formattedRetention+' تومان است.')+
       ' مبنای شروع نگهداری آن '+blank(state.retentionBasis)+' و مدت نگهداری آن '+blank(state.retentionDuration)+' است و پس از تکمیل آخرین صورت‌وضعیت و پایان مدت نگهداری آزاد می‌شود.'
     : '';
+  const documents=state.contractorDocuments||[];
+  const annexPages=[];
+  const detail=value=>escape(value).trim()||'—';
+  for(let start=0;start<documents.length;start+=3){
+    const photos=documents.slice(start,start+3).map((file,offset)=>{
+      const index=start+offset,image=state.contractorDocumentImages?.[index];
+      const src=image?.dataUrl || (typeof file==='string'?file:'');
+      const safe=/^data:image\/(?:jpeg|jpg|png|webp|gif);base64,/i.test(src);
+      return '<figure class="contract-document-photo"><div class="contract-document-image-box">'+
+        (safe?'<img src="'+escape(src)+'" alt="'+escape(image?.name||file.name||'مدرک پیمانکار')+'">':'<p>'+(state.contractorDocumentsError?'دریافت مدرک انجام نشد؛ دوباره تلاش کنید.':'در حال دریافت مدرک…')+'</p>')+
+        '</div><figcaption>تصویر مدرک '+persian(index+1)+'</figcaption></figure>';
+    }).join('');
+    annexPages.push('<section class="contract-document-attachment" data-contract-number="'+escape(state.contractNo||'')+'">'+
+      '<header class="contract-document-annex-header"><h3>پیوست '+persian(annexPages.length+1)+' — مدارک پیمانکار</h3>'+
+      '<div class="contract-document-annex-meta"><div>پروژه: '+detail(state.projectName)+'</div><div>شماره قرارداد: <bdi>'+detail(state.contractNo)+'</bdi></div>'+
+      '<div>پیمانکار: '+detail(state.contractorName)+'</div><div>تاریخ قرارداد: '+detail(formatJalaliDisplay(state.contractDate))+'</div>'+
+      '<div class="contract-document-annex-subject">موضوع / فعالیت: '+detail(activityName)+'</div></div></header>'+
+      '<div class="contract-document-photo-grid">'+photos+'</div></section>');
+  }
   return '<div class="doc-meta doc-contract-meta">' +
       '<div>شماره قرارداد: <bdi>' + blank(state.contractNo) + '</bdi></div>' +
       '<div>تاریخ قرارداد: <bdi>' + blank(formatJalaliDisplay(state.contractDate)) + '</bdi></div>' +
@@ -63,11 +82,5 @@ export function contractDocumentMarkup(state,activityName=''){
     '<div class="doc-clauses">' + (clausesHtml || '<div class="doc-clause">........................................................</div>') + '</div>' +
     (paymentHtml ? '<div class="doc-payment"><b>مراحل پرداخت</b>' + paymentHtml + '</div>' : '') +
     '<div class="doc-signatures"><div class="signature-box">امضا و اثر انگشت کارفرما<br>................................</div><div class="signature-box">امضا و اثر انگشت پیمانکار<br>................................</div></div>'+
-    (state.contractorDocuments||[]).map((file,index)=>{
-      const image=state.contractorDocumentImages?.[index];
-      const src=image?.dataUrl || (typeof file==='string'?file:'');
-      const safe=/^data:image\/(?:jpeg|jpg|png|webp|gif);base64,/i.test(src);
-      return '<section class="contract-document-attachment"><h3>پیوست '+persian(index+1)+' — مدارک پیمانکار '+escape(state.contractorName||'')+'</h3>'+
-        (safe?'<img src="'+escape(src)+'" alt="'+escape(image?.name||file.name||'مدرک پیمانکار')+'">':'<p>'+ (state.contractorDocumentsError?'دریافت مدرک انجام نشد؛ دوباره تلاش کنید.':'در حال دریافت مدرک…')+'</p>')+'</section>';
-    }).join('');
+    annexPages.join('');
 }

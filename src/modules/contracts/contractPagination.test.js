@@ -5,28 +5,37 @@ globalThis.window={location:{hash:'',search:''}};
 const {getContractPageStyles}=await import('./contractTemplateFormModule.js');
 // Deterministic layout fixture: ten characters per line, twenty pixels per line.
 class Element{
-  constructor(tag='div'){this.tag=tag;this.children=[];this.style={};this.ownText='';this.className='';this.classList={contains:name=>this.className.split(' ').includes(name)};}
+  constructor(tag='div'){this.tag=tag;this.children=[];this.style={};this.attrs={};this.ownText='';this.className='';this.classList={contains:name=>this.className.split(' ').includes(name)};}
+  setAttribute(name,value){this.attrs[name]=value;}
+  getAttribute(name){return this.attrs[name]??null;}
   get childNodes(){return this.children;}
   set textContent(value){this.ownText=value;this.children=[];}
   get textContent(){return this.ownText+this.children.map(x=>x.textContent).join('');}
   appendChild(node){node.remove();node.parent=this;this.children.push(node);return node;}
   remove(){if(this.parent)this.parent.children=this.parent.children.filter(x=>x!==this);this.parent=null;}
-  cloneNode(deep){const copy=new Element(this.tag);copy.className=this.className;copy.ownText=this.ownText;if(deep)this.children.forEach(x=>copy.appendChild(x.cloneNode(true)));return copy;}
+  cloneNode(deep){const copy=new Element(this.tag);copy.className=this.className;copy.attrs={...this.attrs};copy.ownText=this.ownText;if(deep)this.children.forEach(x=>copy.appendChild(x.cloneNode(true)));return copy;}
   querySelectorAll(selector){const found=[];for(const x of this.children){if(x.classList.contains(selector.slice(1)))found.push(x);found.push(...x.querySelectorAll(selector));}return found;}
   get clientHeight(){return 971;}
   get scrollHeight(){return Math.max(971,this.children.reduce((n,x)=>n+Math.ceil(x.textContent.length/10)*20,0));}
 }
 const doc={createElement:tag=>new Element(tag),body:new Element('body')};
 
-test('each photograph annex remains intact on a separate sheet after the contract',()=>{
+test('three-photo annex groups stay intact inside separate framed contract sheets with identifying footers',()=>{
   const source=new Element(),terms=new Element();terms.textContent='Contract and signatures';source.appendChild(terms);
-  for(const name of ['identity','permit']){
+  for(const names of [['identity-front','identity-back','permit'],['residence','passport']]){
     const annex=new Element('section');annex.className='contract-document-attachment';
-    const picture=new Element('img');picture.textContent=name;annex.appendChild(picture);source.appendChild(annex);
+    annex.setAttribute('data-contract-number','CTR-7');
+    for(const name of names){const picture=new Element('img');picture.textContent=name;annex.appendChild(picture);}
+    source.appendChild(annex);
   }
-  const sheets=paginateContract(source,doc).querySelectorAll('.contract-sheet-content');
+  const pages=paginateContract(source,doc);
+  const sheets=pages.querySelectorAll('.contract-sheet-content');
   assert.equal(sheets.length,3);assert.equal(sheets[0].textContent,'Contract and signatures');
-  assert.deepEqual(sheets.slice(1).map(sheet=>sheet.children[0].children[0].tag),['img','img']);
+  assert.deepEqual(sheets.slice(1).map(sheet=>sheet.children[0].children.length),[3,2]);
+  assert.ok(sheets.slice(1).every(sheet=>sheet.children[0].children.every(child=>child.tag==='img')));
+  const footers=pages.querySelectorAll('.contract-sheet-number').map(node=>node.textContent);
+  assert.equal(footers[0],'صفحه ۱ از ۳');assert.equal(footers[1],'شماره قرارداد: CTR-7 — صفحه ۲ از ۳');
+  assert.equal(footers[2],'شماره قرارداد: CTR-7 — صفحه ۳ از ۳');
 });
 
 test('pagination preserves all long text, keeps short blocks whole and labels all pages',()=>{
