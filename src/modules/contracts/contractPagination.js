@@ -12,6 +12,10 @@ export function paginateContract(source, documentRef=globalThis.document){
   };
   const fits=()=>content.scrollHeight<=content.clientHeight;
   const append=block=>{
+    if(block.classList?.contains('contract-document-attachment')){
+      if(content.childNodes.length)next();
+      content.appendChild(block);return;
+    }
     content.appendChild(block);
     if(fits())return;
     block.remove();

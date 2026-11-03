@@ -139,7 +139,7 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null,pic
   foreignBox.appendChild(foreignUpload); wrap.appendChild(foreignBox);
 
   const iranianDocs=document.createElement('div'); iranianDocs.className='contact-section';
-  const iranTitle=document.createElement('div'); iranTitle.className='contact-section-title'; iranTitle.textContent='مدارک هویتی ایرانی'; iranianDocs.appendChild(iranTitle);
+  const iranTitle=document.createElement('div'); iranTitle.className='contact-section-title'; iranTitle.textContent='مدارک هویتی'; iranianDocs.appendChild(iranTitle);
   const iranUpload=document.createElement('div'); iranUpload.className='contact-upload';
   iranianDocs.appendChild(iranUpload); wrap.appendChild(iranianDocs);
 
@@ -338,7 +338,7 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null,pic
       const target=invalid[0]; target?.scrollIntoView({behavior:'smooth',block:'center'}); return;
     }
     const bankVals=bankEntries.map(entry=>{const getE=k=>entry.querySelector(`[data-key="${k}"]`)?.value.trim()||'';return {ownerName:getE('ownerName'),bankName:getE('bankName'),card:toEnglishDigits(getE('card')),iban:toEnglishDigits(getE('iban')),account:toEnglishDigits(getE('account'))};}).filter(b=>b.ownerName||b.bankName||b.card||b.iban||b.account);
-    c.pending=false;c.draftUpdatedAt=null;c.nationalityType=nat;c.nationality=get('nationality');c.foreignId=toEnglishDigits(get('foreignId'));c.foreignIdImages=nat==='غیر ایرانی'?c.foreignIdImages:[];c.iranianDocumentImages=nat==='ایرانی'?c.iranianDocumentImages:[];c.foreignIdImage=c.foreignIdImages[0]||'';
+    c.pending=false;c.draftUpdatedAt=null;c.nationalityType=nat;c.nationality=get('nationality');c.foreignId=toEnglishDigits(get('foreignId'));c.foreignIdImage=c.foreignIdImages[0]||'';
     c.firstName=firstName;c.lastName=lastName;c.fatherName=get('fatherName');c.name=[firstName,lastName].filter(Boolean).join(' ');c.nationalId=nat==='ایرانی'?toEnglishDigits(nationalId):'';c.address=get('address');c.postalCode=toEnglishDigits(get('postalCode'));c.phones=phoneVals;c.phone=phoneVals[0]||'';c.type=typeVal;c.activities=selectedActivityId?[selectedActivityId]:[];c.bankAccounts=bankVals;c.cards=bankVals.map(x=>x.card).filter(Boolean);c.ibans=bankVals.map(x=>x.iban).filter(Boolean);c.accounts=bankVals.map(x=>x.account).filter(Boolean);
     const result=contactApi.save(projectId, c); if(!result.ok) return; clearContactDraft(c.id); contactSavedSuccessfully=true; if(!contact && result.contact) onCreated?.(result.contact); backToList();
   };

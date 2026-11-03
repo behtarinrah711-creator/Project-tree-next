@@ -1906,3 +1906,9 @@ textarea.contract-project-item-input{
 #contractsPageBody .contract-status-badge.is-unapproved{background:#fee2e2;color:#991b1b;}
 
 #contractFormActions .real-contract-savebar .if-complete{order:2!important;background:#1565c0!important;color:#fff!important;border:1px solid #1565c0!important;line-height:1.4!important;}
+
+/* Contact identity photographs are separate annex sheets after the signatures. */
+.contract-document-attachment{break-inside:avoid;box-sizing:border-box;width:100%;}
+.contract-document-attachment h3{font-size:16px;line-height:1.8;margin:0 0 16px;text-align:right;}
+.contract-document-attachment img{display:block;width:100%;height:840px;object-fit:contain;}
+.contract-document-attachment p{color:#b42318;}

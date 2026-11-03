@@ -18,6 +18,17 @@ class Element{
 }
 const doc={createElement:tag=>new Element(tag),body:new Element('body')};
 
+test('each photograph annex remains intact on a separate sheet after the contract',()=>{
+  const source=new Element(),terms=new Element();terms.textContent='Contract and signatures';source.appendChild(terms);
+  for(const name of ['identity','permit']){
+    const annex=new Element('section');annex.className='contract-document-attachment';
+    const picture=new Element('img');picture.textContent=name;annex.appendChild(picture);source.appendChild(annex);
+  }
+  const sheets=paginateContract(source,doc).querySelectorAll('.contract-sheet-content');
+  assert.equal(sheets.length,3);assert.equal(sheets[0].textContent,'Contract and signatures');
+  assert.deepEqual(sheets.slice(1).map(sheet=>sheet.children[0].children[0].tag),['img','img']);
+});
+
 test('pagination preserves all long text, keeps short blocks whole and labels all pages',()=>{
   const source=new Element();
   for(const text of ['A'.repeat(300),'B'.repeat(300),'C'.repeat(1300),'END']){const node=new Element();node.textContent=text;source.appendChild(node);}

@@ -45,13 +45,15 @@ export async function prepareUpload(file){
   }finally{bitmap.close();}
 }
 
-export async function fetchFile(file,thumbnail=false,{signal}={}){
+export async function fetchFile(file,thumbnail=false,{signal,contractId}={}){
   // Compatibility with previously stored inline images. Never fetch arbitrary URLs.
   if(typeof file==='string'){
     if(!/^data:image\/(?:jpeg|jpg|png|webp|gif);base64,/i.test(file))throw new Error('فرمت تصویر قدیمی پشتیبانی نمی‌شود');
     return (await fetch(file,{signal})).blob();
   }
-  const response=await fetch(fileEndpoint(file)+(thumbnail?'?variant=thumbnail':''),{headers:{authorization:'Bearer '+fileToken()},signal});
+  const query=new URLSearchParams();if(thumbnail)query.set('variant','thumbnail');if(contractId)query.set('contractId',contractId);
+  const search=query.toString();
+  const response=await fetch(fileEndpoint(file)+(search?'?'+search:''),{headers:{authorization:'Bearer '+fileToken()},signal});
   if(!response.ok){const body=await response.json().catch(()=>({}));throw new Error(fileError(body.error));}
   return response.blob();
 }
