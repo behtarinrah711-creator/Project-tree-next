@@ -1848,58 +1848,58 @@ textarea.contract-project-item-input{
 #contractFormPage .contract-form-body .contract-payment-balance .ft-value{color:var(--danger,#b23b3b) !important;}
 
 /* Shared contract list: filters and workflow details stay on the same card. */
-#contractsPageBody .contract-list{padding:0 10px 12px;}
-#contractsPageBody .contract-row{display:block;box-sizing:border-box;min-width:0;}
-#contractsPageBody .contract-card-heading{display:grid;grid-template-columns:70px minmax(0,1fr) 34px;align-items:center;gap:8px;}
-#contractsPageBody .contract-card-heading .contract-main{grid-column:2;grid-row:1;text-align:center;}
-#contractsPageBody .contract-card-heading .contract-created{grid-column:1;grid-row:1;text-align:center;}
-#contractsPageBody .contract-card-heading .contract-actions{grid-column:3;grid-row:1;}
-#contractsPageBody .contract-main{flex-basis:50%;min-width:0;}
-#contractsPageBody .contract-workflow-row{flex:1 0 100%;box-sizing:border-box;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--divider);padding:12px 0;margin:0;min-width:0;font-size:12px;}
-#contractsPageBody .contract-workflow-row>span{flex:1;min-width:120px;}
-#contractsPageBody .contract-review-action{border:0;background:transparent;color:#1565c0;font:inherit;padding:6px;cursor:pointer;}
-#contractsPageBody .contract-review-action.danger,#contractsPageBody .contract-rejection-reason{color:var(--danger,#b23b3b);}
-#contractsPageBody .contract-rejection-reason{width:100%;white-space:pre-wrap;overflow-wrap:anywhere;}
-#contractsPageBody .contract-review-banner{display:block;width:calc(100% - 24px);margin:8px 12px;padding:14px;border:1px solid #1565c0;border-radius:10px;background:var(--surface);color:#1565c0;font:inherit;text-align:right;cursor:pointer;}
-#contractsPageBody .contract-status-filter{margin:8px 12px;padding:8px 12px;background:var(--surface);border:1px solid var(--divider);border-radius:8px;color:var(--text);font:inherit;cursor:pointer;}
+:is(#contractsPageBody,#accountingPageBody) .contract-list{padding:0 10px 12px;}
+:is(#contractsPageBody,#accountingPageBody) .contract-row{display:block;box-sizing:border-box;min-width:0;}
+:is(#contractsPageBody,#accountingPageBody) .contract-card-heading{display:grid;grid-template-columns:70px minmax(0,1fr) 34px;align-items:center;gap:8px;}
+:is(#contractsPageBody,#accountingPageBody) .contract-card-heading .contract-main{grid-column:2;grid-row:1;text-align:center;}
+:is(#contractsPageBody,#accountingPageBody) .contract-card-heading .contract-created{grid-column:1;grid-row:1;text-align:center;}
+:is(#contractsPageBody,#accountingPageBody) .contract-card-heading .contract-actions{grid-column:3;grid-row:1;}
+:is(#contractsPageBody,#accountingPageBody) .contract-main{flex-basis:50%;min-width:0;}
+:is(#contractsPageBody,#accountingPageBody) .contract-workflow-row{flex:1 0 100%;box-sizing:border-box;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--divider);padding:12px 0;margin:0;min-width:0;font-size:12px;}
+:is(#contractsPageBody,#accountingPageBody) .contract-workflow-row>span{flex:1;min-width:120px;}
+:is(#contractsPageBody,#accountingPageBody) .contract-review-action{border:0;background:transparent;color:#1565c0;font:inherit;padding:6px;cursor:pointer;}
+:is(#contractsPageBody,#accountingPageBody) .contract-review-action.danger,:is(#contractsPageBody,#accountingPageBody) .contract-rejection-reason{color:var(--danger,#b23b3b);}
+:is(#contractsPageBody,#accountingPageBody) .contract-rejection-reason{width:100%;white-space:pre-wrap;overflow-wrap:anywhere;}
+:is(#contractsPageBody,#accountingPageBody) .contract-review-banner{display:block;width:calc(100% - 24px);margin:8px 12px;padding:14px;border:1px solid #1565c0;border-radius:10px;background:var(--surface);color:#1565c0;font:inherit;text-align:right;cursor:pointer;}
+:is(#contractsPageBody,#accountingPageBody) .contract-status-filter{margin:8px 12px;padding:8px 12px;background:var(--surface);border:1px solid var(--divider);border-radius:8px;color:var(--text);font:inherit;cursor:pointer;}
 
-#contractsPageBody .contract-filter-wrap{position:relative;z-index:6;display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:8px 12px;}
-#contractsPageBody .contract-filter-wrap .contract-status-filter{margin:0;}
-#contractsPageBody .contract-status-menu{position:absolute;top:calc(100% + 5px);right:0;left:auto;z-index:2;max-height:min(50dvh,360px);}
-#contractsPageBody .contract-filter-dismiss{position:fixed;inset:0;z-index:1;border:0;background:transparent;cursor:default;}
-#contractsPageBody .contract-mine-reset{border:1px solid var(--divider);border-radius:8px;padding:8px;background:var(--surface);color:#1565c0;font:inherit;cursor:pointer;}
+:is(#contractsPageBody,#accountingPageBody) .contract-filter-wrap{position:relative;z-index:6;display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:8px 12px;}
+:is(#contractsPageBody,#accountingPageBody) .contract-filter-wrap .contract-status-filter{margin:0;}
+:is(#contractsPageBody,#accountingPageBody) .contract-status-menu{position:absolute;top:calc(100% + 5px);right:0;left:auto;z-index:2;max-height:min(50dvh,360px);}
+:is(#contractsPageBody,#accountingPageBody) .contract-filter-dismiss{position:fixed;inset:0;z-index:1;border:0;background:transparent;cursor:default;}
+:is(#contractsPageBody,#accountingPageBody) .contract-mine-reset{border:1px solid var(--divider);border-radius:8px;padding:8px;background:var(--surface);color:#1565c0;font:inherit;cursor:pointer;}
 
-#contractsPageBody .contract-history{min-width:0;margin:0;padding:0;border-top:1px solid var(--divider,#e4ddd3);color:var(--text-dim,#77706a);font-size:11px}
-#contractsPageBody .contract-history summary{min-height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#000;font:inherit;font-weight:600}
-#contractsPageBody .contract-history-entry{padding:8px 0;line-height:1.9;overflow-wrap:anywhere}
-#contractsPageBody .contract-history-entry p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
-#contractsPageBody .contract-history-empty{padding:8px 0 14px;text-align:center}
+:is(#contractsPageBody,#accountingPageBody) .contract-history{min-width:0;margin:0;padding:0;border-top:1px solid var(--divider,#e4ddd3);color:var(--text-dim,#77706a);font-size:11px}
+:is(#contractsPageBody,#accountingPageBody) .contract-history summary{min-height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#000;font:inherit;font-weight:600}
+:is(#contractsPageBody,#accountingPageBody) .contract-history-entry{padding:8px 0;line-height:1.9;overflow-wrap:anywhere}
+:is(#contractsPageBody,#accountingPageBody) .contract-history-entry p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+:is(#contractsPageBody,#accountingPageBody) .contract-history-empty{padding:8px 0 14px;text-align:center}
 
 .contract-form-body .contract-quantity-list > .contract-quantity-add{color:#1565c0;}
 
 /* Contract-owned presentation matches the execution work-card design. */
-#contractsPageBody .contract-row{margin:12px 0;padding:0 12px;border:1px solid #e5ded3;border-radius:var(--wbs-frame-radius,5px);background:#fff}
-#contractsPageBody .contract-card-heading{margin-inline:-12px;padding:10px 12px;background:#f4f1ec;border-radius:var(--wbs-frame-radius,5px) var(--wbs-frame-radius,5px) 0 0}
-#contractsPageBody .contract-title{font-size:13px;font-weight:600;color:#4d4741;text-align:center;overflow-wrap:anywhere}
-#contractsPageBody .contract-meta{font-size:11px;color:#4d4741;text-align:center}
+:is(#contractsPageBody,#accountingPageBody) .contract-row{margin:12px 0;padding:0 12px;border:1px solid #e5ded3;border-radius:var(--wbs-frame-radius,5px);background:#fff}
+:is(#contractsPageBody,#accountingPageBody) .contract-card-heading{margin-inline:-12px;padding:10px 12px;background:#f4f1ec;border-radius:var(--wbs-frame-radius,5px) var(--wbs-frame-radius,5px) 0 0}
+:is(#contractsPageBody,#accountingPageBody) .contract-title{font-size:13px;font-weight:600;color:#4d4741;text-align:center;overflow-wrap:anywhere}
+:is(#contractsPageBody,#accountingPageBody) .contract-meta{font-size:11px;color:#4d4741;text-align:center}
 
 /* Contract progress uses real saved lifecycle state; it has no manual controls. */
-#contractsPageBody .contract-progress{display:flex;direction:rtl;list-style:none;margin:0;padding:16px 0;border-top:1px solid var(--divider,#e4ddd3);}
-#contractsPageBody .contract-progress-step{position:relative;flex:1;min-width:0;display:grid;grid-template-rows:34px 14px 34px;text-align:center;color:#6b7280;}
-#contractsPageBody .contract-progress-step::after{content:'';position:absolute;top:40px;inset-inline-start:50%;width:100%;height:2px;background:#d1d5db;}
-#contractsPageBody .contract-progress-step:last-child::after{display:none;}
-#contractsPageBody .contract-progress-step.has-complete-next::after{background:#24934f;}
-#contractsPageBody .contract-progress-label{grid-row:1;align-self:center;font-size:10px;line-height:1.5;padding:0 2px;overflow-wrap:anywhere;}
-#contractsPageBody .contract-progress-step:nth-child(even) .contract-progress-label{grid-row:3;}
-#contractsPageBody .contract-progress-dot{grid-row:2;justify-self:center;align-self:center;width:12px;height:12px;border-radius:50%;background:#d1d5db;position:relative;z-index:1;}
-#contractsPageBody .contract-progress-step.is-complete{color:#187638;}
-#contractsPageBody .contract-progress-step.is-complete .contract-progress-dot{background:#24934f;}
+:is(#contractsPageBody,#accountingPageBody) .contract-progress{display:flex;direction:rtl;list-style:none;margin:0;padding:16px 0;border-top:1px solid var(--divider,#e4ddd3);}
+:is(#contractsPageBody,#accountingPageBody) .contract-progress-step{position:relative;flex:1;min-width:0;display:grid;grid-template-rows:34px 14px 34px;text-align:center;color:#6b7280;}
+:is(#contractsPageBody,#accountingPageBody) .contract-progress-step::after{content:'';position:absolute;top:40px;inset-inline-start:50%;width:100%;height:2px;background:#d1d5db;}
+:is(#contractsPageBody,#accountingPageBody) .contract-progress-step:last-child::after{display:none;}
+:is(#contractsPageBody,#accountingPageBody) .contract-progress-step.has-complete-next::after{background:#24934f;}
+:is(#contractsPageBody,#accountingPageBody) .contract-progress-label{grid-row:1;align-self:center;font-size:10px;line-height:1.5;padding:0 2px;overflow-wrap:anywhere;}
+:is(#contractsPageBody,#accountingPageBody) .contract-progress-step:nth-child(even) .contract-progress-label{grid-row:3;}
+:is(#contractsPageBody,#accountingPageBody) .contract-progress-dot{grid-row:2;justify-self:center;align-self:center;width:12px;height:12px;border-radius:50%;background:#d1d5db;position:relative;z-index:1;}
+:is(#contractsPageBody,#accountingPageBody) .contract-progress-step.is-complete{color:#187638;}
+:is(#contractsPageBody,#accountingPageBody) .contract-progress-step.is-complete .contract-progress-dot{background:#24934f;}
 
-#contractsPageBody .contract-menu-wrap > .nb-more{color:#1565c0;}
-#contractsPageBody .contract-workflow-row > .contract-status-badge{flex:0 1 auto;min-width:0;margin-inline-end:auto;padding:5px 10px;border-radius:6px;line-height:1.7;}
-#contractsPageBody .contract-status-badge.is-incomplete{background:#e5e7eb;color:#374151;}
-#contractsPageBody .contract-status-badge.is-approved{background:#dcfce7;color:#166534;}
-#contractsPageBody .contract-status-badge.is-unapproved{background:#fee2e2;color:#991b1b;}
+:is(#contractsPageBody,#accountingPageBody) .contract-menu-wrap > .nb-more{color:#1565c0;}
+:is(#contractsPageBody,#accountingPageBody) .contract-workflow-row > .contract-status-badge{flex:0 1 auto;min-width:0;margin-inline-end:auto;padding:5px 10px;border-radius:6px;line-height:1.7;}
+:is(#contractsPageBody,#accountingPageBody) .contract-status-badge.is-incomplete{background:#e5e7eb;color:#374151;}
+:is(#contractsPageBody,#accountingPageBody) .contract-status-badge.is-approved{background:#dcfce7;color:#166534;}
+:is(#contractsPageBody,#accountingPageBody) .contract-status-badge.is-unapproved{background:#fee2e2;color:#991b1b;}
 
 #contractFormActions .real-contract-savebar .if-complete{order:2!important;background:#1565c0!important;color:#fff!important;border:1px solid #1565c0!important;line-height:1.4!important;}
 
