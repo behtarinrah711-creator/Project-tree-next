@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-APP_ROOT="${1:-/srv/saosa/current/server}"
+APP_ROOT="$(readlink -f "${1:-/srv/saosa/current/server}")"
+NODE_BIN="$APP_ROOT/runtime/bin/node"
+bash "$APP_ROOT/ops/check-runtime.sh" "$APP_ROOT"
 ENV_DIR=/etc/saosa
 ENV_FILE="$ENV_DIR/api.env"
 SERVICE_USER=saosa-api
@@ -10,8 +12,10 @@ DB_USER=saosa_app
 KAVENEGAR_KEY_FILE=/run/saosa-kavenegar-key
 
 export DEBIAN_FRONTEND=noninteractive
-apt-get update
-apt-get install -y --no-install-recommends postgresql nodejs npm
+if ! command -v psql >/dev/null 2>&1; then
+  apt-get update
+  apt-get install -y --no-install-recommends postgresql
+fi
 
 if ! id "$SERVICE_USER" >/dev/null 2>&1; then
   useradd --system --home /nonexistent --shell /usr/sbin/nologin "$SERVICE_USER"
@@ -75,8 +79,6 @@ fi
 for migration in "$APP_ROOT"/sql/*.sql; do
   PGPASSWORD="$DB_PASSWORD" psql -v ON_ERROR_STOP=1 -h 127.0.0.1 -U "$DB_USER" -d "$DB_NAME" -f "$migration"
 done
-node -e 'const [major,minor]=process.versions.node.split(".").map(Number);if(major<20 || (major===20 && minor<9)){console.error("Saosa uploads require Node.js 20.9 or newer. Upgrade Node.js before deploying.");process.exit(1);}'
-npm --prefix "$APP_ROOT" ci --omit=dev --no-audit --no-fund
 install -d -m 700 -o "$SERVICE_USER" -g "$SERVICE_USER" /var/lib/saosa/uploads
 
 cat > /etc/systemd/system/saosa-api.service <<EOF
@@ -91,7 +93,7 @@ User=${SERVICE_USER}
 Group=${SERVICE_USER}
 WorkingDirectory=${APP_ROOT}
 EnvironmentFile=${ENV_FILE}
-ExecStart=/usr/bin/node ${APP_ROOT}/src/server.js
+ExecStart=${NODE_BIN} ${APP_ROOT}/src/server.js
 Restart=on-failure
 RestartSec=3
 NoNewPrivileges=true
