@@ -55,13 +55,19 @@ export function contractDocumentMarkup(state,activityName=''){
   const detail=value=>escape(value).trim()||'—';
   let documentNumber=0;
   for(const page of planContractAnnexes(documents,state.contractorDocumentImages)){
-    const photos=page.map(({sourceIndex:index,portrait,row,column})=>{
+    const photos=page.map(({sourceIndex:index,portrait,rotated,row,column})=>{
       const file=documents[index],image=state.contractorDocumentImages?.[index];
       const src=image?.dataUrl || (typeof file==='string'?file:'');
       const safe=/^data:image\/(?:jpeg|jpg|png|webp|gif);base64,/i.test(src);
       const position=portrait?' contract-document-photo--portrait contract-document-photo--'+(column===1?'left':'right'):' contract-document-photo--landscape contract-document-row-'+row;
+      const width=Number(image?.width || file?.width),height=Number(image?.height || file?.height);
+      const alt=escape(image?.name||file.name||'مدرک پیمانکار');
+      // Swap the viewport dimensions before rotating; fit the whole image without cropping.
+      const picture=rotated
+        ? '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 '+height+' '+width+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="'+alt+'"><image href="'+escape(src)+'" width="'+width+'" height="'+height+'" transform="translate(0 '+width+') rotate(-90)"/></svg>'
+        : '<img src="'+escape(src)+'" alt="'+alt+'">';
       return '<figure class="contract-document-photo'+position+'"><div class="contract-document-image-box">'+
-        (safe?'<img src="'+escape(src)+'" alt="'+escape(image?.name||file.name||'مدرک پیمانکار')+'">':'<p>'+(state.contractorDocumentsError?'دریافت مدرک انجام نشد؛ دوباره تلاش کنید.':'در حال دریافت مدرک…')+'</p>')+
+        (safe?picture:'<p>'+(state.contractorDocumentsError?'دریافت مدرک انجام نشد؛ دوباره تلاش کنید.':'در حال دریافت مدرک…')+'</p>')+
         '</div><figcaption>تصویر مدرک '+persian(++documentNumber)+'</figcaption></figure>';
     }).join('');
     annexPages.push('<section class="contract-document-attachment" data-contract-number="'+escape(state.contractNo||'')+'">'+
