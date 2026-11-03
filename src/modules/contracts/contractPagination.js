@@ -1,5 +1,6 @@
 /** Measure at print width; keep ordinary blocks together and split oversized text. */
 export function paginateContract(source, documentRef=globalThis.document){
+  const contractNumber=source.querySelectorAll('.doc-contract-meta')[0]?.getAttribute?.('data-contract-number') || source.querySelectorAll('.contract-document-attachment')[0]?.getAttribute?.('data-contract-number') || '';
   const pages=documentRef.createElement('div');pages.className='contract-pages';
   const measure=documentRef.createElement('div');
   measure.className='contract-pagination-measure';
@@ -46,10 +47,8 @@ export function paginateContract(source, documentRef=globalThis.document){
     next();blocks.forEach(append);
     const sheets=pages.querySelectorAll('.contract-sheet');
     sheets.forEach((sheet,i)=>{
-      const annex=sheet.querySelectorAll('.contract-document-attachment')[0];
-      const number=annex?.getAttribute?.('data-contract-number') || '';
       const label=documentRef.createElement('div');label.className='contract-sheet-number';
-      label.textContent=(number?'شماره قرارداد: '+number+' — ':'')+`صفحه ${new Intl.NumberFormat('fa-IR').format(i+1)} از ${new Intl.NumberFormat('fa-IR').format(sheets.length)}`;
+      label.textContent=(contractNumber?'شماره قرارداد: '+contractNumber+' — ':'')+`صفحه ${new Intl.NumberFormat('fa-IR').format(i+1)} از ${new Intl.NumberFormat('fa-IR').format(sheets.length)}`;
       sheet.appendChild(label);
     });
     pages.remove();return pages;

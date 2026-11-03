@@ -18,6 +18,17 @@ test('failed or cancelled image downloads reject instead of silently producing a
   await assert.rejects(loadContractDocumentImages(state,'p',{signal:controller.signal,fetchImage:async()=>new Blob(['a'])}),{name:'AbortError'});
 });
 
+test('legacy image dimensions are decoded for portrait layout and new metadata dimensions are retained',async t=>{
+  const oldReader=globalThis.FileReader,oldImage=globalThis.Image;
+  t.after(()=>{globalThis.FileReader=oldReader;globalThis.Image=oldImage;});
+  globalThis.FileReader=class{readAsDataURL(){this.result='data:image/jpeg;base64,YQ==';this.onload();}};
+  let decoded=0;
+  globalThis.Image=class{set src(value){if(value){decoded++;this.naturalWidth=600;this.naturalHeight=1000;this.onload();}}};
+  const loaded=await loadContractDocumentImages({contractorDocuments:['data:image/jpeg;base64,YQ==',{width:1200,height:800}]},'p',{fetchImage:async()=>new Blob(['a'])});
+  assert.equal(decoded,1);
+  assert.deepEqual(loaded.contractorDocumentImages.map(image=>[image.width,image.height]),[[600,1000],[1200,800]]);
+});
+
 test('attachment preview retains the canonical print mount and repaginates after images load',async t=>{
   const old=globalThis.FileReader;t.after(()=>{globalThis.FileReader=old;});
   globalThis.FileReader=class{readAsDataURL(){this.result='data:image/jpeg;base64,YQ==';this.onload();}};

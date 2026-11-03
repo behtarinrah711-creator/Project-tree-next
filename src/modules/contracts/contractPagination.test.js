@@ -20,6 +20,14 @@ class Element{
 }
 const doc={createElement:tag=>new Element(tag),body:new Element('body')};
 
+test('every contract page uses the same identifying footer even without annexes',()=>{
+  const source=new Element(),meta=new Element();meta.className='doc-contract-meta';meta.setAttribute('data-contract-number','CTR-main');source.appendChild(meta);
+  const clause=new Element();clause.textContent='A'.repeat(1800);source.appendChild(clause);
+  const pages=paginateContract(source,doc),footers=pages.querySelectorAll('.contract-sheet-number');
+  assert.ok(footers.length>1);
+  footers.forEach((footer,index)=>assert.equal(footer.textContent,'شماره قرارداد: CTR-main — صفحه '+new Intl.NumberFormat('fa-IR').format(index+1)+' از '+new Intl.NumberFormat('fa-IR').format(footers.length)));
+});
+
 test('three-photo annex groups stay intact inside separate framed contract sheets with identifying footers',()=>{
   const source=new Element(),terms=new Element();terms.textContent='Contract and signatures';source.appendChild(terms);
   for(const names of [['identity-front','identity-back','permit'],['residence','passport']]){
@@ -34,7 +42,7 @@ test('three-photo annex groups stay intact inside separate framed contract sheet
   assert.deepEqual(sheets.slice(1).map(sheet=>sheet.children[0].children.length),[3,2]);
   assert.ok(sheets.slice(1).every(sheet=>sheet.children[0].children.every(child=>child.tag==='img')));
   const footers=pages.querySelectorAll('.contract-sheet-number').map(node=>node.textContent);
-  assert.equal(footers[0],'صفحه ۱ از ۳');assert.equal(footers[1],'شماره قرارداد: CTR-7 — صفحه ۲ از ۳');
+  assert.equal(footers[0],'شماره قرارداد: CTR-7 — صفحه ۱ از ۳');assert.equal(footers[1],'شماره قرارداد: CTR-7 — صفحه ۲ از ۳');
   assert.equal(footers[2],'شماره قرارداد: CTR-7 — صفحه ۳ از ۳');
 });
 
