@@ -14,14 +14,15 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
   const gallery=document.createElement('div');gallery.className='saosa-file-gallery';root.appendChild(gallery);
   if(readOnly)input.hidden=true;
   const replacement=allowReplace && !readOnly?document.createElement('input'):null;
-  let replacingIndex=null;
+  let replacingFile=null;
   if(replacement){
     replacement.type='file';replacement.accept=input.accept;replacement.hidden=true;root.appendChild(replacement);
-    replacement.oncancel=()=>{replacingIndex=null;};replacement.onchange=()=>{const file=replacement.files?.[0];if(file)pond?.addFile(file);replacement.value='';};
+    replacement.oncancel=()=>{replacingFile=null;};replacement.onchange=()=>{const file=replacement.files?.[0];if(file)pond?.addFile(file);replacement.value='';};
   }
   const urls=new Set(),requests=new Set();let pond,disposed=false,viewerClose;
-  const isUploading=()=>hasActiveFileUploads(requests.size,pond?.getFiles()||[]);
-  const isBusy=()=>requests.size>0 || !!pond?.getFiles().some(file=>![5,2].includes(file.status));
+  // Detaching a saved reference must not depend on FilePond's retained queue items.
+  const isUploading=()=>requests.size>0;
+  const isBusy=()=>hasActiveFileUploads(requests.size,pond?.getFiles()||[]) || !!pond?.getFiles().some(file=>[6,8,10].includes(file.status));
   const controllers=new Set();
   let observer;
   const release=()=>{controllers.forEach(c=>c.abort());controllers.clear();urls.forEach(url=>URL.revokeObjectURL(url));urls.clear();observer?.disconnect();};
@@ -44,7 +45,7 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
       const remove=document.createElement('button');remove.type='button';remove.className='saosa-file-remove';remove.textContent='×';remove.setAttribute('aria-label','حذف '+(file.name||'عکس'));
       if(readOnly)remove.hidden=true;
       let replaceButton;
-      if(allowReplace && !readOnly){const replace=document.createElement('button');replace.type='button';replace.className='saosa-file-replace';replace.textContent='جایگزینی';replace.onclick=()=>{if(isUploading()){onError('ابتدا بارگذاری جاری را تمام کنید');return;}replacingIndex=index;replacement.click();};replaceButton=replace;}
+      if(allowReplace && !readOnly){const replace=document.createElement('button');replace.type='button';replace.className='saosa-file-replace';replace.textContent='جایگزینی';replace.onclick=()=>{if(isUploading()){onError('ابتدا بارگذاری جاری را تمام کنید');return;}replacingFile=file;replacement.click();};replaceButton=replace;}
       remove.onclick=()=>{if(isUploading()){onError('ابتدا بارگذاری جاری را تمام کنید');return;}files.splice(index,1);render();onChange();};
       const caption=document.createElement('small');caption.textContent=file.size?Math.ceil(file.size/1024)+' کیلوبایت':'';card.appendChild(open);if(!readOnly)card.appendChild(remove);card.appendChild(caption);if(replaceButton)card.appendChild(replaceButton);gallery.appendChild(card);
     });
@@ -56,7 +57,7 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
     pond=create(input,{allowMultiple:true,maxParallelUploads:1,maxFiles:category==='contracts'?30:10,credits:false,
       labelIdle:label+' <span class="filepond--label-action">انتخاب</span>',labelFileProcessing:'در حال بارگذاری',labelFileProcessingComplete:'بارگذاری شد',labelFileProcessingError:'بارگذاری انجام نشد',
       labelTapToRetry:'برای تلاش مجدد بزنید',labelTapToCancel:'برای لغو بزنید',labelButtonRemoveItem:'حذف',labelButtonAbortItemProcessing:'لغو',
-      beforeAddFile:item=>{if(files.length>=30 && replacingIndex===null){onError('حداکثر ۳۰ صفحه انتخاب کنید');return false;}if(item.fileSize>FILE_LIMIT){onError(fileError('file_too_large'));return false;}return true;},
+      beforeAddFile:item=>{if(files.length>=30 && replacingFile===null){onError('حداکثر ۳۰ صفحه انتخاب کنید');return false;}if(item.fileSize>FILE_LIMIT){onError(fileError('file_too_large'));return false;}return true;},
       server:{process:(_field,file,_metadata,load,error,progress,abort)=>{
         const xhr=new XMLHttpRequest();requests.add(xhr);let cancelled=false;
         prepareUpload(file).then(prepared=>{
@@ -68,7 +69,7 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
             requests.delete(xhr);if(cancelled || disposed)return;
             let data;try{data=JSON.parse(xhr.responseText);}catch{data={};}
             if(xhr.status!==201 || !data.file){const message=fileError(data.error);error(message);onError(message);return;}
-            if(replacingIndex!==null){files.splice(replacingIndex,1,data.file);replacingIndex=null;}else files.push(data.file);render();onChange();load(data.file.id);
+            if(replacingFile!==null){const index=files.indexOf(replacingFile);if(index>=0)files.splice(index,1,data.file);else files.push(data.file);replacingFile=null;}else files.push(data.file);render();onChange();load(data.file.id);
           };
           xhr.onerror=()=>{requests.delete(xhr);error('اتصال برقرار نشد');onError('بارگذاری انجام نشد؛ دوباره تلاش کنید');};
           xhr.send(prepared);
