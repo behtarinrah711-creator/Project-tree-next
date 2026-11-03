@@ -69,6 +69,92 @@ function contractRowData(projectId,c){
   return {title,meta,number,activity,created:contractCreatedParts(c.createdAt)};
 }
 
+export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
+  const id=p.id,actor=currentExecutionActor(p);
+      const {title,meta,number,activity,created}=contractRowData(id,c);
+      const row=document.createElement('article'); row.className='contract-row';
+      const heading=document.createElement('div');heading.className='contract-card-heading';
+      row.dataset.searchText=normalizeContractSearch(title+' '+meta+' '+(c.projectItemPath||'')+' '+(created ? `${created.date} ${created.time}` : ''));
+      row.dataset.approvalState=contractApprovalState(c);row.dataset.reviewMine=String(canReviewContract(c,actor));
+      const main=document.createElement('div'); main.className='contract-main';
+      const t=document.createElement('div'); t.className='contract-title'; t.textContent=title;
+      const numberRow=document.createElement('div');numberRow.className='contract-meta contract-number';numberRow.dir='ltr';numberRow.textContent=number;
+      const activityRow=document.createElement('div');activityRow.className='contract-meta contract-activity';activityRow.textContent=activity;
+      main.append(t,numberRow,activityRow);
+      const actions=document.createElement('div'); actions.className='contract-actions';
+      actions.appendChild(contractActionsMenu({
+        onEdit:()=>{if(c.status==='final' && contractApprovalState(c)==='ready'){window.KarhaLegacy?.showToast?.('برای ویرایش ابتدا اعلام تکمیل را لغو کنید');return;}if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
+        onExport:trigger=>openContractExport(p,finance?c.accountingPackage.contract:c,{trigger,frozen:finance}),
+        onDelete:()=>openConfirm('آیا از حذف این قرارداد اطمینان دارید؟',()=>{
+          const result=contractApi.trash(id,c.id);
+          if(!result.ok){
+            if(result.code==='in_use')window.KarhaLegacy?.showRecordDeleteBlocked?.('contract',result.refs);
+            else window.KarhaLegacy?.showToast?.(result.message||'حذف قرارداد انجام نشد');
+            return;
+          }
+          onChanged();
+        },'حذف'),
+      }));
+      if(created){
+        const createdBox=document.createElement('div'); createdBox.className='contract-created';
+        const date=document.createElement('div'); date.className='contract-created-date'; date.textContent=created.date;
+        const time=document.createElement('div'); time.className='contract-created-time'; time.textContent=created.time;
+        createdBox.append(date,time);
+        heading.append(main,createdBox,actions);
+      }else{
+        heading.append(main,actions);
+      }
+      row.appendChild(heading);
+      const statusRow=document.createElement('div');statusRow.className='contract-workflow-row';
+      const status=document.createElement('span');
+      const approvalState=contractApprovalState(c);
+      const statusLabel=approvalState==='incomplete'?'ناقص':approvalState==='approved'?'تأیید شده است':['ready','unapproved','returned'].includes(approvalState)?'تأیید نشده است':approvalLabels[approvalState];
+      status.className='contract-status-badge '+(approvalState==='approved'?'is-approved':['ready','unapproved','returned'].includes(approvalState)?'is-unapproved':'is-incomplete');
+      status.textContent='وضعیت: '+statusLabel;statusRow.appendChild(status);
+      if(c.approvalStatus==='pending' && c.approvalContactIds?.length)status.textContent+=' ('+new Intl.NumberFormat('fa-IR').format(c.approvedContactIds?.length || 0)+' از '+new Intl.NumberFormat('fa-IR').format(c.approvalContactIds.length)+')';
+      const run=(action,options={})=>{
+        const result=contractApi.review(id,c.id,action,actor,options);
+        if(!result.ok){window.KarhaLegacy?.showToast?.(result.message||'ثبت تغییرات انجام نشد');return false;}
+        onChanged();return true;
+      };
+      const button=(label,handler,danger=false)=>{
+        const el=document.createElement('button');el.type='button';el.className='contract-review-action'+(danger?' danger':'');el.textContent=label;
+        el.onclick=event=>{event.stopPropagation();handler();};statusRow.appendChild(el);
+      };
+      if(canSubmitContract(c)){
+        const submitLabel=contractApprovalState(c)==='unapproved'?'ارسال مجدد برای تأیید':'ارسال برای تأیید';
+        if(c.workTaskId || c.contractApproverContactIds?.length)button(submitLabel,()=>run('submit'));
+        else button(submitLabel,()=>openStaticChoicePicker('انتخاب مسئول تأیید','مخاطبین',(p.contacts||[]).filter(x=>!x.trashed).map(x=>({value:x.id,label:[x.firstName,x.lastName].filter(Boolean).join(' ')||x.name||'مخاطب'})),c.approvalContactId,value=>run('submit',{approverId:value})));
+      }
+      if(canCancelContractCompletion(c) || (contractApprovalState(c)==='pending' && c.submittedBy?.id===actor.id)){
+        const action=contractApprovalState(c)==='pending'?'withdraw_submission':'cancel_completion';
+        button(action==='withdraw_submission'?'پس‌گرفتن از تأیید':'لغو اعلام تکمیل',()=>openWbsSheet({
+          title:action==='withdraw_submission'?'پس‌گرفتن از تأیید':'لغو اعلام تکمیل',saveLabel:'ثبت برگشت',historyKey:'contract-cancel-completion:'+c.id,
+          body(root){const reason=document.createElement('textarea');reason.className='wbs-input today-textarea';reason.name='completionReason';root.appendChild(fieldRow('علت برگشت (الزامی)',reason));},
+          onSave:root=>run(action,{reason:root.querySelector('[name="completionReason"]').value})
+        }),true);
+      }
+      if(canRevokeContractApproval(c,actor)){
+        button('لغو تأیید من',()=>openWbsSheet({
+          title:'لغو تأیید قرارداد',saveLabel:'ثبت لغو تأیید',historyKey:'contract-revoke:'+c.id,
+          body(root){const reason=document.createElement('textarea');reason.className='wbs-input today-textarea';reason.name='revocationReason';reason.required=true;reason.minLength=REJECTION_MIN_LENGTH;root.appendChild(fieldRow('علت لغو تأیید (الزامی)',reason));},
+          onSave:root=>run('revoke',{reason:root.querySelector('[name="revocationReason"]').value})
+        }),true);
+      }
+      if(canReviewContract(c,actor)){
+        button('تأیید',()=>openConfirm('این قرارداد تأیید شود؟',()=>run('approve'),'تأیید'));
+      }
+      if(c.approvalRejectionReason && ['unapproved','incomplete'].includes(contractApprovalState(c))){
+        const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='علت لغو تأیید: '+c.approvalRejectionReason;statusRow.appendChild(reason);
+      }
+      row.appendChild(statusRow);statusRow.onclick=event=>event.stopPropagation();
+      row.appendChild(renderContractProgress(document,c,p));
+      row.appendChild(renderContractSignedSection(p,c,{finance,onChanged}));
+      row.appendChild(renderContractHistory(document,c));
+      row.onclick=()=>openContractPreview(p,finance?c.accountingPackage.contract:c,{trigger:main,frozen:finance});
+      return row;
+}
+
 export const contractsModule={
   id:'contracts', title:'قراردادها', route:'contracts',
   mount({projectId: explicitProjectId}={}){this.render(explicitProjectId);return {projectId:explicitProjectId || resolveProjectId(),moduleId:'contracts'};},
@@ -143,89 +229,7 @@ export const contractsModule={
     filterWrap.onkeydown=event=>{if(event.key==='Escape'){closeFilter();filter.focus?.();}};
     filterWrap.appendChild(filter);filterLabel();body.append(filterWrap,listWrap);
     if(!contracts.length){const e=document.createElement('div');e.className='contract-empty';e.innerHTML='هنوز قرارداد واقعی ثبت نشده است.<br>از علامت + یک قرارداد ایجاد کنید.';body.appendChild(e);return;}
-    const appendContract=c=>{
-      const {title,meta,number,activity,created}=contractRowData(id,c);
-      const row=document.createElement('article'); row.className='contract-row';
-      const heading=document.createElement('div');heading.className='contract-card-heading';
-      row.dataset.searchText=normalizeContractSearch(title+' '+meta+' '+(c.projectItemPath||'')+' '+(created ? `${created.date} ${created.time}` : ''));
-      row.dataset.approvalState=contractApprovalState(c);row.dataset.reviewMine=String(canReviewContract(c,actor));
-      const main=document.createElement('div'); main.className='contract-main';
-      const t=document.createElement('div'); t.className='contract-title'; t.textContent=title;
-      const numberRow=document.createElement('div');numberRow.className='contract-meta contract-number';numberRow.dir='ltr';numberRow.textContent=number;
-      const activityRow=document.createElement('div');activityRow.className='contract-meta contract-activity';activityRow.textContent=activity;
-      main.append(t,numberRow,activityRow);
-      const actions=document.createElement('div'); actions.className='contract-actions';
-      actions.appendChild(contractActionsMenu({
-        onEdit:()=>{if(c.status==='final' && contractApprovalState(c)==='ready'){window.KarhaLegacy?.showToast?.('برای ویرایش ابتدا اعلام تکمیل را لغو کنید');return;}if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
-        onExport:trigger=>openContractExport(p,c,{trigger}),
-        onDelete:()=>openConfirm('آیا از حذف این قرارداد اطمینان دارید؟',()=>{
-          const result=contractApi.trash(id,c.id);
-          if(!result.ok){
-            if(result.code==='in_use')window.KarhaLegacy?.showRecordDeleteBlocked?.('contract',result.refs);
-            else window.KarhaLegacy?.showToast?.(result.message||'حذف قرارداد انجام نشد');
-            return;
-          }
-          this.render(id);
-        },'حذف'),
-      }));
-      if(created){
-        const createdBox=document.createElement('div'); createdBox.className='contract-created';
-        const date=document.createElement('div'); date.className='contract-created-date'; date.textContent=created.date;
-        const time=document.createElement('div'); time.className='contract-created-time'; time.textContent=created.time;
-        createdBox.append(date,time);
-        heading.append(main,createdBox,actions);
-      }else{
-        heading.append(main,actions);
-      }
-      row.appendChild(heading);
-      const statusRow=document.createElement('div');statusRow.className='contract-workflow-row';
-      const status=document.createElement('span');
-      const approvalState=contractApprovalState(c);
-      const statusLabel=approvalState==='incomplete'?'ناقص':approvalState==='approved'?'تأیید شده است':['ready','unapproved','returned'].includes(approvalState)?'تأیید نشده است':approvalLabels[approvalState];
-      status.className='contract-status-badge '+(approvalState==='approved'?'is-approved':['ready','unapproved','returned'].includes(approvalState)?'is-unapproved':'is-incomplete');
-      status.textContent='وضعیت: '+statusLabel;statusRow.appendChild(status);
-      if(c.approvalStatus==='pending' && c.approvalContactIds?.length)status.textContent+=' ('+new Intl.NumberFormat('fa-IR').format(c.approvedContactIds?.length || 0)+' از '+new Intl.NumberFormat('fa-IR').format(c.approvalContactIds.length)+')';
-      const run=(action,options={})=>{
-        const result=contractApi.review(id,c.id,action,actor,options);
-        if(!result.ok){window.KarhaLegacy?.showToast?.(result.message||'ثبت تغییرات انجام نشد');return false;}
-        this.render(id);return true;
-      };
-      const button=(label,handler,danger=false)=>{
-        const el=document.createElement('button');el.type='button';el.className='contract-review-action'+(danger?' danger':'');el.textContent=label;
-        el.onclick=event=>{event.stopPropagation();handler();};statusRow.appendChild(el);
-      };
-      if(canSubmitContract(c)){
-        const submitLabel=contractApprovalState(c)==='unapproved'?'ارسال مجدد برای تأیید':'ارسال برای تأیید';
-        if(c.workTaskId || c.contractApproverContactIds?.length)button(submitLabel,()=>run('submit'));
-        else button(submitLabel,()=>openStaticChoicePicker('انتخاب مسئول تأیید','مخاطبین',(p.contacts||[]).filter(x=>!x.trashed).map(x=>({value:x.id,label:[x.firstName,x.lastName].filter(Boolean).join(' ')||x.name||'مخاطب'})),c.approvalContactId,value=>run('submit',{approverId:value})));
-      }
-      if(canCancelContractCompletion(c) || (contractApprovalState(c)==='pending' && c.submittedBy?.id===actor.id)){
-        const action=contractApprovalState(c)==='pending'?'withdraw_submission':'cancel_completion';
-        button(action==='withdraw_submission'?'پس‌گرفتن از تأیید':'لغو اعلام تکمیل',()=>openWbsSheet({
-          title:action==='withdraw_submission'?'پس‌گرفتن از تأیید':'لغو اعلام تکمیل',saveLabel:'ثبت برگشت',historyKey:'contract-cancel-completion:'+c.id,
-          body(root){const reason=document.createElement('textarea');reason.className='wbs-input today-textarea';reason.name='completionReason';root.appendChild(fieldRow('علت برگشت (الزامی)',reason));},
-          onSave:root=>run(action,{reason:root.querySelector('[name="completionReason"]').value})
-        }),true);
-      }
-      if(canRevokeContractApproval(c,actor)){
-        button('لغو تأیید من',()=>openWbsSheet({
-          title:'لغو تأیید قرارداد',saveLabel:'ثبت لغو تأیید',historyKey:'contract-revoke:'+c.id,
-          body(root){const reason=document.createElement('textarea');reason.className='wbs-input today-textarea';reason.name='revocationReason';reason.required=true;reason.minLength=REJECTION_MIN_LENGTH;root.appendChild(fieldRow('علت لغو تأیید (الزامی)',reason));},
-          onSave:root=>run('revoke',{reason:root.querySelector('[name="revocationReason"]').value})
-        }),true);
-      }
-      if(canReviewContract(c,actor)){
-        button('تأیید',()=>openConfirm('این قرارداد تأیید شود؟',()=>run('approve'),'تأیید'));
-      }
-      if(c.approvalRejectionReason && ['unapproved','incomplete'].includes(contractApprovalState(c))){
-        const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='علت لغو تأیید: '+c.approvalRejectionReason;statusRow.appendChild(reason);
-      }
-      row.appendChild(statusRow);statusRow.onclick=event=>event.stopPropagation();
-      row.appendChild(renderContractProgress(document,c,p));
-      row.appendChild(renderContractSignedSection(p,c,{onChanged:()=>this.render(id)}));
-      row.appendChild(renderContractHistory(document,c));
-      row.onclick=()=>openContractPreview(p,c,{trigger:main}); renderedRows.push(row);
-    };
+    const appendContract=c=>renderedRows.push(renderContractCard(p,c,{onChanged:()=>this.render(id)}));
     contracts.forEach(appendContract);
     applyFilters();
   },
