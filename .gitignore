@@ -1,3 +1,4 @@
 node_modules/
+server/runtime/
 playwright-report/
 test-results/
