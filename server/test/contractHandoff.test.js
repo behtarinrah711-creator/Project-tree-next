@@ -65,3 +65,19 @@ test('approved contract upload accepts PDF in its own category and is locked aft
   await f.call({action:'send_finance',version:c.handoffVersion,updatedAt:c.updatedAt});
   assert.equal((await upload()).status,409);
 });
+test('only financial writers can approve, revoke their approval and reject with a reason',async()=>{
+  const f=fixture();let c=(await f.call({action:'save_signed',version:0,updatedAt:1,files:[file]})).result.contract;
+  c=(await f.call({action:'send_finance',version:c.handoffVersion,updatedAt:c.updatedAt})).result.contract;
+  const decision=(action,reason)=>f.call({action,reason,version:c.handoffVersion,updatedAt:c.updatedAt});
+  assert.equal((await decision('approve_finance')).status,403,'contract writer is not a finance reviewer');
+  f.setPermissions({modules:{contracts:'none',accounting:'view'}});
+  assert.equal((await decision('approve_finance')).status,403);
+  f.setPermissions({modules:{contracts:'none',accounting:'create'}});
+  let result=await decision('approve_finance');assert.equal(result.status,200);c=result.result.contract;
+  assert.equal(c.accountingStatus,'accepted');
+  result=await decision('withdraw_finance','برگشت برای اصلاح');assert.equal(result.status,403,'finance role cannot withdraw for the sender');
+  result=await decision('revoke_finance');assert.equal(result.status,200);c=result.result.contract;
+  assert.equal((await decision('reject_finance','کم')).status,400);
+  result=await decision('reject_finance','مدرک ناقص است');assert.equal(result.status,200);c=result.result.contract;
+  assert.equal(c.status,'draft');assert.equal(c.signedAt,null);assert.equal(c.financeRejection.reason,'مدرک ناقص است');
+});

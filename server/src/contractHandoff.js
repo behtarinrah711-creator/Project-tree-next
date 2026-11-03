@@ -22,7 +22,9 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         LEFT JOIN project_memberships m ON m.account_id=a.id AND m.project_id=$1
         LEFT JOIN project_roles r ON r.id=m.role_id AND r.project_id=$1 WHERE a.id=$2`,[projectId,accountId]);
       Object.assign(row,member.rows[0]);
-      if(!canAccessFiles(row,accountId,true,'contracts')){sendJson(response,403,{message:'اجازه تغییر قرارداد را ندارید'});return true;}
+      const financeAction=['approve_finance','reject_finance','revoke_finance'].includes(body.action);
+      const allowed=financeAction?(canAccessFiles(row,accountId,true,'accounting') || canAccessFiles(row,accountId,true,'accounting-contracts')):canAccessFiles(row,accountId,true,'contracts');
+      if(!allowed){sendJson(response,403,{message:'اجازه تغییر قرارداد را ندارید'});return true;}
       const contract=(row.payload.contracts||[]).find(c=>String(c.id)===contractId && !c.trashed);
       if(!contract){sendJson(response,404,{message:'قرارداد پیدا نشد'});return true;}
       if(Number(body.version)!==Number(contract.handoffVersion||0) || Number(body.updatedAt)!==Number(contract.updatedAt||0)){

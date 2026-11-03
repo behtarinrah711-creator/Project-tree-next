@@ -1,3 +1,4 @@
+import {mountFileUploader} from '../files/fileUploader.js';
 import { contractDocumentMarkup } from './contractDocument.js';
 import { resolveCurrentContractDocument,makeRealContractDraft } from './realContractDomain.js';
 import { mountContractPrintPage } from './contractTemplateFormModule.js';
@@ -5,16 +6,16 @@ import {mountContractDocumentPreview} from './contractDocumentAttachments.js';
 
 let view=null;
 export function createContractPreviewView({documentRef=globalThis.document,windowRef=globalThis.window,mountPrintPage=mountContractPrintPage}={}){
-  let page=null,body=null,returnFocus=null,disposeDocuments=null;
+  let page=null,body=null,returnFocus=null,disposeDocuments=null,disposeSigned=null;
   const close=(fromPopState=false)=>{
-    disposeDocuments?.();
+    disposeDocuments?.();disposeSigned?.();
     page?.classList.add('hidden');
     windowRef.KarhaChildHistory?.consume?.('contract-preview',{fromPopState});
     returnFocus?.focus?.();
   };
-  function open(project,contract,{trigger=null,frozen=false}={}){
+  function open(project,contract,{trigger=null,frozen=false,signedFiles=null}={}){
     if(!project||!contract)return false;
-    disposeDocuments?.();
+    disposeDocuments?.();disposeSigned?.();
     if(!page){
       page=documentRef.createElement('div');
       page.id='contractPreviewPage';page.className='page-overlay workspace-page hidden';
@@ -41,7 +42,10 @@ export function createContractPreviewView({documentRef=globalThis.document,windo
     preview.innerHTML=contractDocumentMarkup(draft,activityName);
     body.replaceChildren();
     page.classList.remove('hidden');
-    disposeDocuments=mountContractDocumentPreview(body,preview,draft,project.id,{mountPrintPage,activityName:activityName});
+    const printBody=signedFiles?.length?documentRef.createElement('div'):body;
+    if(printBody!==body)body.appendChild(printBody);
+    disposeDocuments=mountContractDocumentPreview(printBody,preview,draft,project.id,{mountPrintPage,activityName:activityName});
+    if(signedFiles?.length){const attachments=documentRef.createElement('section');const title=documentRef.createElement('h3');title.textContent='نسخه امضاشده قرارداد';attachments.appendChild(title);body.appendChild(attachments);const uploader=mountFileUploader(attachments,{projectId:project.id,recordId:contract.id,category:'contracts',files:signedFiles,readOnly:true});disposeSigned=()=>uploader.destroy();}
     windowRef.KarhaChildHistory?.open?.('contract-preview');
     return true;
   }
