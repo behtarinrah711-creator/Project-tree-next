@@ -176,6 +176,7 @@ function handleWorkspaceContextBack(){
     return;
   }
   if(workspaceSubpage && Object.hasOwn({
+    'accounting-contracts': true,
     'accounting-statements': true,
     'pending-payments': true,
     'account-ledger': true,

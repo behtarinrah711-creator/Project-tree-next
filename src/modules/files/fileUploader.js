@@ -1,14 +1,27 @@
 import {prepareUpload,fileToken,fileError,fetchFile,FILE_LIMIT} from './fileApi.js';
 import {openFileViewer} from './fileViewer.js';
 
-export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{},onError=()=>{},label='افزودن عکس یا فایل'}={}){
+export function hasActiveFileUploads(requestCount,items=[]){
+  return requestCount>0 || items.some(file=>[1,3,7,9].includes(file.status));
+}
+
+export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{},onError=()=>{},label='افزودن عکس یا فایل',category='contacts',readOnly=false,allowReplace=false}={}){
   root.classList.add('saosa-file-uploader');
   const input=document.createElement('input');input.type='file';input.multiple=true;
-  input.accept='image/jpeg,image/png,image/heic,image/heif,image/avif,image/webp,.heic,.heif,.pdf,.docx,.xlsx,.pptx';
+  input.accept=category==='contracts'?'image/jpeg,image/png,image/heic,image/heif,.heic,.heif,.pdf':'image/jpeg,image/png,image/heic,image/heif,image/avif,image/webp,.heic,.heif,.pdf,.docx,.xlsx,.pptx';
   input.setAttribute('aria-label',label);input.disabled=true;root.appendChild(input);
-  const note=document.createElement('p');note.className='saosa-file-note';note.textContent='عکس ذخیره‌شده تا ۲ مگابایت؛ PDF و فایل‌های اداری تا ۲۵ مگابایت';root.appendChild(note);
+  const note=document.createElement('p');note.className='saosa-file-note';note.textContent=category==='contracts'?'عکس ذخیره‌شده تا ۲ مگابایت؛ PDF تا ۲۵ مگابایت':'عکس ذخیره‌شده تا ۲ مگابایت؛ PDF و فایل‌های اداری تا ۲۵ مگابایت';root.appendChild(note);
   const gallery=document.createElement('div');gallery.className='saosa-file-gallery';root.appendChild(gallery);
+  if(readOnly)input.hidden=true;
+  const replacement=allowReplace && !readOnly?document.createElement('input'):null;
+  let replacingIndex=null;
+  if(replacement){
+    replacement.type='file';replacement.accept=input.accept;replacement.hidden=true;root.appendChild(replacement);
+    replacement.oncancel=()=>{replacingIndex=null;};replacement.onchange=()=>{const file=replacement.files?.[0];if(file)pond?.addFile(file);replacement.value='';};
+  }
   const urls=new Set(),requests=new Set();let pond,disposed=false,viewerClose;
+  const isUploading=()=>hasActiveFileUploads(requests.size,pond?.getFiles()||[]);
+  const isBusy=()=>requests.size>0 || !!pond?.getFiles().some(file=>![5,2].includes(file.status));
   const controllers=new Set();
   let observer;
   const release=()=>{controllers.forEach(c=>c.abort());controllers.clear();urls.forEach(url=>URL.revokeObjectURL(url));urls.clear();observer?.disconnect();};
@@ -29,30 +42,33 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
         const img=document.createElement('img');img.alt=file.name||'تصویر پیوست';img.loading='lazy';img.fileReference=file;open.appendChild(img);if(observer)observer.observe(img);else load(img,file);
       }else{const name=document.createElement('span');name.textContent=file.name;open.appendChild(name);}
       const remove=document.createElement('button');remove.type='button';remove.className='saosa-file-remove';remove.textContent='×';remove.setAttribute('aria-label','حذف '+(file.name||'عکس'));
-      remove.onclick=()=>{files.splice(index,1);render();onChange();};
-      const caption=document.createElement('small');caption.textContent=file.size?Math.ceil(file.size/1024)+' کیلوبایت':'';card.append(open,remove,caption);gallery.appendChild(card);
+      if(readOnly)remove.hidden=true;
+      let replaceButton;
+      if(allowReplace && !readOnly){const replace=document.createElement('button');replace.type='button';replace.className='saosa-file-replace';replace.textContent='جایگزینی';replace.onclick=()=>{if(isUploading()){onError('ابتدا بارگذاری جاری را تمام کنید');return;}replacingIndex=index;replacement.click();};replaceButton=replace;}
+      remove.onclick=()=>{if(isUploading()){onError('ابتدا بارگذاری جاری را تمام کنید');return;}files.splice(index,1);render();onChange();};
+      const caption=document.createElement('small');caption.textContent=file.size?Math.ceil(file.size/1024)+' کیلوبایت':'';card.appendChild(open);if(!readOnly)card.appendChild(remove);card.appendChild(caption);if(replaceButton)card.appendChild(replaceButton);gallery.appendChild(card);
     });
   };
   render();
-  import('../../../vendor/filepond/filepond.esm.min.js').then(({create})=>{
+  if(!readOnly)import('../../../vendor/filepond/filepond.esm.min.js').then(({create})=>{
     if(disposed)return;
     input.disabled=false;
-    pond=create(input,{allowMultiple:true,maxParallelUploads:1,maxFiles:10,credits:false,
+    pond=create(input,{allowMultiple:true,maxParallelUploads:1,maxFiles:category==='contracts'?30:10,credits:false,
       labelIdle:label+' <span class="filepond--label-action">انتخاب</span>',labelFileProcessing:'در حال بارگذاری',labelFileProcessingComplete:'بارگذاری شد',labelFileProcessingError:'بارگذاری انجام نشد',
       labelTapToRetry:'برای تلاش مجدد بزنید',labelTapToCancel:'برای لغو بزنید',labelButtonRemoveItem:'حذف',labelButtonAbortItemProcessing:'لغو',
-      beforeAddFile:item=>{if(item.fileSize>FILE_LIMIT){onError(fileError('file_too_large'));return false;}return true;},
+      beforeAddFile:item=>{if(files.length>=30 && replacingIndex===null){onError('حداکثر ۳۰ صفحه انتخاب کنید');return false;}if(item.fileSize>FILE_LIMIT){onError(fileError('file_too_large'));return false;}return true;},
       server:{process:(_field,file,_metadata,load,error,progress,abort)=>{
         const xhr=new XMLHttpRequest();requests.add(xhr);let cancelled=false;
         prepareUpload(file).then(prepared=>{
           if(cancelled || disposed)return;
-          xhr.open('POST','/api/v1/projects/'+encodeURIComponent(projectId)+'/files/contacts/'+encodeURIComponent(recordId)+'?name='+encodeURIComponent(prepared.name));
+          xhr.open('POST','/api/v1/projects/'+encodeURIComponent(projectId)+'/files/'+category+'/'+encodeURIComponent(recordId)+'?name='+encodeURIComponent(prepared.name));
           xhr.setRequestHeader('Authorization','Bearer '+fileToken());xhr.setRequestHeader('Content-Type','application/octet-stream');
           xhr.upload.onprogress=event=>progress(event.lengthComputable,event.loaded,event.total);
           xhr.onload=()=>{
             requests.delete(xhr);if(cancelled || disposed)return;
             let data;try{data=JSON.parse(xhr.responseText);}catch{data={};}
             if(xhr.status!==201 || !data.file){const message=fileError(data.error);error(message);onError(message);return;}
-            files.push(data.file);render();onChange();load(data.file.id);
+            if(replacingIndex!==null){files.splice(replacingIndex,1,data.file);replacingIndex=null;}else files.push(data.file);render();onChange();load(data.file.id);
           };
           xhr.onerror=()=>{requests.delete(xhr);error('اتصال برقرار نشد');onError('بارگذاری انجام نشد؛ دوباره تلاش کنید');};
           xhr.send(prepared);
@@ -63,7 +79,7 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
     });
   }).catch(()=>{if(!disposed){note.textContent='آپلودر بارگذاری نشد؛ صفحه را دوباره باز کنید';onError(note.textContent);}});
   return {
-    isBusy:()=>requests.size>0 || !!pond?.getFiles().some(file=>![5,2].includes(file.status)),
+    isBusy,
     destroy:()=>{disposed=true;viewerClose?.();requests.forEach(xhr=>xhr.abort());requests.clear();release();pond?.destroy();},
   };
 }

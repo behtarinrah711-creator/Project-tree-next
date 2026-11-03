@@ -30,6 +30,7 @@ const MENU_TITLES = Object.freeze({
 const ACCOUNTING_SUBPAGE_TITLES = Object.freeze({
   'done-works': 'کارهای انجام‌شده',
   'work-delays': 'دیرکردها',
+  'accounting-contracts': 'قراردادها',
   'accounting-statements': 'صورت وضعیت‌ها',
   'pending-payments': 'در انتظار پرداخت',
   'account-ledger': 'گردش حساب',

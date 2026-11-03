@@ -1,3 +1,4 @@
+import {renderContractSignedSection} from './contractSignedView.js';
 import { renderContractProgress } from './contractProgressView.js';
 import { renderContractHistory } from './contractHistoryView.js';
 import { approvalLabels, contractApprovalState, canReviewContract, canRevokeContractApproval, canSubmitContract, canCancelContractCompletion, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
@@ -221,6 +222,7 @@ export const contractsModule={
       }
       row.appendChild(statusRow);statusRow.onclick=event=>event.stopPropagation();
       row.appendChild(renderContractProgress(document,c,p));
+      row.appendChild(renderContractSignedSection(p,c,{onChanged:()=>this.render(id)}));
       row.appendChild(renderContractHistory(document,c));
       row.onclick=()=>openContractPreview(p,c,{trigger:main}); renderedRows.push(row);
     };

@@ -1,3 +1,4 @@
+import {canAttachSignedContract,isContractInFinance} from '../../src/domain/contractHandoff.js';
 import {randomUUID, createHash} from 'node:crypto';
 import sharp from 'sharp';
 import {fileTypeFromBuffer} from 'file-type';
@@ -14,12 +15,12 @@ const DOCUMENTS=new Map([['pdf','application/pdf'],['docx','application/vnd.open
 const IMAGES=new Set(['jpg','png','webp','heic','heif','avif']);
 function fail(message,statusCode=400){return Object.assign(new Error(message),{statusCode});}
 
-export function canAccessFiles(row,accountId,write=false){
+export function canAccessFiles(row,accountId,write=false,module='people'){
   if(!row || row.payload?.trashed || row.payload?.archived)return false;
   if(String(row.owner_account_id)===String(accountId))return true;
   if(row.membership_status!=='active' || !(row.payload?.projectMembers||[]).some(member=>member.mobile===row.phone && member.status==='active'))return false;
   const permissions=row.permissions||{};
-  const level=permissions.modules?.people ?? (!permissions.modules ? permissions.people : null);
+  const level=permissions.modules?.[module] ?? (!permissions.modules ? permissions[module] : null);
   return write ? (level?['create','edit','full'].includes(level):!permissions.modules && permissions.edit===true)
     : (level?['view','create','edit','full'].includes(level):!permissions.modules && (permissions.view===true || permissions.edit===true));
 }
@@ -28,10 +29,11 @@ export function canReadContractDocument(row,accountId,contractId,recordId,fileId
   if(!contractId || !row)return false;
   const permissions=row.permissions||{};
   const mapped={...row,permissions:permissions.modules?{...permissions,modules:{people:permissions.modules.contracts}}:{...permissions,people:permissions.contracts}};
-  if(!canAccessFiles(mapped,accountId))return false;
   const contract=(row.payload?.contracts||[]).find(value=>!value.trashed && String(value.id)===String(contractId));
+  const finance=contract && isContractInFinance(contract) && (canAccessFiles(row,accountId,false,'accounting') || canAccessFiles(row,accountId,false,'accounting-contracts'));
+  if(!canAccessFiles(mapped,accountId) && !finance)return false;
   if(!contract || String(contract.contractorId || contract.contactId)!==String(recordId))return false;
-  return contractorDocumentImages(contract,row.payload).some(file=>typeof file!=='string' && String(file.id)===String(fileId) && String(file.recordId)===String(recordId));
+  return contractorDocumentImages(finance?contract.accountingPackage.contract:contract,row.payload).some(file=>typeof file!=='string' && String(file.id)===String(fileId) && String(file.recordId)===String(recordId));
 }
 
 async function readBytes(request,limit){
@@ -85,10 +87,10 @@ export async function prepareFile(input,name='file'){
 export function createFileUploadHandler({pool,sessionSecret,storage}){
   let active=0;
   return async function handleFiles(request,response,url){
-    const match=/^\/api\/v1\/projects\/([^/]+)\/files\/contacts\/([^/]+)(?:\/([^/]+))?$/.exec(url.pathname);
+    const match=/^\/api\/v1\/projects\/([^/]+)\/files\/(contacts|contracts)\/([^/]+)(?:\/([^/]+))?$/.exec(url.pathname);
     if(!match)return false;
-    let projectId,recordId,id;
-    try{[projectId,recordId,id]=match.slice(1).map(value=>value===undefined?undefined:decodeURIComponent(value));}
+    let projectId,category,recordId,id;
+    try{[projectId,category,recordId,id]=match.slice(1).map(value=>value===undefined?undefined:decodeURIComponent(value));}
     catch{sendJson(response,400,{error:'invalid_file_path'});return true;}
     if(![projectId,recordId,...(id?[id]:[])].every(value=>SEGMENT.test(value) && value!=='.' && value!=='..')){sendJson(response,400,{error:'invalid_file_path'});return true;}
     const write=request.method==='POST' && !id;
@@ -99,9 +101,15 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
       FROM projects p JOIN accounts a ON a.id=$2
       LEFT JOIN project_memberships m ON m.project_id=p.id AND m.account_id=a.id
       LEFT JOIN project_roles r ON r.id=m.role_id AND r.project_id=p.id WHERE p.id=$1`,[projectId,accountId]);
-    if(!canAccessFiles(result.rows[0],accountId,write) && (write || !canReadContractDocument(result.rows[0],accountId,url.searchParams.get('contractId'),recordId,id))){sendJson(response,403,{error:'forbidden_project_files'});return true;}
+    const row=result.rows[0];
+    const contract=category==='contracts'?(row?.payload?.contracts||[]).find(c=>!c.trashed && String(c.id)===recordId):null;
+    const allowed=category==='contacts'
+      ? canAccessFiles(row,accountId,write) || (!write && canReadContractDocument(row,accountId,url.searchParams.get('contractId'),recordId,id))
+      : !!contract && (canAccessFiles(row,accountId,write,'contracts') || (!write && isContractInFinance(contract) && (canAccessFiles(row,accountId,false,'accounting') || canAccessFiles(row,accountId,false,'accounting-contracts'))));
+    if(!allowed){sendJson(response,403,{error:'forbidden_project_files'});return true;}
+    if(category==='contracts' && write && (!canAttachSignedContract(contract) || isContractInFinance(contract))){sendJson(response,409,{error:'contract_files_locked'});return true;}
     if(!storage){sendJson(response,503,{error:'file_storage_unavailable'});return true;}
-    const prefix=projectId+'/contacts/'+recordId+'/';
+    const prefix=projectId+'/'+category+'/'+recordId+'/';
     if(write){
       if(active>=2){sendJson(response,429,{error:'upload_busy'});return true;}
       active++;
@@ -109,7 +117,8 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
         const input=await readBytes(request,MAX_FILE_BYTES);
         const file=await prepareFile(input,url.searchParams.get('name'));
         const fileId=randomUUID();
-        const metadata={id:fileId,projectId,category:'contacts',recordId,name:file.name,mime:file.mime,size:file.bytes.length,
+        if(category==='contracts' && !['image/jpeg','application/pdf'].includes(file.mime)){sendJson(response,415,{error:'unsupported_signed_type'});return true;}
+        const metadata={id:fileId,projectId,category,recordId,name:file.name,mime:file.mime,size:file.bytes.length,
           width:file.width,height:file.height,hasThumbnail:!!file.thumbnail,sha256:createHash('sha256').update(file.bytes).digest('hex'),createdAt:Date.now(),uploadedBy:accountId};
         await storage.put(prefix+fileId,metadata,file.bytes,file.thumbnail);
         sendJson(response,201,{file:metadata});
@@ -117,6 +126,9 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
     }else{
       try{
         const metadata=await storage.metadata(prefix+id);
+        if(category==='contracts' && String(metadata.uploadedBy)!==String(accountId) && ![...(contract.signedFiles||[]),...(contract.accountingPackage?.signedFiles||[])].some(file=>file.id===id)){
+          sendJson(response,403,{error:'forbidden_project_files'});return true;
+        }
         const thumbnail=url.searchParams.get('variant')==='thumbnail' && metadata.hasThumbnail;
         const bytes=await storage.read(prefix+id,thumbnail);
         response.writeHead(200,{'content-type':thumbnail?'image/jpeg':metadata.mime,'content-length':bytes.length,

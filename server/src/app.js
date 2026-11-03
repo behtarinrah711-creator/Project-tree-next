@@ -1,3 +1,5 @@
+import {createContractHandoffHandler} from './contractHandoff.js';
+import {preserveContractHandoff} from '../../src/domain/contractHandoff.js';
 import {assignContractNumbers} from './contractNumbering.js';
 import {readJson, route, sendJson} from './http.js';
 import {authenticate} from './auth.js';
@@ -441,6 +443,7 @@ export function stampContractCreation(project,previous,accountId,phone='',now=Da
       contract.creationEvent={action:'create',at:now,actor};
     }
   }
+  preserveContractHandoff(project,previous);
   return project;
 }
 
@@ -551,10 +554,12 @@ async function saveWorkspace(pool, accountId, snapshot){
 }
 
 export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms=async()=>{}, sendInvitationEmail=async()=>({skipped:true}), invitationBaseUrl='https://saosa.ir', fileStorage=null, logger = console}){
+  const handleHandoff=createContractHandoffHandler({pool,sessionSecret,storage:fileStorage});
   const handleFiles=createFileUploadHandler({pool,sessionSecret,storage:fileStorage});
   return async function app(request, response){
     try{
       const url = route(request);
+      if(await handleHandoff(request,response,url))return;
       if(await handleFiles(request,response,url))return;
       if(request.method === 'GET' && url.pathname === '/api/health'){
         await pool.query('SELECT 1');

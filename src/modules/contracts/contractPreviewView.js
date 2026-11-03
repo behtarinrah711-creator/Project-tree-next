@@ -1,5 +1,5 @@
 import { contractDocumentMarkup } from './contractDocument.js';
-import { resolveCurrentContractDocument } from './realContractDomain.js';
+import { resolveCurrentContractDocument,makeRealContractDraft } from './realContractDomain.js';
 import { mountContractPrintPage } from './contractTemplateFormModule.js';
 import {mountContractDocumentPreview} from './contractDocumentAttachments.js';
 
@@ -12,7 +12,7 @@ export function createContractPreviewView({documentRef=globalThis.document,windo
     windowRef.KarhaChildHistory?.consume?.('contract-preview',{fromPopState});
     returnFocus?.focus?.();
   };
-  function open(project,contract,{trigger=null}={}){
+  function open(project,contract,{trigger=null,frozen=false}={}){
     if(!project||!contract)return false;
     disposeDocuments?.();
     if(!page){
@@ -31,16 +31,17 @@ export function createContractPreviewView({documentRef=globalThis.document,windo
       windowRef.KarhaChildHistory?.register?.('contract-preview',{onPop:()=>close(true)});
     }
     returnFocus=trigger;
-    const current=resolveCurrentContractDocument(project,contract);
+    const current=frozen?{project,draft:makeRealContractDraft(contract)}:resolveCurrentContractDocument(project,contract);
     project=current.project;
     const draft=current.draft;
     const activity=(project.activityTemplates||[]).find(a=>String(a.id)===String(draft.activityId));
+    const activityName=frozen?(draft.documentActivityName||''):(activity?.name||activity?.title||'');
     const preview=documentRef.createElement('div');
     preview.className='ctf-preview contract-doc-preview contract-real-print-preview';
-    preview.innerHTML=contractDocumentMarkup(draft,activity?.name||activity?.title||'');
+    preview.innerHTML=contractDocumentMarkup(draft,activityName);
     body.replaceChildren();
     page.classList.remove('hidden');
-    disposeDocuments=mountContractDocumentPreview(body,preview,draft,project.id,{mountPrintPage,activityName:activity?.name||activity?.title||''});
+    disposeDocuments=mountContractDocumentPreview(body,preview,draft,project.id,{mountPrintPage,activityName:activityName});
     windowRef.KarhaChildHistory?.open?.('contract-preview');
     return true;
   }
