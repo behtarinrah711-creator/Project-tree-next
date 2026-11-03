@@ -1,6 +1,10 @@
 import {prepareUpload,fileToken,fileError,fetchFile,FILE_LIMIT} from './fileApi.js';
 import {openFileViewer} from './fileViewer.js';
 
+export function hasActiveFileUploads(requestCount,items=[]){
+  return requestCount>0 || items.some(file=>[1,3,7,9].includes(file.status));
+}
+
 export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{},onError=()=>{},label='افزودن عکس یا فایل',category='contacts',readOnly=false,allowReplace=false}={}){
   root.classList.add('saosa-file-uploader');
   const input=document.createElement('input');input.type='file';input.multiple=true;
@@ -16,6 +20,8 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
     replacement.oncancel=()=>{replacingIndex=null;};replacement.onchange=()=>{const file=replacement.files?.[0];if(file)pond?.addFile(file);replacement.value='';};
   }
   const urls=new Set(),requests=new Set();let pond,disposed=false,viewerClose;
+  const isUploading=()=>hasActiveFileUploads(requests.size,pond?.getFiles()||[]);
+  const isBusy=()=>requests.size>0 || !!pond?.getFiles().some(file=>![5,2].includes(file.status));
   const controllers=new Set();
   let observer;
   const release=()=>{controllers.forEach(c=>c.abort());controllers.clear();urls.forEach(url=>URL.revokeObjectURL(url));urls.clear();observer?.disconnect();};
@@ -38,8 +44,8 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
       const remove=document.createElement('button');remove.type='button';remove.className='saosa-file-remove';remove.textContent='×';remove.setAttribute('aria-label','حذف '+(file.name||'عکس'));
       if(readOnly)remove.hidden=true;
       let replaceButton;
-      if(allowReplace && !readOnly){const replace=document.createElement('button');replace.type='button';replace.className='saosa-file-replace';replace.textContent='جایگزینی';replace.onclick=()=>{if(requests.size || pond?.getFiles().length){onError('ابتدا بارگذاری جاری را تمام کنید');return;}replacingIndex=index;replacement.click();};replaceButton=replace;}
-      remove.onclick=()=>{if(requests.size || pond?.getFiles().length){onError('ابتدا بارگذاری جاری را تمام کنید');return;}files.splice(index,1);render();onChange();};
+      if(allowReplace && !readOnly){const replace=document.createElement('button');replace.type='button';replace.className='saosa-file-replace';replace.textContent='جایگزینی';replace.onclick=()=>{if(isUploading()){onError('ابتدا بارگذاری جاری را تمام کنید');return;}replacingIndex=index;replacement.click();};replaceButton=replace;}
+      remove.onclick=()=>{if(isUploading()){onError('ابتدا بارگذاری جاری را تمام کنید');return;}files.splice(index,1);render();onChange();};
       const caption=document.createElement('small');caption.textContent=file.size?Math.ceil(file.size/1024)+' کیلوبایت':'';card.appendChild(open);if(!readOnly)card.appendChild(remove);card.appendChild(caption);if(replaceButton)card.appendChild(replaceButton);gallery.appendChild(card);
     });
   };
@@ -73,7 +79,7 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
     });
   }).catch(()=>{if(!disposed){note.textContent='آپلودر بارگذاری نشد؛ صفحه را دوباره باز کنید';onError(note.textContent);}});
   return {
-    isBusy:()=>requests.size>0 || !!pond?.getFiles().some(file=>![5,2].includes(file.status)),
+    isBusy,
     destroy:()=>{disposed=true;viewerClose?.();requests.forEach(xhr=>xhr.abort());requests.clear();release();pond?.destroy();},
   };
 }
