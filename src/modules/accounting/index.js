@@ -1,4 +1,5 @@
 const ACCOUNTING_SECTIONS = Object.freeze([
+  Object.freeze({id:'accounting-contracts',title:'قراردادها',meta:'قراردادهای امضاشده و ارسال‌شده به واحد مالی'}),
   Object.freeze({
     id: 'accounting-statements',
     title: 'صورت وضعیت‌ها',
@@ -31,11 +32,13 @@ const ACCOUNTING_SECTIONS = Object.freeze([
   }),
 ]);
 
+let activeSection=null;
 function accountingBody(){
   return document.getElementById('accountingPageBody');
 }
 
 function renderAccountingRoot(projectId){
+  activeSection='accounting';
   const body = accountingBody();
   if(!body) return;
   body.replaceChildren();
@@ -82,7 +85,9 @@ export const accountingSectionModules = ACCOUNTING_SECTIONS.map(section => ({
   title: section.title,
   route: section.id,
   mount({ projectId } = {}){
+    activeSection=section.id;
     renderEmptyAccountingSection();
+    if(section.id==='accounting-contracts'){const body=accountingBody();import('./accountingContracts.js').then(({renderAccountingContracts})=>{if(activeSection==='accounting-contracts' && body?.isConnected)renderAccountingContracts(body,projectId);});}
     return { projectId: projectId || null, moduleId: section.id };
   },
 }));

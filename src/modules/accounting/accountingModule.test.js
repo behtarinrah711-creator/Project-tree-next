@@ -2,11 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import accounting, { ACCOUNTING_SECTIONS, accountingSectionModules } from './index.js';
 
-test('financial workspace exposes the six requested sections as routes', () => {
+test('financial workspace exposes the requested sections including signed contracts as routes', () => {
   assert.equal(accounting.id, 'accounting');
   assert.deepEqual(
     ACCOUNTING_SECTIONS.map(section => section.title),
     [
+      'قراردادها',
       'صورت وضعیت‌ها',
       'در انتظار پرداخت',
       'گردش حساب',
@@ -41,11 +42,11 @@ test('financial rows navigate to independent empty section routes', () => {
 
   accounting.mount({ projectId:'project-1' });
   const rows = body.children[0].children;
-  assert.equal(rows.length, 6);
-  rows[1].listeners.click();
+  assert.equal(rows.length, 7);
+  rows[2].listeners.click();
   assert.deepEqual(navigations, [['project-1', 'pending-payments']]);
 
-  accountingSectionModules[1].mount({ projectId:'project-1' });
+  accountingSectionModules[2].mount({ projectId:'project-1' });
   assert.equal(body.children.length, 0);
 
   delete globalThis.document;

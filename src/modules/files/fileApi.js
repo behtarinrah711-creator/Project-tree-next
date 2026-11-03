@@ -7,13 +7,13 @@ export function imageBounds(width,height,edge=3200){
   return {width:Math.max(1,Math.round(width*scale)),height:Math.max(1,Math.round(height*scale))};
 }
 export function fileEndpoint(file){
-  return '/api/v1/projects/'+encodeURIComponent(file.projectId)+'/files/contacts/'+encodeURIComponent(file.recordId)+'/'+encodeURIComponent(file.id);
+  return '/api/v1/projects/'+encodeURIComponent(file.projectId)+'/files/'+(file.category==='contracts'?'contracts':'contacts')+'/'+encodeURIComponent(file.recordId)+'/'+encodeURIComponent(file.id);
 }
 export function fileError(code){
   return ({unauthorized:'برای بارگذاری یا دریافت فایل وارد حساب شوید',forbidden_project_files:'به فایل‌های این پروژه دسترسی ندارید',
     file_too_large:'حداکثر حجم هر فایل ۲۵ مگابایت است',image_too_large:'حداکثر ورودی عکس ۲۰ مگابایت و خروجی آن ۲ مگابایت است',
     unsupported_file_type:'فقط عکس، PDF و فایل‌های DOCX، XLSX و PPTX پذیرفته می‌شوند',invalid_or_unsupported_image:'عکس خراب یا غیرقابل تبدیل است؛ عکس دیگری انتخاب کنید',
-    upload_busy:'سرور مشغول پردازش عکس است؛ دوباره تلاش کنید',file_storage_unavailable:'فضای ذخیره‌سازی آماده نیست',file_not_found:'فایل پیدا نشد',
+    contract_files_locked:'نسخه امضاشده در این وضعیت قابل تغییر نیست',unsupported_signed_type:'فقط عکس یا PDF قرارداد پذیرفته می‌شود',upload_busy:'سرور مشغول پردازش عکس است؛ دوباره تلاش کنید',file_storage_unavailable:'فضای ذخیره‌سازی آماده نیست',file_not_found:'فایل پیدا نشد',
     image_dimensions_too_large:'ابعاد عکس بیش از حد بزرگ است'})[code] || 'ارسال یا دریافت فایل انجام نشد؛ دوباره تلاش کنید';
 }
 export function fileToken(){

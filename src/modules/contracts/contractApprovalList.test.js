@@ -24,9 +24,10 @@ test('shared list filters assigned pending requests, clears filter, and searches
   contractsModule.render('p');
   const list=body.children.find(x=>x.className==='contract-list');
   assert.equal(list.children.length,205);
-  assert.ok(list.children.every(row=>row.children.at(-3).className==='contract-workflow-row'));
-  assert.ok(list.children.every(row=>row.children.at(-2).className==='contract-progress'));
-  assert.ok(list.children.every(row=>row.children.at(-2).children.length===(row.dataset.approvalState==='pending'?5:4)));
+  assert.ok(list.children.every(row=>row.children.at(-4).className==='contract-workflow-row'));
+  assert.ok(list.children.every(row=>row.children.at(-3).className==='contract-progress'));
+  assert.ok(list.children.every(row=>row.children.at(-3).children.length===(row.dataset.approvalState==='pending'?5:4)));
+  assert.ok(list.children.every(row=>row.children.at(-2).className==='contract-signed-section'));
   assert.ok(list.children.every(row=>row.children.at(-1).className==='contract-history'));
   const banner=body.children.find(x=>x.className==='contract-review-banner');
   assert.match(banner.textContent,/۱ قرارداد/);banner.onclick();

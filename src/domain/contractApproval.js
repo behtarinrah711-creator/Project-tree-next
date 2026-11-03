@@ -47,7 +47,7 @@ export function approvedContractContactIds(contract){
   return contractApprovalState(contract)==='approved' ? contractApproverIds(contract) : [];
 }
 export function canRevokeContractApproval(contract,actor){
-  return ['pending','approved'].includes(contractApprovalState(contract)) && !!actor?.contactId &&
+  return !executedContract(contract) && ['pending','approved'].includes(contractApprovalState(contract)) && !!actor?.contactId &&
     contractApproverIds(contract).includes(String(actor.contactId)) &&
     approvedContractContactIds(contract).includes(String(actor.contactId));
 }

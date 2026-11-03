@@ -2,12 +2,12 @@ import { paginateContractMarkup } from './contractPagination.js';
 import { getContractPageStyles } from './contractTemplateFormModule.js';
 import { installNotebookExportView } from '../notebook/notebookExportView.js';
 import { contractDocumentMarkup } from './contractDocument.js';
-import { resolveCurrentContractDocument } from './realContractDomain.js';
+import { resolveCurrentContractDocument,makeRealContractDraft } from './realContractDomain.js';
 import {loadContractDocumentImages} from './contractDocumentAttachments.js';
 
 let view=null;
 let exportRequest=0;
-export async function openContractExport(project,contract,{trigger=null}={}){
+export async function openContractExport(project,contract,{trigger=null,frozen=false}={}){
   const request=++exportRequest;
   if(!view){
     const source=document.getElementById('notebookExportPage');
@@ -23,7 +23,7 @@ export async function openContractExport(project,contract,{trigger=null}={}){
       extraStyles:getContractPageStyles(),
     });
   }
-  const current=resolveCurrentContractDocument(project,contract);
+  const current=frozen?{project,draft:makeRealContractDraft(contract)}:resolveCurrentContractDocument(project,contract);
   project=current.project;
   let draft=current.draft;
   if(draft.contractorDocuments?.length){
@@ -32,7 +32,7 @@ export async function openContractExport(project,contract,{trigger=null}={}){
     catch{window.KarhaLegacy?.showToast?.('دریافت مدارک پیمانکار انجام نشد؛ خروجی ناقص ساخته نمی‌شود. دوباره تلاش کنید');return false;}
     if(request!==exportRequest)return false;
   }
-  const activityName=(project.activityTemplates||[]).find(a=>String(a.id)===String(draft.activityId))?.name||'بدون فعالیت';
+  const activityName=frozen?(draft.documentActivityName||'بدون فعالیت'):((project.activityTemplates||[]).find(a=>String(a.id)===String(draft.activityId))?.name||'بدون فعالیت');
   const person=draft.contractorName||'بدون پیمانکار';
   return view.open({title:'قرارداد '+activityName+' + '+person,activityName,contract:draft,items:[]},{trigger});
 }

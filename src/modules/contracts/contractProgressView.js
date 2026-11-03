@@ -1,3 +1,4 @@
+import {isContractSigned,isContractInFinance} from '../../domain/contractHandoff.js';
 import { contractApprovalState, contractApproverIds } from '../../domain/contractApproval.js';
 
 function linkedTask(project,contract){
@@ -22,9 +23,7 @@ export function contractProgressSteps(contract,project){
     {id:'completed',label:'تکمیل قرارداد',done:complete},
   ];
   if(reviewers.filter(Boolean).length)steps.push({id:'approved',label:'تأیید قرارداد',done:complete && contractApprovalState(contract)==='approved'});
-  // Signing and finance handoff do not yet have persisted transitions in this app.
-  // Keep them pending rather than infer completion from approval or generic attachments.
-  steps.push({id:'signed',label:'امضای قرارداد',done:false},{id:'finance',label:'ارسال به مالی',done:false});
+  steps.push({id:'signed',label:'امضای قرارداد',done:complete && contract.approvalStatus==='approved' && isContractSigned(contract)},{id:'finance',label:'ارسال به مالی',done:isContractInFinance(contract)});
   return steps;
 }
 
