@@ -17,8 +17,10 @@ function getProject(projectId){
   return projectId ? projectRepository.getActiveProject(projectId) : null;
 }
 
-function textMatch(text,q){
-  return !q || String(text || '').toLocaleLowerCase('fa').includes(q);
+function searchText(value){
+  return String(value || '').normalize('NFKC').replace(/[يى]/g,'ی').replace(/ك/g,'ک')
+    .replace(/[\u064b-\u065f\u0670\u0640]/g,'').replace(/[\u200c\u200d]/g,' ')
+    .toLocaleLowerCase('fa').replace(/\s+/g,' ').trim();
 }
 
 function deleteContact(projectId, contactId){
@@ -89,7 +91,7 @@ function appendContactRow({ list, rows, projectId, contact, rerender }){
   });
   actions.append(del,edit);
   row.append(main,actions);
-  row.dataset.searchText=(displayName+' '+activityText+' '+(contact.type||'')).toLocaleLowerCase('fa');
+  row.dataset.searchText=searchText(displayName+' '+activityText+' '+(contact.type||''));
   row.addEventListener('click',()=>openContactForm(contact));
   rows.push(row);
   list.appendChild(row);
@@ -147,29 +149,28 @@ export const peopleModule = {
       list, rows, projectId:activeId, contact, rerender,
     }));
 
+    const empty=document.createElement('div');empty.className='mgmt-empty hidden';empty.textContent='مخاطبی یافت نشد';
+    const applyFilter=()=>{
+      const q=searchText(search.value);
+      let matches=0;
+      rows.forEach(row=>{const match=!q || row.dataset.searchText.includes(q);row.classList.toggle('hidden',!match);if(match)matches++;});
+      empty.classList.toggle('hidden',matches>0);
+    };
+    let cursor=firstPage.cursor;
+    const more=document.createElement('button');more.type='button';more.className='contact-action-btn';more.textContent='بارگذاری بیشتر';
+    const loadNext=()=>{
+      const page=contactApi.listPage(activeId,{cursor,limit:PAGE_SIZE});
+      page.items.forEach(contact=>appendContactRow({list,rows,projectId:activeId,contact,rerender}));
+      cursor=page.cursor;if(cursor==null)more.remove();
+    };
     search.addEventListener('input',()=>{
-      const q=String(search.value||'').trim().toLocaleLowerCase('fa');
-      rows.forEach(row=>{ row.hidden=!textMatch(row.dataset.searchText,q); });
+      // Search the entire project, including contacts not yet displayed by pagination.
+      if(searchText(search.value))while(cursor!=null)loadNext();
+      applyFilter();
     });
-
-    body.append(searchWrap,list);
-
-    if(firstPage.cursor != null){
-      const more=document.createElement('button');
-      more.type='button';
-      more.className='contact-action-btn';
-      more.textContent='بارگذاری بیشتر';
-      let cursor=firstPage.cursor;
-      more.addEventListener('click',()=>{
-        const page=contactApi.listPage(activeId,{ cursor, limit:PAGE_SIZE });
-        page.items.forEach(contact => appendContactRow({
-          list, rows, projectId:activeId, contact, rerender,
-        }));
-        cursor=page.cursor;
-        if(cursor==null) more.remove();
-      });
-      body.appendChild(more);
-    }
+    more.addEventListener('click',()=>{loadNext();applyFilter();});
+    body.append(searchWrap,list,empty);
+    if(cursor!=null)body.appendChild(more);
   },
 };
 
