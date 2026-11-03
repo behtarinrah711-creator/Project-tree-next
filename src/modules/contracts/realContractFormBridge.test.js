@@ -48,7 +48,9 @@ describe('KarhaRealContractForm global bridge', () => {
     assert.match(src, /contractItemInteractions\.attachPointerDrag/);
     assert.match(src, /items\.className = 'ctf-groups real-contract-items'/);
     assert.match(src, /preview\.className = 'ctf-preview contract-doc-preview contract-real-print-preview'/);
-    assert.match(src, /mountContractPrintPage\(body, preview, 'contract-real-preview-viewport'\)/);
+    assert.match(src, /mountContractDocumentPreview\(body,preview,state,project.id,\{mountPrintPage:mountContractPrintPage,/);
+    const attachmentPreview = readFileSync(join(dir, 'contractDocumentAttachments.js'), 'utf8');
+    assert.match(attachmentPreview, /mountPrintPage\(body,preview,'contract-real-preview-viewport'\)/);
     const template = readFileSync(join(dir, 'contractTemplateFormModule.js'), 'utf8');
     assert.match(template, /export function mountContractPrintPage/);
     assert.match(template, /available\/794/);
