@@ -4,6 +4,7 @@ import { ensureAgreedRows } from './contractPricing.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { contractRepository } from '../../data/contractRepository.js';
+import {contactDocumentImages} from '../../domain/contactDocuments.js';
 
 function activeProjectId(projectId=null){
   return projectId || projectContext.getProjectId?.()
@@ -82,6 +83,10 @@ export function syncContractPartyData(state, project){
   const find=id=>contacts.find(c=>String(c.id)===String(id) && !c.trashed);
   const name=c=>[c?.firstName,c?.lastName].filter(Boolean).join(' ') || c?.name || '';
   const e=find(state.employerId), c=find(state.contractorId);
+  if(!Array.isArray(state.contractorDocuments) || String(state.contractorDocumentsContactId || '')!==String(state.contractorId || '') || state.status==='draft' || state.isDraft){
+    state.contractorDocuments=contactDocumentImages(c);
+    state.contractorDocumentsContactId=String(state.contractorId || '');
+  }
   if(e){
     state.employerName=name(e);
     state.employerNationalId=e.nationalId||'';

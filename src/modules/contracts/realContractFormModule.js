@@ -2,6 +2,7 @@ import { currentExecutionActor } from '../wbs/executionActor.js';
 import { fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
 import { ensureOperationRows, renderQuantityRows, syncContractAmount } from './contractPricing.js';
 import { contractDocumentMarkup } from './contractDocument.js';
+import {mountContractDocumentPreview} from './contractDocumentAttachments.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { contractApi } from '../../domain/contractApi.js';
@@ -15,6 +16,7 @@ import * as contractItemInteractions from './contractItemInteractions.js';
 import { mountContractPrintPage } from './contractTemplateFormModule.js';
 
 let state = null;
+let disposeDocumentPreview=null;
 let dirty = false;
 let editingId = null;
 let inlineAddState = null;
@@ -417,6 +419,7 @@ function renderRealContractItem(item, list, index, isChild = false) {
 }
 
 function renderContractForm() {
+  disposeDocumentPreview?.();
   const body = document.getElementById('contractFormBody');
   if (!body || !state) return false;
 
@@ -572,7 +575,7 @@ function renderContractForm() {
   const preview=document.createElement('div');
   preview.className = 'ctf-preview contract-doc-preview contract-real-print-preview';
   preview.innerHTML=contractDocumentMarkup(state,activityName);
-  mountContractPrintPage(body, preview, 'contract-real-preview-viewport');
+  disposeDocumentPreview=mountContractDocumentPreview(body,preview,state,project.id,{mountPrintPage:mountContractPrintPage,activityName,onError:message=>helper('showToast',message)});
 
   const actions = document.getElementById('contractFormActions');
   if (actions) {
@@ -739,6 +742,7 @@ export const realContractFormModule = {
   saveDraft,
 
   close(fromPopState = false) {
+    disposeDocumentPreview?.();disposeDocumentPreview=null;
     state = null;
     dirty = false;
     editingId = null;

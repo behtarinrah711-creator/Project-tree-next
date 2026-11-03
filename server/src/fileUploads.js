@@ -3,6 +3,7 @@ import sharp from 'sharp';
 import {fileTypeFromBuffer} from 'file-type';
 import {authenticate} from './auth.js';
 import {sendJson} from './http.js';
+import {contractorDocumentImages} from '../../src/domain/contactDocuments.js';
 
 export const MAX_FILE_BYTES=25*1024*1024;
 export const MAX_IMAGE_BYTES=2*1024*1024;
@@ -21,6 +22,16 @@ export function canAccessFiles(row,accountId,write=false){
   const level=permissions.modules?.people ?? (!permissions.modules ? permissions.people : null);
   return write ? (level?['create','edit','full'].includes(level):!permissions.modules && permissions.edit===true)
     : (level?['view','create','edit','full'].includes(level):!permissions.modules && (permissions.view===true || permissions.edit===true));
+}
+
+export function canReadContractDocument(row,accountId,contractId,recordId,fileId){
+  if(!contractId || !row)return false;
+  const permissions=row.permissions||{};
+  const mapped={...row,permissions:permissions.modules?{...permissions,modules:{people:permissions.modules.contracts}}:{...permissions,people:permissions.contracts}};
+  if(!canAccessFiles(mapped,accountId))return false;
+  const contract=(row.payload?.contracts||[]).find(value=>!value.trashed && String(value.id)===String(contractId));
+  if(!contract || String(contract.contractorId || contract.contactId)!==String(recordId))return false;
+  return contractorDocumentImages(contract,row.payload).some(file=>typeof file!=='string' && String(file.id)===String(fileId) && String(file.recordId)===String(recordId));
 }
 
 async function readBytes(request,limit){
@@ -88,7 +99,7 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
       FROM projects p JOIN accounts a ON a.id=$2
       LEFT JOIN project_memberships m ON m.project_id=p.id AND m.account_id=a.id
       LEFT JOIN project_roles r ON r.id=m.role_id AND r.project_id=p.id WHERE p.id=$1`,[projectId,accountId]);
-    if(!canAccessFiles(result.rows[0],accountId,write)){sendJson(response,403,{error:'forbidden_project_files'});return true;}
+    if(!canAccessFiles(result.rows[0],accountId,write) && (write || !canReadContractDocument(result.rows[0],accountId,url.searchParams.get('contractId'),recordId,id))){sendJson(response,403,{error:'forbidden_project_files'});return true;}
     if(!storage){sendJson(response,503,{error:'file_storage_unavailable'});return true;}
     const prefix=projectId+'/contacts/'+recordId+'/';
     if(write){

@@ -62,5 +62,12 @@ export function contractDocumentMarkup(state,activityName=''){
     pricingHtml +
     '<div class="doc-clauses">' + (clausesHtml || '<div class="doc-clause">........................................................</div>') + '</div>' +
     (paymentHtml ? '<div class="doc-payment"><b>مراحل پرداخت</b>' + paymentHtml + '</div>' : '') +
-    '<div class="doc-signatures"><div class="signature-box">امضا و اثر انگشت کارفرما<br>................................</div><div class="signature-box">امضا و اثر انگشت پیمانکار<br>................................</div></div>';
+    '<div class="doc-signatures"><div class="signature-box">امضا و اثر انگشت کارفرما<br>................................</div><div class="signature-box">امضا و اثر انگشت پیمانکار<br>................................</div></div>'+
+    (state.contractorDocuments||[]).map((file,index)=>{
+      const image=state.contractorDocumentImages?.[index];
+      const src=image?.dataUrl || (typeof file==='string'?file:'');
+      const safe=/^data:image\/(?:jpeg|jpg|png|webp|gif);base64,/i.test(src);
+      return '<section class="contract-document-attachment"><h3>پیوست '+persian(index+1)+' — مدارک پیمانکار '+escape(state.contractorName||'')+'</h3>'+
+        (safe?'<img src="'+escape(src)+'" alt="'+escape(image?.name||file.name||'مدرک پیمانکار')+'">':'<p>'+ (state.contractorDocumentsError?'دریافت مدرک انجام نشد؛ دوباره تلاش کنید.':'در حال دریافت مدرک…')+'</p>')+'</section>';
+    }).join('');
 }

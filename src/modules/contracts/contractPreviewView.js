@@ -1,17 +1,20 @@
 import { contractDocumentMarkup } from './contractDocument.js';
 import { resolveContractDocumentDraft } from './realContractDomain.js';
 import { mountContractPrintPage } from './contractTemplateFormModule.js';
+import {mountContractDocumentPreview} from './contractDocumentAttachments.js';
 
 let view=null;
 export function createContractPreviewView({documentRef=globalThis.document,windowRef=globalThis.window,mountPrintPage=mountContractPrintPage}={}){
-  let page=null,body=null,returnFocus=null;
+  let page=null,body=null,returnFocus=null,disposeDocuments=null;
   const close=(fromPopState=false)=>{
+    disposeDocuments?.();
     page?.classList.add('hidden');
     windowRef.KarhaChildHistory?.consume?.('contract-preview',{fromPopState});
     returnFocus?.focus?.();
   };
   function open(project,contract,{trigger=null}={}){
     if(!project||!contract)return false;
+    disposeDocuments?.();
     if(!page){
       page=documentRef.createElement('div');
       page.id='contractPreviewPage';page.className='page-overlay workspace-page hidden';
@@ -35,7 +38,7 @@ export function createContractPreviewView({documentRef=globalThis.document,windo
     preview.innerHTML=contractDocumentMarkup(draft,activity?.name||activity?.title||'');
     body.replaceChildren();
     page.classList.remove('hidden');
-    mountPrintPage(body,preview,'contract-real-preview-viewport');
+    disposeDocuments=mountContractDocumentPreview(body,preview,draft,project.id,{mountPrintPage,activityName:activity?.name||activity?.title||''});
     windowRef.KarhaChildHistory?.open?.('contract-preview');
     return true;
   }
