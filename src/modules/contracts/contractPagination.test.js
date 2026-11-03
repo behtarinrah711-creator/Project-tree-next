@@ -15,8 +15,8 @@ class Element{
   remove(){if(this.parent)this.parent.children=this.parent.children.filter(x=>x!==this);this.parent=null;}
   cloneNode(deep){const copy=new Element(this.tag);copy.className=this.className;copy.attrs={...this.attrs};copy.ownText=this.ownText;if(deep)this.children.forEach(x=>copy.appendChild(x.cloneNode(true)));return copy;}
   querySelectorAll(selector){const found=[];for(const x of this.children){if(x.classList.contains(selector.slice(1)))found.push(x);found.push(...x.querySelectorAll(selector));}return found;}
-  get clientHeight(){return 971;}
-  get scrollHeight(){return Math.max(971,this.children.reduce((n,x)=>n+Math.ceil(x.textContent.length/10)*20,0));}
+  get clientHeight(){return 851;}
+  get scrollHeight(){return Math.max(851,this.children.reduce((n,x)=>n+Math.ceil(x.textContent.length/10)*20,0));}
 }
 const doc={createElement:tag=>new Element(tag),body:new Element('body')};
 
@@ -25,6 +25,9 @@ test('every contract page uses the same identifying footer even without annexes'
   const clause=new Element();clause.textContent='A'.repeat(1800);source.appendChild(clause);
   const pages=paginateContract(source,doc),footers=pages.querySelectorAll('.contract-sheet-number');
   assert.ok(footers.length>1);
+  const signatures=pages.querySelectorAll('.contract-sheet-signatures');
+  assert.equal(signatures.length,footers.length);
+  signatures.forEach(row=>assert.deepEqual(row.children.map(box=>box.textContent),['کارفرما','پیمانکار','شاهد'].map(party=>'نام، نام خانوادگی، امضا و اثر انگشت '+party+':')));
   footers.forEach((footer,index)=>assert.equal(footer.textContent,'شماره قرارداد: CTR-main — صفحه '+new Intl.NumberFormat('fa-IR').format(index+1)+' از '+new Intl.NumberFormat('fa-IR').format(footers.length)));
 });
 
@@ -38,6 +41,7 @@ test('three-photo annex groups stay intact inside separate framed contract sheet
   }
   const pages=paginateContract(source,doc);
   const sheets=pages.querySelectorAll('.contract-sheet-content');
+  assert.equal(pages.querySelectorAll('.contract-sheet-signatures').length,3);
   assert.equal(sheets.length,3);assert.equal(sheets[0].textContent,'Contract and signatures');
   assert.deepEqual(sheets.slice(1).map(sheet=>sheet.children[0].children.length),[3,2]);
   assert.ok(sheets.slice(1).every(sheet=>sheet.children[0].children.every(child=>child.tag==='img')));

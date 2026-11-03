@@ -63,8 +63,16 @@ export function contractDocumentMarkup(state,activityName=''){
       const width=Number(image?.width || file?.width),height=Number(image?.height || file?.height);
       const alt=escape(image?.name||file.name||'مدرک پیمانکار');
       // Swap the viewport dimensions before rotating; fit the whole image without cropping.
-      const picture=rotated
-        ? '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 '+height+' '+width+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="'+alt+'"><image href="'+escape(src)+'" width="'+width+'" height="'+height+'" transform="translate(0 '+width+') rotate(-90)"/></svg>'
+      const portraitRatio=photo=>{
+        const item=documents[photo.sourceIndex],decoded=state.contractorDocumentImages?.[photo.sourceIndex];
+        const w=Number(decoded?.width || item?.width),h=Number(decoded?.height || item?.height);
+        return photo.rotated?h/w:w/h;
+      };
+      const pairRatio=Math.max(...page.filter(photo=>photo.portrait).map(portraitRatio));
+      const ratio=rotated?height/width:width/height;
+      const offset=column===2?pairRatio-ratio:0;
+      const picture=portrait
+        ? '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 '+pairRatio+' 1" preserveAspectRatio="'+(column===1?'xMinYMid':'xMaxYMid')+' meet" role="img" aria-label="'+alt+'"><image href="'+escape(src)+'" x="'+(rotated?0:offset)+'" width="'+(rotated?1:ratio)+'" height="'+(rotated?ratio:1)+'"'+(rotated?' transform="translate('+offset+' 1) rotate(-90)"':'')+'/></svg>'
         : '<img src="'+escape(src)+'" alt="'+alt+'">';
       return '<figure class="contract-document-photo'+position+'"><div class="contract-document-image-box">'+
         (safe?picture:'<p>'+(state.contractorDocumentsError?'دریافت مدرک انجام نشد؛ دوباره تلاش کنید.':'در حال دریافت مدرک…')+'</p>')+
@@ -90,6 +98,5 @@ export function contractDocumentMarkup(state,activityName=''){
     pricingHtml +
     '<div class="doc-clauses">' + (clausesHtml || '<div class="doc-clause">........................................................</div>') + '</div>' +
     (paymentHtml ? '<div class="doc-payment"><b>مراحل پرداخت</b>' + paymentHtml + '</div>' : '') +
-    '<div class="doc-signatures"><div class="signature-box">نام و نام خانوادگی، امضا و اثر انگشت کارفرما:</div><div class="signature-box">نام و نام خانوادگی، امضا و اثر انگشت پیمانکار:</div></div>'+
     annexPages.join('');
 }
