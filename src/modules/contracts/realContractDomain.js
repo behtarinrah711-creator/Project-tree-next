@@ -79,6 +79,7 @@ export function moveRealContractItem(arr,from,to){
 
 export function syncContractPartyData(state, project){
   if(!state || !project) return state;
+  state.projectName=String(project.name || project.title || '').trim();
   const contacts=Array.isArray(project.contacts)?project.contacts:[];
   const find=id=>contacts.find(c=>String(c.id)===String(id) && !c.trashed);
   const name=c=>[c?.firstName,c?.lastName].filter(Boolean).join(' ') || c?.name || '';
