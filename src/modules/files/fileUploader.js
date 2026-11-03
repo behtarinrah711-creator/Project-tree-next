@@ -9,8 +9,12 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
   const note=document.createElement('p');note.className='saosa-file-note';note.textContent=category==='contracts'?'عکس ذخیره‌شده تا ۲ مگابایت؛ PDF تا ۲۵ مگابایت':'عکس ذخیره‌شده تا ۲ مگابایت؛ PDF و فایل‌های اداری تا ۲۵ مگابایت';root.appendChild(note);
   const gallery=document.createElement('div');gallery.className='saosa-file-gallery';root.appendChild(gallery);
   if(readOnly)input.hidden=true;
-  const replacement=document.createElement('input');replacement.type='file';replacement.accept=input.accept;replacement.hidden=true;root.appendChild(replacement);
-  let replacingIndex=null;replacement.oncancel=()=>{replacingIndex=null;};replacement.onchange=()=>{const file=replacement.files?.[0];if(file)pond?.addFile(file);replacement.value='';};
+  const replacement=allowReplace && !readOnly?document.createElement('input'):null;
+  let replacingIndex=null;
+  if(replacement){
+    replacement.type='file';replacement.accept=input.accept;replacement.hidden=true;root.appendChild(replacement);
+    replacement.oncancel=()=>{replacingIndex=null;};replacement.onchange=()=>{const file=replacement.files?.[0];if(file)pond?.addFile(file);replacement.value='';};
+  }
   const urls=new Set(),requests=new Set();let pond,disposed=false,viewerClose;
   const controllers=new Set();
   let observer;
