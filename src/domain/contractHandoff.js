@@ -17,17 +17,18 @@ export function transitionContractHandoff(contract,action,actor,{files=[],reason
     if(action==='revoke_finance'){
       if(contract.accountingStatus!=='accepted' || contract.accountingDecision?.actor?.id!==actor.id)return fail('فقط می‌توانید تأیید مالی خودتان را پس بگیرید');
       if(String(reason).trim().length<5)return fail('توضیح پس‌گرفتن تأیید مالی حداقل ۵ حرف باشد');
-      next.accountingStatus='sent';next.accountingDecision=null;
+      next.accountingStatus='rejected';next.accountingDecision=null;
     }else{
       if(contract.accountingStatus!=='sent')return fail('ابتدا تأیید مالی را پس بگیرید');
       const text=String(reason).trim();
       if(action==='reject_finance' && text.length<5)return fail('دلیل رد قرارداد حداقل ۵ حرف باشد');
       next.accountingDecision={status:action==='approve_finance'?'accepted':'rejected',at,actor:{...actor},reason:text};
       next.accountingStatus=next.accountingDecision.status;
-      if(action==='reject_finance'){
+    }
+    if(['reject_finance','revoke_finance'].includes(action)){
+        const text=String(reason).trim();
         Object.assign(next,{status:'draft',isDraft:true,approvalStatus:null,approvedContactIds:[],approvalContactIds:[],approvalContactId:'',submittedAt:null,submittedBy:null,reviewedAt:null,reviewedBy:null,revisionBaseline:null,completedAt:null,completedBy:null,completionDeclarationId:null,manualCompletionFields:[],signedAt:null,signedBy:null,signedFiles:signedContractFiles(contract).map(file=>({...file})),sentToAccountingAt:null,sentToAccountingBy:null});
         next.financeRejection={at,actor:{...actor},reason:text};
-      }
     }
     events.push({action,...(['reject_finance','revoke_finance'].includes(action)?{reason:String(reason).trim()}:{})});
   }else if(action==='withdraw_finance'){

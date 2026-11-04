@@ -49,14 +49,24 @@ test('financial acceptance is reversible by its reviewer; rejection resets the c
   assert.equal(c.approvalHistory.at(-1).reason,'بررسی دوباره مدارک');
   assert.equal(c.financeHistory.at(-1).actor.id,actor.id);
   assert.equal(c.financeHistory.at(-1).at,40);
-  assert.equal(c.accountingStatus,'sent');assert.equal(c.accountingDecision,null);
+  assert.equal(c.accountingStatus,'rejected');assert.equal(c.accountingDecision,null);
+  assert.equal(c.status,'draft');assert.equal(c.isDraft,true);assert.equal(c.approvalStatus,null);
+  assert.equal(c.completedAt,null);assert.equal(c.signedAt,null);assert.equal(c.sentToAccountingAt,null);
+  assert.deepEqual(c.signedFiles,[file()]);assert.deepEqual(c.accountingPackage,sent.accountingPackage);
+  assert.equal(isContractInFinance(c),false);assert.equal(c.financeRejection.reason,'بررسی دوباره مدارک');
+  const edited=preserveContractHandoff({contracts:[{...c,title:'اصلاح قرارداد'}]},{contracts:[c]}).contracts[0];
+  assert.equal(edited.title,'اصلاح قرارداد');
+  assert.equal(transition(c,'save_signed',actor,{files:[file('replacement')],at:45}).ok,true);
+  assert.equal(transition(c,'send_finance',actor).ok,false);
+  assert.deepEqual(c.financeHistory.map(e=>e.action),['send_finance','approve_finance','revoke_finance']);
+  c=sent;
   assert.equal(transition(c,'reject_finance',actor,{reason:'کم'}).ok,false);
   c=transition(c,'reject_finance',actor,{reason:'صفحه امضا کامل نیست',at:50}).contract;
   assert.equal(c.status,'draft');assert.equal(c.isDraft,true);assert.equal(c.approvalStatus,null);
   assert.deepEqual(c.approvedContactIds,[]);assert.equal(c.completedAt,null);assert.equal(c.signedAt,null);assert.deepEqual(c.signedFiles,[file()]);
   assert.equal(isContractInFinance(c),false);assert.equal(c.financeRejection.reason,'صفحه امضا کامل نیست');
   assert.deepEqual(c.accountingPackage,sent.accountingPackage);
-  assert.deepEqual(c.financeHistory.map(e=>e.action),['send_finance','approve_finance','revoke_finance','reject_finance']);
+  assert.deepEqual(c.financeHistory.map(e=>e.action),['send_finance','reject_finance']);
   assert.deepEqual(preserveContractHandoff({contracts:[sent]},{contracts:[c]}).contracts,[c]);
 });
 
