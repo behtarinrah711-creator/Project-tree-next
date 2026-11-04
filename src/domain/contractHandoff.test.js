@@ -43,7 +43,12 @@ test('financial acceptance is reversible by its reviewer; rejection resets the c
   assert.equal(c.accountingStatus,'accepted');assert.equal(isContractInFinance(c),true);
   assert.equal(transition(c,'reject_finance',actor,{reason:'اصلاح'}).ok,false);
   assert.equal(transition(c,'revoke_finance',{id:'other'}).ok,false);
-  c=transition(c,'revoke_finance',actor,{at:40}).contract;
+  for(const reason of ['', '   ', 'کم'])assert.equal(transition(c,'revoke_finance',actor,{reason}).ok,false);
+  c=transition(c,'revoke_finance',actor,{at:40,reason:'  بررسی دوباره مدارک  '}).contract;
+  assert.equal(c.financeHistory.at(-1).reason,'بررسی دوباره مدارک');
+  assert.equal(c.approvalHistory.at(-1).reason,'بررسی دوباره مدارک');
+  assert.equal(c.financeHistory.at(-1).actor.id,actor.id);
+  assert.equal(c.financeHistory.at(-1).at,40);
   assert.equal(c.accountingStatus,'sent');assert.equal(c.accountingDecision,null);
   assert.equal(transition(c,'reject_finance',actor,{reason:'کم'}).ok,false);
   c=transition(c,'reject_finance',actor,{reason:'صفحه امضا کامل نیست',at:50}).contract;

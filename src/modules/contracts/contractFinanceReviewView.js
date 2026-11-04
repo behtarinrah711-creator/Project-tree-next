@@ -12,7 +12,10 @@ export function renderContractFinanceReview(project,contract,{onChanged=()=>{}}=
   const run=async(action,options={})=>{if(busy)return false;busy=true;try{await saveContractHandoff(project.id,contract,action,options);onChanged();return true;}catch(error){toast(error.message);return false;}finally{busy=false;}};
   const button=(label,action,danger=false)=>{const b=document.createElement('button');b.type='button';b.className='contract-review-action'+(danger?' danger':'');b.textContent=label;b.onclick=action;root.appendChild(b);};
   if(contract.accountingStatus==='accepted'){
-    if(contract.accountingDecision?.actor?.id===currentExecutionActor(project).id)button('پس‌گرفتن تأیید مالی',()=>openConfirm('تأیید مالی شما پس گرفته شود؟',()=>run('revoke_finance'),'پس‌گرفتن تأیید'));
+    if(contract.accountingDecision?.actor?.id===currentExecutionActor(project).id)button('پس‌گرفتن تأیید مالی',()=>{const sheet=openWbsSheet({title:'پس‌گرفتن تأیید مالی',saveLabel:'ثبت پس‌گرفتن تأیید',historyKey:'finance-revoke:'+contract.id,
+      body(body){const reason=document.createElement('textarea');reason.name='reason';reason.className='wbs-input today-textarea';reason.required=true;reason.minLength=5;body.appendChild(fieldRow('توضیح پس‌گرفتن تأیید (الزامی)',reason));},
+      onSave(body){const reason=body.querySelector('[name="reason"]').value.trim();if(reason.length<5){toast('توضیح پس‌گرفتن تأیید مالی حداقل ۵ حرف باشد');return false;}run('revoke_finance',{reason}).then(ok=>{if(ok && sheet.isConnected)closeWbsSheet();});return false;}
+    });});
   }else if(contract.accountingStatus==='sent'){
     button('تأیید قرارداد',()=>openConfirm('قرارداد توسط بخش مالی تأیید شود؟',()=>run('approve_finance'),'تأیید'));
     button('رد قرارداد',()=>{const sheet=openWbsSheet({title:'رد قرارداد توسط بخش مالی',saveLabel:'ثبت رد قرارداد',historyKey:'finance-reject:'+contract.id,
