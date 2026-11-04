@@ -85,3 +85,21 @@ test('only financial writers can approve, revoke their approval and reject with 
   result=await decision('reject_finance','مدرک ناقص است');assert.equal(result.status,200);c=result.result.contract;
   assert.equal(c.status,'draft');assert.equal(c.signedAt,null);assert.equal(c.financeRejection.reason,'مدرک ناقص است');
 });
+test('contract editor can replace returned printed files in draft without approving or sending the contract',async()=>{
+ const f=fixture();let c=(await f.call({action:'save_signed',version:0,updatedAt:1,files:[file]})).result.contract;
+ c=(await f.call({action:'send_finance',version:c.handoffVersion,updatedAt:c.updatedAt})).result.contract;
+ f.setPermissions({modules:{accounting:'create'}});
+ c=(await f.call({action:'reject_finance',reason:'اسکن ناقص است',version:c.handoffVersion,updatedAt:c.updatedAt})).result.contract;
+ f.setPermissions({modules:{contracts:'create'}});
+ const saved=new Map(),originalMetadata=f.storage.metadata;
+ f.storage.put=async(key,metadata)=>saved.set(key,metadata);
+ f.storage.metadata=async key=>saved.get(key)||originalMetadata(key);
+ const request=Readable.from([Buffer.from('%PDF-1.7\nreplacement')]);request.method='POST';request.headers={authorization:'Bearer token'};
+ let status,uploaded;
+ await createFileUploadHandler({pool:f.pool,sessionSecret:'s',storage:f.storage})(request,{writeHead(code){status=code;},end(value){uploaded=JSON.parse(value);}},new URL('http://local/api/v1/projects/p/files/contracts/c?name=replacement.pdf'));
+ assert.equal(status,201);
+ const result=await f.call({action:'save_signed',files:[uploaded.file],version:c.handoffVersion,updatedAt:c.updatedAt});
+ assert.equal(result.status,200);assert.equal(result.result.contract.status,'draft');assert.equal(result.result.contract.signedAt,null);
+ assert.equal(result.result.contract.signedFiles[0].id,uploaded.file.id);
+ assert.equal(result.result.contract.accountingPackage.signedFiles[0].id,file.id);
+});

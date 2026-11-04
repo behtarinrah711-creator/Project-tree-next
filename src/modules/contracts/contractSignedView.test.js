@@ -11,7 +11,7 @@ const file={id:'f',name:'signed.jpg',mime:'image/jpeg'};
 test('incomplete and approved cards offer the appropriate separate attachment and finance actions',()=>{
   globalThis.document=documentRef;
   let c={id:'c',status:'draft',isDraft:true};
-  assert.deepEqual(labels(renderContractSignedSection(project,c)),[]);
+  assert.equal(renderContractSignedSection(project,c),null);
   c={id:'c',status:'final',approvalStatus:'approved',contractApproverContactIds:[]};
   assert.deepEqual(labels(renderContractSignedSection(project,c)),['افزودن نسخه امضاشده']);
   c={...c,signedAt:1,signedFiles:[file]};
@@ -27,4 +27,14 @@ test('read-only project members cannot see mutation actions on signed or finance
   assert.deepEqual(labels(renderContractSignedSection(project,c)),['مشاهده نسخه امضاشده']);
   assert.deepEqual(labels(renderContractSignedSection(project,{...c,accountingStatus:'sent',sentToAccountingAt:2,accountingPackage:{contract:c}},{finance:true})),['مشاهده نسخه امضاشده']);
   delete window.KarhaSaosaWorkspaceAccess;
+});
+
+test('returned legacy contracts show their printed copies while fresh drafts have no inactive upload message',()=>{
+ globalThis.document=documentRef;
+ assert.equal(renderContractSignedSection(project,{id:'new',status:'draft',isDraft:true}),null);
+ const returned={id:'c',status:'draft',isDraft:true,accountingStatus:'rejected',signedFiles:[],accountingPackage:{signedFiles:[file]}};
+ const section=renderContractSignedSection(project,returned);
+ assert.deepEqual(labels(section),['مشاهده و اصلاح نسخه امضاشده']);
+ assert.ok(section.children.some(node=>node.textContent==='۱ فایل ذخیره شده'));
+ assert.ok(!section.children.some(node=>String(node.textContent).includes('پس از تکمیل')));
 });

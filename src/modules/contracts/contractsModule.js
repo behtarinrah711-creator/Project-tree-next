@@ -152,7 +152,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
       if(c.financeRejection?.reason && c.accountingStatus==='rejected'){const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='دلیل رد توسط بخش مالی: '+c.financeRejection.reason;statusRow.appendChild(reason);}
       row.appendChild(statusRow);statusRow.onclick=event=>event.stopPropagation();
       row.appendChild(renderContractProgress(document,c,p));
-      row.appendChild(renderContractSignedSection(p,c,{onChanged}));
+      const signedSection=renderContractSignedSection(p,c,{onChanged});if(signedSection)row.appendChild(signedSection);
       }else row.appendChild(renderContractFinanceReview(p,c,{onChanged}));
       row.appendChild(renderContractHistory(document,c,{finance}));
       row.onclick=()=>openContractPreview(p,finance?c.accountingPackage.contract:c,{trigger:main,frozen:finance,signedFiles:finance?c.accountingPackage.signedFiles:null});

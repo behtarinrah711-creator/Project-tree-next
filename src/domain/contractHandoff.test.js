@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {transitionContractHandoff as transition,isContractSigned,isContractInFinance,preserveContractHandoff} from './contractHandoff.js';
+import {transitionContractHandoff as transition,isContractSigned,isContractInFinance,preserveContractHandoff,signedContractFiles} from './contractHandoff.js';
 const actor={id:'member',name:'مهندس احمدی'};
 const base=()=>({id:'c',status:'final',approvalStatus:'approved',updatedAt:1,title:'قرارداد',approvalHistory:[]});
 const file=(id='one')=>({id,projectId:'p',category:'contracts',recordId:'c',mime:'image/jpeg',name:id+'.jpg'});
@@ -53,9 +53,27 @@ test('financial acceptance is reversible by its reviewer; rejection resets the c
   assert.equal(transition(c,'reject_finance',actor,{reason:'کم'}).ok,false);
   c=transition(c,'reject_finance',actor,{reason:'صفحه امضا کامل نیست',at:50}).contract;
   assert.equal(c.status,'draft');assert.equal(c.isDraft,true);assert.equal(c.approvalStatus,null);
-  assert.deepEqual(c.approvedContactIds,[]);assert.equal(c.completedAt,null);assert.equal(c.signedAt,null);assert.deepEqual(c.signedFiles,[]);
+  assert.deepEqual(c.approvedContactIds,[]);assert.equal(c.completedAt,null);assert.equal(c.signedAt,null);assert.deepEqual(c.signedFiles,[file()]);
   assert.equal(isContractInFinance(c),false);assert.equal(c.financeRejection.reason,'صفحه امضا کامل نیست');
   assert.deepEqual(c.accountingPackage,sent.accountingPackage);
   assert.deepEqual(c.financeHistory.map(e=>e.action),['send_finance','approve_finance','revoke_finance','reject_finance']);
   assert.deepEqual(preserveContractHandoff({contracts:[sent]},{contracts:[c]}).contracts,[c]);
+});
+
+test('returned printed copies remain editable without restoring completion or signature approval',()=>{
+  let c=transition(base(),'save_signed',actor,{files:[file()],at:10}).contract;
+  c=transition(c,'send_finance',actor,{at:20}).contract;
+  c=transition(c,'reject_finance',actor,{reason:'تصویر ناقص است',at:30}).contract;
+  const archive=JSON.stringify(c.accountingPackage);
+  c=transition(c,'save_signed',actor,{files:[file('replacement')],at:40}).contract;
+  assert.equal(c.status,'draft');assert.equal(c.signedAt,null);assert.equal(isContractSigned(c),false);
+  assert.equal(transition(c,'send_finance',actor).ok,false);
+  assert.equal(JSON.stringify(c.accountingPackage),archive);
+  const legacy={...c,signedFiles:[],signedFilesUpdatedAt:null};
+  assert.equal(signedContractFiles(legacy)[0].id,'one');
+  const removed=transition(legacy,'save_signed',actor,{files:[],at:50}).contract;
+  assert.deepEqual(signedContractFiles(removed),[]);
+  const ready={...c,status:'final',isDraft:false,approvalStatus:'approved'};
+  const confirmed=transition(ready,'save_signed',actor,{files:ready.signedFiles,at:60}).contract;
+  assert.equal(isContractSigned(confirmed),true);assert.equal(confirmed.approvalHistory.at(-1).action,'confirm_signed');
 });
