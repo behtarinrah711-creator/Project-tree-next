@@ -1,11 +1,16 @@
-export const HANDOFF_FIELDS=['signedFiles','signedAt','signedBy','handoffVersion','accountingStatus','sentToAccountingAt','sentToAccountingBy','accountingPackage','accountingWithdrawal','accountingDecision','financeRejection','financeHistory'];
+export const HANDOFF_FIELDS=['signedFiles','signedFilesUpdatedAt','signedAt','signedBy','handoffVersion','accountingStatus','sentToAccountingAt','sentToAccountingBy','accountingPackage','accountingWithdrawal','accountingDecision','financeRejection','financeHistory'];
 export const isContractSigned=c=>!!c?.signedAt && Array.isArray(c.signedFiles) && c.signedFiles.length>0;
 export const isContractInFinance=c=>['sent','accepted'].includes(c?.accountingStatus) && !!c.sentToAccountingAt && !!c.accountingPackage;
 export const canAttachSignedContract=c=>!c?.trashed && c?.status==='final' && !c.isDraft && c.approvalStatus==='approved';
+export const canReviseReturnedSignedContract=c=>!c?.trashed && c?.accountingStatus==='rejected' && (c.status==='draft' || c.isDraft) && !!c.accountingPackage;
+export function signedContractFiles(contract){
+  if(Array.isArray(contract?.signedFiles) && (contract.signedFiles.length || contract.signedFilesUpdatedAt || contract.accountingStatus!=='rejected'))return contract.signedFiles;
+  return contract?.accountingStatus==='rejected'?(contract.accountingPackage?.signedFiles||[]):[];
+}
 export function transitionContractHandoff(contract,action,actor,{files=[],reason='',at=Date.now(),projectName,activityName}={}){
   const fail=message=>({ok:false,message});
   if(!actor?.id || actor.id==='guest')return fail('ابتدا وارد حساب کاربری شوید');
-  if(!canAttachSignedContract(contract))return fail('ابتدا قرارداد باید تکمیل و تأیید شود');
+  if(!canAttachSignedContract(contract) && !(action==='save_signed' && canReviseReturnedSignedContract(contract)))return fail('ابتدا قرارداد باید تکمیل و تأیید شود');
   const next={...contract},events=[];
   if(['approve_finance','reject_finance','revoke_finance'].includes(action)){
     if(!isContractInFinance(contract))return fail('قرارداد در واحد مالی نیست');
@@ -19,7 +24,7 @@ export function transitionContractHandoff(contract,action,actor,{files=[],reason
       next.accountingDecision={status:action==='approve_finance'?'accepted':'rejected',at,actor:{...actor},reason:text};
       next.accountingStatus=next.accountingDecision.status;
       if(action==='reject_finance'){
-        Object.assign(next,{status:'draft',isDraft:true,approvalStatus:null,approvedContactIds:[],approvalContactIds:[],approvalContactId:'',submittedAt:null,submittedBy:null,reviewedAt:null,reviewedBy:null,revisionBaseline:null,completedAt:null,completedBy:null,completionDeclarationId:null,manualCompletionFields:[],signedAt:null,signedBy:null,signedFiles:[],sentToAccountingAt:null,sentToAccountingBy:null});
+        Object.assign(next,{status:'draft',isDraft:true,approvalStatus:null,approvedContactIds:[],approvalContactIds:[],approvalContactId:'',submittedAt:null,submittedBy:null,reviewedAt:null,reviewedBy:null,revisionBaseline:null,completedAt:null,completedBy:null,completionDeclarationId:null,manualCompletionFields:[],signedAt:null,signedBy:null,signedFiles:signedContractFiles(contract).map(file=>({...file})),sentToAccountingAt:null,sentToAccountingBy:null});
         next.financeRejection={at,actor:{...actor},reason:text};
       }
     }
@@ -34,9 +39,10 @@ export function transitionContractHandoff(contract,action,actor,{files=[],reason
     if(isContractInFinance(contract))return fail('برای اصلاح ابتدا قرارداد را از مالی پس بگیرید');
     if(action==='save_signed'){
       if(!Array.isArray(files) || files.length>30 || new Set(files.map(f=>f?.id)).size!==files.length || files.some(f=>!f?.id || f.category!=='contracts' || String(f.recordId)!==String(contract.id) || !['image/jpeg','application/pdf'].includes(f.mime)))return fail('فقط عکس یا PDF معتبر این قرارداد را انتخاب کنید');
-      const old=contract.signedFiles||[],added=files.filter(f=>!old.some(o=>o.id===f.id)),removed=old.filter(f=>!files.some(o=>o.id===f.id));
-      if(!added.length && !removed.length)return {ok:true,contract};
-      next.signedFiles=files.map(f=>({...f}));next.signedAt=files.length?at:null;next.signedBy=files.length?{...actor}:null;
+      const old=signedContractFiles(contract),added=files.filter(f=>!old.some(o=>o.id===f.id)),removed=old.filter(f=>!files.some(o=>o.id===f.id));
+      if(!added.length && !removed.length && (!canAttachSignedContract(contract) || isContractSigned(contract) || !files.length))return {ok:true,contract};
+      next.signedFiles=files.map(f=>({...f}));next.signedFilesUpdatedAt=at;next.signedAt=canAttachSignedContract(contract) && files.length?at:null;next.signedBy=next.signedAt?{...actor}:null;
+      if(!added.length && !removed.length)events.push({action:'confirm_signed',files:files.map(file=>file.name)});
       if(added.length===1 && removed.length===1)events.push({action:'replace_signed',files:added.map(f=>f.name),removed:removed.map(f=>f.name)});
       else{
         if(added.length)events.push({action:'add_signed',files:added.map(f=>f.name)});
@@ -71,7 +77,7 @@ export function preserveContractHandoff(project,previous){
     const record={...candidate};
     for(const key of HANDOFF_FIELDS){if(current && Object.hasOwn(current,key))record[key]=current[key];else delete record[key];}
     // Keep authenticated handoff events when an old workspace snapshot is saved.
-    const actions=new Set(['add_signed','remove_signed','replace_signed','send_finance','withdraw_finance','approve_finance','reject_finance','revoke_finance']);
+    const actions=new Set(['confirm_signed','add_signed','remove_signed','replace_signed','send_finance','withdraw_finance','approve_finance','reject_finance','revoke_finance']);
     record.approvalHistory=[...(record.approvalHistory||[]).filter(e=>!actions.has(e.action)),...(current?.approvalHistory||[]).filter(e=>actions.has(e.action))];
     return record;
   });

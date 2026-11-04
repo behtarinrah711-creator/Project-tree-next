@@ -1,4 +1,4 @@
-import {canAttachSignedContract,isContractInFinance} from '../../src/domain/contractHandoff.js';
+import {canAttachSignedContract,canReviseReturnedSignedContract,isContractInFinance} from '../../src/domain/contractHandoff.js';
 import {randomUUID, createHash} from 'node:crypto';
 import sharp from 'sharp';
 import {fileTypeFromBuffer} from 'file-type';
@@ -107,7 +107,7 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
       ? canAccessFiles(row,accountId,write) || (!write && canReadContractDocument(row,accountId,url.searchParams.get('contractId'),recordId,id))
       : !!contract && (canAccessFiles(row,accountId,write,'contracts') || (!write && isContractInFinance(contract) && (canAccessFiles(row,accountId,false,'accounting') || canAccessFiles(row,accountId,false,'accounting-contracts'))));
     if(!allowed){sendJson(response,403,{error:'forbidden_project_files'});return true;}
-    if(category==='contracts' && write && (!canAttachSignedContract(contract) || isContractInFinance(contract))){sendJson(response,409,{error:'contract_files_locked'});return true;}
+    if(category==='contracts' && write && (!(canAttachSignedContract(contract) || canReviseReturnedSignedContract(contract)) || isContractInFinance(contract))){sendJson(response,409,{error:'contract_files_locked'});return true;}
     if(!storage){sendJson(response,503,{error:'file_storage_unavailable'});return true;}
     const prefix=projectId+'/'+category+'/'+recordId+'/';
     if(write){
