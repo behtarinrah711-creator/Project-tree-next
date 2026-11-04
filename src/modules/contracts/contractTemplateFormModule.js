@@ -305,7 +305,7 @@ export function getContractPageStyles(documentRef=globalThis.document){
     try{entries=sheet.cssRules;}catch{return;}
     for(const rule of entries || []){
       if(rule.styleSheet)collect(rule.styleSheet);
-      if(/\.contract-(?:pages|sheet)/.test(rule.cssText)) rules.push(rule.cssText);
+      if(/\.contract-(?:pages|sheet|document-)/.test(rule.cssText)) rules.push(rule.cssText);
     }
   };
   for(const sheet of documentRef.styleSheets || [])collect(sheet);

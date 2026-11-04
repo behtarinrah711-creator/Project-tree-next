@@ -73,7 +73,9 @@ export function contractDocumentMarkup(state,activityName=''){
       const offset=column===2?pairRatio-ratio:0;
       const picture=portrait
         ? '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 '+pairRatio+' 1" preserveAspectRatio="'+(column===1?'xMinYMid':'xMaxYMid')+' meet" role="img" aria-label="'+alt+'"><image href="'+escape(src)+'" x="'+(rotated?0:offset)+'" width="'+(rotated?1:ratio)+'" height="'+(rotated?ratio:1)+'"'+(rotated?' transform="translate('+offset+' 1) rotate(-90)"':'')+'/></svg>'
-        : '<img src="'+escape(src)+'" alt="'+alt+'">';
+        : Number.isFinite(width) && width>0 && Number.isFinite(height) && height>0
+          ? '<svg xmlns="http://www.w3.org/2000/svg" width="100%" height="100%" viewBox="0 0 '+width+' '+height+'" preserveAspectRatio="xMidYMid meet" role="img" aria-label="'+alt+'"><image href="'+escape(src)+'" width="'+width+'" height="'+height+'"/></svg>'
+          : '<img src="'+escape(src)+'" alt="'+alt+'">';
       return '<figure class="contract-document-photo'+position+'"><div class="contract-document-image-box">'+
         (safe?picture:'<p>'+(state.contractorDocumentsError?'دریافت مدرک انجام نشد؛ دوباره تلاش کنید.':'در حال دریافت مدرک…')+'</p>')+
         '</div><figcaption>تصویر مدرک '+persian(++documentNumber)+'</figcaption></figure>';
