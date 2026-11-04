@@ -76,7 +76,11 @@ test('only financial writers can approve, revoke their approval and reject with 
   let result=await decision('approve_finance');assert.equal(result.status,200);c=result.result.contract;
   assert.equal(c.accountingStatus,'accepted');
   result=await decision('withdraw_finance','برگشت برای اصلاح');assert.equal(result.status,403,'finance role cannot withdraw for the sender');
-  result=await decision('revoke_finance');assert.equal(result.status,200);c=result.result.contract;
+  assert.equal((await decision('revoke_finance')).status,400);
+  assert.equal((await decision('revoke_finance','   ')).status,400);
+  result=await decision('revoke_finance','نیاز به بررسی دوباره');assert.equal(result.status,200);c=result.result.contract;
+  assert.equal(c.financeHistory.at(-1).reason,'نیاز به بررسی دوباره');
+  assert.equal(c.financeHistory.at(-1).actor.id,'member');
   assert.equal((await decision('reject_finance','کم')).status,400);
   result=await decision('reject_finance','مدرک ناقص است');assert.equal(result.status,200);c=result.result.contract;
   assert.equal(c.status,'draft');assert.equal(c.signedAt,null);assert.equal(c.financeRejection.reason,'مدرک ناقص است');

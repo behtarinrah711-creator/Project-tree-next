@@ -11,6 +11,7 @@ export function transitionContractHandoff(contract,action,actor,{files=[],reason
     if(!isContractInFinance(contract))return fail('قرارداد در واحد مالی نیست');
     if(action==='revoke_finance'){
       if(contract.accountingStatus!=='accepted' || contract.accountingDecision?.actor?.id!==actor.id)return fail('فقط می‌توانید تأیید مالی خودتان را پس بگیرید');
+      if(String(reason).trim().length<5)return fail('توضیح پس‌گرفتن تأیید مالی حداقل ۵ حرف باشد');
       next.accountingStatus='sent';next.accountingDecision=null;
     }else{
       if(contract.accountingStatus!=='sent')return fail('ابتدا تأیید مالی را پس بگیرید');
@@ -23,7 +24,7 @@ export function transitionContractHandoff(contract,action,actor,{files=[],reason
         next.financeRejection={at,actor:{...actor},reason:text};
       }
     }
-    events.push({action,...(action==='reject_finance'?{reason:next.financeRejection.reason}:{})});
+    events.push({action,...(['reject_finance','revoke_finance'].includes(action)?{reason:String(reason).trim()}:{})});
   }else if(action==='withdraw_finance'){
     if(!isContractInFinance(contract))return fail('قرارداد در واحد مالی نیست');
     const text=String(reason).trim();if(text.length<5)return fail('دلیل پس‌گرفتن حداقل ۵ حرف باشد');
