@@ -5,7 +5,7 @@ export function hasActiveFileUploads(requestCount,items=[]){
   return requestCount>0 || items.some(file=>[1,3,7,9].includes(file.status));
 }
 
-export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{},onError=()=>{},label='افزودن عکس یا فایل',category='contacts',readOnly=false,allowReplace=false}={}){
+export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{},onError=()=>{},label='افزودن عکس یا فایل',category='contacts',readOnly=false,allowReplace=false,buttonLabel=false,confirmRemove=remove=>remove()}={}){
   root.classList.add('saosa-file-uploader');
   const input=document.createElement('input');input.type='file';input.multiple=true;
   input.accept=category==='contracts'?'image/jpeg,image/png,image/heic,image/heif,.heic,.heif,.pdf':'image/jpeg,image/png,image/heic,image/heif,image/avif,image/webp,.heic,.heif,.pdf,.docx,.xlsx,.pptx';
@@ -35,7 +35,7 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
       finally{controllers.delete(controller);}
     };
     if(typeof IntersectionObserver==='function')observer=new IntersectionObserver(entries=>entries.forEach(entry=>{if(entry.isIntersecting){observer.unobserve(entry.target);load(entry.target,entry.target.fileReference);}}));
-    files.forEach((file,index)=>{
+    files.forEach(file=>{
       const card=document.createElement('div');card.className='saosa-file-card';
       const open=document.createElement('button');open.type='button';open.className='saosa-file-open';open.setAttribute('aria-label','نمایش '+(file.name||'عکس'));
       open.onclick=()=>{viewerClose?.();viewerClose=openFileViewer(file,{onError});};
@@ -46,7 +46,15 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
       if(readOnly)remove.hidden=true;
       let replaceButton;
       if(allowReplace && !readOnly){const replace=document.createElement('button');replace.type='button';replace.className='saosa-file-replace';replace.textContent='جایگزینی';replace.onclick=()=>{if(isUploading()){onError('ابتدا بارگذاری جاری را تمام کنید');return;}replacingFile=file;replacement.click();};replaceButton=replace;}
-      remove.onclick=()=>{if(isUploading()){onError('ابتدا بارگذاری جاری را تمام کنید');return;}files.splice(index,1);render();onChange();};
+      remove.onclick=()=>confirmRemove(()=>{
+        if(disposed)return;
+        if(isUploading()){onError('ابتدا بارگذاری جاری را تمام کنید');return;}
+        const index=files.indexOf(file);
+        if(index<0)return;
+        files.splice(index,1);
+        render();
+        onChange();
+      });
       const caption=document.createElement('small');caption.textContent=file.size?Math.ceil(file.size/1024)+' کیلوبایت':'';card.appendChild(open);if(!readOnly)card.appendChild(remove);card.appendChild(caption);if(replaceButton)card.appendChild(replaceButton);gallery.appendChild(card);
     });
   };
@@ -55,7 +63,7 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
     if(disposed)return;
     input.disabled=false;
     pond=create(input,{allowMultiple:true,maxParallelUploads:1,maxFiles:category==='contracts'?30:10,credits:false,
-      labelIdle:label+' <span class="filepond--label-action">انتخاب</span>',labelFileProcessing:'در حال بارگذاری',labelFileProcessingComplete:'بارگذاری شد',labelFileProcessingError:'بارگذاری انجام نشد',
+      labelIdle:buttonLabel?'<span class="filepond--label-action">'+label+'</span>':label+' <span class="filepond--label-action">انتخاب</span>',labelFileProcessing:'در حال بارگذاری',labelFileProcessingComplete:'بارگذاری شد',labelFileProcessingError:'بارگذاری انجام نشد',
       labelTapToRetry:'برای تلاش مجدد بزنید',labelTapToCancel:'برای لغو بزنید',labelButtonRemoveItem:'حذف',labelButtonAbortItemProcessing:'لغو',
       beforeAddFile:item=>{if(files.length>=30 && replacingFile===null){onError('حداکثر ۳۰ صفحه انتخاب کنید');return false;}if(item.fileSize>FILE_LIMIT){onError(fileError('file_too_large'));return false;}return true;},
       server:{process:(_field,file,_metadata,load,error,progress,abort)=>{

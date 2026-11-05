@@ -1925,7 +1925,18 @@ textarea.contract-project-item-input{
 .contract-sheet-signature{padding:8px;box-sizing:border-box;}
 .contract-sheet-signature + .contract-sheet-signature{border-right:1px solid #777;}
 
-.contract-signed-section{margin:0 24px;padding:16px 0;border-bottom:1px solid #ddd;}
-.contract-signed-section h3{font-size:14px;margin:0 0 8px;}
+.contract-signed-section{margin:0 24px;padding:12px 0;border-block:1px solid var(--divider);}
 .contract-signed-section p{font-size:13px;margin:8px 0;color:#555;}
 .contract-signed-section .contract-review-action{margin:6px 0 6px 16px;min-height:44px;border:0;background:transparent;color:#1565c0;font:inherit;padding:6px;cursor:pointer;}
+
+.contract-signed-section .contract-signed-trigger{
+  display:block;margin:0 auto 0 0;padding:6px 14px;border-radius:8px;
+  background:#1565c0;color:#fff;
+}
+.contract-signed-overlay .filepond--drop-label .filepond--label-action{
+  display:inline-flex;align-items:center;justify-content:center;min-height:44px;
+  padding:6px 14px;border-radius:8px;background:#1565c0;color:#fff;text-decoration:none;
+}
+.contract-signed-overlay .saosa-file-card .saosa-file-remove{
+  width:30px;height:30px;min-width:0;min-height:0;padding:0;font-size:18px;line-height:1;
+}
