@@ -81,8 +81,18 @@ test('only financial writers can approve, revoke their approval and reject with 
   result=await decision('revoke_finance','نیاز به بررسی دوباره');assert.equal(result.status,200);c=result.result.contract;
   assert.equal(c.financeHistory.at(-1).reason,'نیاز به بررسی دوباره');
   assert.equal(c.financeHistory.at(-1).actor.id,'member');
+  assert.equal(c.status,'draft');assert.equal(c.isDraft,true);assert.equal(c.approvalStatus,null);
+  assert.equal(c.accountingStatus,'rejected');assert.equal(c.signedAt,null);assert.equal(c.sentToAccountingAt,null);
+  assert.equal(c.financeRejection.reason,'نیاز به بررسی دوباره');assert.equal(c.signedFiles.length,1);
+  assert.equal((await decision('send_finance')).status,403);
+});
+test('financial rejection returns an unaccepted contract to creation',async()=>{
+  const f=fixture();let c=(await f.call({action:'save_signed',version:0,updatedAt:1,files:[file]})).result.contract;
+  c=(await f.call({action:'send_finance',version:c.handoffVersion,updatedAt:c.updatedAt})).result.contract;
+  f.setPermissions({modules:{accounting:'create'}});
+  const decision=(action,reason)=>f.call({action,reason,version:c.handoffVersion,updatedAt:c.updatedAt});
   assert.equal((await decision('reject_finance','کم')).status,400);
-  result=await decision('reject_finance','مدرک ناقص است');assert.equal(result.status,200);c=result.result.contract;
+  let result=await decision('reject_finance','مدرک ناقص است');assert.equal(result.status,200);c=result.result.contract;
   assert.equal(c.status,'draft');assert.equal(c.signedAt,null);assert.equal(c.financeRejection.reason,'مدرک ناقص است');
 });
 test('contract editor can replace returned printed files in draft without approving or sending the contract',async()=>{
