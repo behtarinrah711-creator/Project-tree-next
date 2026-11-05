@@ -18,7 +18,7 @@ test('incomplete and approved cards offer the appropriate separate attachment an
   assert.deepEqual(labels(renderContractSignedSection(project,c)),['نسخه امضاشده قرارداد','ارسال به واحد مالی']);
   assert.deepEqual(contractProgressSteps(c).map(s=>s.done),[true,true,true,false,false]);
   c={...c,sentToAccountingAt:2,accountingStatus:'sent',accountingPackage:{contract:{...c},signedFiles:[file]}};
-  assert.deepEqual(labels(renderContractSignedSection(project,c)),['نسخه امضاشده قرارداد','پس‌گرفتن از مالی']);
+  assert.deepEqual(labels(renderContractSignedSection(project,c)),['پس‌گرفتن از مالی','نسخه امضاشده قرارداد']);
   assert.deepEqual(contractProgressSteps(c).map(s=>s.done),[true,true,true,true,false]);
 });
 test('read-only project members cannot see mutation actions on signed or finance cards',()=>{
