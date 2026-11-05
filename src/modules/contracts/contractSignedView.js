@@ -38,18 +38,18 @@ export function renderContractSignedSection(project,contract,{onChanged=()=>{},f
         return false;
       }
     });
-    sheet.classList.add('contract-signed-overlay');
+    sheet.classList.add('contract-signed-overlay','wbs-sheet-centered-header');
     const observer=new MutationObserver(()=>{if(!sheet.isConnected){uploader.destroy();observer.disconnect();}});
     observer.observe(document.body,{childList:true});
   };
   if(sent){
-    section.classList.add('contract-signed-section--sent');
+    section.className+=' contract-signed-section--sent';
     if(writable && !finance)button('پس‌گرفتن از مالی',()=>{const sheet=openWbsSheet({title:'پس‌گرفتن قرارداد از مالی',saveLabel:'ثبت برگشت',historyKey:'withdraw-finance:'+contract.id,
       body(root){const reason=document.createElement('textarea');reason.className='wbs-input today-textarea';reason.name='reason';root.appendChild(fieldRow('دلیل پس‌گرفتن (الزامی)',reason));},
       onSave(root){const reason=root.querySelector('[name="reason"]').value;if(reason.trim().length<5){toast('دلیل پس‌گرفتن حداقل ۵ حرف باشد');return false;}run('withdraw_finance',{reason}).then(ok=>{if(ok && sheet.isConnected)closeWbsSheet();});return false;}
     });});
   }
-  if(ready || returned || existing.length)button(existing.length?'نسخه امضاشده قرارداد':'افزودن عکس یا PDF قرارداد',openAttachments).classList.add('contract-signed-trigger');
+  if(ready || returned || existing.length)button(existing.length?'نسخه امضاشده قرارداد':'افزودن عکس یا PDF قرارداد',openAttachments).className+=' contract-signed-trigger';
   if(!sent && writable && ready && isContractSigned(contract))button('ارسال به واحد مالی',()=>openConfirm('قرارداد تنظیم‌شده به همراه نسخه امضاشده به واحد مالی ارسال شود؟',()=>run('send_finance'),'ارسال'));
   return section;
 }
