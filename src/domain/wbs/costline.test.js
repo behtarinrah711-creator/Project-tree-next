@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { COSTLINE_RANGES, assignWorksToBuckets, buildBuckets, collectPlannedWorks, plannedCostline } from './costline.js';
 
+import { lineTotal } from './normalize.js';
 const tasks = [
   {
     id: 's1', kind: 'stage', text: 'فونداسیون', subtasks: [
@@ -72,4 +73,15 @@ test('quarter buckets group Jalali months into three-month periods', () => {
   assert.ok(model.buckets.length >= 1);
   assert.match(model.buckets[0].label, /تابستان|پاییز/);
   assert.equal(model.buckets.reduce((sum, bucket) => sum + bucket.total, 0), 100);
+});
+
+test('legacy follow-up amounts do not contribute to estimates or planned costs', () => {
+  const work = {
+    id: 'work', kind: 'work', workTasks: [
+      { id: 'follow-up', type: 'پیگیری', amount: 80, scheduleStart: '1404/06/12' },
+      { id: 'purchase', type: 'خرید', amount: 20, scheduleStart: '1404/06/12' },
+    ],
+  };
+  assert.equal(lineTotal(work), 20);
+  assert.deepEqual(collectPlannedWorks([work]).map(({ id, amount }) => [id, amount]), [['purchase', 20]]);
 });

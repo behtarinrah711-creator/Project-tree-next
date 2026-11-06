@@ -2,7 +2,7 @@ import { uid } from '../../data/projectFactories.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { workTaskRepository } from '../../data/workTaskRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
-import { WORK_TYPES } from './normalize.js';
+import { FOLLOW_UP_WORK_TYPE, WORK_TYPES } from './normalize.js';
 import { TASK_PRIORITIES, activeWorkTasks, normalizeWorkTask, workTaskProgress } from './workTaskModel.js';
 import { validatePredecessors } from './scheduling.js';
 import { projectRepository } from '../../data/projectRepository.js';
@@ -29,7 +29,7 @@ function validate(projectId, workId, input){
   const counterpartyContactId = String(input?.counterpartyContactId || '');
   const contractorContactId = String(input?.contractorContactId || '');
   const approvalContactId = String(input?.approvalContactId || '');
-  const activityId = String(input?.activityId || '');
+  const activityId = input.type === FOLLOW_UP_WORK_TYPE ? '' : String(input?.activityId || '');
   const contractTemplateId=String(input?.contractTemplateId || '');
   if(input.hasContract && contractTemplateId && !(projectRepository.find(projectId)?.contractTemplates || []).some(t=>!t.trashed && String(t.id)===contractTemplateId)) return {ok:false,code:'contract_template'};
   const contractApproverContactIds=[...new Set((Array.isArray(input?.contractApproverContactIds)?input.contractApproverContactIds:[]).map(String).filter(Boolean))];
