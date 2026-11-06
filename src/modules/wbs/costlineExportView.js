@@ -2,7 +2,7 @@ import { assignWorksToBuckets, buildBuckets, collectPlannedWorks, COSTLINE_RANGE
 import { allocationsOf, fundingReceiptsOf, poolReceived, poolRemaining } from '../../domain/wbs/fundingReceipts.js';
 import { formatJalaliDisplay, JALALI_MONTHS, todayJalaliStr } from '../../ui/jalali.js';
 import { toPersianDigits } from '../../ui/digits.js';
-import { installNotebookExportView } from '../notebook/notebookExportView.js';
+import { installNotebookExportView, notebookPaperFrameStyles } from '../notebook/notebookExportView.js';
 
 const ranges = [...COSTLINE_RANGES.slice(0,4), {id:'month2',label:'دوماهه'}, ...COSTLINE_RANGES.slice(4)];
 const money = value => new Intl.NumberFormat('fa-IR').format(value);
@@ -47,13 +47,15 @@ function detailRows(works){
   }).flat();
 }
 
-const styles = `@page{size:A4 landscape;margin:10mm 12mm}
+const styles = `@page{size:A4 landscape;margin:10mm}
+${notebookPaperFrameStyles()}
 @media print{
   body{padding:0}
-  .cost-report::before{content:'';position:fixed;inset:-5mm -7mm;border:0.25mm solid #a7b2bf;pointer-events:none}
 }
 @media screen{body{padding:10mm 12mm}}
-.cost-report h2{font-size:16px;margin:8px 0}.cost-report p{margin:6px 0}
+.cost-report h2{font-size:16px;margin:14px 0 3px;break-after:avoid}
+.cost-report section>h2:first-child{margin-top:0}
+.cost-report h2+table{margin-top:0}.cost-report p{margin:6px 0}
 .cost-report table{font-size:11px;table-layout:auto}.cost-report td{overflow-wrap:anywhere}.cost-report th,.cost-report td{padding:4px 6px}
 .cost-report .cost-total th,.cost-report .cost-total td{background:#eef3f8;font-weight:700}
 .cost-report thead{display:table-header-group}.cost-report tr,.signature{break-inside:avoid}
@@ -123,7 +125,6 @@ ${i===0?'<h2>جمع بازهٔ انتخاب‌شده</h2>'+table(columns,[costs(
 <p class="cost-legend">محور عمودی به میلیون تومان · <b>آبی تیره: تخصیص‌یافته</b> · <span>آبی روشن: کسری</span></p>
 ${chartYear?`<p>سال ${toPersianDigits(chartYear)}</p>`:''}
 ${chart(group,max,chartYear)}
-<p>فقط دوره‌های دارای مبلغ نمایش داده شده‌اند.</p>
 ${table(['دوره',...columns,'تخصیص تجمعی (تومان)'],rows,i+group.length===buckets.length?['جمع کل بازه',...costs(need,allocated),money(allocated)]:null)}</section>`;
   }
   if(!buckets.length) html+=title+'<p>در این بازه برآورد دوره‌ای وجود ندارد.</p>';
