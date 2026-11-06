@@ -5,7 +5,8 @@ const RELATION_TYPES = Object.freeze(['FS','SS','FF']);
 
 function label(row){
   const kind = row.kind === 'stage' ? 'بسته' : (row.kind === 'workTask' ? 'Task' : 'Work');
-  return `${kind} — ${row.title}`;
+  const path = row.parentPath.join(' ← ');
+  return path ? `${kind} — ${row.title} (${path})` : `${kind} — ${row.title}`;
 }
 
 function normalizeRelations(initial){

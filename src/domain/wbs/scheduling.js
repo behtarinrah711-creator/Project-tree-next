@@ -142,10 +142,12 @@ function dependencyRows(item){
 
 export function flattenDependencyCandidates(items){
   const out = [];
-  const visit = nodes => (nodes || []).filter(node => node && !node.trashed).forEach(node => {
-    out.push({ id:String(node.id), kind:isStage(node) ? 'stage' : 'work', title:node.text || '', item:node });
-    if(canHoldWorkTasks(node)) activeWorkTasks(node).forEach(task => out.push({ id:String(task.id), kind:'workTask', title:task.title || '', workId:String(node.id), item:task }));
-    visit(node.subtasks);
+  const visit = (nodes, parentPath = []) => (nodes || []).filter(node => node && !node.trashed).forEach(node => {
+    const title = node.text || '';
+    const path = title ? [...parentPath, title] : parentPath;
+    out.push({ id:String(node.id), kind:isStage(node) ? 'stage' : 'work', title, parentPath, item:node });
+    if(canHoldWorkTasks(node)) activeWorkTasks(node).forEach(task => out.push({ id:String(task.id), kind:'workTask', title:task.title || '', parentPath:path, workId:String(node.id), item:task }));
+    visit(node.subtasks, path);
   });
   visit(items); return out;
 }
