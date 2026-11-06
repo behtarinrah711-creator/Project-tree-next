@@ -5,6 +5,8 @@ const runtime=new Proxy({}, {get(_target,key){return window.KarhaApp?.getActivit
 
 const state={dirty:false,projectId:null,activityId:null,onCreated:null,pickerMode:false};
 
+let releaseFormViewport;
+
 function getProjectId(){
   return projectContext.getProjectId?.()
     || projectContext.getActiveProjectId?.()
@@ -58,6 +60,24 @@ function renderForm(activity=null){
   cancel.textContent='انصراف';
   cancel.onclick=()=>closeActivityForm();
   actions.append(save,cancel);
+  releaseFormViewport?.();
+  const page=actions.closest('#activityFormPage');
+  const viewport=document.defaultView?.visualViewport;
+  if(page && viewport){
+    const syncViewport=()=>{
+      const inset=Math.max(0,document.documentElement.clientHeight-viewport.height-viewport.offsetTop);
+      page.style.setProperty('bottom',`${inset}px`,'important');
+    };
+    viewport.addEventListener('resize',syncViewport);
+    viewport.addEventListener('scroll',syncViewport);
+    syncViewport();
+    releaseFormViewport=()=>{
+      viewport.removeEventListener('resize',syncViewport);
+      viewport.removeEventListener('scroll',syncViewport);
+      page.style.removeProperty('bottom');
+      releaseFormViewport=null;
+    };
+  }
   document.getElementById('activityFormHeaderConfirm')?.remove();
   const header=document.querySelector('#activityFormPage .inner-section-bar');
   const confirm=document.createElement('button');
@@ -105,6 +125,7 @@ export function openActivityEditForm(activity){
 }
 
 export function closeActivityForm(fromPopState=false){
+  releaseFormViewport?.();
   const pickerMode=state.pickerMode;
   if(pickerMode){
     document.getElementById('activityFormPage')?.classList.add('hidden');
