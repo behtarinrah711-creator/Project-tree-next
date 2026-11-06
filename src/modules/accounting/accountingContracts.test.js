@@ -13,14 +13,19 @@ test('finance contracts use the report card header with only financial decision 
   const old=[projectRepository.find,contactApi.lookup,activityApi.lookup,globalThis.document];
   globalThis.document={createElement:make};
   const c={id:'c',title:'قرارداد پیمانکاری',contractNo:'CTR-1',activityId:'a',contractorId:'person',createdAt:1700000000000,status:'final',approvalStatus:'approved',signedAt:1,signedFiles:[{id:'image'}],accountingStatus:'sent',sentToAccountingAt:2,accountingPackage:{contract:{id:'c'},signedFiles:[{id:'image'}]}};
+  c.projectItemId='columns';c.workTaskId='reinforce';c.projectItemPath='مسیر قدیمی';
   c.approvalHistory=[{action:'create',at:1,actor:{name:'سازنده'}},{action:'complete',at:2,actor:{name:'تنظیم کننده'}},{action:'send_finance',at:3,actor:{name:'ارسال کننده'}}];
-  const p={id:'p',contracts:[c,{id:'unsent',status:'draft'}]};
+  const p={id:'p',tasks:[{id:'shed',text:'سوله موجود',subtasks:[{id:'columns',text:'اجرای ستون‌ها',workTasks:[{id:'reinforce',title:'بستن میلگرد ستون'}]}]}],contracts:[c,{id:'unsent',status:'draft'}]};
   projectRepository.find=()=>p;contactApi.lookup=()=>({firstName:'جواد',lastName:'قریشی'});activityApi.lookup=()=>({name:'اجرای فونداسیون'});
   try{
     const report=renderContractCard(p,c),body=make('body');renderAccountingContracts(body,'p');
     assert.equal(body.children[0].className,'contract-list');assert.equal(body.children[0].children.length,1);
     const finance=body.children[0].children[0];
     assert.equal(finance.className,report.className);
+    const heading=report.children.find(n=>n.className==='contract-card-heading');
+    const main=heading.children.find(n=>n.className==='contract-main');
+    assert.equal(main.children[2].textContent,'سوله موجود ← اجرای ستون‌ها ← بستن میلگرد ستون');
+    assert.ok(report.dataset.searchText.includes('بستنمیلگردستون'));
     for(const name of ['contract-card-heading']){
       assert.deepEqual(shape(finance.children.find(n=>n.className===name)),shape(report.children.find(n=>n.className===name)));
     }
