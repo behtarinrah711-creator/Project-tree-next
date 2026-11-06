@@ -173,3 +173,24 @@ test('new member-created manual templates are retained for the project and subse
   assert.equal(revised.contractTemplates[0].items.length,2);
   assert.equal(saved.contractTemplates[0].items.length,1);
 });
+
+test('shared catalogue writes follow each module’s access and preserve newer records',()=>{
+  const current={
+    contacts:[{id:'c1',name:'Current',updatedAt:5},{id:'c2',name:'Other'}],
+    activityTemplates:[{id:'a1',name:'Original'}],
+  };
+  const incoming={
+    contacts:[{id:'c1',name:'Stale',updatedAt:4},{id:'c3',name:'New'}],
+    activityTemplates:[{id:'a1',name:'Edited',updatedAt:2},{id:'a2',name:'New'}],
+  };
+  const saved=mergeSharedProjectPayload(current,incoming,{modules:{people:'full',activities:'create'}});
+  assert.deepEqual(saved.contacts,[...current.contacts,incoming.contacts[1]]);
+  assert.deepEqual(saved.activityTemplates,incoming.activityTemplates);
+  const restricted=mergeSharedProjectPayload(current,incoming,{modules:{people:'view',activities:'edit'}});
+  assert.deepEqual(restricted.contacts,current.contacts);
+  assert.deepEqual(restricted.activityTemplates,[incoming.activityTemplates[0]]);
+  const deletion={contacts:[{id:'c1',trashed:true,updatedAt:6}]};
+  assert.equal(mergeSharedProjectPayload(current,deletion,{modules:{people:'create'}}).contacts[0].trashed,undefined);
+  assert.equal(mergeSharedProjectPayload(current,deletion,{modules:{people:'full'}}).contacts[0].trashed,true);
+  assert.equal(canMutateSharedProject({modules:{activities:'full'}}),true);
+});

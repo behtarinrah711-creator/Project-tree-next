@@ -103,7 +103,7 @@ export function canWriteProjectCostline(permissions){
 
 export function canMutateSharedProject(permissions){
   return permissions?.edit===true || canWriteProjectTasks(permissions)
-    || ['edit','create','full'].includes(modulePermissions(permissions)?.contracts);
+    || ['contracts','people','activities'].some(key=>['edit','create','full'].includes(modulePermissions(permissions)?.[key]));
 }
 
 function mergeTaskCollection(currentItems=[],incomingItems=[],allowDelete=false){
@@ -199,8 +199,23 @@ function mergeProjectTemplates(current=[],incoming=[]){
   return [...records.values()];
 }
 
+function mergeMemberCatalogue(current=[],incoming=[],level){
+  const records=new Map(current.map(record=>[String(record.id),record]));
+  for(const record of incoming){
+    if(!record?.id) continue;
+    const id=String(record.id);
+    const previous=records.get(id);
+    if(!previous && (level==='edit' || record.trashed)) continue;
+    if(previous && (Boolean(previous.trashed)!==Boolean(record.trashed) && level!=='full')) continue;
+    if(previous && Number(record.updatedAt || 0)<=Number(previous.updatedAt || 0)) continue;
+    records.set(id,record);
+  }
+  return [...records.values()];
+}
+
 export function mergeSharedProjectPayload(current,incoming,permissions,actor=null){
-  if(!modulePermissions(permissions)) return incoming;
+  const modules=modulePermissions(permissions);
+  if(!modules) return incoming;
   const costline = canWriteProjectCostline(permissions);
   const tasks=mergeTaskCollection(
     Array.isArray(current?.tasks)?current.tasks:[],
@@ -210,6 +225,9 @@ export function mergeSharedProjectPayload(current,incoming,permissions,actor=nul
   return {
     ...current,
     tasks,
+    ...Object.fromEntries([['contacts','people'],['activityTemplates','activities']]
+      .filter(([,module])=>['edit','create','full'].includes(modules[module]))
+      .map(([field,module])=>[field,mergeMemberCatalogue(current?.[field],incoming?.[field],modules[module])])),
     contracts:mergeMemberContracts(current?.contracts,incoming?.contracts,tasks,permissions,actor),
     contractTemplates:canMutateSharedProject(permissions)
       ? mergeProjectTemplates(current?.contractTemplates,incoming?.contractTemplates)

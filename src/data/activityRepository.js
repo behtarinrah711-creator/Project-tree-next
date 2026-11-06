@@ -76,6 +76,7 @@ export class ActivityRepository{
     return this.update(projectId, activityId, activity => ({
       ...activity,
       trashed:true,
+      updatedAt:Date.now(),
     }));
   }
 }
