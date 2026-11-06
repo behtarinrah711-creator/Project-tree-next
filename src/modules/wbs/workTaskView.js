@@ -44,12 +44,6 @@ function linkedContractForWork(projectId, workId, taskId=''){
       && (!taskId || String(contract.workTaskId || '') === String(taskId)));
 }
 
-function linkedContractor(projectId, workId){
-  const contract = linkedContractForWork(projectId, workId);
-  if(!contract) return null;
-  return contactRepository.get(projectId, contract.contractorId || contract.contactId) || null;
-}
-
 function optionButton({ name, value, options, onChange, placeholder = 'انتخاب کنید' }){
   const root=document.createElement('div');root.className='wbs-task-option-select';
   const input=document.createElement('input');input.type='hidden';input.name=name;input.value=String(value ?? '');
@@ -471,12 +465,13 @@ export function bindTaskReorder(group, row, { projectId, workId, taskId, onChang
 export function renderWorkTasks({ documentRef = document, projectId, work, view, onChanged, readOnly=false, canDelete=true }){
   const tasks = workTaskApi.list(projectId, work.id);
   if(!tasks.length) return null;
-  const contractor = linkedContractor(projectId, work.id);
   const group = documentRef.createElement('div');
   group.className = 'wbs-work-tasks';
   group.setAttribute('role', 'list');
   tasks.forEach(task => {
     const complete = isTaskComplete(task);
+    const isContractorTask = task.type === 'پیمانکار';
+    const contractor = isContractorTask ? contactRepository.get(projectId, task.counterpartyContactId ?? task.contractorContactId) : null;
     const contact = task.assigneeContactId ? contactRepository.get(projectId, task.assigneeContactId) : null;
     const row = documentRef.createElement('button');
     row.type = 'button';
@@ -488,7 +483,7 @@ export function renderWorkTasks({ documentRef = document, projectId, work, view,
       <span class="wbs-task-connector" aria-hidden="true"></span>
       <span class="wbs-task-content">
         <span class="wbs-task-main"><span class="wbs-type-chip ${TYPE_CLASSES.get(task.type) || 'type-7'}">${escapeHtml(task.type || '؟')}</span><span class="wbs-task-title">${escapeHtml(task.title)}</span></span>
-        <span class="wbs-task-secondary">${contact ? `<span class="wbs-task-assignee">${escapeHtml(contactName(contact))}</span>` : ''}${contractor ? `<span class="wbs-task-contractor">${escapeHtml(contactName(contractor))}</span>` : ''}<span class="wbs-task-priority priority-${task.priority}">${escapeHtml(PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal)}</span>${view === 'progress' ? `<span class="wbs-task-progress">٪${new Intl.NumberFormat('fa-IR').format(task.progress || 0)}</span>` : ''}${view === 'estimate' && task.type !== FOLLOW_UP_WORK_TYPE ? `<span class="wbs-task-cost">${new Intl.NumberFormat('fa-IR').format(taskCostOf(task))} تومان</span>` : ''}</span>
+        <span class="wbs-task-secondary">${isContractorTask ? `<span class="wbs-task-contractor">${contractor && !contractor.trashed ? escapeHtml(contactName(contractor)) : 'بدون پیمانکار'}</span>` : ''}${contact ? `<span class="wbs-task-assignee">${escapeHtml(contactName(contact))}</span>` : ''}<span class="wbs-task-priority priority-${task.priority}">${escapeHtml(PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal)}</span>${view === 'progress' ? `<span class="wbs-task-progress">٪${new Intl.NumberFormat('fa-IR').format(task.progress || 0)}</span>` : ''}${view === 'estimate' && task.type !== FOLLOW_UP_WORK_TYPE ? `<span class="wbs-task-cost">${new Intl.NumberFormat('fa-IR').format(taskCostOf(task))} تومان</span>` : ''}</span>
       </span>`;
     row.addEventListener('click', event => {
       if(event.target.closest('.wbs-grip')) return;
