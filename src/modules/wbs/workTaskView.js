@@ -119,7 +119,7 @@ function renderToggles(container, type, task, {contractLocked=false}={}){
   container.appendChild(row);
 }
 
-function renderCounterparty(container, { type, contacts, value, onSelect, workId, documentRef }){
+function renderCounterparty(container, { type, contacts, activities, value, onSelect, workId, documentRef }){
   container.replaceChildren();
   const label = COUNTERPARTY_LABELS[type];
   if(!label) return;
@@ -133,7 +133,14 @@ function renderCounterparty(container, { type, contacts, value, onSelect, workId
   button.addEventListener('click', () => openSearchPicker({
     title:`انتخاب ${label}`, listTitle:'مخاطبین', selectedTitle:`${label} منتخب`,
     contextKey:`wbs-task-counterparty:${workId}`,
-    items:contacts.map(contact => ({ id:contact.id, name:contactName(contact) })),
+    items:contacts.map(contact => {
+      const name = contactName(contact);
+      if(type !== 'پیمانکار' || !Array.isArray(contact.activities)) return { id:contact.id, name };
+      const activityNames = contact.activities
+        .map(id => activities.find(activity => String(activity.id) === String(id))?.name)
+        .filter(Boolean);
+      return { id:contact.id, name:activityNames.length ? `${name} (${activityNames.join('، ')})` : name };
+    }),
     resourceType:'contact', showStar:false, showAdd:true,
     onAdd:()=>{
       window.KarhaSearchTemplate?.close(false);
@@ -203,7 +210,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
           contractLocked:Boolean(linkedContract && !(linkedContract.isDraft || linkedContract.status==='draft')),
         });
         renderCounterparty(counterpartyContainer, {
-          type:val, contacts, value:counterpartyContactId, workId:work.id, documentRef,
+          type:val, contacts, activities, value:counterpartyContactId, workId:work.id, documentRef,
           onSelect:value => { counterpartyContactId = value; },
         });
         amount=amountContainer.querySelector('[name="taskAmount"]')?.dataset.value ?? amount;
