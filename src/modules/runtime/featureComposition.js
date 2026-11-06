@@ -57,11 +57,11 @@ function restoreGlobalRecord(entry){
   }
   if(entry.type==='contact'){
     const p=findProject(entry.projectId); const c=findContact(entry.id,p); if(!c) return false;
-    c.trashed=false; delete c.deletedAt; delete c.deletedType; markDirty(p.id); return true;
+    c.trashed=false; c.updatedAt=Date.now(); delete c.deletedAt; delete c.deletedType; markDirty(p.id); return true;
   }
   if(entry.type==='activity'){
     const p=findProject(entry.projectId); const a=findActivityTemplate(entry.id,p); if(!a) return false;
-    a.trashed=false; delete a.deletedAt; delete a.deletedType; markDirty(p.id); return true;
+    a.trashed=false; a.updatedAt=Date.now(); delete a.deletedAt; delete a.deletedType; markDirty(p.id); return true;
   }
   if(entry.type==='task') return !!window.KarhaApp?.taskRuntime?.restore(entry.projectId,entry.id);
   if(entry.type==='subtask') return !!window.KarhaApp?.taskRuntime?.restore(entry.projectId,entry.rootTaskId||entry.parentId,entry.id);
