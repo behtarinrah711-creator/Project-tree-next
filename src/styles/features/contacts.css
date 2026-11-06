@@ -168,3 +168,6 @@
     #printRoot, #printRoot *{visibility:visible;}
     #printRoot{position:absolute;left:0;top:0;width:100%;}
   }
+
+/* Keep the task form in place while the contact editor is open. */
+body:has(#contactsPage.contact-form-mode:not(.hidden)) .wbs-task-form-overlay{display:none;}
