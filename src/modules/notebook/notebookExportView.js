@@ -27,7 +27,7 @@ function numbering(rows){
   }));
 }
 
-export function installNotebookExportView({documentRef=globalThis.document,windowRef=globalThis.window,idPrefix='notebookExport',historyKey='notebook-export',documentBuilder=null,extraStyles='',paginateDocument=null,onNoteChange=null}={}){
+export function installNotebookExportView({documentRef=globalThis.document,windowRef=globalThis.window,idPrefix='notebookExport',historyKey='notebook-export',documentBuilder=null,extraStyles='',paginateDocument=null,onNoteChange=null,pdfOnly=false}={}){
   const get=id=>documentRef.getElementById(id.replace('notebookExport',idPrefix));
   const page=get('notebookExportPage');
   if(!page) return {open(){return false;}};
@@ -103,7 +103,7 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
     const actions=documentRef.createElement('div');actions.className='export-actions';
     const pdf=documentRef.createElement('button');pdf.className='export-pdf-btn';pdf.textContent='PDF';pdf.onclick=printPdf;
     const jpeg=documentRef.createElement('button');jpeg.className='export-jpg-btn';jpeg.textContent='JPEG';jpeg.onclick=saveJpeg;
-    actions.append(pdf,jpeg);if(!documentBuilder)e.toolbar.append(selectAll);e.toolbar.append(actions);
+    actions.append(pdf);if(!pdfOnly)actions.append(jpeg);if(!documentBuilder)e.toolbar.append(selectAll);e.toolbar.append(actions);
     const noteValue=e.note?.value||'';
     const note=e.note?.closest?.('.export-note-wrap')?.outerHTML||'';
     e.body.innerHTML=`${note}${documentBuilder?'':all.length?all.map(row=>`<label class="export-row ${row.depth?'sub':''}" style="--export-depth:${row.depth}"><input type="checkbox" data-export-key="${esc(row.key)}" ${selected.has(row.key)?'checked':''}><span class="export-title">${esc(row.item.text)}</span>${e.cost.checked?`<span class="row-cost"><b>${money(notebookItemCost(row.item))}</b><small>تومان</small></span>`:'<span class="row-cost"></span>'}</label>`).join(''):'<div class="mgmt-empty">مورد بازی برای خروجی وجود ندارد.</div>'}`;

@@ -1,3 +1,4 @@
+import { fitPageAboveKeyboard } from '../wbs/wbsSheet.js';
 import { projectContext } from '../../core/projectContext.js';
 import { activityApi } from '../../domain/activityApi.js';
 
@@ -61,23 +62,7 @@ function renderForm(activity=null){
   cancel.onclick=()=>closeActivityForm();
   actions.append(save,cancel);
   releaseFormViewport?.();
-  const page=actions.closest('#activityFormPage');
-  const viewport=document.defaultView?.visualViewport;
-  if(page && viewport){
-    const syncViewport=()=>{
-      const inset=Math.max(0,document.documentElement.clientHeight-viewport.height-viewport.offsetTop);
-      page.style.setProperty('bottom',`${inset}px`,'important');
-    };
-    viewport.addEventListener('resize',syncViewport);
-    viewport.addEventListener('scroll',syncViewport);
-    syncViewport();
-    releaseFormViewport=()=>{
-      viewport.removeEventListener('resize',syncViewport);
-      viewport.removeEventListener('scroll',syncViewport);
-      page.style.removeProperty('bottom');
-      releaseFormViewport=null;
-    };
-  }
+  releaseFormViewport=fitPageAboveKeyboard(actions.closest('#activityFormPage'));
   document.getElementById('activityFormHeaderConfirm')?.remove();
   const header=document.querySelector('#activityFormPage .inner-section-bar');
   const confirm=document.createElement('button');

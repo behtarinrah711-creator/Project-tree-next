@@ -3,6 +3,24 @@ import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 let releaseSheetViewport = null;
 let sheetHistoryKey = '';
 
+export function fitPageAboveKeyboard(page){
+  const documentRef = page?.ownerDocument;
+  const viewport = documentRef?.defaultView?.visualViewport;
+  if(!viewport) return;
+  const syncViewport = () => {
+    const inset = Math.max(0, documentRef.documentElement.clientHeight - viewport.height - viewport.offsetTop);
+    page.style.setProperty('bottom', `${inset}px`, 'important');
+  };
+  viewport.addEventListener('resize', syncViewport);
+  viewport.addEventListener('scroll', syncViewport);
+  syncViewport();
+  return () => {
+    viewport.removeEventListener('resize', syncViewport);
+    viewport.removeEventListener('scroll', syncViewport);
+    page.style.removeProperty('bottom');
+  };
+}
+
 export function closeWbsSheet(fromPopState = false){
   releaseSheetViewport?.();
   releaseSheetViewport = null;

@@ -1,3 +1,4 @@
+import { openCostlineExport } from './costlineExportView.js';
 import { COSTLINE_RANGES, WEEKDAYS, plannedCostline } from '../../domain/wbs/costline.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
 import { toPersianDigits } from '../../ui/digits.js';
@@ -32,9 +33,14 @@ export function renderCostline(project, access = {}){
   const model = plannedCostline(project.tasks || [], { rangeId: range.id, originWeekday });
   const chartFrame = document.createElement('section');
   chartFrame.className = 'wbs-costline-frame wbs-view-frame is-costline-frame';
-  chartFrame.append(renderToolbar(() => {
+  const toolbar = renderToolbar(() => {
     root.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project, permissions));
-  }), renderChart(project, model, permissions));
+  });
+  const exportButton = toolbar.querySelector('.wbs-export-tool');
+  exportButton.onclick = () => openCostlineExport(projectRepository.getActiveProject(project.id) || project, {
+    rangeId:range.id, originWeekday, trigger:exportButton,
+  });
+  chartFrame.append(toolbar, renderChart(project, model, permissions));
   root.append(chartFrame, renderFundingPanel(project, () => {
     root.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project, permissions));
   }, permissions));

@@ -1,3 +1,5 @@
+import { approvalLabels, contractApprovalState } from '../../domain/contractApproval.js';
+import { isContractInFinance } from '../../domain/contractHandoff.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { activityRepository } from '../../data/activityRepository.js';
 import { projectRepository } from '../../data/projectRepository.js';
@@ -42,12 +44,6 @@ function linkedContractForWork(projectId, workId, taskId=''){
     .find(contract => !contract.trashed
       && String(contract.projectItemId || '') === String(workId)
       && (!taskId || String(contract.workTaskId || '') === String(taskId)));
-}
-
-function linkedContractor(projectId, workId){
-  const contract = linkedContractForWork(projectId, workId);
-  if(!contract) return null;
-  return contactRepository.get(projectId, contract.contractorId || contract.contactId) || null;
 }
 
 function optionButton({ name, value, options, onChange, placeholder = 'انتخاب کنید' }){
@@ -119,7 +115,7 @@ function renderToggles(container, type, task, {contractLocked=false}={}){
   container.appendChild(row);
 }
 
-function renderCounterparty(container, { type, contacts, value, onSelect, workId, documentRef }){
+function renderCounterparty(container, { type, contacts, activities, value, onSelect, workId, documentRef }){
   container.replaceChildren();
   const label = COUNTERPARTY_LABELS[type];
   if(!label) return;
@@ -133,7 +129,14 @@ function renderCounterparty(container, { type, contacts, value, onSelect, workId
   button.addEventListener('click', () => openSearchPicker({
     title:`انتخاب ${label}`, listTitle:'مخاطبین', selectedTitle:`${label} منتخب`,
     contextKey:`wbs-task-counterparty:${workId}`,
-    items:contacts.map(contact => ({ id:contact.id, name:contactName(contact) })),
+    items:contacts.map(contact => {
+      const name = contactName(contact);
+      if(type !== 'پیمانکار' || !Array.isArray(contact.activities)) return { id:contact.id, name };
+      const activityNames = contact.activities
+        .map(id => activities.find(activity => String(activity.id) === String(id))?.name)
+        .filter(Boolean);
+      return { id:contact.id, name:activityNames.length ? `${name} (${activityNames.join('، ')})` : name };
+    }),
     resourceType:'contact', showStar:false, showAdd:true,
     onAdd:()=>{
       window.KarhaSearchTemplate?.close(false);
@@ -191,6 +194,28 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       let activityId=task?.activityId || '';
       const togglesContainer = documentRef.createElement('div');
       togglesContainer.className = 'wbs-toggles-container';
+      const contractSummary = documentRef.createElement('div');
+      contractSummary.className = 'wbs-note';
+      const paintContractSummary = () => {
+        const checkbox = togglesContainer.querySelector('[name="hasContract"]');
+        contractSummary.hidden = !checkbox;
+        if(!checkbox?.checked){
+          contractSummary.textContent = 'بدون قرارداد';
+          return;
+        }
+        if(!linkedContract){
+          contractSummary.textContent = 'قرارداد هنوز ایجاد نشده';
+          return;
+        }
+        const state = contractApprovalState(linkedContract);
+        const status = linkedContract.accountingStatus === 'accepted' ? 'تأیید شده توسط بخش مالی'
+          : isContractInFinance(linkedContract) ? 'ارسال شده به مالی'
+          : state === 'approved' && linkedContract.signedAt ? 'امضا شده'
+          : state === 'ready' ? 'تکمیل شده' : approvalLabels[state];
+        const number = linkedContract.contractNo ? `شماره قرارداد ${linkedContract.contractNo}` : 'در انتظار شماره قرارداد';
+        contractSummary.textContent = `${number} · ${status}`;
+      };
+      togglesContainer.addEventListener('change', paintContractSummary);
       const counterpartyContainer = documentRef.createElement('div');
       counterpartyContainer.className = 'wbs-counterparty-container';
       const activityContainer=documentRef.createElement('div');
@@ -202,8 +227,9 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         renderToggles(togglesContainer, val, task,{
           contractLocked:Boolean(linkedContract && !(linkedContract.isDraft || linkedContract.status==='draft')),
         });
+        paintContractSummary();
         renderCounterparty(counterpartyContainer, {
-          type:val, contacts, value:counterpartyContactId, workId:work.id, documentRef,
+          type:val, contacts, activities, value:counterpartyContactId, workId:work.id, documentRef,
           onSelect:value => { counterpartyContactId = value; },
         });
         amount=amountContainer.querySelector('[name="taskAmount"]')?.dataset.value ?? amount;
@@ -219,7 +245,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       const initialType=task?.type || '';
       const type=optionButton({name:'taskType',value:initialType,placeholder:'انتخاب نوع کار',options:WORK_TYPES.map(value=>({id:value,name:value})), onChange:renderTypeFields});
       root.appendChild(fieldRow('نوع کار',type));
-      root.appendChild(togglesContainer);
+      root.append(togglesContainer, contractSummary);
       root.appendChild(counterpartyContainer);
       renderTypeFields(initialType);
       root.appendChild(activityContainer);
@@ -318,7 +344,17 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
           const remove = documentRef.createElement('button');
           remove.type = 'button'; remove.className = 'wbs-info-row is-danger wbs-task-delete'; remove.textContent = 'حذف کار';
           remove.addEventListener('click', () => {
-            const perform = () => { workTaskApi.remove(projectId, work.id, task.id); closeWbsSheet(); onChanged?.(); };
+            const perform = () => {
+              const result = workTaskApi.remove(projectId, work.id, task.id);
+              const showToast = documentRef.defaultView?.KarhaUI?.showToast;
+              if(!result.ok){
+                showToast?.(result.code === 'not_found' ? 'این کار در درخت پروژه پیدا نشد' : 'حذف کار انجام نشد');
+                return;
+              }
+              closeWbsSheet();
+              onChanged?.();
+              showToast?.('کار از درخت پروژه حذف شد');
+            };
             if(typeof documentRef.defaultView?.KarhaUI?.openConfirm === 'function') documentRef.defaultView.KarhaUI.openConfirm('این کار حذف شود؟', perform, 'حذف');
             else if(documentRef.defaultView?.confirm?.('این کار حذف شود؟')) perform();
           });
@@ -471,12 +507,13 @@ export function bindTaskReorder(group, row, { projectId, workId, taskId, onChang
 export function renderWorkTasks({ documentRef = document, projectId, work, view, onChanged, readOnly=false, canDelete=true }){
   const tasks = workTaskApi.list(projectId, work.id);
   if(!tasks.length) return null;
-  const contractor = linkedContractor(projectId, work.id);
   const group = documentRef.createElement('div');
   group.className = 'wbs-work-tasks';
   group.setAttribute('role', 'list');
   tasks.forEach(task => {
     const complete = isTaskComplete(task);
+    const isContractorTask = task.type === 'پیمانکار';
+    const contractor = isContractorTask ? contactRepository.get(projectId, task.counterpartyContactId ?? task.contractorContactId) : null;
     const contact = task.assigneeContactId ? contactRepository.get(projectId, task.assigneeContactId) : null;
     const row = documentRef.createElement('button');
     row.type = 'button';
@@ -488,7 +525,7 @@ export function renderWorkTasks({ documentRef = document, projectId, work, view,
       <span class="wbs-task-connector" aria-hidden="true"></span>
       <span class="wbs-task-content">
         <span class="wbs-task-main"><span class="wbs-type-chip ${TYPE_CLASSES.get(task.type) || 'type-7'}">${escapeHtml(task.type || '؟')}</span><span class="wbs-task-title">${escapeHtml(task.title)}</span></span>
-        <span class="wbs-task-secondary">${contact ? `<span class="wbs-task-assignee">${escapeHtml(contactName(contact))}</span>` : ''}${contractor ? `<span class="wbs-task-contractor">${escapeHtml(contactName(contractor))}</span>` : ''}<span class="wbs-task-priority priority-${task.priority}">${escapeHtml(PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal)}</span>${view === 'progress' ? `<span class="wbs-task-progress">٪${new Intl.NumberFormat('fa-IR').format(task.progress || 0)}</span>` : ''}${view === 'estimate' && task.type !== FOLLOW_UP_WORK_TYPE ? `<span class="wbs-task-cost">${new Intl.NumberFormat('fa-IR').format(taskCostOf(task))} تومان</span>` : ''}</span>
+        <span class="wbs-task-secondary">${isContractorTask ? `<span class="wbs-task-contractor">${contractor && !contractor.trashed ? escapeHtml(contactName(contractor)) : 'بدون پیمانکار'}</span>` : ''}${contact ? `<span class="wbs-task-assignee">${escapeHtml(contactName(contact))}</span>` : ''}<span class="wbs-task-priority priority-${task.priority}">${escapeHtml(PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal)}</span>${view === 'progress' ? `<span class="wbs-task-progress">٪${new Intl.NumberFormat('fa-IR').format(task.progress || 0)}</span>` : ''}${view === 'estimate' && task.type !== FOLLOW_UP_WORK_TYPE ? `<span class="wbs-task-cost">${new Intl.NumberFormat('fa-IR').format(taskCostOf(task))} تومان</span>` : ''}</span>
       </span>`;
     row.addEventListener('click', event => {
       if(event.target.closest('.wbs-grip')) return;
