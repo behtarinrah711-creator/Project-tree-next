@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { allocatedForBucket, openFundingStops, placeCardFunding, poolAllocated, poolRemaining, receiptTotalAllowed, resetLegacyFunding, setBucketFunding } from './fundingReceipts.js';
-import { jalaliDayNumber } from './costline.js';
+import { jalaliDayNumber, plannedCostline } from './costline.js';
 
 const mdfTasks = accrual => [{
   id:'s1', kind:'stage', text:'دکور MDF', subtasks:[{
@@ -225,4 +225,20 @@ test('lowering the estimate frees the extra funded amount', () => {
   const next = placeCardFunding(project, 'w1');
   assert.equal(poolAllocated(next), 50);
   assert.equal(poolRemaining(next), 150);
+});
+
+test('allocations from smaller ranges remain attached to the same card in the monthly view', () => {
+  const tasks = [{
+    id:'w1', kind:'work', quantity:1, unitCost:35000000,
+    scheduleStart:'1405/08/18', scheduleEnd:'1405/08/21',
+  }];
+  let project = { tasks, fundingReceipts:[{ amount:300000000 }] };
+  for(const bucket of plannedCostline(tasks, { rangeId:'day' }).buckets){
+    const result = setBucketFunding(project, 'w1', bucket, bucket.total);
+    assert.equal(result.ok, true);
+    project = result.project;
+  }
+  const [month] = plannedCostline(tasks, { rangeId:'month' }).buckets;
+  assert.equal(allocatedForBucket(project, month.works[0].id, month), 35000000);
+  assert.equal(poolRemaining(project), 265000000);
 });
