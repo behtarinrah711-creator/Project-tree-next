@@ -31,7 +31,13 @@ function detailRows(works){
   }).flat();
 }
 
-const styles = `@page{size:A4 landscape}body{padding:10mm 12mm}.cost-report h2{font-size:16px;margin:8px 0}.cost-report p{margin:6px 0}
+const styles = `@page{size:A4 landscape;margin:10mm 12mm}
+@media print{
+  body{padding:0}
+  .cost-report::before{content:'';position:fixed;inset:-5mm -7mm;border:0.25mm solid #a7b2bf;pointer-events:none}
+}
+@media screen{body{padding:10mm 12mm}}
+.cost-report h2{font-size:16px;margin:8px 0}.cost-report p{margin:6px 0}
 .cost-report table{font-size:11px;table-layout:auto}.cost-report td{overflow-wrap:anywhere}.cost-report th,.cost-report td{padding:4px 6px}
 .cost-report .cost-total th,.cost-report .cost-total td{background:#eef3f8;font-weight:700}
 .cost-report thead{display:table-header-group}.cost-report tr,.signature{break-inside:avoid}
