@@ -73,9 +73,12 @@ function numericButton(name, value, { money=false }={}){
   const button=document.createElement('button');
   button.type='button';button.name=name;button.className='wbs-input wbs-inline-number';button.dataset.value=String(value ?? 0);
   const paint=()=>{button.textContent=`${new Intl.NumberFormat('fa-IR').format(Number(button.dataset.value)||0)}${money?' تومان':''}`;};
-  button.addEventListener('click',()=>openNumpadGeneric(button.dataset.value,raw=>{
-    button.dataset.value=toEnglishDigits(String(raw)).replace(/[^\d.]/g,'');paint();
-  },{group:money,suffix:money?' تومان':'',maxLen:16}));
+  button.addEventListener('click',()=>{
+    const initial = money && Number(button.dataset.value) === 0 ? '' : button.dataset.value;
+    openNumpadGeneric(initial,raw=>{
+      button.dataset.value=toEnglishDigits(String(raw)).replace(/[^\d.]/g,'');paint();
+    },{group:money,suffix:money?' تومان':'',maxLen:16});
+  });
   paint();return button;
 }
 
