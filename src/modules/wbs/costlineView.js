@@ -362,6 +362,17 @@ function renderMoney(value, { className = '', negative = false } = {}){
   return line;
 }
 
+function bucketFundingBreakdown(project, bucket){
+  const cards = bucket.works.map(work => ({
+    work,
+    allocated: allocatedForBucket(project, work.id, bucket),
+  }));
+  return {
+    cards,
+    total: cards.reduce((sum, card) => sum + card.allocated, 0),
+  };
+}
+
 function renderChart(project, model, access){
   const wrap = document.createElement('div');
   wrap.className = 'wbs-costline-chart wbs-view-body';
@@ -378,7 +389,7 @@ function renderChart(project, model, access){
     const col = document.createElement('button');
     col.type = 'button';
     col.className = 'wbs-costline-col';
-    const allocated = Math.min(bucket.total, bucket.works.reduce((sum, work) => sum + allocatedForBucket(project, work.id, bucket), 0));
+    const allocated = Math.min(bucket.total, bucketFundingBreakdown(project, bucket).total);
     const shortage = Math.max(0, bucket.total - allocated);
     col.setAttribute('aria-label', `${bucket.label}، مورد نیاز ${money(chartMoney(bucket.total))} تومان، تأمین شده ${money(chartMoney(allocated))} تومان، کسری ${money(chartMoney(shortage))} تومان`);
     const values = document.createElement('span');
@@ -441,6 +452,8 @@ function openBucketSheet(project, bucket, refresh, access){
         Object.assign(document.createElement('span'), { textContent:`${money(poolRemaining(current))} تومان` }),
       );
       host.appendChild(pool);
+      const { cards, total } = bucketFundingBreakdown(current, bucket);
+      host.appendChild(costlineDetailRow('جمع وجه اختصاص داده شده در این بازه', `${money(total)} تومان`));
       if(!bucket.works.length){
         const empty = document.createElement('p');
         empty.className = 'wbs-costline-empty';
@@ -448,9 +461,9 @@ function openBucketSheet(project, bucket, refresh, access){
         host.append(empty);
         return;
       }
-      bucket.works.forEach(work => {
+      cards.sort((a, b) => Number(b.allocated > 0) - Number(a.allocated > 0));
+      cards.forEach(({ work, allocated }) => {
         const slice = Number(work.sliceAmount) || 0;
-        const covered = allocatedForBucket(current, work.id, bucket);
         const card = document.createElement('article');
         card.className = 'wbs-costline-work';
         const heading = document.createElement('div');
@@ -523,13 +536,7 @@ function openBucketSheet(project, bucket, refresh, access){
         manual.type = 'button';
         manual.className = 'wbs-costline-manual';
         manual.disabled = !access.canWrite;
-        const paintManual = () => {
-          const live = projectRepository.getActiveProject(project.id) || project;
-          const amount = allocatedForBucket(live, work.id, bucket);
-          manual.textContent = amount > 0
-            ? `${money(amount)} تومان`
-            : 'وارد کردن مبلغ';
-        };
+        manual.textContent = allocated > 0 ? `${money(allocated)} تومان` : 'وارد کردن مبلغ';
         manual.addEventListener('click', () => {
           const live = projectRepository.getActiveProject(project.id) || project;
           const visibleAmount = allocatedForBucket(live, work.id, bucket);
@@ -552,7 +559,6 @@ function openBucketSheet(project, bucket, refresh, access){
             return next <= allowed ? '' : `حداکثر مبلغ مجاز ${money(allowed)} تومان است`;
           }});
         });
-        paintManual();
         const allocationRow = document.createElement('div');
         allocationRow.className = 'wbs-costline-allocation-row';
         allocationRow.append(assignLabel, manual);
