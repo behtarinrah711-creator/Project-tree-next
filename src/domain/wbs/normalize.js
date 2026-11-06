@@ -1,7 +1,9 @@
 export const KIND_STAGE = 'stage';
 export const KIND_WORK = 'work';
 
-export const WORK_TYPES = ['پیمانکار', 'خرید', 'نیروی کار', 'حمل و نقل', 'خدمات', 'پیگیری', 'ماشین آلات'];
+export const FOLLOW_UP_WORK_TYPE = 'پیگیری';
+
+export const WORK_TYPES = ['پیمانکار', 'خرید', 'نیروی کار', 'حمل و نقل', 'خدمات', FOLLOW_UP_WORK_TYPE, 'ماشین آلات'];
 export const UNITS = ['متر', 'مترمربع', 'مترمکعب', 'کیلوگرم', 'تن', 'عدد', 'دستگاه', 'ست', 'ساعت', 'روز', 'ماه'];
 
 export const WORK_TYPE_TOGGLES = Object.freeze({
@@ -10,7 +12,7 @@ export const WORK_TYPE_TOGGLES = Object.freeze({
   'نیروی کار': [{key:'hasContract', label:'قرارداد'}, {key:'hasProgressReport', label:'صورت وضعیت'}, {key:'hasLaborPayroll', label:'کارکرد و دستمزد'}],
   'حمل و نقل': [{key:'hasContract', label:'قرارداد'}, {key:'hasInvoice', label:'فاکتور'}, {key:'hasProgressReport', label:'صورت وضعیت'}],
   'خدمات': [{key:'hasContract', label:'قرارداد'}, {key:'hasInvoice', label:'فاکتور'}, {key:'hasProgressReport', label:'صورت وضعیت'}],
-  'پیگیری': [],
+  [FOLLOW_UP_WORK_TYPE]: [],
   'ماشین آلات': [{key:'hasContract', label:'قرارداد'}, {key:'hasInvoice', label:'فاکتور'}, {key:'hasProgressReport', label:'صورت وضعیت'}, {key:'isRental', label:'اجاره ای'}],
 });
 
@@ -96,13 +98,16 @@ export function unitCostOf(item){
   return Number.isFinite(legacy) ? legacy : 0;
 }
 
+export function taskCostOf(task){
+  if(task?.type === FOLLOW_UP_WORK_TYPE) return 0;
+  const value = Number(task?.amount ?? task?.cost);
+  return Number.isFinite(value) ? Math.max(0, value) : 0;
+}
+
 export function lineTotal(item){
   if(!canHoldWorkTasks(item)) return 0;
   const tasks = (Array.isArray(item?.workTasks) ? item.workTasks : []).filter(task => task && !task.trashed);
-  if(tasks.length) return tasks.reduce((sum, task) => {
-    const amount = Number(task.amount ?? task.cost);
-    return sum + (Number.isFinite(amount) ? Math.max(0, amount) : 0);
-  }, 0);
+  if(tasks.length) return tasks.reduce((sum, task) => sum + taskCostOf(task), 0);
   if((item.subtasks || []).some(child=>child && !child.trashed)) return 0;
   const manualCost = item?.manualCost == null ? NaN : Number(item.manualCost);
   if(Number.isFinite(manualCost)) return Math.max(0, manualCost);

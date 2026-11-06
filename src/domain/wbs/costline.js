@@ -1,6 +1,6 @@
 import { activeWorkTasks } from './workTaskModel.js';
 import { gregorianToJalali, jalaliMonthLength, jalaliToGregorian } from '../../ui/jalali.js';
-import { canHoldWorkTasks, lineTotal, scheduleEndOf, scheduleStartOf, walkTree } from './normalize.js';
+import { canHoldWorkTasks, lineTotal, scheduleEndOf, scheduleStartOf, taskCostOf, walkTree } from './normalize.js';
 
 const MONTHS = ['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
 const SEASONS = ['بهار','تابستان','پاییز','زمستان'];
@@ -70,7 +70,7 @@ export function collectPlannedWorks(tasksRoot){
     const units = tasks.length ? tasks : [item];
     units.forEach(unit => {
       const start = scheduleStartOf(unit);
-      const amount = tasks.length ? Math.max(0, Number(unit.amount) || 0) : lineTotal(item);
+      const amount = tasks.length ? taskCostOf(unit) : lineTotal(item);
       if(!start || !amount) return;
       works.push({
         id:unit.id,

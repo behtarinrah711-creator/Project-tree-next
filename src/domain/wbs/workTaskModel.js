@@ -1,4 +1,4 @@
-import { WORK_TYPES } from './normalize.js';
+import { FOLLOW_UP_WORK_TYPE, WORK_TYPES, taskCostOf } from './normalize.js';
 
 export const TASK_PRIORITIES = Object.freeze(['low', 'normal', 'high']);
 
@@ -17,10 +17,7 @@ export function taskProgressOf(task){
   return Number.isFinite(value) ? Math.max(0, Math.min(100, value)) : 0;
 }
 
-export function taskCostOf(task){
-  const value = Number(task?.amount ?? task?.cost);
-  return Number.isFinite(value) ? Math.max(0, value) : 0;
-}
+export { taskCostOf };
 
 export function activeWorkTasks(work){
   return (Array.isArray(work?.workTasks) ? work.workTasks : [])
@@ -45,6 +42,7 @@ function normalizeDependencies(value){
 
 export function normalizeWorkTask(task, workId = ''){
   if(!task || typeof task !== 'object') return task;
+  const activityId = task.type === FOLLOW_UP_WORK_TYPE ? '' : String(task.activityId || task.activityIds?.[0] || task.activities?.[0] || '');
   return {
     ...task,
     id:String(task.id || ''),
@@ -56,13 +54,9 @@ export function normalizeWorkTask(task, workId = ''){
     priority:TASK_PRIORITIES.includes(task.priority) ? task.priority : 'normal',
     assigneeContactId:String(task.assigneeContactId || ''),
     contractTemplateId:String(task.contractTemplateId || ''),
-    activityId:String(task.activityId || task.activityIds?.[0] || task.activities?.[0] || ''),
-    activityIds:(task.activityId || task.activityIds?.[0] || task.activities?.[0])
-      ? [String(task.activityId || task.activityIds?.[0] || task.activities?.[0])]
-      : [],
-    activities:(task.activityId || task.activityIds?.[0] || task.activities?.[0])
-      ? [String(task.activityId || task.activityIds?.[0] || task.activities?.[0])]
-      : [],
+    activityId,
+    activityIds:activityId ? [activityId] : [],
+    activities:activityId ? [activityId] : [],
     counterpartyContactId:String(task.counterpartyContactId || ''),
     approvalContactId:String(task.approvalContactId || ''),
     contractApproverContactIds:[...new Set((Array.isArray(task.contractApproverContactIds)?task.contractApproverContactIds:[]).map(String).filter(Boolean))],

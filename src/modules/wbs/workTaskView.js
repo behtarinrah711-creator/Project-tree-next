@@ -1,7 +1,7 @@
 import { contactRepository } from '../../data/contactRepository.js';
 import { activityRepository } from '../../data/activityRepository.js';
 import { projectRepository } from '../../data/projectRepository.js';
-import { WORK_TYPES, WORK_TYPE_TOGGLES } from '../../domain/wbs/normalize.js';
+import { FOLLOW_UP_WORK_TYPE, WORK_TYPES, WORK_TYPE_TOGGLES, taskCostOf } from '../../domain/wbs/normalize.js';
 import { workTaskApi } from '../../domain/wbs/workTaskApi.js';
 import { TASK_PRIORITIES, isTaskComplete } from '../../domain/wbs/workTaskModel.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
@@ -50,7 +50,7 @@ function linkedContractor(projectId, workId){
   return contactRepository.get(projectId, contract.contractorId || contract.contactId) || null;
 }
 
-function optionButton({ name, value, options, onChange }){
+function optionButton({ name, value, options, onChange, placeholder = 'انتخاب کنید' }){
   const root=document.createElement('div');root.className='wbs-task-option-select';
   const input=document.createElement('input');input.type='hidden';input.name=name;input.value=String(value ?? '');
   const button=document.createElement('button');button.type='button';button.className='wbs-input wbs-task-option-trigger';
@@ -58,7 +58,7 @@ function optionButton({ name, value, options, onChange }){
   const arrow=document.createElement('span');arrow.className='wbs-task-option-arrow';arrow.textContent='⌄';
   const menu=document.createElement('div');menu.className='wbs-task-option-menu';menu.setAttribute('role','listbox');
   const close=()=>{menu.classList.remove('open');button.classList.remove('open');};
-  const paint=()=>{label.textContent=options.find(item=>String(item.id)===input.value)?.name || 'انتخاب کنید';};
+  const paint=()=>{label.textContent=options.find(item=>String(item.id)===input.value)?.name || placeholder;};
   options.forEach(item=>{
     const option=document.createElement('button');option.type='button';option.className='wbs-task-option-item';
     option.textContent=item.name;option.dataset.value=String(item.id);
@@ -190,6 +190,9 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       togglesContainer.className = 'wbs-toggles-container';
       const counterpartyContainer = documentRef.createElement('div');
       counterpartyContainer.className = 'wbs-counterparty-container';
+      const activityContainer=documentRef.createElement('div');
+      const amountContainer=documentRef.createElement('div');
+      let amount=taskCostOf(task);
       let paintContractApprovers=()=>{};
       let paintTemplate=()=>{};
       const renderTypeFields = val => {
@@ -200,16 +203,22 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
           type:val, contacts, value:counterpartyContactId, workId:work.id, documentRef,
           onSelect:value => { counterpartyContactId = value; },
         });
+        amount=amountContainer.querySelector('[name="taskAmount"]')?.dataset.value ?? amount;
+        activityContainer.replaceChildren();
+        amountContainer.replaceChildren();
+        if(val !== FOLLOW_UP_WORK_TYPE){
+          renderActivity(activityContainer,{activities,value:activityId,workId:work.id,documentRef,onSelect:value=>{activityId=value;}});
+          amountContainer.appendChild(fieldRow('مبلغ',numericButton('taskAmount',amount,{money:true})));
+        }
         paintContractApprovers();
         paintTemplate();
       };
-      const type=optionButton({name:'taskType',value:task?.type || work.type || WORK_TYPES[0],options:WORK_TYPES.map(value=>({id:value,name:value})), onChange:renderTypeFields});
+      const initialType=task?.type || '';
+      const type=optionButton({name:'taskType',value:initialType,placeholder:'انتخاب نوع کار',options:WORK_TYPES.map(value=>({id:value,name:value})), onChange:renderTypeFields});
       root.appendChild(fieldRow('نوع کار',type));
       root.appendChild(togglesContainer);
       root.appendChild(counterpartyContainer);
-      renderTypeFields(task?.type || work.type || WORK_TYPES[0]);
-      const activityContainer=documentRef.createElement('div');
-      renderActivity(activityContainer,{activities,value:activityId,workId:work.id,documentRef,onSelect:value=>{activityId=value;}});
+      renderTypeFields(initialType);
       root.appendChild(activityContainer);
       const templateContainer=documentRef.createElement('div');
       const templateButton=documentRef.createElement('button');templateButton.type='button';templateButton.name='taskContractTemplate';templateButton.className='wbs-input';
@@ -297,7 +306,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         root.appendChild(note);
       }
       root.appendChild(fieldRow('وزن',numericButton('taskWeight',task?.weight || 1)));
-      root.appendChild(fieldRow('مبلغ',numericButton('taskAmount',task?.amount || 0,{money:true})));
+      root.appendChild(amountContainer);
       const dependency = predecessorField({ documentRef, project:projectRepository.find(projectId), consumerId:task?.id || `new:${work.id}`, initial:task?.dependencies || task?.predecessorIds || [] });
       root.appendChild(dependency.element); root._taskDependency = dependency;
 
@@ -334,7 +343,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         contractApproverContactIds:root._contractApproverIds(),
         contractorContactId:'',
         weight:Number(root.querySelector('[name="taskWeight"]').dataset.value),
-        amount:Number(root.querySelector('[name="taskAmount"]').dataset.value) || 0,
+        amount:Number(root.querySelector('[name="taskAmount"]')?.dataset.value) || 0,
         predecessorIds:root._taskDependency?.value() || [],
         dependencies:root._taskDependency?.relations() || [],
         hasContract:!!root.querySelector('[name="hasContract"]')?.checked,
@@ -476,7 +485,7 @@ export function renderWorkTasks({ documentRef = document, projectId, work, view,
       <span class="wbs-task-connector" aria-hidden="true"></span>
       <span class="wbs-task-content">
         <span class="wbs-task-main"><span class="wbs-type-chip ${TYPE_CLASSES.get(task.type) || 'type-7'}">${escapeHtml(task.type || '؟')}</span><span class="wbs-task-title">${escapeHtml(task.title)}</span></span>
-        <span class="wbs-task-secondary">${contact ? `<span class="wbs-task-assignee">${escapeHtml(contactName(contact))}</span>` : ''}${contractor ? `<span class="wbs-task-contractor">${escapeHtml(contactName(contractor))}</span>` : ''}<span class="wbs-task-priority priority-${task.priority}">${escapeHtml(PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal)}</span>${view === 'progress' ? `<span class="wbs-task-progress">٪${new Intl.NumberFormat('fa-IR').format(task.progress || 0)}</span>` : ''}${view === 'estimate' ? `<span class="wbs-task-cost">${new Intl.NumberFormat('fa-IR').format(task.amount || 0)} تومان</span>` : ''}</span>
+        <span class="wbs-task-secondary">${contact ? `<span class="wbs-task-assignee">${escapeHtml(contactName(contact))}</span>` : ''}${contractor ? `<span class="wbs-task-contractor">${escapeHtml(contactName(contractor))}</span>` : ''}<span class="wbs-task-priority priority-${task.priority}">${escapeHtml(PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal)}</span>${view === 'progress' ? `<span class="wbs-task-progress">٪${new Intl.NumberFormat('fa-IR').format(task.progress || 0)}</span>` : ''}${view === 'estimate' && task.type !== FOLLOW_UP_WORK_TYPE ? `<span class="wbs-task-cost">${new Intl.NumberFormat('fa-IR').format(taskCostOf(task))} تومان</span>` : ''}</span>
       </span>`;
     row.addEventListener('click', event => {
       if(event.target.closest('.wbs-grip')) return;
