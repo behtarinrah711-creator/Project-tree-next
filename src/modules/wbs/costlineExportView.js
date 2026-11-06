@@ -7,11 +7,33 @@ const ranges = [...COSTLINE_RANGES.slice(0,4), {id:'month2',label:'دوماهه'
 const money = value => new Intl.NumberFormat('fa-IR').format(value);
 const date = day => toPersianDigits(jalaliFromDay(day));
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-const table = (headers, rows) => `<table><thead><tr>${headers.map(value=>`<th>${esc(value)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(value=>`<td>${esc(value)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;
+const table = (headers, rows, total) => `<table><thead><tr>${headers.map(value=>`<th>${esc(value)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr${row.subtotal?' class="cost-total"':''}>${row.map(value=>`<td>${esc(value)}</td>`).join('')}</tr>`).join('')}${total?`<tr class="cost-total"><th scope="row" colspan="${headers.length-total.length+1}">${esc(total[0])}</th>${total.slice(1).map(value=>`<td>${esc(value)}</td>`).join('')}</tr>`:''}</tbody></table>`;
 const costs = (need, allocated) => [money(need),money(allocated),money(Math.max(0,need-allocated))];
 const columns = ['موردنیاز (تومان)','تخصیص‌یافته (تومان)','کسری (تومان)'];
+const detailColumns = ['موردنیاز در این دوره (تومان)','تخصیص‌یافته در این دوره (تومان)','کسری این دوره (تومان)'];
+const workFunding = work => Math.min(work.sliceAmount,work.allocated);
+
+function detailRows(works){
+  const branches=new Map();
+  for(const work of works){
+    const branch=work.path.split(' ← ')[0];
+    if(!branches.has(branch)) branches.set(branch,[]);
+    branches.get(branch).push(work);
+  }
+  return Array.from(branches,([branch,items])=>{
+    const rows=items.map(work=>[work.path,work.text,toPersianDigits([work.start,work.end].filter(Boolean).join(' تا ')),...costs(work.sliceAmount,workFunding(work))]);
+    if(branch && branches.size>1){
+      const need=items.reduce((sum,work)=>sum+work.sliceAmount,0);
+      const funded=items.reduce((sum,work)=>sum+workFunding(work),0);
+      rows.push(Object.assign([`جمع ${branch}`,'','',...costs(need,funded)],{subtotal:true}));
+    }
+    return rows;
+  }).flat();
+}
+
 const styles = `@page{size:A4 landscape}body{padding:10mm 12mm}.cost-report h2{font-size:16px;margin:8px 0}.cost-report p{margin:6px 0}
 .cost-report table{font-size:11px;table-layout:auto}.cost-report td{overflow-wrap:anywhere}.cost-report th,.cost-report td{padding:4px 6px}
+.cost-report .cost-total th,.cost-report .cost-total td{background:#eef3f8;font-weight:700}
 .cost-report thead{display:table-header-group}.cost-report tr,.signature{break-inside:avoid}
 .cost-report .cost-summary+.cost-summary,.cost-report .cost-appendix{break-before:page}
 .cost-report svg{width:100%;height:56mm;display:block}.cost-report .cost-legend{font-size:12px}
@@ -37,7 +59,7 @@ function chart(buckets,max){
 export function costlineDocument(project,{rangeId,originWeekday,start,end,details,receipts}){
   const works=collectPlannedWorks(project.tasks,{includeUndated:true});
   const dated=works.filter(work=>jalaliDayNumber(work.start)!=null);
-  const buckets=assignWorksToBuckets(buildBuckets({rangeId,originWeekday,works:dated})
+  const allBuckets=assignWorksToBuckets(buildBuckets({rangeId,originWeekday,works:dated})
     .filter(bucket=>bucket.startDay<=end && bucket.endDay>=start)
     .map(bucket=>({...bucket,startDay:Math.max(start,bucket.startDay),endDay:Math.min(end,bucket.endDay)})),dated);
   const allocations=new Map();
@@ -46,7 +68,7 @@ export function costlineDocument(project,{rangeId,originWeekday,start,end,detail
     if(!allocations.has(key)) allocations.set(key,[]);
     allocations.get(key).push(row);
   }
-  for(const bucket of buckets){
+  for(const bucket of allBuckets){
     bucket.label=`${date(bucket.startDay)} تا ${date(bucket.endDay)}`;
     for(const work of bucket.works){
       work.allocated=(allocations.get(String(work.id))||[]).reduce((sum,row)=>{
@@ -54,8 +76,9 @@ export function costlineDocument(project,{rangeId,originWeekday,start,end,detail
         return day!=null && day>=bucket.startDay && day<=bucket.endDay ? sum+row.amount : sum;
       },0);
     }
-    bucket.allocated=bucket.works.reduce((sum,work)=>sum+Math.min(work.sliceAmount,work.allocated),0);
+    bucket.allocated=bucket.works.reduce((sum,work)=>sum+workFunding(work),0);
   }
+  const buckets=allBuckets.filter(bucket=>bucket.total!==0 || bucket.allocated!==0);
   const need=buckets.reduce((sum,bucket)=>sum+bucket.total,0);
   const allocated=buckets.reduce((sum,bucket)=>sum+bucket.allocated,0);
   const range=ranges.find(item=>item.id===rangeId);
@@ -63,18 +86,24 @@ export function costlineDocument(project,{rangeId,originWeekday,start,end,detail
 <p>تاریخ تهیه ${new Intl.DateTimeFormat('fa-IR').format(new Date())} | ${esc(range?.label)}${range?.days>1 ? ` | مبدأ ${WEEKDAYS[originWeekday]}` : ''}${Number.isFinite(start)&&Number.isFinite(end)?` | ${date(start)} تا ${date(end)}`:''}</p>`;
   let html=`<article class="nb-export-document cost-report">`;
   const max=Math.max(1,...buckets.map(bucket=>bucket.total));
+  let cumulative=0;
   for(let i=0;i<buckets.length;i+=6){
     const group=buckets.slice(i,i+6);
+    const rows=group.map(bucket=>{
+      cumulative+=bucket.allocated;
+      return [bucket.label,...costs(bucket.total,bucket.allocated),money(cumulative)];
+    });
     html+=`<section class="cost-summary">${title}
-${i===0?table(columns,[costs(need,allocated)]):''}
+${i===0?'<h2>جمع بازهٔ انتخاب‌شده</h2>'+table(columns,[costs(need,allocated)]):''}
 <p class="cost-legend">محور عمودی به میلیون تومان · <b>آبی تیره: تخصیص‌یافته</b> · <span>آبی روشن: کسری</span></p>
 ${chart(group,max)}
-${table(['دوره',...columns],group.map(bucket=>[bucket.label,...costs(bucket.total,bucket.allocated)]))}</section>`;
+<p>فقط دوره‌های دارای مبلغ نمایش داده شده‌اند.</p>
+${table(['دوره',...columns,'تخصیص تجمعی (تومان)'],rows,i+group.length===buckets.length?['جمع کل بازه',...costs(need,allocated),money(allocated)]:null)}</section>`;
   }
   if(!buckets.length) html+=title+'<p>در این بازه برآورد دوره‌ای وجود ندارد.</p>';
   const undated=works.filter(work=>jalaliDayNumber(work.start)==null);
   if(undated.length) html+=`<section><h2>برآوردهای بدون تاریخ شروع</h2>${table(['مسیر کار','نام کار','برآورد کل (تومان)'],undated.map(work=>[work.path,work.text,money(work.amount)]))}</section>`;
-  if(details && buckets.some(bucket=>bucket.works.length)) html+=`<section class="cost-appendix"><h2>ریز کارها به تفکیک دوره</h2>${buckets.filter(bucket=>bucket.works.length).map(bucket=>`<h2>${bucket.label}</h2>${table(['مسیر درخت','نام کار','زمان کار',...columns],bucket.works.map(work=>[work.path,work.text,toPersianDigits([work.start,work.end].filter(Boolean).join(' تا ')),...costs(work.sliceAmount,Math.min(work.sliceAmount,work.allocated))]))}`).join('')}</section>`;
+  if(details && buckets.some(bucket=>bucket.works.length)) html+=`<section class="cost-appendix"><h2>ریز کارها به تفکیک دوره</h2>${buckets.filter(bucket=>bucket.works.length).map(bucket=>`<h2>${bucket.label}</h2>${table(['مسیر درخت','نام کار','زمان کار',...detailColumns],detailRows(bucket.works),['جمع این دوره',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
   if(receipts) html+=`<section class="cost-appendix"><h2>دریافتی‌های کل پروژه</h2>${table(['شماره','تاریخ','مبلغ (تومان)'],fundingReceiptsOf(project).map((receipt,index)=>[money(index+1),toPersianDigits(receipt.depositDate||'—'),money(receipt.amount)]))}
 <p>مجموع دریافتی ${money(poolReceived(project))} تومان · ماندهٔ تخصیص‌نیافته ${money(poolRemaining(project))} تومان</p></section>`;
   return html+'</article>';
