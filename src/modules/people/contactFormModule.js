@@ -340,7 +340,7 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null,pic
     const bankVals=bankEntries.map(entry=>{const getE=k=>entry.querySelector(`[data-key="${k}"]`)?.value.trim()||'';return {ownerName:getE('ownerName'),bankName:getE('bankName'),card:toEnglishDigits(getE('card')),iban:toEnglishDigits(getE('iban')),account:toEnglishDigits(getE('account'))};}).filter(b=>b.ownerName||b.bankName||b.card||b.iban||b.account);
     c.pending=false;c.draftUpdatedAt=null;c.nationalityType=nat;c.nationality=get('nationality');c.foreignId=toEnglishDigits(get('foreignId'));c.foreignIdImage=c.foreignIdImages[0]||'';
     c.firstName=firstName;c.lastName=lastName;c.fatherName=get('fatherName');c.name=[firstName,lastName].filter(Boolean).join(' ');c.nationalId=nat==='ایرانی'?toEnglishDigits(nationalId):'';c.address=get('address');c.postalCode=toEnglishDigits(get('postalCode'));c.phones=phoneVals;c.phone=phoneVals[0]||'';c.type=typeVal;c.activities=selectedActivityId?[selectedActivityId]:[];c.bankAccounts=bankVals;c.cards=bankVals.map(x=>x.card).filter(Boolean);c.ibans=bankVals.map(x=>x.iban).filter(Boolean);c.accounts=bankVals.map(x=>x.account).filter(Boolean);
-    const result=contactApi.save(projectId, c); if(!result.ok) return; clearContactDraft(c.id); contactSavedSuccessfully=true; if(!contact && result.contact) onCreated?.(result.contact); backToList();
+    const result=contactApi.save(projectId, c); if(!result.ok){runtime.showToast(result.message);return;} clearContactDraft(c.id); contactSavedSuccessfully=true; if(!contact && result.contact) onCreated?.(result.contact); backToList();
   };
 }
 

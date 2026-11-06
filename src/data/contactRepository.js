@@ -74,6 +74,7 @@ export class ContactRepository{
     return this.update(projectId, contactId, contact => ({
       ...contact,
       trashed:true,
+      updatedAt:Date.now(),
     }));
   }
 }

@@ -1,3 +1,4 @@
+import { searchText } from '../../ui/catalogueSearch.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { contactApi } from '../../domain/contactApi.js';
@@ -15,12 +16,6 @@ function getProjectId(explicit = null){
 
 function getProject(projectId){
   return projectId ? projectRepository.getActiveProject(projectId) : null;
-}
-
-function searchText(value){
-  return String(value || '').normalize('NFKC').replace(/[يى]/g,'ی').replace(/ك/g,'ک')
-    .replace(/[\u064b-\u065f\u0670\u0640]/g,'').replace(/[\u200c\u200d]/g,' ')
-    .toLocaleLowerCase('fa').replace(/\s+/g,' ').trim();
 }
 
 function deleteContact(projectId, contactId){

@@ -62,7 +62,7 @@ export function workPath(tasks, itemId){
   return found;
 }
 
-export function collectPlannedWorks(tasksRoot){
+export function collectPlannedWorks(tasksRoot, { includeUndated = false } = {}){
   const works = [];
   walkTree(tasksRoot, item => {
     if(!canHoldWorkTasks(item)) return;
@@ -71,7 +71,7 @@ export function collectPlannedWorks(tasksRoot){
     units.forEach(unit => {
       const start = scheduleStartOf(unit);
       const amount = tasks.length ? taskCostOf(unit) : lineTotal(item);
-      if(!start || !amount) return;
+      if(!amount || (!start && !includeUndated)) return;
       works.push({
         id:unit.id,
         text:unit.title || unit.text || '',
@@ -145,6 +145,17 @@ export function buildBuckets({ rangeId = 'week', originWeekday = 4, works = [] }
   const minDay = Math.min(...days);
   const maxDay = Math.max(...days);
   const buckets = [];
+
+  if(rangeId === 'month2'){
+    for(let cursor = minDay; cursor <= maxDay; ){
+      const {jy,jm} = jalaliPartsFromDay(cursor);
+      const first = monthBucket(jy, jm - (jm + 1) % 2);
+      const last = monthBucket(jy, jm - (jm + 1) % 2 + 1);
+      buckets.push({...first, id:'month2-'+first.id, endDay:last.endDay, label:rangeLabel(first.startDay,last.endDay)});
+      cursor = last.endDay + 1;
+    }
+    return buckets;
+  }
 
   if(range.id === 'month'){
     let cursor = minDay;

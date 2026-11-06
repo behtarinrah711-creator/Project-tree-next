@@ -1,3 +1,4 @@
+import { searchText } from '../../ui/catalogueSearch.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { activityApi } from '../../domain/activityApi.js';
@@ -68,7 +69,7 @@ function appendActivityRow({ list, rows, project, activity, projectId, rerender 
 
   actions.append(edit,del);
   row.append(main,actions);
-  row.dataset.searchText=`${activity.name || ''}`.toLocaleLowerCase('fa');
+  row.dataset.searchText=searchText(activity.name);
   row.addEventListener('click',()=>openActivityEditForm(activity));
   rows.push(row);
   list.appendChild(row);
@@ -127,31 +128,37 @@ export const activitiesModule = {
       list, rows, project, activity, projectId:activeId, rerender,
     }));
 
-    search.addEventListener('input',()=>{
-      const q=String(search.value || '').trim().toLocaleLowerCase('fa');
+    const empty=document.createElement('div');
+    empty.className='mgmt-empty hidden';
+    empty.textContent='فعالیتی یافت نشد';
+    const applyFilter=()=>{
+      const q=searchText(search.value);
+      let matches=0;
       rows.forEach(row=>{
-        row.hidden=!!q && !row.dataset.searchText.includes(q);
+        const match=row.dataset.searchText.includes(q);
+        row.classList.toggle('hidden',!match);
+        if(match) matches++;
       });
+      empty.classList.toggle('hidden',matches>0);
+    };
+    let cursor=firstPage.cursor;
+    const more=document.createElement('button');
+    more.type='button';
+    more.className='activity-action';
+    more.textContent='بارگذاری بیشتر';
+    const loadNext=()=>{
+      const page=activityApi.listPage(activeId,{cursor,limit:PAGE_SIZE});
+      page.items.forEach(activity=>appendActivityRow({list,rows,project,activity,projectId:activeId,rerender}));
+      cursor=page.cursor;
+      if(cursor==null) more.remove();
+    };
+    search.addEventListener('input',()=>{
+      if(searchText(search.value)) while(cursor!=null) loadNext();
+      applyFilter();
     });
-
-    body.append(searchWrap,list);
-
-    if(firstPage.cursor != null){
-      const more=document.createElement('button');
-      more.type='button';
-      more.className='activity-action';
-      more.textContent='بارگذاری بیشتر';
-      let cursor=firstPage.cursor;
-      more.addEventListener('click',()=>{
-        const page=activityApi.listPage(activeId,{ cursor, limit:PAGE_SIZE });
-        page.items.forEach(activity => appendActivityRow({
-          list, rows, project, activity, projectId:activeId, rerender,
-        }));
-        cursor=page.cursor;
-        if(cursor==null) more.remove();
-      });
-      body.appendChild(more);
-    }
+    more.addEventListener('click',()=>{loadNext();applyFilter();});
+    body.append(searchWrap,list,empty);
+    if(cursor!=null) body.appendChild(more);
   },
 };
 
