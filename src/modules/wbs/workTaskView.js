@@ -128,12 +128,15 @@ function renderCounterparty(container, { type, contacts, value, onSelect, workId
   button.dataset.value = value || '';
   const paint = () => {
     const selected = contacts.find(contact => String(contact.id) === String(button.dataset.value));
-    button.textContent = selected ? contactName(selected) : `انتخاب ${label}`;
+    button.textContent = selected ? contactName(selected) : type === 'پیمانکار' ? 'انتخاب کنید' : `انتخاب ${label}`;
   };
   button.addEventListener('click', () => openSearchPicker({
     title:`انتخاب ${label}`, listTitle:'مخاطبین', selectedTitle:`${label} منتخب`,
     contextKey:`wbs-task-counterparty:${workId}`,
-    items:contacts.map(contact => ({ id:contact.id, name:contactName(contact) })),
+    items:[
+      ...(type === 'پیمانکار' && button.dataset.value ? [{id:'',name:'حذف انتخاب پیمانکار'}] : []),
+      ...contacts.map(contact => ({ id:contact.id, name:contactName(contact) })),
+    ],
     resourceType:'contact', showStar:false, showAdd:true,
     onAdd:()=>{
       window.KarhaSearchTemplate?.close(false);
@@ -187,7 +190,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
     body(root){
       const contacts = contactRepository.list(projectId).filter(contact => contact && !contact.trashed);
       const activities=activityRepository.list(projectId).filter(activity=>activity && !activity.trashed);
-      let counterpartyContactId = task?.counterpartyContactId || contractor?.id || '';
+      let counterpartyContactId = task?.counterpartyContactId ?? contractor?.id ?? '';
       let activityId=task?.activityId || '';
       const togglesContainer = documentRef.createElement('div');
       togglesContainer.className = 'wbs-toggles-container';
@@ -372,6 +375,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       return true;
     },
   });
+  overlay.classList.add('wbs-task-form-overlay');
   titleEditor=documentRef.createElement('span');titleEditor.className='wbs-stage-edit-title';titleEditor.contentEditable=readOnly?'false':'true';titleEditor.setAttribute('role','textbox');titleEditor.setAttribute('aria-label','عنوان کار');titleEditor.textContent=task?.title || '';titleEditor.addEventListener('keydown',event=>{if(event.key==='Enter')event.preventDefault();});overlay.querySelector('.sheet-caption').append(' ',titleEditor);
 }
 
