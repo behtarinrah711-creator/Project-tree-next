@@ -1,3 +1,5 @@
+import { approvalLabels, contractApprovalState } from '../../domain/contractApproval.js';
+import { isContractInFinance } from '../../domain/contractHandoff.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { activityRepository } from '../../data/activityRepository.js';
 import { projectRepository } from '../../data/projectRepository.js';
@@ -191,6 +193,28 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       let activityId=task?.activityId || '';
       const togglesContainer = documentRef.createElement('div');
       togglesContainer.className = 'wbs-toggles-container';
+      const contractSummary = documentRef.createElement('div');
+      contractSummary.className = 'wbs-note';
+      const paintContractSummary = () => {
+        const checkbox = togglesContainer.querySelector('[name="hasContract"]');
+        contractSummary.hidden = !checkbox;
+        if(!checkbox?.checked){
+          contractSummary.textContent = 'بدون قرارداد';
+          return;
+        }
+        if(!linkedContract){
+          contractSummary.textContent = 'قرارداد هنوز ایجاد نشده';
+          return;
+        }
+        const state = contractApprovalState(linkedContract);
+        const status = linkedContract.accountingStatus === 'accepted' ? 'تأیید شده توسط بخش مالی'
+          : isContractInFinance(linkedContract) ? 'ارسال شده به مالی'
+          : state === 'approved' && linkedContract.signedAt ? 'امضا شده'
+          : state === 'ready' ? 'تکمیل شده' : approvalLabels[state];
+        const number = linkedContract.contractNo ? `شماره قرارداد ${linkedContract.contractNo}` : 'در انتظار شماره قرارداد';
+        contractSummary.textContent = `${number} · ${status}`;
+      };
+      togglesContainer.addEventListener('change', paintContractSummary);
       const counterpartyContainer = documentRef.createElement('div');
       counterpartyContainer.className = 'wbs-counterparty-container';
       const activityContainer=documentRef.createElement('div');
@@ -202,6 +226,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         renderToggles(togglesContainer, val, task,{
           contractLocked:Boolean(linkedContract && !(linkedContract.isDraft || linkedContract.status==='draft')),
         });
+        paintContractSummary();
         renderCounterparty(counterpartyContainer, {
           type:val, contacts, value:counterpartyContactId, workId:work.id, documentRef,
           onSelect:value => { counterpartyContactId = value; },
@@ -219,7 +244,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       const initialType=task?.type || '';
       const type=optionButton({name:'taskType',value:initialType,placeholder:'انتخاب نوع کار',options:WORK_TYPES.map(value=>({id:value,name:value})), onChange:renderTypeFields});
       root.appendChild(fieldRow('نوع کار',type));
-      root.appendChild(togglesContainer);
+      root.append(togglesContainer, contractSummary);
       root.appendChild(counterpartyContainer);
       renderTypeFields(initialType);
       root.appendChild(activityContainer);
