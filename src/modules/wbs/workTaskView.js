@@ -319,7 +319,17 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
           const remove = documentRef.createElement('button');
           remove.type = 'button'; remove.className = 'wbs-info-row is-danger wbs-task-delete'; remove.textContent = 'حذف کار';
           remove.addEventListener('click', () => {
-            const perform = () => { workTaskApi.remove(projectId, work.id, task.id); closeWbsSheet(); onChanged?.(); };
+            const perform = () => {
+              const result = workTaskApi.remove(projectId, work.id, task.id);
+              const showToast = documentRef.defaultView?.KarhaUI?.showToast;
+              if(!result.ok){
+                showToast?.(result.code === 'not_found' ? 'این کار در درخت پروژه پیدا نشد' : 'حذف کار انجام نشد');
+                return;
+              }
+              closeWbsSheet();
+              onChanged?.();
+              showToast?.('کار از درخت پروژه حذف شد');
+            };
             if(typeof documentRef.defaultView?.KarhaUI?.openConfirm === 'function') documentRef.defaultView.KarhaUI.openConfirm('این کار حذف شود؟', perform, 'حذف');
             else if(documentRef.defaultView?.confirm?.('این کار حذف شود؟')) perform();
           });
