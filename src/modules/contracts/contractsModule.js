@@ -17,6 +17,8 @@ import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { contractApi } from '../../domain/contractApi.js';
 import { contactApi } from '../../domain/contactApi.js';
+import { findInTree } from '../../domain/wbs/normalize.js';
+import { workPath } from '../../domain/wbs/workTaskContractSync.js';
 import { activityApi } from '../../domain/activityApi.js';
 
 function resolveProjectId(explicit=null){
@@ -59,6 +61,16 @@ function legacy(name,...args){
   return false;
 }
 function softDeleteTemplate(projectId,id){return contractApi.trashTemplate(projectId,id).ok;}
+function contractProjectPath(project, contract){
+  const { projectItemId, workTaskId } = contract;
+  const item = projectItemId ? findInTree(project.tasks, projectItemId)?.item : null;
+  const task = workTaskId && item?.workTasks?.find(row => row && !row.trashed && String(row.id) === String(workTaskId));
+  if(item && !item.trashed && (!workTaskId || task?.title)){
+    return [workPath(project, projectItemId).replaceAll(' / ', ' ← '), task?.title].filter(Boolean).join(' ← ');
+  }
+  return String(contract.projectItemPath || contract.accountingPackage?.contract?.projectItemPath || '').replaceAll(' / ', ' ← ');
+}
+
 function contractRowData(projectId,c){
   const a=findActivity(projectId,c.activityId);
   const contact=findContact(projectId,c.contractorId||c.contactId);
@@ -67,21 +79,25 @@ function contractRowData(projectId,c){
   const activity=a?.name || a?.title || 'بدون فعالیت';
   const number=c.contractNo || 'بدون شماره قرارداد';
   const meta=[number,activity].join(' · ');
-  return {title,meta,number,activity,created:contractCreatedParts(c.createdAt)};
+  return {title,meta,number,created:contractCreatedParts(c.createdAt)};
 }
 
 export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
   const id=p.id,actor=currentExecutionActor(p);
-      const {title,meta,number,activity,created}=contractRowData(id,c);
+      const {title,meta,number,created}=contractRowData(id,c);
+      const path=contractProjectPath(p,c);
       const row=document.createElement('article'); row.className='contract-row';
       const heading=document.createElement('div');heading.className='contract-card-heading';
-      row.dataset.searchText=normalizeContractSearch(title+' '+meta+' '+(c.projectItemPath||'')+' '+(created ? `${created.date} ${created.time}` : ''));
+      row.dataset.searchText=normalizeContractSearch(title+' '+meta+' '+path+' '+(created ? `${created.date} ${created.time}` : ''));
       row.dataset.approvalState=contractApprovalState(c);row.dataset.reviewMine=String(canReviewContract(c,actor));
       const main=document.createElement('div'); main.className='contract-main';
       const t=document.createElement('div'); t.className='contract-title'; t.textContent=title;
       const numberRow=document.createElement('div');numberRow.className='contract-meta contract-number';numberRow.dir='ltr';numberRow.textContent=number;
-      const activityRow=document.createElement('div');activityRow.className='contract-meta contract-activity';activityRow.textContent=activity;
-      main.append(t,numberRow,activityRow);
+      main.append(t,numberRow);
+      if(path){
+        const pathRow=document.createElement('div');pathRow.className='contract-meta contract-project-path';pathRow.dir='rtl';pathRow.textContent=path;
+        main.appendChild(pathRow);
+      }
       const actions=document.createElement('div'); actions.className='contract-actions';
       actions.appendChild(contractActionsMenu({
         onEdit:finance?undefined:()=>{if(c.status==='final' && contractApprovalState(c)==='ready'){window.KarhaLegacy?.showToast?.('برای ویرایش ابتدا اعلام تکمیل را لغو کنید');return;}if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},

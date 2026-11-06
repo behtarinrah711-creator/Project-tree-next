@@ -20,7 +20,7 @@ function taskContract(projectId, workId, taskId){
   ) || null;
 }
 
-function workPath(project, workId){
+export function workPath(project, workId){
   let result='';
   const walk=(items,path=[])=>{
     for(const item of items || []){
