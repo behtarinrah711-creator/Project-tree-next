@@ -1,9 +1,12 @@
+import { fitPageAboveKeyboard } from '../wbs/wbsSheet.js';
 import { projectContext } from '../../core/projectContext.js';
 import { activityApi } from '../../domain/activityApi.js';
 
 const runtime=new Proxy({}, {get(_target,key){return window.KarhaApp?.getActivityFormRuntime?.()?.[key];}});
 
 const state={dirty:false,projectId:null,activityId:null,onCreated:null,pickerMode:false};
+
+let releaseFormViewport;
 
 function getProjectId(){
   return projectContext.getProjectId?.()
@@ -58,6 +61,8 @@ function renderForm(activity=null){
   cancel.textContent='انصراف';
   cancel.onclick=()=>closeActivityForm();
   actions.append(save,cancel);
+  releaseFormViewport?.();
+  releaseFormViewport=fitPageAboveKeyboard(actions.closest('#activityFormPage'));
   document.getElementById('activityFormHeaderConfirm')?.remove();
   const header=document.querySelector('#activityFormPage .inner-section-bar');
   const confirm=document.createElement('button');
@@ -105,6 +110,7 @@ export function openActivityEditForm(activity){
 }
 
 export function closeActivityForm(fromPopState=false){
+  releaseFormViewport?.();
   const pickerMode=state.pickerMode;
   if(pickerMode){
     document.getElementById('activityFormPage')?.classList.add('hidden');
