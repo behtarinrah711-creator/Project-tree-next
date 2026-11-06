@@ -423,12 +423,13 @@ function costlineDetailRow(label, value, className = ''){
   return row;
 }
 
-function openBucketSheet(project, bucket, refresh, access){
+function openBucketSheet(project, initialBucket, refresh, access){
+  let bucket = initialBucket;
   openWbsSheet({
     title: `برآورد هزینه ${bucket.label}`,
     showSave: false,
+    closeOnBackdrop: false,
     presentation: 'stage-create',
-    onSave: () => true,
     body(host){
       host.classList.add('wbs-costline-sheet');
       const paint = () => {
@@ -496,8 +497,12 @@ function openBucketSheet(project, bucket, refresh, access){
               projectRepository.updateProject(project.id, row => setAccrual(row, work.id, option.id));
               markDirty(project.id);
               persist({ local:false });
-              closeWbsSheet();
+              const updated = projectRepository.getActiveProject(project.id) || project;
+              const range = COSTLINE_RANGES[rangeIndex] || COSTLINE_RANGES[1];
+              const model = plannedCostline(updated.tasks || [], { rangeId:range.id, originWeekday });
+              bucket = model.buckets.find(row => row.id === initialBucket.id) || { ...initialBucket, works:[] };
               refresh();
+              paint();
             };
             if(funded > 0 && typeof window.KarhaUI?.openConfirm === 'function'){
               const [message, label] = accrualChangeCopy(mode.dataset.value, option.id, funded, work);
