@@ -46,7 +46,7 @@ function packageRows(works){
 
 const styles = `html,body{margin:0;padding:0}
 .cost-report h1{text-align:center}
-.cost-report .cost-meta{display:flex;justify-content:space-between;gap:12px}
+.cost-report .cost-meta{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #aaa;padding-bottom:4px}
 .cost-report .cost-report-range{text-align:left}
 .cost-report h2{font-size:16px;margin:14px 0 3px;break-after:avoid}
 .cost-report section:not(.cost-packages)>h2:first-child{margin-top:0}
