@@ -123,7 +123,7 @@ ${table(['دوره',...columns,'تخصیص تجمعی (تومان)'],rows,i+grou
 ${buckets.map(bucket=>`<h2>${bucket.label} | تفکیک بسته های کاری</h2>${table(['بستهٔ کاری',...columns],packageRows(bucket.works),['جمع این بازه',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
   const undated=works.filter(work=>jalaliDayNumber(work.start)==null);
   if(undated.length) html+=`<section><h2>برآوردهای بدون تاریخ شروع</h2>${table(['مسیر کار','نام کار','برآورد کل (تومان)'],undated.map(work=>[work.path,work.text,money(work.amount)]))}</section>`;
-  if(details && buckets.some(bucket=>bucket.works.length)) html+=`<section class="cost-appendix cost-details">${buckets.filter(bucket=>bucket.works.length).map(bucket=>`<h2>${bucket.label} | لیست کارها به تفکیک</h2>${table(['مسیر درخت','نام کار','زمان کار',...detailColumns],detailRows(bucket.works),['جمع این دوره',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
+  if(details && buckets.some(bucket=>bucket.works.length)) html+=`<section class="cost-appendix cost-details">${buckets.filter(bucket=>bucket.works.length).map(bucket=>`<h2>${bucket.label} | لیست کارها</h2>${table(['مسیر درخت','نام کار','زمان کار',...detailColumns],detailRows(bucket.works),['جمع این دوره',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
   if(receipts) html+=`<section class="cost-appendix"><h2>دریافتی‌های کل پروژه</h2>${table(['شماره','تاریخ','مبلغ (تومان)'],fundingReceiptsOf(project).map((receipt,index)=>[money(index+1),reportDateRange(jalaliDayNumber(receipt.depositDate),null),money(receipt.amount)]))}
 <p>مجموع دریافتی ${money(poolReceived(project))} تومان · ماندهٔ تخصیص‌نیافته ${money(poolRemaining(project))} تومان</p></section>`;
   return html+'</article>';
@@ -146,7 +146,7 @@ export async function openCostlineExport(project,{rangeId,originWeekday,trigger}
     const options=page.querySelector('.export-options');
     const sections=document.createElement('template');
     sections.innerHTML=`<label><input type="checkbox" data-packages> تفکیک بسته های کاری <small data-package-hint>اطلاعات این دوره در جدول جمع بازه آمده است.</small></label>
-<label><input type="checkbox" data-details> تفکیک لیست کارها</label>
+<label><input type="checkbox" data-details> لیست کارها</label>
 <label><input type="checkbox" data-receipts> دریافتی ها</label>`;
     options.prepend(sections.content);
     controls=document.createElement('div');
