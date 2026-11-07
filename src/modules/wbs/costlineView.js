@@ -445,6 +445,7 @@ function openBucketSheet(project, initialBucket, refresh, access){
   let bucket = initialBucket;
   openWbsSheet({
     title: `برآورد هزینه ${bucket.label}`,
+    historyKey: 'costline-bucket-sheet',
     showSave: false,
     closeOnBackdrop: false,
     presentation: 'stage-create',

@@ -27,6 +27,10 @@ function numbering(rows){
   }));
 }
 
+export const notebookPaperFrameStyles = (inset = '-5mm') => `@media print{
+  body::before{content:'';position:fixed;inset:${inset};border:1px solid #333;pointer-events:none}
+}`;
+
 export function installNotebookExportView({documentRef=globalThis.document,windowRef=globalThis.window,idPrefix='notebookExport',historyKey='notebook-export',documentBuilder=null,extraStyles='',paginateDocument=null,onNoteChange=null,pdfOnly=false}={}){
   const get=id=>documentRef.getElementById(id.replace('notebookExport',idPrefix));
   const page=get('notebookExportPage');
@@ -70,7 +74,7 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
     if(!documentBuilder&&!selected.size){notify('حداقل یک مورد را انتخاب کنید');return;}
     const popup=windowRef.open?.('','_blank');
     if(!popup){notify('پنجره چاپ توسط مرورگر مسدود شد');return;}
-    popup.document.write(`<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>${esc(list.title)}</title><style>@page{margin:0}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}${documentStyles}${extraStyles}</style></head><body>${buildDocument()}<script>onload=()=>{const start=()=>setTimeout(()=>print(),80);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(start);else start();}<\/script></body></html>`);
+    popup.document.write(`<!doctype html><html lang="fa" dir="rtl"><head><meta charset="utf-8"><title>${esc(list.title)}</title><style>@page{margin:0}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}${documentStyles}${documentBuilder?'':`@page{margin:14mm}@media print{body{padding:0}}${notebookPaperFrameStyles('-9mm')}`}${extraStyles}</style></head><body>${buildDocument()}<script>onload=()=>{const start=()=>setTimeout(()=>print(),80);if(document.fonts&&document.fonts.ready)document.fonts.ready.then(start);else start();}<\/script></body></html>`);
     popup.document.close();
   }
   async function saveJpeg(){
