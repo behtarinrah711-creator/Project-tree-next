@@ -59,6 +59,7 @@ ${notebookPaperFrameStyles()}
 .cost-report .cost-total th,.cost-report .cost-total td{background:#eef3f8;font-weight:700}
 .cost-report .cost-details table{border-collapse:separate;border-spacing:0}
 .cost-report .cost-details thead th{border-bottom:0}
+.cost-report .cost-details .cost-total > *{border-bottom:1px solid #ddd}
 .cost-report thead{display:table-header-group}.cost-report tr,.signature{break-inside:avoid}
 .cost-report .cost-summary+.cost-summary,.cost-report .cost-appendix{break-before:page}
 .cost-report svg{width:100%;height:56mm;display:block}.cost-report .cost-legend{font-size:12px}
