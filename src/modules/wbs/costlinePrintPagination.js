@@ -84,6 +84,14 @@ export function paginateCostlinePrint(){
       appendBlock(signature);
       signature.remove();
     }
+    const sheets=[...pages.children];
+    const number=new Intl.NumberFormat('fa-IR');
+    sheets.forEach((sheet,index)=>{
+      const label=document.createElement('div');
+      label.className='contract-sheet-number';
+      label.textContent=`صفحه ${number.format(index+1)} از ${number.format(sheets.length)}`;
+      sheet.append(label);
+    });
     pages.classList.remove('contract-pagination-measure');
     source.replaceWith(pages);
   }catch(error){
