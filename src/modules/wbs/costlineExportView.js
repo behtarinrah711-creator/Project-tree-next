@@ -57,6 +57,8 @@ ${notebookPaperFrameStyles()}
 .cost-report h2+table{margin-top:0}.cost-report p{margin:6px 0}
 .cost-report table{font-size:11px;table-layout:auto}.cost-report td{overflow-wrap:anywhere}.cost-report th,.cost-report td{padding:4px 6px}
 .cost-report .cost-total th,.cost-report .cost-total td{background:#eef3f8;font-weight:700}
+.cost-report .cost-details table{border-collapse:separate;border-spacing:0}
+.cost-report .cost-details thead th{border-bottom:0}
 .cost-report thead{display:table-header-group}.cost-report tr,.signature{break-inside:avoid}
 .cost-report .cost-summary+.cost-summary,.cost-report .cost-appendix{break-before:page}
 .cost-report svg{width:100%;height:56mm;display:block}.cost-report .cost-legend{font-size:12px}
@@ -131,7 +133,7 @@ ${table(['دوره',...columns,'تخصیص تجمعی (تومان)'],rows,i+grou
 ${buckets.map(bucket=>`<h2>${bucket.label}</h2>${table(['بستهٔ کاری',...columns],packageRows(bucket.works))}`).join('')}</section>`;
   const undated=works.filter(work=>jalaliDayNumber(work.start)==null);
   if(undated.length) html+=`<section><h2>برآوردهای بدون تاریخ شروع</h2>${table(['مسیر کار','نام کار','برآورد کل (تومان)'],undated.map(work=>[work.path,work.text,money(work.amount)]))}</section>`;
-  if(details && buckets.some(bucket=>bucket.works.length)) html+=`<section class="cost-appendix"><h2>ریز کارها به تفکیک دوره</h2>${buckets.filter(bucket=>bucket.works.length).map(bucket=>`<h2>${bucket.label}</h2>${table(['مسیر درخت','نام کار','زمان کار',...detailColumns],detailRows(bucket.works),['جمع این دوره',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
+  if(details && buckets.some(bucket=>bucket.works.length)) html+=`<section class="cost-appendix cost-details"><h2>ریز کارها به تفکیک دوره</h2>${buckets.filter(bucket=>bucket.works.length).map(bucket=>`<h2>${bucket.label}</h2>${table(['مسیر درخت','نام کار','زمان کار',...detailColumns],detailRows(bucket.works),['جمع این دوره',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
   if(receipts) html+=`<section class="cost-appendix"><h2>دریافتی‌های کل پروژه</h2>${table(['شماره','تاریخ','مبلغ (تومان)'],fundingReceiptsOf(project).map((receipt,index)=>[money(index+1),reportDateRange(jalaliDayNumber(receipt.depositDate),null),money(receipt.amount)]))}
 <p>مجموع دریافتی ${money(poolReceived(project))} تومان · ماندهٔ تخصیص‌نیافته ${money(poolRemaining(project))} تومان</p></section>`;
   return html+'</article>';
