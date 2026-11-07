@@ -2,7 +2,7 @@ import { assignWorksToBuckets, buildBuckets, collectPlannedWorks, COSTLINE_RANGE
 import { allocationsOf, fundingReceiptsOf, poolReceived, poolRemaining } from '../../domain/wbs/fundingReceipts.js';
 import { formatJalaliDisplay, JALALI_MONTHS, todayJalaliStr } from '../../ui/jalali.js';
 import { toPersianDigits } from '../../ui/digits.js';
-import { installNotebookExportView, notebookPaperFrameStyles } from '../notebook/notebookExportView.js';
+import { installNotebookExportView } from '../notebook/notebookExportView.js';
 
 const ranges = [...COSTLINE_RANGES.slice(0,4), {id:'month2',label:'دوماهه'}, ...COSTLINE_RANGES.slice(4)];
 const money = value => new Intl.NumberFormat('fa-IR').format(value);
@@ -44,9 +44,9 @@ function packageRows(works){
 }
 
 const styles = `@page{size:A4 landscape;margin:10mm}
-${notebookPaperFrameStyles()}
 @media print{
   body{padding:0}
+  body::before{content:'';position:fixed;inset:calc(38px - 10mm);border:1px solid #777;pointer-events:none}
 }
 @media screen{body{padding:10mm 12mm}}
 .cost-report h1{text-align:center}
