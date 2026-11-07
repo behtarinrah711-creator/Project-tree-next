@@ -1,5 +1,5 @@
 import { openCostlineExport } from './costlineExportView.js';
-import { COSTLINE_RANGES, WEEKDAYS, plannedCostline } from '../../domain/wbs/costline.js';
+import { jalaliFromDay, COSTLINE_RANGES, WEEKDAYS, plannedCostline } from '../../domain/wbs/costline.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
@@ -7,7 +7,7 @@ import { createViewToolbar } from './viewHeader.js';
 import { uid } from '../../data/projectFactories.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
-import { allocatedForBucket, allocatedForTask, fundingReceiptsOf, placeCardFunding, poolReceived, poolRemaining, receiptTotalAllowed, setBucketFunding } from '../../domain/wbs/fundingReceipts.js';
+import { firstFundingShortage, fundingCoverage, allocatedForBucket, allocatedForTask, fundingReceiptsOf, placeCardFunding, poolReceived, poolRemaining, receiptTotalAllowed, setBucketFunding, setTaskFunding } from '../../domain/wbs/fundingReceipts.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
@@ -369,9 +369,10 @@ function renderMoney(value, { className = '', negative = false } = {}){
 }
 
 function bucketFundingBreakdown(project, bucket){
+  const coveredIn = fundingCoverage(project);
   const cards = bucket.works.map(work => ({
     work,
-    allocated: allocatedForBucket(project, work.id, bucket),
+    allocated: coveredIn(work.id, bucket),
   }));
   return {
     cards,
@@ -425,8 +426,8 @@ function receiptRemaining(receipt){
 }
 
 function bucketFundingLimit(project, work, bucket){
-  const covered = allocatedForBucket(project, work.id, bucket);
-  return Math.min(Number(work.sliceAmount) || 0, covered + poolRemaining(project));
+  const covered = bucket ? allocatedForBucket(project, work.id, bucket) : allocatedForTask(project, work.id);
+  return Math.min(Number(bucket ? work.sliceAmount : work.amount) || 0, covered + poolRemaining(project));
 }
 
 function costlineDetailRow(label, value, className = ''){
@@ -543,30 +544,38 @@ function openBucketSheet(project, initialBucket, refresh, access){
         card.append(heading, modeRow, dateRow, totalRow, needRow);
         const assignLabel = document.createElement('span');
         assignLabel.className = 'wbs-costline-fund-slice';
-        assignLabel.textContent = 'وجه اختصاص داده شده';
+        const spread = work.accrual !== 'start' && work.accrual !== 'end';
+        const fundingBucket = spread ? null : bucket;
+        const editableAmount = spread ? allocatedForTask(projectRepository.getActiveProject(project.id) || project, work.id) : allocated;
+        if(spread){
+          card.appendChild(costlineDetailRow('پوشش بودجه در این دوره', `${money(allocated)} تومان`));
+          const shortageDay = firstFundingShortage(work, bucket, allocated);
+          if(shortageDay != null) card.appendChild(costlineDetailRow('اولین روز کسری در این دوره', formatJalaliDisplay(jalaliFromDay(shortageDay))));
+        }
+        assignLabel.textContent = spread ? 'کل بودجهٔ اختصاص‌یافته به کار' : 'وجه اختصاص داده شده';
         const manual = document.createElement('button');
         manual.type = 'button';
         manual.className = 'wbs-costline-manual';
         manual.disabled = !access.canWrite;
-        manual.textContent = allocated > 0 ? `${money(allocated)} تومان` : 'وارد کردن مبلغ';
+        manual.textContent = editableAmount > 0 ? `${money(editableAmount)} تومان` : 'وارد کردن مبلغ';
         manual.addEventListener('click', () => {
           const live = projectRepository.getActiveProject(project.id) || project;
-          const visibleAmount = allocatedForBucket(live, work.id, bucket);
+          const visibleAmount = spread ? allocatedForTask(live, work.id) : allocatedForBucket(live, work.id, bucket);
           openNumpadGeneric(visibleAmount || '', value => {
             const next = Number(value) || 0;
             const latest = projectRepository.getActiveProject(project.id) || project;
-            const allowed = bucketFundingLimit(latest, work, bucket);
+            const allowed = bucketFundingLimit(latest, work, fundingBucket);
             if(next > allowed){
               window.KarhaUI?.showToast?.(`مبلغ نمی‌تواند بیشتر از ${money(allowed)} تومان باشد`);
               return false;
             }
-            saveBucketFunding(project.id, work.id, bucket, next);
+            if(!saveBucketFunding(project.id, work.id, fundingBucket, next)) return false;
             refresh();
             paint();
             return true;
           }, { suffix:' تومان', validate:value => {
             const latest = projectRepository.getActiveProject(project.id) || project;
-            const allowed = bucketFundingLimit(latest, work, bucket);
+            const allowed = bucketFundingLimit(latest, work, fundingBucket);
             const next = Number(value || 0);
             return next <= allowed ? '' : `حداکثر مبلغ مجاز ${money(allowed)} تومان است`;
           }});
@@ -605,9 +614,9 @@ function accrualChangeCopy(from, to, amount, work){
   const copy = {
     'start->end': [`${funded} از ابتدای کار برداشته می‌شود و یکجا به انتهای کار منتقل می‌شود. ${share}`, 'انتقال به انتها'],
     'end->start': [`${funded} از انتهای کار برداشته می‌شود و یکجا به ابتدای کار منتقل می‌شود. ${share}`, 'انتقال به ابتدا'],
-    'start->spread': [`${funded} از ابتدای کار خارج می‌شود و روی روزهای ${range} پخش می‌شود. ${share}`, 'پخش روی مدت'],
+    'start->spread': [`${funded} به‌ترتیب نیاز روزهای ${range} را پوشش می‌دهد. ${share}`, 'پخش روی مدت'],
     'spread->start': [`${funded} از پخش روزانه جمع می‌شود و یکجا به ابتدای کار منتقل می‌شود. ${share}`, 'انتقال به ابتدا'],
-    'end->spread': [`${funded} از انتهای کار خارج می‌شود و روی روزهای ${range} پخش می‌شود. ${share}`, 'پخش روی مدت'],
+    'end->spread': [`${funded} به‌ترتیب نیاز روزهای ${range} را پوشش می‌دهد. ${share}`, 'پخش روی مدت'],
     'spread->end': [`${funded} از پخش روزانه جمع می‌شود و یکجا به انتهای کار منتقل می‌شود. ${share}`, 'انتقال به انتها'],
   };
   return copy[`${from}->${to}`] || [`زمان تأمین عوض می‌شود. ${share}`, 'تأیید'];
@@ -616,7 +625,7 @@ function accrualChangeCopy(from, to, amount, work){
 function saveBucketFunding(projectId, taskId, bucket, amount){
   const result = { ok:true };
   projectRepository.updateProject(projectId, row => {
-    const saved = setBucketFunding(row, taskId, bucket, amount);
+    const saved = bucket ? setBucketFunding(row, taskId, bucket, amount) : setTaskFunding(row, taskId, amount);
     if(!saved.ok){
       result.ok = false;
       result.reason = saved.reason;
@@ -625,11 +634,12 @@ function saveBucketFunding(projectId, taskId, bucket, amount){
     return saved.project;
   });
   if(!result.ok){
-    window.KarhaUI?.showToast?.(result.reason === 'budget' ? 'مانده بودجه کافی نیست' : 'مبلغ نمی‌تواند بیشتر از سهم این بازه باشد');
-    return;
+    window.KarhaUI?.showToast?.(result.reason === 'budget' ? 'مانده بودجه کافی نیست' : 'مبلغ از سقف برآورد بیشتر است یا زمان کار تغییر کرده');
+    return false;
   }
   markDirty(projectId);
   persist({ local:false });
+  return true;
 }
 
 function setAccrual(project, taskId, accrual){

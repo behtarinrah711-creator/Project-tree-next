@@ -1,5 +1,5 @@
 import { assignWorksToBuckets, buildBuckets, collectPlannedWorks, COSTLINE_RANGES, jalaliDayNumber, jalaliFromDay, WEEKDAYS } from '../../domain/wbs/costline.js';
-import { allocationsOf, fundingReceiptsOf, poolReceived, poolRemaining } from '../../domain/wbs/fundingReceipts.js';
+import { firstFundingShortage, fundingCoverage, fundingReceiptsOf, poolReceived, poolRemaining } from '../../domain/wbs/fundingReceipts.js';
 import { formatJalaliDisplay, JALALI_MONTHS, todayJalaliStr } from '../../ui/jalali.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { installNotebookExportView } from '../notebook/notebookExportView.js';
@@ -29,7 +29,7 @@ const columns = ['موردنیاز (تومان)','تخصیص‌یافته (تو�
 const detailColumns = ['موردنیاز در این دوره (تومان)','تخصیص‌یافته در این دوره (تومان)','کسری این دوره (تومان)'];
 const workFunding = work => Math.min(work.sliceAmount,work.allocated);
 
-const detailRows = works => works.map(work=>[work.path,work.text,reportDateRange(jalaliDayNumber(work.start),jalaliDayNumber(work.end)),...costs(work.sliceAmount,workFunding(work))]);
+const detailRows = works => works.map(work=>[work.path,work.shortageDay==null?work.text:`${work.text} · شروع کسری این دوره ${reportDateRange(work.shortageDay,null)}`,reportDateRange(jalaliDayNumber(work.start),jalaliDayNumber(work.end)),...costs(work.sliceAmount,workFunding(work))]);
 
 function packageRows(works){
   const packages=new Map();
@@ -89,19 +89,12 @@ export function costlineDocument(project,{rangeId,originWeekday,start,end,detail
   const allBuckets=assignWorksToBuckets(buildBuckets({rangeId,originWeekday,works:dated})
     .filter(bucket=>bucket.startDay<=end && bucket.endDay>=start)
     .map(bucket=>({...bucket,startDay:Math.max(start,bucket.startDay),endDay:Math.min(end,bucket.endDay)})),dated);
-  const allocations=new Map();
-  for(const row of allocationsOf(project)){
-    const key=String(row.taskId);
-    if(!allocations.has(key)) allocations.set(key,[]);
-    allocations.get(key).push(row);
-  }
+  const coveredIn=fundingCoverage(project);
   for(const bucket of allBuckets){
     bucket.label=reportDateRange(bucket.startDay,bucket.endDay);
     for(const work of bucket.works){
-      work.allocated=(allocations.get(String(work.id))||[]).reduce((sum,row)=>{
-        const day=row.day;
-        return day!=null && day>=bucket.startDay && day<=bucket.endDay ? sum+row.amount : sum;
-      },0);
+      work.allocated=coveredIn(work.id,bucket);
+      work.shortageDay=firstFundingShortage(work,bucket,work.allocated);
     }
     bucket.allocated=bucket.works.reduce((sum,work)=>sum+workFunding(work),0);
   }
