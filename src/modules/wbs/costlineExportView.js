@@ -111,13 +111,18 @@ ${Number.isFinite(start)&&Number.isFinite(end)?`<p class="cost-report-range">ب�
       cumulative+=bucket.allocated;
       return [bucket.label,...costs(bucket.total,bucket.allocated),money(cumulative)];
     });
+    const groupNeed=group.reduce((sum,bucket)=>sum+bucket.total,0);
+    const groupAllocated=group.reduce((sum,bucket)=>sum+bucket.allocated,0);
+    const tableTotal=i+group.length===buckets.length
+      ? ['جمع کل بازه',...costs(need,allocated),money(cumulative)]
+      : ['جمع دوره‌های این جدول',...costs(groupNeed,groupAllocated),money(cumulative)];
     html+=`<section class="cost-summary">${title}
 ${i===0?'<h2>جمع بازهٔ انتخاب‌شده</h2>'+table(['بستهٔ کاری',...columns],packageRows(buckets.flatMap(bucket=>bucket.works)),['جمع کل بازه',...costs(need,allocated)]):''}
 <h2>نمودار و جدول بودجه‌بندی دوره‌ای</h2>
 <p class="cost-legend">محور عمودی به میلیون تومان · <b>آبی تیره: تخصیص‌یافته</b> · <span>آبی روشن: کسری</span></p>
 ${chartYear?`<p>سال ${toPersianDigits(chartYear)}</p>`:''}
 ${chart(group,max,chartYear)}
-${table(['دوره',...columns,'تخصیص تجمعی (تومان)'],rows,i+group.length===buckets.length?['جمع کل بازه',...costs(need,allocated),money(allocated)]:null)}</section>`;
+${table(['دوره',...columns,'تخصیص تجمعی (تومان)'],rows,tableTotal)}</section>`;
   }
   if(!overview || !buckets.length) html+=title;
   if((overview || details) && !buckets.length) html+='<p>در این بازه برآورد دوره‌ای وجود ندارد.</p>';

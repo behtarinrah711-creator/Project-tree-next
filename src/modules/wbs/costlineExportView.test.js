@@ -41,3 +41,13 @@ test('the report clips work and funding to the date range and includes selected 
   assert.match(report,/برآوردهای بدون تاریخ شروع/);
   assert.doesNotMatch(costlineDocument(project,{...options,details:false,receipts:false}),/لیست کارها|دریافتی‌های کل پروژه/);
 });
+
+test('the first chart table shows its own subtotal and the last shows the report total',()=>{
+  const start=jalaliDayNumber('1405/01/01');
+  const project={name:'آزمایش',tasks:[
+    {id:'work',kind:'work',text:'کار',quantity:1,unitCost:800,scheduleStart:'1405/01/01',scheduleEnd:'1405/01/08'},
+  ]};
+  const html=costlineDocument(project,{rangeId:'day',originWeekday:4,start,end:start+7});
+  assert.match(html,/جمع دوره‌های این جدول<\/th><td>۶۰۰<\/td><td>۰<\/td><td>۶۰۰<\/td><td>۰<\/td>/);
+  assert.match(html,/جمع کل بازه<\/th><td>۸۰۰<\/td><td>۰<\/td><td>۸۰۰<\/td><td>۰<\/td>/);
+});
