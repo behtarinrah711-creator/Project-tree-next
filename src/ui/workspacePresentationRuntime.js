@@ -167,7 +167,7 @@ function closeBottomPages(){
 }
 
 function handleWorkspaceContextBack(){
-  if(workspaceSubpage === 'done-works' || workspaceSubpage === 'work-delays'){
+  if(['contract-addenda','done-works','work-delays'].includes(workspaceSubpage)){
     if(window.KarhaBrowserHistory?.back) window.KarhaBrowserHistory.back();
     else {
       const projectId = getActiveTab();

@@ -1,3 +1,6 @@
+import {saveAddendumDraft} from './contractAddendum.js';
+import {parentContractOf} from '../../src/domain/contractAddenda.js';
+import {transitionContractApproval} from '../../src/domain/contractApproval.js';
 import {syncContractPartyData} from '../../src/domain/contractPartyData.js';
 import {authenticate} from './auth.js';
 import {readJson,sendJson} from './http.js';
@@ -6,12 +9,14 @@ import {transitionContractHandoff} from '../../src/domain/contractHandoff.js';
 
 export function createContractHandoffHandler({pool,sessionSecret,storage}){
   return async(request,response,url)=>{
-    const match=/^\/api\/v1\/projects\/([^/]+)\/contracts\/([^/]+)\/handoff$/.exec(url.pathname);
+    const match=/^\/api\/v1\/projects\/([^/]+)\/(contracts|addenda)\/([^/]+)\/handoff$/.exec(url.pathname);
     if(!match)return false;
     if(request.method!=='POST'){sendJson(response,405,{error:'method_not_allowed'});return true;}
     const accountId=await authenticate(request,pool,sessionSecret);
     if(!accountId){sendJson(response,401,{error:'unauthorized'});return true;}
-    const body=await readJson(request,128*1024),[projectId,contractId]=match.slice(1).map(decodeURIComponent);
+    const body=await readJson(request,128*1024),[projectId,kind,contractId]=match.slice(1).map(decodeURIComponent);
+    const addendum=kind==='addenda', collection=addendum?'contractAddenda':'contracts';
+    if(addendum && !/^addendum-[0-9a-f-]{36}$/i.test(contractId)){sendJson(response,400,{message:'شناسه الحاقیه نامعتبر است'});return true;}
     const client=await pool.connect();let committed=false;
     try{
       await client.query('BEGIN');
@@ -23,11 +28,13 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         LEFT JOIN project_roles r ON r.id=m.role_id AND r.project_id=$1 WHERE a.id=$2`,[projectId,accountId]);
       Object.assign(row,member.rows[0]);
       const financeAction=['approve_finance','reject_finance','revoke_finance'].includes(body.action);
-      const allowed=financeAction?(canAccessFiles(row,accountId,true,'accounting') || canAccessFiles(row,accountId,true,'accounting-contracts')):canAccessFiles(row,accountId,true,'contracts');
+      const reviewAction=addendum && ['approve_addendum','revoke_addendum'].includes(body.action);
+      const allowed=reviewAction?canAccessFiles(row,accountId,false,'contracts'):financeAction?(canAccessFiles(row,accountId,true,'accounting') || canAccessFiles(row,accountId,true,'accounting-contracts')):canAccessFiles(row,accountId,true,'contracts');
       if(!allowed){sendJson(response,403,{message:'اجازه تغییر قرارداد را ندارید'});return true;}
-      const contract=(row.payload.contracts||[]).find(c=>String(c.id)===contractId && !c.trashed);
-      if(!contract){sendJson(response,404,{message:'قرارداد پیدا نشد'});return true;}
-      if(Number(body.version)!==Number(contract.handoffVersion||0) || Number(body.updatedAt)!==Number(contract.updatedAt||0)){
+      const contract=(row.payload[collection]||[]).find(c=>String(c.id)===contractId && !c.trashed);
+      const saveDraft=addendum && body.action==='save_addendum';
+      if(!contract && !saveDraft){sendJson(response,404,{message:'قرارداد پیدا نشد'});return true;}
+      if(Number(body.version)!==Number(contract?.handoffVersion||0) || Number(body.updatedAt)!==Number(contract?.updatedAt||0)){
         sendJson(response,409,{message:'قرارداد تغییر کرده است؛ صفحه را به‌روز کنید'});return true;
       }
       let files=[];
@@ -42,12 +49,35 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
           catch(error){if(error.code!=='ENOENT')throw error;sendJson(response,400,{message:'فایل پیدا نشد؛ دوباره بارگذاری کنید'});return true;}
         }
       }
-      const person=(row.payload.contacts||[]).find(c=>!c.trashed && (c.phones||[c.phone]).includes(row.phone));
-      const actor={id:String(accountId),name:[person?.firstName,person?.lastName].filter(Boolean).join(' ')||person?.name||row.phone||'کاربر'};
-      const activity=(row.payload.activityTemplates||[]).find(a=>String(a.id)===String(contract.activityId));
-      const transition=transitionContractHandoff(body.action==='send_finance'?syncContractPartyData({...contract},row.payload):contract,body.action,actor,{files,reason:body.reason,projectName:row.payload.name||row.payload.title||'',activityName:activity?.name||activity?.title||''});
+      const memberContact=(row.payload.projectMembers||[]).find(member=>member.mobile===row.phone && member.status==='active')?.contactId;
+      const person=(row.payload.contacts||[]).find(c=>!c.trashed && (String(c.id)===String(memberContact||'') || (c.phones||[c.phone]).includes(row.phone)));
+      const actor={id:String(accountId),contactId:String(person?.id || memberContact || ''),name:[person?.firstName,person?.lastName].filter(Boolean).join(' ')||person?.name||row.phone||'کاربر'};
+      const activity=(row.payload.activityTemplates||[]).find(a=>String(a.id)===String(contract?.activityId));
+      let transition;
+      if(saveDraft) transition=saveAddendumDraft(row.payload,contract,body,actor,contractId,Date.now());
+      else if(reviewAction){
+        transition=transitionContractApproval(contract,body.action==='approve_addendum'?'approve':'revoke',actor,{reason:body.reason});
+        if(transition.ok && body.action==='revoke_addendum')Object.assign(transition.contract,{isDraft:true,status:'draft'});
+      }else if(addendum && ['cancel_completion','withdraw_submission'].includes(body.action)){
+        transition=transitionContractApproval(contract,body.action,actor,{reason:body.reason});
+      }else{
+        let source=contract;
+        if(body.action==='send_finance'){
+          if(addendum){
+            const parent=parentContractOf(row.payload,contract);
+            if(!parent){sendJson(response,409,{message:'قرارداد اصلی پیدا نشد'});return true;}
+            const parentDocument=parent.accountingPackage?.contract || syncContractPartyData({...parent},row.payload);
+            const {accountingPackage,approvalHistory,financeHistory,...frozen}=parentDocument;
+            const parentActivity=(row.payload.activityTemplates||[]).find(a=>String(a.id)===String(parent.activityId));
+            source={...contract,parentDocument:{...frozen,documentActivityName:frozen.documentActivityName || parentActivity?.name || ''}};
+          }else source=syncContractPartyData({...contract},row.payload);
+        }
+        transition=transitionContractHandoff(source,body.action,actor,{files,reason:body.reason,projectName:row.payload.name||row.payload.title||'',activityName:activity?.name||activity?.title||''});
+      }
       if(!transition.ok){sendJson(response,400,{message:transition.message});return true;}
-      row.payload.contracts=row.payload.contracts.map(c=>String(c.id)===contractId?transition.contract:c);
+      if(addendum) transition.contract.handoffVersion=Number(contract?.handoffVersion||0)+1;
+      row.payload[collection]=contract ? row.payload[collection].map(c=>String(c.id)===contractId?transition.contract:c)
+        : [...(row.payload[collection]||[]),transition.contract];
       await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[projectId,JSON.stringify(row.payload)]);
       await client.query('COMMIT');committed=true;sendJson(response,200,{contract:transition.contract});
     }finally{if(!committed)await client.query('ROLLBACK');client.release();}

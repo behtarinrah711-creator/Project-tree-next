@@ -102,7 +102,7 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
       LEFT JOIN project_memberships m ON m.project_id=p.id AND m.account_id=a.id
       LEFT JOIN project_roles r ON r.id=m.role_id AND r.project_id=p.id WHERE p.id=$1`,[projectId,accountId]);
     const row=result.rows[0];
-    const contract=category==='contracts'?(row?.payload?.contracts||[]).find(c=>!c.trashed && String(c.id)===recordId):null;
+    const contract=category==='contracts'?[...(row?.payload?.contracts||[]),...(row?.payload?.contractAddenda||[])].find(c=>!c.trashed && String(c.id)===recordId):null;
     const allowed=category==='contacts'
       ? canAccessFiles(row,accountId,write) || (!write && canReadContractDocument(row,accountId,url.searchParams.get('contractId'),recordId,id))
       : !!contract && (canAccessFiles(row,accountId,write,'contracts') || (!write && isContractInFinance(contract) && (canAccessFiles(row,accountId,false,'accounting') || canAccessFiles(row,accountId,false,'accounting-contracts'))));

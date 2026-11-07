@@ -150,6 +150,7 @@ function openSearchTemplate(opts){
     showStar: opts.showStar!==false,
     showAdd: opts.showAdd!==false && (['contact','activity'].includes(opts.resourceType) || opts.showAdd===true) && typeof opts.onAdd==='function',
     preserveOrder:opts.preserveOrder===true,
+    normalizeSearch:opts.normalizeSearch,
     query:''
   };
   const titleEl=document.getElementById('searchTemplateTitle');
@@ -169,10 +170,11 @@ function renderSearchTemplateBody(){
   const body=document.getElementById('searchTemplateBody');
   if(!body||!searchTemplateState) return;
   body.innerHTML='';
-  const q=String(searchTemplateState.query||'').trim().toLocaleLowerCase('fa');
+  const normalize=searchTemplateState.normalizeSearch || (value=>String(value||'').trim().toLocaleLowerCase('fa'));
+  const q=normalize(searchTemplateState.query);
   let items=searchTemplateState.items.filter(it=>{
     if(!q) return true;
-    return String(it.name||'').toLocaleLowerCase('fa').includes(q);
+    return normalize(it.name).includes(q);
   });
 
   if(!items.length){

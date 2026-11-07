@@ -12,6 +12,7 @@ function canWrite(project){
   return ['create','edit','full'].includes(level) || (!permissions.modules && permissions.edit===true);
 }
 export function renderContractSignedSection(project,contract,{onChanged=()=>{},finance=false}={}){
+  const label=contract.parentContractId?'الحاقیه':'قرارداد';
   const existing=signedContractFiles(contract),ready=canAttachSignedContract(contract),returned=canReviseReturnedSignedContract(contract);
   if(!ready && !returned && !existing.length)return null;
   const section=document.createElement('section');section.className='contract-signed-section';
@@ -27,8 +28,8 @@ export function renderContractSignedSection(project,contract,{onChanged=()=>{},f
   };
   const openAttachments=()=>{
     const files=JSON.parse(JSON.stringify(existing));let uploader,saving=false;
-    const sheet=openWbsSheet({title:'نسخه امضاشده قرارداد',saveLabel:'ذخیره',autoFocus:false,showSave:editable,historyKey:'contract-signed:'+contract.id,
-      body(root){uploader=mountFileUploader(root,{projectId:project.id,recordId:contract.id,category:'contracts',files,readOnly:!editable,label:'افزودن عکس یا PDF قرارداد',buttonLabel:true,onError:toast,
+    const sheet=openWbsSheet({title:'نسخه امضاشده '+label,saveLabel:'ذخیره',autoFocus:false,showSave:editable,historyKey:'contract-signed:'+contract.id,
+      body(root){uploader=mountFileUploader(root,{projectId:project.id,recordId:contract.id,category:'contracts',files,readOnly:!editable,label:'افزودن عکس یا PDF '+label,buttonLabel:true,onError:toast,
         confirmRemove:remove=>{if(!saving)openConfirm('این فایل حذف شود؟',()=>{if(!saving)remove();},'حذف');}});},
       onSave(){
         if(saving)return false;
@@ -49,7 +50,7 @@ export function renderContractSignedSection(project,contract,{onChanged=()=>{},f
       onSave(root){const reason=root.querySelector('[name="reason"]').value;if(reason.trim().length<5){toast('دلیل پس‌گرفتن حداقل ۵ حرف باشد');return false;}run('withdraw_finance',{reason}).then(ok=>{if(ok && sheet.isConnected)closeWbsSheet();});return false;}
     });});
   }
-  if(ready || returned || existing.length)button(existing.length?'نسخه امضاشده قرارداد':'افزودن عکس یا PDF قرارداد',openAttachments).className+=' contract-signed-trigger';
-  if(!sent && writable && ready && isContractSigned(contract))button('ارسال به واحد مالی',()=>openConfirm('قرارداد تنظیم‌شده به همراه نسخه امضاشده به واحد مالی ارسال شود؟',()=>run('send_finance'),'ارسال'));
+  if(ready || returned || existing.length)button((existing.length?'نسخه امضاشده ':'افزودن عکس یا PDF ')+label,openAttachments).className+=' contract-signed-trigger';
+  if(!sent && writable && ready && isContractSigned(contract))button('ارسال به واحد مالی',()=>openConfirm((contract.parentContractId?label:'قرارداد تنظیم‌شده')+' به همراه نسخه امضاشده به واحد مالی ارسال شود؟',()=>run('send_finance'),'ارسال'));
   return section;
 }
