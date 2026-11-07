@@ -26,8 +26,11 @@ test('the report clips work and funding to the date range and includes selected 
   assert.match(report,/<svg/);
   assert.match(report,/&lt;آزمایش&gt;/);
   assert.match(report,/<td>۵۰۰<\/td><td>۰<\/td><td>۵۰۰<\/td>/);
-  assert.match(report,/<h2>۳ تا ۴ فروردین ۱۴۰۵ \| تفکیک بسته های کاری<\/h2>/);
-  assert.doesNotMatch(costlineDocument(project,{...options,packages:false}),/تفکیک بسته های کاری/);
+  assert.doesNotMatch(report,/تفکیک بسته های کاری/);
+  assert.match(report,/جمع بازهٔ انتخاب‌شده/);
+  const daily={...options,rangeId:'day'};
+  assert.match(costlineDocument(project,daily),/<h2>۳ فروردین ۱۴۰۵ \| تفکیک بسته های کاری<\/h2>/);
+  assert.doesNotMatch(costlineDocument(project,{...daily,packages:false}),/تفکیک بسته های کاری/);
   assert.match(report,/لیست کارها به تفکیک/);
   assert.match(report,/دریافتی‌های کل پروژه/);
   assert.match(report,/برآوردهای بدون تاریخ شروع/);
