@@ -223,7 +223,12 @@ export function fundingCoverage(project){
 }
 
 export function allocatedForBucket(project, taskId, bucket){
-  return fundingCoverage(project)(taskId, bucket);
+  if(!bucket || !Number.isFinite(Number(bucket.startDay)) || !Number.isFinite(Number(bucket.endDay))) return 0;
+  let total = 0;
+  absorbAll(project).get(String(taskId))?.forEach((amount, day) => {
+    if(day >= Number(bucket.startDay) && day <= Number(bucket.endDay)) total += amount;
+  });
+  return total;
 }
 
 export function firstFundingShortage(work, bucket, covered){
