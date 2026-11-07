@@ -43,10 +43,10 @@ function packageRows(works){
   return Array.from(packages,([name,totals])=>[name,...costs(totals.need,totals.allocated)]);
 }
 
-const styles = `@page{size:A4 landscape;margin:10mm}
+const styles = `@page{size:A4 portrait;margin:15mm}
 @media print{
   body{padding:0}
-  body::before{content:'';position:fixed;inset:calc(38px - 10mm);border:1px solid #777;pointer-events:none}
+  body::before{content:'';position:fixed;inset:-5mm;box-sizing:border-box;border:1px solid #777;pointer-events:none}
 }
 @media screen{body{padding:10mm 12mm}}
 .cost-report h1{text-align:center}
@@ -62,6 +62,7 @@ const styles = `@page{size:A4 landscape;margin:10mm}
 .cost-report .cost-details .cost-total > *{border-bottom:1px solid #ddd}
 .cost-report thead{display:table-header-group}.cost-report tr,.signature{break-inside:avoid}
 .cost-report .cost-summary+.cost-summary,.cost-report .cost-appendix{break-before:page}
+.cost-report .cost-summary svg+table{margin-top:5mm}
 .cost-report svg{width:100%;height:56mm;display:block}.cost-report .cost-legend{font-size:12px}
 .cost-report .cost-legend b{color:#0d4484}.cost-report .cost-legend span{color:#496989}
 .signature{margin-top:12mm;text-align:left}.signature img{display:block;margin-right:auto;max-width:45mm;max-height:20mm}.signature span{font-size:11px}`;
@@ -131,7 +132,7 @@ ${table(['دوره',...columns,'تخصیص تجمعی (تومان)'],rows,i+grou
   }
   if(!buckets.length) html+=title+'<p>در این بازه برآورد دوره‌ای وجود ندارد.</p>';
   if(buckets.length) html+=`<section class="cost-packages"><h2>برآورد هزینه و بودجه‌بندی بر اساس بسته‌های کاری</h2>
-${buckets.map(bucket=>`<h2>${bucket.label}</h2>${table(['بستهٔ کاری',...columns],packageRows(bucket.works))}`).join('')}</section>`;
+${buckets.map(bucket=>`<h2>${bucket.label}</h2>${table(['بستهٔ کاری',...columns],packageRows(bucket.works),['جمع این بازه',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
   const undated=works.filter(work=>jalaliDayNumber(work.start)==null);
   if(undated.length) html+=`<section><h2>برآوردهای بدون تاریخ شروع</h2>${table(['مسیر کار','نام کار','برآورد کل (تومان)'],undated.map(work=>[work.path,work.text,money(work.amount)]))}</section>`;
   if(details && buckets.some(bucket=>bucket.works.length)) html+=`<section class="cost-appendix cost-details"><h2>ریز کارها به تفکیک دوره</h2>${buckets.filter(bucket=>bucket.works.length).map(bucket=>`<h2>${bucket.label}</h2>${table(['مسیر درخت','نام کار','زمان کار',...detailColumns],detailRows(bucket.works),['جمع این دوره',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
