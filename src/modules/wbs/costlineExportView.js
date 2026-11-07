@@ -61,7 +61,7 @@ const styles = `@page{size:A4 portrait;margin:15mm}
 .cost-report .cost-details thead th{border-bottom:0}
 .cost-report .cost-details .cost-total > *{border-bottom:1px solid #ddd}
 .cost-report thead{display:table-header-group}.cost-report tr,.signature{break-inside:avoid}
-.cost-report .cost-summary+.cost-summary,.cost-report .cost-appendix{break-before:page}
+.cost-report .cost-summary+.cost-summary,.cost-report .cost-appendix{margin-top:16px}
 .cost-report svg{width:100%;height:56mm;display:block}.cost-report .cost-legend{font-size:12px}
 .cost-report .cost-legend b{color:#0d4484}.cost-report .cost-legend span{color:#496989}
 .signature{margin-top:12mm;text-align:left}.signature img{display:block;margin-right:auto;max-width:45mm;max-height:20mm}.signature span{font-size:11px}`;
