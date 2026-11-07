@@ -1,3 +1,4 @@
+import { paginateCostlinePrint } from './costlinePrintPagination.js';
 import { assignWorksToBuckets, buildBuckets, collectPlannedWorks, COSTLINE_RANGES, jalaliDayNumber, jalaliFromDay, WEEKDAYS } from '../../domain/wbs/costline.js';
 import { firstFundingShortage, fundingCoverage, fundingReceiptsOf, poolReceived, poolRemaining } from '../../domain/wbs/fundingReceipts.js';
 import { formatJalaliDisplay, JALALI_MONTHS, todayJalaliStr } from '../../ui/jalali.js';
@@ -43,12 +44,7 @@ function packageRows(works){
   return Array.from(packages,([name,totals])=>[name,...costs(totals.need,totals.allocated)]);
 }
 
-const styles = `@page{size:A4 portrait;margin:15mm}
-@media print{
-  body{padding:0}
-  body::before{content:'';position:fixed;inset:-5mm;box-sizing:border-box;border:1px solid #777;pointer-events:none}
-}
-@media screen{body{padding:10mm 12mm}}
+const styles = `html,body{margin:0;padding:0}
 .cost-report h1{text-align:center}
 .cost-report .cost-meta{display:flex;justify-content:space-between;gap:12px}
 .cost-report .cost-report-range{text-align:left}
@@ -61,7 +57,6 @@ const styles = `@page{size:A4 portrait;margin:15mm}
 .cost-report .cost-details thead th{border-bottom:0}
 .cost-report .cost-details .cost-total > *{border-bottom:1px solid #ddd}
 .cost-report thead{display:table-header-group}.cost-report tr,.signature{break-inside:avoid}
-.cost-report .cost-summary+.cost-summary,.cost-report .cost-appendix{break-before:page}
 .cost-report .cost-summary svg+table{margin-top:5mm}
 .cost-report svg{width:100%;height:56mm;display:block}.cost-report .cost-legend{font-size:12px}
 .cost-report .cost-legend b{color:#0d4484}.cost-report .cost-legend span{color:#496989}
@@ -83,7 +78,7 @@ function chart(buckets,max,sharedYear){
   return `<svg viewBox="0 0 ${width} 195" role="img" aria-label="نمودار برآورد هزینه" font-size="11" fill="#202124">${ticks}${bars}</svg>`;
 }
 
-export function costlineDocument(project,{rangeId,originWeekday,start,end,packages=true,details,receipts}){
+export function costlineDocument(project,{rangeId,originWeekday,start,end,overview=true,packages=true,details,receipts}){
   const works=collectPlannedWorks(project.tasks,{includeUndated:true});
   const dated=works.filter(work=>jalaliDayNumber(work.start)!=null);
   const allBuckets=assignWorksToBuckets(buildBuckets({rangeId,originWeekday,works:dated})
@@ -108,7 +103,7 @@ ${Number.isFinite(start)&&Number.isFinite(end)?`<p class="cost-report-range">ب�
   let html=`<article class="nb-export-document cost-report">`;
   const max=Math.max(1,...buckets.map(bucket=>bucket.total));
   let cumulative=0;
-  for(let i=0;i<buckets.length;i+=6){
+  for(let i=0;overview && i<buckets.length;i+=6){
     const group=buckets.slice(i,i+6);
     const year=dateParts(group[0].startDay).year;
     const chartYear=group.every(bucket=>dateParts(bucket.startDay).year===year && dateParts(bucket.endDay).year===year)?year:null;
@@ -118,17 +113,19 @@ ${Number.isFinite(start)&&Number.isFinite(end)?`<p class="cost-report-range">ب�
     });
     html+=`<section class="cost-summary">${title}
 ${i===0?'<h2>جمع بازهٔ انتخاب‌شده</h2>'+table(['بستهٔ کاری',...columns],packageRows(buckets.flatMap(bucket=>bucket.works)),['جمع کل بازه',...costs(need,allocated)]):''}
+<h2>نمودار و جدول بودجه‌بندی دوره‌ای</h2>
 <p class="cost-legend">محور عمودی به میلیون تومان · <b>آبی تیره: تخصیص‌یافته</b> · <span>آبی روشن: کسری</span></p>
 ${chartYear?`<p>سال ${toPersianDigits(chartYear)}</p>`:''}
 ${chart(group,max,chartYear)}
 ${table(['دوره',...columns,'تخصیص تجمعی (تومان)'],rows,i+group.length===buckets.length?['جمع کل بازه',...costs(need,allocated),money(allocated)]:null)}</section>`;
   }
-  if(!buckets.length) html+=title+'<p>در این بازه برآورد دوره‌ای وجود ندارد.</p>';
-  if(packages && buckets.length) html+=`<section class="cost-packages">
+  if(!overview || !buckets.length) html+=title;
+  if((overview || details) && !buckets.length) html+='<p>در این بازه برآورد دوره‌ای وجود ندارد.</p>';
+  if(packages && buckets.length && (!overview || buckets.length>1)) html+=`<section class="cost-packages">
 ${buckets.map(bucket=>`<h2>${bucket.label} | تفکیک بسته های کاری</h2>${table(['بستهٔ کاری',...columns],packageRows(bucket.works),['جمع این بازه',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
   const undated=works.filter(work=>jalaliDayNumber(work.start)==null);
-  if(undated.length) html+=`<section><h2>برآوردهای بدون تاریخ شروع</h2>${table(['مسیر کار','نام کار','برآورد کل (تومان)'],undated.map(work=>[work.path,work.text,money(work.amount)]))}</section>`;
-  if(details && buckets.some(bucket=>bucket.works.length)) html+=`<section class="cost-appendix cost-details">${buckets.filter(bucket=>bucket.works.length).map(bucket=>`<h2>${bucket.label} | لیست کارها به تفکیک</h2>${table(['مسیر درخت','نام کار','زمان کار',...detailColumns],detailRows(bucket.works),['جمع این دوره',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
+  if((overview || details) && undated.length) html+=`<section><h2>برآوردهای بدون تاریخ شروع</h2>${table(['مسیر کار','نام کار','برآورد کل (تومان)'],undated.map(work=>[work.path,work.text,money(work.amount)]))}</section>`;
+  if(details && buckets.some(bucket=>bucket.works.length)) html+=`<section class="cost-appendix cost-details">${buckets.filter(bucket=>bucket.works.length).map(bucket=>`<h2>${bucket.label} | لیست کارها</h2>${table(['مسیر درخت','نام کار','زمان کار',...detailColumns],detailRows(bucket.works),['جمع این دوره',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
   if(receipts) html+=`<section class="cost-appendix"><h2>دریافتی‌های کل پروژه</h2>${table(['شماره','تاریخ','مبلغ (تومان)'],fundingReceiptsOf(project).map((receipt,index)=>[money(index+1),reportDateRange(jalaliDayNumber(receipt.depositDate),null),money(receipt.amount)]))}
 <p>مجموع دریافتی ${money(poolReceived(project))} تومان · ماندهٔ تخصیص‌نیافته ${money(poolRemaining(project))} تومان</p></section>`;
   return html+'</article>';
@@ -136,7 +133,8 @@ ${buckets.map(bucket=>`<h2>${bucket.label} | تفکیک بسته های کاری
 
 let view, controls;
 
-export function openCostlineExport(project,{rangeId,originWeekday,trigger}){
+export async function openCostlineExport(project,{rangeId,originWeekday,trigger}){
+  const { getContractPageStyles }=await import('../contracts/contractTemplateFormModule.js');
   if(!view){
     const source=document.getElementById('notebookExportPage');
     if(!source) return false;
@@ -149,8 +147,9 @@ export function openCostlineExport(project,{rangeId,originWeekday,trigger}){
     }
     const options=page.querySelector('.export-options');
     const sections=document.createElement('template');
-    sections.innerHTML=`<label><input type="checkbox" data-packages> تفکیک بسته های کاری</label>
-<label><input type="checkbox" data-details> تفکیک لیست کارها</label>
+    sections.innerHTML=`<label><input type="checkbox" data-overview> خلاصه و نمودار بودجه‌بندی</label>
+<label><input type="checkbox" data-packages> تفکیک بسته های کاری <small data-package-hint>اطلاعات این دوره در جدول جمع بازه آمده است.</small></label>
+<label><input type="checkbox" data-details> لیست کارها</label>
 <label><input type="checkbox" data-receipts> دریافتی ها</label>`;
     options.prepend(sections.content);
     controls=document.createElement('div');
@@ -168,7 +167,8 @@ export function openCostlineExport(project,{rangeId,originWeekday,trigger}){
     page.querySelector('.page-head').prepend(back);
     document.body.appendChild(page);
     view=installNotebookExportView({
-      idPrefix:'costlineExport', historyKey:'costline-export', pdfOnly:true, extraStyles:styles,
+      idPrefix:'costlineExport', historyKey:'costline-export', pdfOnly:true, extraStyles:getContractPageStyles()+styles,
+      preparePrint:paginateCostlinePrint,
       documentBuilder:({project,settings})=>costlineDocument(project,settings()),
     });
   }
@@ -177,13 +177,24 @@ export function openCostlineExport(project,{rangeId,originWeekday,trigger}){
   const startButton=controls.querySelector('[data-start]'), endButton=controls.querySelector('[data-end]');
   const range=controls.querySelector('[data-range]'), origin=controls.querySelector('[data-origin]');
   const options=controls.previousElementSibling;
+  const overview=options.querySelector('[data-overview]');
   const packages=options.querySelector('[data-packages]');
   const details=options.querySelector('[data-details]'), receipts=options.querySelector('[data-receipts]');
+  const packageHint=options.querySelector('[data-package-hint]');
+  let packagePreference=true;
+  packages.onchange=()=>{packagePreference=packages.checked;};
   let start=full[0]?.startDay ?? -Infinity, end=full.at(-1)?.endDay ?? Infinity;
   const paint=()=>{
     startButton.textContent=Number.isFinite(start)?date(start):'انتخاب کنید';
     endButton.textContent=Number.isFinite(end)?date(end):'انتخاب کنید';
     origin.disabled=!(ranges.find(item=>item.id===range.value)?.days>1);
+    const periods=buildBuckets({rangeId:range.value,originWeekday:Number(origin.value),works})
+      .filter(bucket=>bucket.startDay<=end && bucket.endDay>=start)
+      .map(bucket=>({...bucket,startDay:Math.max(start,bucket.startDay),endDay:Math.min(end,bucket.endDay)}));
+    const count=assignWorksToBuckets(periods,works).filter(bucket=>bucket.total>0).length;
+    packages.disabled=count===0 || (count===1 && overview.checked);
+    packages.checked=!packages.disabled && packagePreference;
+    packageHint.classList.toggle('hidden',count!==1 || !overview.checked);
   };
   const selectDate=(value,apply)=>window.KarhaUI?.openJalaliPicker?.(Number.isFinite(value)?jalaliFromDay(value):'',next=>{
     const day=jalaliDayNumber(next);
@@ -193,8 +204,8 @@ export function openCostlineExport(project,{rangeId,originWeekday,trigger}){
   startButton.onclick=()=>selectDate(start,day=>{start=day;end=Math.max(end,day);});
   endButton.onclick=()=>selectDate(end,day=>{end=day;start=Math.min(start,day);});
   range.value=rangeId;origin.value=String(originWeekday);
-  range.onchange=paint;packages.checked=true;details.checked=false;receipts.checked=false;paint();
+  range.onchange=paint;origin.onchange=paint;overview.onchange=paint;overview.checked=true;details.checked=false;receipts.checked=false;paint();
   return view.open({title:'خروجی برآورد هزینه | '+project.name,project,
-    settings:()=>({rangeId:range.value,originWeekday:Number(origin.value),start,end,packages:packages.checked,details:details.checked,receipts:receipts.checked}),
+    settings:()=>({rangeId:range.value,originWeekday:Number(origin.value),start,end,overview:overview.checked,packages:!packages.disabled && packages.checked,details:details.checked,receipts:receipts.checked}),
   },{trigger});
 }
