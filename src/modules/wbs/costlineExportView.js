@@ -23,28 +23,24 @@ function reportDateRange(start,end,{includeYear=true}={}){
   return `${from} تا ${dayAndMonth(last)}${includeYear?` ${toPersianDigits(last.year)}`:''}`;
 }
 const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-const table = (headers, rows, total) => `<table><thead><tr>${headers.map(value=>`<th>${esc(value)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr${row.subtotal?' class="cost-total"':''}>${row.map(value=>`<td>${esc(value)}</td>`).join('')}</tr>`).join('')}${total?`<tr class="cost-total"><th scope="row" colspan="${headers.length-total.length+1}">${esc(total[0])}</th>${total.slice(1).map(value=>`<td>${esc(value)}</td>`).join('')}</tr>`:''}</tbody></table>`;
+const table = (headers, rows, total) => `<table><thead><tr>${headers.map(value=>`<th>${esc(value)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(value=>`<td>${esc(value)}</td>`).join('')}</tr>`).join('')}${total?`<tr class="cost-total"><th scope="row" colspan="${headers.length-total.length+1}">${esc(total[0])}</th>${total.slice(1).map(value=>`<td>${esc(value)}</td>`).join('')}</tr>`:''}</tbody></table>`;
 const costs = (need, allocated) => [money(need),money(allocated),money(Math.max(0,need-allocated))];
 const columns = ['موردنیاز (تومان)','تخصیص‌یافته (تومان)','کسری (تومان)'];
 const detailColumns = ['موردنیاز در این دوره (تومان)','تخصیص‌یافته در این دوره (تومان)','کسری این دوره (تومان)'];
 const workFunding = work => Math.min(work.sliceAmount,work.allocated);
 
-function detailRows(works){
-  const branches=new Map();
+const detailRows = works => works.map(work=>[work.path,work.text,reportDateRange(jalaliDayNumber(work.start),jalaliDayNumber(work.end)),...costs(work.sliceAmount,workFunding(work))]);
+
+function packageRows(works){
+  const packages=new Map();
   for(const work of works){
-    const branch=work.path.split(' ← ')[0];
-    if(!branches.has(branch)) branches.set(branch,[]);
-    branches.get(branch).push(work);
+    const name=work.path.split(' ← ')[0] || 'بدون بستهٔ کاری';
+    const totals=packages.get(name) || {need:0,allocated:0};
+    totals.need+=work.sliceAmount;
+    totals.allocated+=workFunding(work);
+    packages.set(name,totals);
   }
-  return Array.from(branches,([branch,items])=>{
-    const rows=items.map(work=>[work.path,work.text,reportDateRange(jalaliDayNumber(work.start),jalaliDayNumber(work.end)),...costs(work.sliceAmount,workFunding(work))]);
-    if(branch && branches.size>1){
-      const need=items.reduce((sum,work)=>sum+work.sliceAmount,0);
-      const funded=items.reduce((sum,work)=>sum+workFunding(work),0);
-      rows.push(Object.assign([`جمع ${branch}`,'','',...costs(need,funded)],{subtotal:true}));
-    }
-    return rows;
-  }).flat();
+  return Array.from(packages,([name,totals])=>[name,...costs(totals.need,totals.allocated)]);
 }
 
 const styles = `@page{size:A4 landscape;margin:10mm}
@@ -53,8 +49,11 @@ ${notebookPaperFrameStyles()}
   body{padding:0}
 }
 @media screen{body{padding:10mm 12mm}}
+.cost-report h1{text-align:center}
+.cost-report .cost-meta{display:flex;justify-content:space-between;gap:12px}
+.cost-report .cost-report-range{text-align:left}
 .cost-report h2{font-size:16px;margin:14px 0 3px;break-after:avoid}
-.cost-report section>h2:first-child{margin-top:0}
+.cost-report section:not(.cost-packages)>h2:first-child{margin-top:0}
 .cost-report h2+table{margin-top:0}.cost-report p{margin:6px 0}
 .cost-report table{font-size:11px;table-layout:auto}.cost-report td{overflow-wrap:anywhere}.cost-report th,.cost-report td{padding:4px 6px}
 .cost-report .cost-total th,.cost-report .cost-total td{background:#eef3f8;font-weight:700}
@@ -106,9 +105,9 @@ export function costlineDocument(project,{rangeId,originWeekday,start,end,detail
   const need=buckets.reduce((sum,bucket)=>sum+bucket.total,0);
   const allocated=buckets.reduce((sum,bucket)=>sum+bucket.allocated,0);
   const range=ranges.find(item=>item.id===rangeId);
-  const title=`<h1>گزارش برآورد هزینه و تأمین بودجه | ${esc(project.name)}</h1>
-<p>تاریخ تهیه ${esc(formatJalaliDisplay(todayJalaliStr()))} | ${rangeId==='week2'?'دوره‌های دوهفته‌ای':esc(range?.label)}${range?.days>1 ? ` | مبدأ ${WEEKDAYS[originWeekday]}` : ''}</p>
-${Number.isFinite(start)&&Number.isFinite(end)?`<p>بازهٔ گزارش ${reportDateRange(start,end)}</p>`:''}`;
+  const title=`<h1>گزارش برآورد هزینه و تأمین بودجه ${esc(project.name)}</h1>
+<div class="cost-meta"><p>تاریخ تهیه ${esc(formatJalaliDisplay(todayJalaliStr()))} | ${rangeId==='week2'?'دوره‌های دوهفته‌ای':esc(range?.label)}${range?.days>1 ? ` | مبدأ ${WEEKDAYS[originWeekday]}` : ''}</p>
+${Number.isFinite(start)&&Number.isFinite(end)?`<p class="cost-report-range">بازهٔ گزارش ${reportDateRange(start,end)}</p>`:''}</div>`;
   let html=`<article class="nb-export-document cost-report">`;
   const max=Math.max(1,...buckets.map(bucket=>bucket.total));
   let cumulative=0;
@@ -121,13 +120,15 @@ ${Number.isFinite(start)&&Number.isFinite(end)?`<p>بازهٔ گزارش ${repor
       return [bucket.label,...costs(bucket.total,bucket.allocated),money(cumulative)];
     });
     html+=`<section class="cost-summary">${title}
-${i===0?'<h2>جمع بازهٔ انتخاب‌شده</h2>'+table(columns,[costs(need,allocated)]):''}
+${i===0?'<h2>جمع بازهٔ انتخاب‌شده</h2>'+table(['بستهٔ کاری',...columns],packageRows(buckets.flatMap(bucket=>bucket.works)),['جمع کل بازه',...costs(need,allocated)]):''}
 <p class="cost-legend">محور عمودی به میلیون تومان · <b>آبی تیره: تخصیص‌یافته</b> · <span>آبی روشن: کسری</span></p>
 ${chartYear?`<p>سال ${toPersianDigits(chartYear)}</p>`:''}
 ${chart(group,max,chartYear)}
 ${table(['دوره',...columns,'تخصیص تجمعی (تومان)'],rows,i+group.length===buckets.length?['جمع کل بازه',...costs(need,allocated),money(allocated)]:null)}</section>`;
   }
   if(!buckets.length) html+=title+'<p>در این بازه برآورد دوره‌ای وجود ندارد.</p>';
+  if(buckets.length) html+=`<section class="cost-packages"><h2>برآورد هزینه و بودجه‌بندی بر اساس بسته‌های کاری</h2>
+${buckets.map(bucket=>`<h2>${bucket.label}</h2>${table(['بستهٔ کاری',...columns],packageRows(bucket.works))}`).join('')}</section>`;
   const undated=works.filter(work=>jalaliDayNumber(work.start)==null);
   if(undated.length) html+=`<section><h2>برآوردهای بدون تاریخ شروع</h2>${table(['مسیر کار','نام کار','برآورد کل (تومان)'],undated.map(work=>[work.path,work.text,money(work.amount)]))}</section>`;
   if(details && buckets.some(bucket=>bucket.works.length)) html+=`<section class="cost-appendix"><h2>ریز کارها به تفکیک دوره</h2>${buckets.filter(bucket=>bucket.works.length).map(bucket=>`<h2>${bucket.label}</h2>${table(['مسیر درخت','نام کار','زمان کار',...detailColumns],detailRows(bucket.works),['جمع این دوره',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
