@@ -69,7 +69,7 @@ export function paginateCostlinePrint(){
     for(const node of source.children){
       sectionSource=node.matches('section') ? node : document.createElement('section');
       section=null;
-      if(node.matches('.cost-appendix, .cost-summary + .cost-summary') && report.textContent.trim()) startPage();
+      if(node.matches('.cost-appendix, .cost-summary + .cost-summary') && report.querySelector('table, svg')) startPage();
       const blocks=node.matches('section') ? [...node.children] : [node];
       for(let i=0;i<blocks.length;i++){
         const block=blocks[i];
