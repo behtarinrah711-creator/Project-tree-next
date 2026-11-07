@@ -1774,9 +1774,9 @@ textarea.contract-project-item-input{
 
 /* Keep the contract heading consistent in preview, paginated print and export. */
 .contract-real-print-preview .doc-contract-meta,
-.contract-pages .doc-contract-meta{display:flex;flex-direction:column;align-items:flex-start;direction:rtl;width:100%;text-align:right;gap:2px;margin:0 0 12px;}
-.contract-real-print-preview .doc-contract-meta>div,
-.contract-pages .doc-contract-meta>div{align-self:flex-end;}
+.contract-pages .doc-contract-meta{display:flex;justify-content:space-between;align-items:baseline;direction:rtl;width:100%;text-align:right;gap:12px;margin:0 0 12px;}
+.contract-real-print-preview .doc-contract-meta>div:last-child,
+.contract-pages .doc-contract-meta>div:last-child{text-align:left;}
 .contract-real-print-preview .doc-introduction,
 .contract-pages .doc-introduction{display:block;margin:0 0 16px;text-align:justify;white-space:normal;line-height:2;}
 
