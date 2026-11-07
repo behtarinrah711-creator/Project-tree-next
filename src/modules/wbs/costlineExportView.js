@@ -62,8 +62,11 @@ const styles = `html,body{margin:0;padding:0}
 .cost-report .cost-legend b{color:#0d4484}.cost-report .cost-legend span{color:#496989}
 .signature{margin-top:12mm;text-align:left}.signature img{display:block;margin-right:auto;max-width:45mm;max-height:20mm}.signature span{font-size:11px}`;
 
+const CHART_PERIOD_LIMIT=12;
+
 function chart(buckets,max,sharedYear){
   const width=900, step=820/buckets.length, base=168;
+  const staggerLabels=buckets.length>6;
   const ticks=[0,.25,.5,.75,1].map(ratio=>{
     const y=base-ratio*140;
     return `<path d="M64 ${y}H890" stroke="#ddd"/><text x="59" y="${y+4}" text-anchor="end">${money(Math.round(max*ratio/1000000*100)/100)}</text>`;
@@ -73,19 +76,33 @@ function chart(buckets,max,sharedYear){
     const need=140*bucket.total/max, funded=140*bucket.allocated/max;
     return `<rect x="${x-19}" y="${base-need}" width="38" height="${need}" fill="#8ca9c8"/>
 <rect x="${x-19}" y="${base-funded}" width="38" height="${funded}" fill="#0d4484"/>
-<text x="${x}" y="188" text-anchor="middle">${esc(reportDateRange(bucket.startDay,bucket.endDay,{includeYear:!sharedYear}))}</text>`;
+<text x="${x}" y="${staggerLabels && index%2 ? 202 : 188}" text-anchor="middle">${esc(reportDateRange(bucket.startDay,bucket.endDay,{includeYear:!sharedYear}))}</text>`;
   }).join('');
-  return `<svg viewBox="0 0 ${width} 195" role="img" aria-label="نمودار برآورد هزینه" font-size="11" fill="#202124">${ticks}${bars}</svg>`;
+  return `<svg viewBox="0 0 ${width} ${staggerLabels ? 209 : 195}" role="img" aria-label="نمودار برآورد هزینه" font-size="11" fill="#202124">${ticks}${bars}</svg>`;
+}
+
+function selectedReportBuckets(works,{rangeId,originWeekday,start,end}){
+  const periods=buildBuckets({rangeId,originWeekday,works})
+    .filter(bucket=>bucket.startDay<=end && bucket.endDay>=start)
+    .map(bucket=>({...bucket,startDay:Math.max(start,bucket.startDay),endDay:Math.min(end,bucket.endDay)}));
+  return assignWorksToBuckets(periods,works).filter(bucket=>bucket.total>0);
+}
+
+export function chartLimitMessage(works,settings,count=selectedReportBuckets(works,settings).length){
+  if(!settings.overview || count<=CHART_PERIOD_LIMIT) return '';
+  const rangeIndex=ranges.findIndex(range=>range.id===settings.rangeId);
+  const suggested=ranges.slice(rangeIndex+1).find(range=>
+    selectedReportBuckets(works,{...settings,rangeId:range.id}).length<=CHART_PERIOD_LIMIT);
+  const fix=suggested ? `مقیاس «${suggested.label}» را انتخاب کنید.` : 'بازهٔ گزارش را کوتاه‌تر کنید.';
+  return `این بازه ${money(count)} ستون دارد. حداکثر ${money(CHART_PERIOD_LIMIT)} ستون در نمودار جا می‌شود. ${fix}`;
 }
 
 export function costlineDocument(project,{rangeId,originWeekday,start,end,overview=true,packages=true,details,receipts}){
   const works=collectPlannedWorks(project.tasks,{includeUndated:true});
   const dated=works.filter(work=>jalaliDayNumber(work.start)!=null);
-  const allBuckets=assignWorksToBuckets(buildBuckets({rangeId,originWeekday,works:dated})
-    .filter(bucket=>bucket.startDay<=end && bucket.endDay>=start)
-    .map(bucket=>({...bucket,startDay:Math.max(start,bucket.startDay),endDay:Math.min(end,bucket.endDay)})),dated);
+  const buckets=selectedReportBuckets(dated,{rangeId,originWeekday,start,end});
   const coveredIn=fundingCoverage(project);
-  for(const bucket of allBuckets){
+  for(const bucket of buckets){
     bucket.label=reportDateRange(bucket.startDay,bucket.endDay);
     for(const work of bucket.works){
       work.allocated=coveredIn(work.id,bucket);
@@ -93,7 +110,6 @@ export function costlineDocument(project,{rangeId,originWeekday,start,end,overvi
     }
     bucket.allocated=bucket.works.reduce((sum,work)=>sum+workFunding(work),0);
   }
-  const buckets=allBuckets.filter(bucket=>bucket.total!==0 || bucket.allocated!==0);
   const need=buckets.reduce((sum,bucket)=>sum+bucket.total,0);
   const allocated=buckets.reduce((sum,bucket)=>sum+bucket.allocated,0);
   const range=ranges.find(item=>item.id===rangeId);
@@ -103,8 +119,8 @@ ${Number.isFinite(start)&&Number.isFinite(end)?`<p class="cost-report-range">ب�
   let html=`<article class="nb-export-document cost-report">`;
   const max=Math.max(1,...buckets.map(bucket=>bucket.total));
   let cumulative=0;
-  for(let i=0;overview && i<buckets.length;i+=6){
-    const group=buckets.slice(i,i+6);
+  for(let i=0;overview && i<buckets.length;i+=CHART_PERIOD_LIMIT){
+    const group=buckets.slice(i,i+CHART_PERIOD_LIMIT);
     const year=dateParts(group[0].startDay).year;
     const chartYear=group.every(bucket=>dateParts(bucket.startDay).year===year && dateParts(bucket.endDay).year===year)?year:null;
     const rows=group.map(bucket=>{
@@ -157,7 +173,8 @@ export async function openCostlineExport(project,{rangeId,originWeekday,trigger}
     controls.innerHTML=`<label>از تاریخ <button type="button" data-start></button></label>
 <label>تا تاریخ <button type="button" data-end></button></label>
 <label>مقیاس <select data-range>${ranges.map(range=>`<option value="${range.id}">${range.label}</option>`).join('')}</select></label>
-<label>مبدأ دورهٔ پرداخت <select data-origin>${WEEKDAYS.map((day,index)=>`<option value="${index}">${day}</option>`).join('')}</select></label>`;
+<label>مبدأ دورهٔ پرداخت <select data-origin>${WEEKDAYS.map((day,index)=>`<option value="${index}">${day}</option>`).join('')}</select></label>
+<small class="hint" role="status" data-chart-limit></small>`;
     options.after(controls);
     const back=document.createElement('button');
     back.type='button';
@@ -169,6 +186,7 @@ export async function openCostlineExport(project,{rangeId,originWeekday,trigger}
     view=installNotebookExportView({
       idPrefix:'costlineExport', historyKey:'costline-export', pdfOnly:true, extraStyles:getContractPageStyles()+styles,
       preparePrint:paginateCostlinePrint,
+      validatePrint:list=>list.chartWarning(),
       documentBuilder:({project,settings})=>costlineDocument(project,settings()),
     });
   }
@@ -184,14 +202,16 @@ export async function openCostlineExport(project,{rangeId,originWeekday,trigger}
   let packagePreference=true;
   packages.onchange=()=>{packagePreference=packages.checked;};
   let start=full[0]?.startDay ?? -Infinity, end=full.at(-1)?.endDay ?? Infinity;
+  const warning=controls.querySelector('[data-chart-limit]');
+  const selection=()=>({rangeId:range.value,originWeekday:Number(origin.value),start,end,overview:overview.checked});
   const paint=()=>{
     startButton.textContent=Number.isFinite(start)?date(start):'انتخاب کنید';
     endButton.textContent=Number.isFinite(end)?date(end):'انتخاب کنید';
     origin.disabled=!(ranges.find(item=>item.id===range.value)?.days>1);
-    const periods=buildBuckets({rangeId:range.value,originWeekday:Number(origin.value),works})
-      .filter(bucket=>bucket.startDay<=end && bucket.endDay>=start)
-      .map(bucket=>({...bucket,startDay:Math.max(start,bucket.startDay),endDay:Math.min(end,bucket.endDay)}));
-    const count=assignWorksToBuckets(periods,works).filter(bucket=>bucket.total>0).length;
+    const current=selection();
+    const count=selectedReportBuckets(works,current).length;
+    warning.textContent=chartLimitMessage(works,current,count);
+    warning.classList.toggle('hidden',!warning.textContent);
     packages.disabled=count===0 || (count===1 && overview.checked);
     packages.checked=!packages.disabled && packagePreference;
     packageHint.classList.toggle('hidden',count!==1 || !overview.checked);
@@ -206,6 +226,7 @@ export async function openCostlineExport(project,{rangeId,originWeekday,trigger}
   range.value=rangeId;origin.value=String(originWeekday);
   range.onchange=paint;origin.onchange=paint;overview.onchange=paint;overview.checked=true;details.checked=false;receipts.checked=false;paint();
   return view.open({title:'خروجی برآورد هزینه | '+project.name,project,
-    settings:()=>({rangeId:range.value,originWeekday:Number(origin.value),start,end,overview:overview.checked,packages:!packages.disabled && packages.checked,details:details.checked,receipts:receipts.checked}),
+    chartWarning:()=>warning.textContent,
+    settings:()=>({...selection(),packages:!packages.disabled && packages.checked,details:details.checked,receipts:receipts.checked}),
   },{trigger});
 }
