@@ -41,3 +41,14 @@ test('the report clips work and funding to the date range and includes selected 
   assert.match(report,/برآوردهای بدون تاریخ شروع/);
   assert.doesNotMatch(costlineDocument(project,{...options,details:false,receipts:false}),/لیست کارها|دریافتی‌های کل پروژه/);
 });
+
+test('the PDF keeps twelve periods together and starts a second chart for the thirteenth',()=>{
+  const start=jalaliDayNumber('1405/01/01');
+  const project={name:'آزمایش',tasks:[
+    {id:'work',kind:'work',text:'کار',quantity:1,unitCost:1300,scheduleStart:'1405/01/01',scheduleEnd:'1405/01/13'},
+  ]};
+  const options={rangeId:'day',originWeekday:4,start,packages:false};
+  const charts=end=>costlineDocument(project,{...options,end}).match(/<svg[\s\S]*?<\/svg>/g);
+  assert.equal(charts(start+11).length,1);
+  assert.deepEqual(charts(start+12).map(chart=>[...chart.matchAll(/fill="#8ca9c8"/g)].length),[12,1]);
+});
