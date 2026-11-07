@@ -22,9 +22,10 @@ test('the report clips work and funding to the date range and includes selected 
   };
   const options={rangeId:'month2',originWeekday:4,start,end:start+1,details:true,receipts:true};
   const report=costlineDocument(project,options);
+  assert.match(costlineDocument(project,{...options,start:start-2,end:start-2}),/<td>۲۵۰<\/td><td>۲۰۰<\/td><td>۵۰<\/td>/);
   assert.match(report,/<svg/);
   assert.match(report,/&lt;آزمایش&gt;/);
-  assert.match(report,/<td>۵۰۰<\/td><td>۲۰۰<\/td><td>۳۰۰<\/td>/);
+  assert.match(report,/<td>۵۰۰<\/td><td>۰<\/td><td>۵۰۰<\/td>/);
   assert.match(report,/ریز کارها به تفکیک دوره/);
   assert.match(report,/دریافتی‌های کل پروژه/);
   assert.match(report,/برآوردهای بدون تاریخ شروع/);
