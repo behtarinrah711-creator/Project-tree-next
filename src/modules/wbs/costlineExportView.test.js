@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildBuckets, jalaliDayNumber } from '../../domain/wbs/costline.js';
-import { costlineDocument } from './costlineExportView.js';
+import { chartLimitMessage, costlineDocument } from './costlineExportView.js';
 
 test('two-month export periods use paired Solar Hijri months across year boundaries',()=>{
   const buckets=buildBuckets({rangeId:'month2',works:[{start:'1404/12/12',end:'1405/01/04'}]});
@@ -40,4 +40,25 @@ test('the report clips work and funding to the date range and includes selected 
   assert.match(report,/دریافتی‌های کل پروژه/);
   assert.match(report,/برآوردهای بدون تاریخ شروع/);
   assert.doesNotMatch(costlineDocument(project,{...options,details:false,receipts:false}),/لیست کارها|دریافتی‌های کل پروژه/);
+});
+
+test('the PDF keeps twelve periods together and starts a second chart for the thirteenth',()=>{
+  const start=jalaliDayNumber('1405/01/01');
+  const project={name:'آزمایش',tasks:[
+    {id:'work',kind:'work',text:'کار',quantity:1,unitCost:1300,scheduleStart:'1405/01/01',scheduleEnd:'1405/01/13'},
+  ]};
+  const options={rangeId:'day',originWeekday:4,start,packages:false};
+  const charts=end=>costlineDocument(project,{...options,end}).match(/<svg[\s\S]*?<\/svg>/g);
+  assert.equal(charts(start+11).length,1);
+  assert.deepEqual(charts(start+12).map(chart=>[...chart.matchAll(/fill="#8ca9c8"/g)].length),[12,1]);
+});
+
+test('long weekly charts suggest a coarser scale without restricting work-only export',()=>{
+  const start=jalaliDayNumber('1405/01/01');
+  const end=jalaliDayNumber('1405/04/20');
+  const works=[{id:'w1',start:'1405/01/01',end:'1405/04/20',amount:100000}];
+  const settings={rangeId:'week',originWeekday:4,start,end,overview:true};
+  assert.match(chartLimitMessage(works,settings),/۲ هفته/);
+  assert.equal(chartLimitMessage(works,{...settings,overview:false}),'');
+  assert.equal(chartLimitMessage(works,{...settings,rangeId:'week2'}),'');
 });
