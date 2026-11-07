@@ -62,8 +62,11 @@ const styles = `html,body{margin:0;padding:0}
 .cost-report .cost-legend b{color:#0d4484}.cost-report .cost-legend span{color:#496989}
 .signature{margin-top:12mm;text-align:left}.signature img{display:block;margin-right:auto;max-width:45mm;max-height:20mm}.signature span{font-size:11px}`;
 
+const CHART_PERIOD_LIMIT=12;
+
 function chart(buckets,max,sharedYear){
   const width=900, step=820/buckets.length, base=168;
+  const staggerLabels=buckets.length>6;
   const ticks=[0,.25,.5,.75,1].map(ratio=>{
     const y=base-ratio*140;
     return `<path d="M64 ${y}H890" stroke="#ddd"/><text x="59" y="${y+4}" text-anchor="end">${money(Math.round(max*ratio/1000000*100)/100)}</text>`;
@@ -73,9 +76,9 @@ function chart(buckets,max,sharedYear){
     const need=140*bucket.total/max, funded=140*bucket.allocated/max;
     return `<rect x="${x-19}" y="${base-need}" width="38" height="${need}" fill="#8ca9c8"/>
 <rect x="${x-19}" y="${base-funded}" width="38" height="${funded}" fill="#0d4484"/>
-<text x="${x}" y="188" text-anchor="middle">${esc(reportDateRange(bucket.startDay,bucket.endDay,{includeYear:!sharedYear}))}</text>`;
+<text x="${x}" y="${staggerLabels && index%2 ? 202 : 188}" text-anchor="middle">${esc(reportDateRange(bucket.startDay,bucket.endDay,{includeYear:!sharedYear}))}</text>`;
   }).join('');
-  return `<svg viewBox="0 0 ${width} 195" role="img" aria-label="نمودار برآورد هزینه" font-size="11" fill="#202124">${ticks}${bars}</svg>`;
+  return `<svg viewBox="0 0 ${width} ${staggerLabels ? 209 : 195}" role="img" aria-label="نمودار برآورد هزینه" font-size="11" fill="#202124">${ticks}${bars}</svg>`;
 }
 
 export function costlineDocument(project,{rangeId,originWeekday,start,end,overview=true,packages=true,details,receipts}){
@@ -103,8 +106,8 @@ ${Number.isFinite(start)&&Number.isFinite(end)?`<p class="cost-report-range">ب�
   let html=`<article class="nb-export-document cost-report">`;
   const max=Math.max(1,...buckets.map(bucket=>bucket.total));
   let cumulative=0;
-  for(let i=0;overview && i<buckets.length;i+=6){
-    const group=buckets.slice(i,i+6);
+  for(let i=0;overview && i<buckets.length;i+=CHART_PERIOD_LIMIT){
+    const group=buckets.slice(i,i+CHART_PERIOD_LIMIT);
     const year=dateParts(group[0].startDay).year;
     const chartYear=group.every(bucket=>dateParts(bucket.startDay).year===year && dateParts(bucket.endDay).year===year)?year:null;
     const rows=group.map(bucket=>{
