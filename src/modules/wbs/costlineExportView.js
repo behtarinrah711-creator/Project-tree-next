@@ -83,7 +83,7 @@ function chart(buckets,max,sharedYear){
   return `<svg viewBox="0 0 ${width} 195" role="img" aria-label="نمودار برآورد هزینه" font-size="11" fill="#202124">${ticks}${bars}</svg>`;
 }
 
-export function costlineDocument(project,{rangeId,originWeekday,start,end,details,receipts}){
+export function costlineDocument(project,{rangeId,originWeekday,start,end,packages=true,details,receipts}){
   const works=collectPlannedWorks(project.tasks,{includeUndated:true});
   const dated=works.filter(work=>jalaliDayNumber(work.start)!=null);
   const allBuckets=assignWorksToBuckets(buildBuckets({rangeId,originWeekday,works:dated})
@@ -124,8 +124,8 @@ ${chart(group,max,chartYear)}
 ${table(['دوره',...columns,'تخصیص تجمعی (تومان)'],rows,i+group.length===buckets.length?['جمع کل بازه',...costs(need,allocated),money(allocated)]:null)}</section>`;
   }
   if(!buckets.length) html+=title+'<p>در این بازه برآورد دوره‌ای وجود ندارد.</p>';
-  if(buckets.length) html+=`<section class="cost-packages"><h2>برآورد هزینه و بودجه‌بندی بر اساس بسته‌های کاری</h2>
-${buckets.map(bucket=>`<h2>${bucket.label}</h2>${table(['بستهٔ کاری',...columns],packageRows(bucket.works),['جمع این بازه',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
+  if(packages && buckets.length) html+=`<section class="cost-packages">
+${buckets.map(bucket=>`<h2>${bucket.label} | تفکیک بسته های کاری</h2>${table(['بستهٔ کاری',...columns],packageRows(bucket.works),['جمع این بازه',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
   const undated=works.filter(work=>jalaliDayNumber(work.start)==null);
   if(undated.length) html+=`<section><h2>برآوردهای بدون تاریخ شروع</h2>${table(['مسیر کار','نام کار','برآورد کل (تومان)'],undated.map(work=>[work.path,work.text,money(work.amount)]))}</section>`;
   if(details && buckets.some(bucket=>bucket.works.length)) html+=`<section class="cost-appendix cost-details">${buckets.filter(bucket=>bucket.works.length).map(bucket=>`<h2>${bucket.label} | لیست کارها به تفکیک</h2>${table(['مسیر درخت','نام کار','زمان کار',...detailColumns],detailRows(bucket.works),['جمع این دوره',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
@@ -144,14 +144,22 @@ export function openCostlineExport(project,{rangeId,originWeekday,trigger}){
     page.id='costlineExportPage';
     page.innerHTML=page.innerHTML.replaceAll('notebookExport','costlineExport');
     page.querySelector('.export-note-wrap').hidden=true;
+    for(const id of ['costlineExportNumbered','costlineExportCost']){
+      page.querySelector('#'+id).closest('label').classList.add('hidden');
+    }
+    const options=page.querySelector('.export-options');
+    const sections=document.createElement('template');
+    sections.innerHTML=`<label><input type="checkbox" data-packages> تفکیک بسته های کاری</label>
+<label><input type="checkbox" data-details> تفکیک لیست کارها</label>
+<label><input type="checkbox" data-receipts> دریافتی ها</label>`;
+    options.prepend(sections.content);
     controls=document.createElement('div');
     controls.className='export-options';
     controls.innerHTML=`<label>از تاریخ <button type="button" data-start></button></label>
 <label>تا تاریخ <button type="button" data-end></button></label>
 <label>مقیاس <select data-range>${ranges.map(range=>`<option value="${range.id}">${range.label}</option>`).join('')}</select></label>
-<label>مبدأ دورهٔ پرداخت <select data-origin>${WEEKDAYS.map((day,index)=>`<option value="${index}">${day}</option>`).join('')}</select></label>
-<label><input type="checkbox" data-details> ریز کارها</label><label><input type="checkbox" data-receipts> دریافتی‌ها</label>`;
-    page.querySelector('.export-options').after(controls);
+<label>مبدأ دورهٔ پرداخت <select data-origin>${WEEKDAYS.map((day,index)=>`<option value="${index}">${day}</option>`).join('')}</select></label>`;
+    options.after(controls);
     const back=document.createElement('button');
     back.type='button';
     back.className='inner-section-back';
@@ -168,7 +176,9 @@ export function openCostlineExport(project,{rangeId,originWeekday,trigger}){
   const full=buildBuckets({rangeId,originWeekday,works});
   const startButton=controls.querySelector('[data-start]'), endButton=controls.querySelector('[data-end]');
   const range=controls.querySelector('[data-range]'), origin=controls.querySelector('[data-origin]');
-  const details=controls.querySelector('[data-details]'), receipts=controls.querySelector('[data-receipts]');
+  const options=controls.previousElementSibling;
+  const packages=options.querySelector('[data-packages]');
+  const details=options.querySelector('[data-details]'), receipts=options.querySelector('[data-receipts]');
   let start=full[0]?.startDay ?? -Infinity, end=full.at(-1)?.endDay ?? Infinity;
   const paint=()=>{
     startButton.textContent=Number.isFinite(start)?date(start):'انتخاب کنید';
@@ -183,8 +193,8 @@ export function openCostlineExport(project,{rangeId,originWeekday,trigger}){
   startButton.onclick=()=>selectDate(start,day=>{start=day;end=Math.max(end,day);});
   endButton.onclick=()=>selectDate(end,day=>{end=day;start=Math.min(start,day);});
   range.value=rangeId;origin.value=String(originWeekday);
-  range.onchange=paint;details.checked=false;receipts.checked=false;paint();
+  range.onchange=paint;packages.checked=true;details.checked=false;receipts.checked=false;paint();
   return view.open({title:'خروجی برآورد هزینه | '+project.name,project,
-    settings:()=>({rangeId:range.value,originWeekday:Number(origin.value),start,end,details:details.checked,receipts:receipts.checked}),
+    settings:()=>({rangeId:range.value,originWeekday:Number(origin.value),start,end,packages:packages.checked,details:details.checked,receipts:receipts.checked}),
   },{trigger});
 }
