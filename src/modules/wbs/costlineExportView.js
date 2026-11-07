@@ -43,10 +43,10 @@ function packageRows(works){
   return Array.from(packages,([name,totals])=>[name,...costs(totals.need,totals.allocated)]);
 }
 
-const styles = `@page{size:A4 landscape;margin:10mm}
+const styles = `@page{size:A4 portrait;margin:15mm}
 @media print{
   body{padding:0}
-  body::before{content:'';position:fixed;inset:calc(38px - 10mm);border:1px solid #777;pointer-events:none}
+  body::before{content:'';position:fixed;inset:-5mm;box-sizing:border-box;border:1px solid #777;pointer-events:none}
 }
 @media screen{body{padding:10mm 12mm}}
 .cost-report h1{text-align:center}
