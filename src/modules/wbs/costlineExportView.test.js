@@ -24,6 +24,11 @@ test('the report clips work and funding to the date range and includes selected 
   const report=costlineDocument(project,options);
   assert.match(costlineDocument(project,{...options,start:start-2,end:start-2}),/<td>۲۵۰<\/td><td>۲۰۰<\/td><td>۵۰<\/td>/);
   assert.match(report,/<svg/);
+  assert.match(report,/<h2>نمودار و جدول بودجه‌بندی دوره‌ای<\/h2>/);
+  const workListOnly=costlineDocument(project,{...options,overview:false,packages:false,receipts:false});
+  assert.match(workListOnly,/لیست کارها/);
+  assert.doesNotMatch(workListOnly,/<svg|جمع بازهٔ انتخاب‌شده|تخصیص تجمعی|تفکیک بسته های کاری|دریافتی‌های کل پروژه/);
+  assert.match(costlineDocument(project,{...options,overview:false}),/تفکیک بسته های کاری/);
   assert.match(report,/&lt;آزمایش&gt;/);
   assert.match(report,/<td>۵۰۰<\/td><td>۰<\/td><td>۵۰۰<\/td>/);
   assert.doesNotMatch(report,/تفکیک بسته های کاری/);
