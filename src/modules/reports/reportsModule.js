@@ -6,6 +6,7 @@ import { openProjectFinishSheet } from '../wbs/homeView.js';
 
 export const REPORT_SECTIONS = Object.freeze([
   { id:'contracts', title:'قرارداد پیمانکاران', meta:'ایجاد و مدیریت قراردادهای واقعی پیمانکاران' },
+  { id:'contract-addenda', title:'الحاقیه‌ها', meta:'ثبت و پیگیری الحاقیه‌های قرارداد' },
   { id:'done-works', title:'کارهای انجام‌شده', meta:'مشاهده گزارش کارهای تکمیل‌شده پروژه' },
   { id:'work-delays', title:'دیرکردها', meta:'مشاهده کارهای عقب‌افتاده پروژه' },
 ]);
@@ -54,6 +55,12 @@ export const reportsModule = {
       return;
     }
 
+    if(viewId === 'contract-addenda'){
+      import('../contracts/contractAddendaView.js').then(({renderContractAddenda})=>{
+        if(window.KarhaRoute?.moduleId==='contract-addenda' && String(window.KarhaRoute.projectId)===String(activeProjectId))renderContractAddenda(body,activeProjectId);
+      });
+      return;
+    }
     if(viewId === 'work-delays'){
       body.appendChild(renderDelayView(project, document, openProjectFinishSheet));
       return;

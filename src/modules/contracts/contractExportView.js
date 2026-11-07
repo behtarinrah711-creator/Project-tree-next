@@ -7,7 +7,7 @@ import {loadContractDocumentImages} from './contractDocumentAttachments.js';
 
 let view=null;
 let exportRequest=0;
-export async function openContractExport(project,contract,{trigger=null,frozen=false}={}){
+export async function openContractExport(project,contract,{trigger=null,frozen=false,markup=null}={}){
   const request=++exportRequest;
   if(!view){
     const source=document.getElementById('notebookExportPage');
@@ -19,10 +19,11 @@ export async function openContractExport(project,contract,{trigger=null,frozen=f
     view=installNotebookExportView({
       idPrefix:'contractExport',historyKey:'contract-export',
       paginateDocument:html=>paginateContractMarkup(html),
-      documentBuilder:list=>'<section class="contract-export-document" dir="rtl">'+contractDocumentMarkup(list.contract,list.activityName)+'</section>',
+      documentBuilder:list=>list.markup||'<section class="contract-export-document" dir="rtl">'+contractDocumentMarkup(list.contract,list.activityName)+'</section>',
       extraStyles:getContractPageStyles(),
     });
   }
+  if(markup)return view.open({title:contract.title+' | '+contract.contractNo,markup,items:[]},{trigger});
   const current=frozen?{project,draft:makeRealContractDraft(contract)}:resolveCurrentContractDocument(project,contract);
   project=current.project;
   let draft=current.draft;

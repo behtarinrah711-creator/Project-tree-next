@@ -462,6 +462,7 @@ export function stampContractCreation(project,previous,accountId,phone='',now=Da
     }
   }
   preserveContractHandoff(project,previous);
+  project.contractAddenda=previous?.contractAddenda || [];
   return project;
 }
 

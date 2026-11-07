@@ -18,8 +18,8 @@ function fixture(){
   const storage={metadata:async key=>{if(key!=='p/contracts/c/file-one')throw Object.assign(Error(),{code:'ENOENT'});return file;},read:async()=>Buffer.from('image')};
   const handler=createContractHandoffHandler({pool,sessionSecret:'s',storage});
   return {get payload(){return payload;},get commits(){return commits;},setPermissions(value){permissions=value;},deactivate(){active='inactive';},pool,storage,
-    async call(body){let status,result;const request=Readable.from([Buffer.from(JSON.stringify(body))]);request.method='POST';request.headers={authorization:'Bearer token'};
-      await handler(request,{writeHead(code){status=code;},end(value){result=JSON.parse(value);}},new URL('http://local/api/v1/projects/p/contracts/c/handoff'));
+    async call(body,path='/api/v1/projects/p/contracts/c/handoff'){let status,result;const request=Readable.from([Buffer.from(JSON.stringify(body))]);request.method='POST';request.headers={authorization:'Bearer token'};
+      await handler(request,{writeHead(code){status=code;},end(value){result=JSON.parse(value);}},new URL('http://local'+path));
       return {status,result};
     }};
 }
@@ -112,4 +112,51 @@ test('contract editor can replace returned printed files in draft without approv
  assert.equal(result.status,200);assert.equal(result.result.contract.status,'draft');assert.equal(result.result.contract.signedAt,null);
  assert.equal(result.result.contract.signedFiles[0].id,uploaded.file.id);
  assert.equal(result.result.contract.accountingPackage.signedFiles[0].id,file.id);
+});
+
+test('an addendum requires inherited review, keeps its own signed file, and freezes the parent for finance',async()=>{
+  const f=fixture();
+  const parent=f.payload.contracts[0];
+  Object.assign(parent,{contractNo:'CTR-1',amount:1000,contractApproverContactIds:['reviewer']});
+  f.payload.contacts=[{id:'reviewer',name:'مسئول تأیید',phones:['0912']}];
+  const id='addendum-00000000-0000-4000-8000-000000000000';
+  const path='/api/v1/projects/p/addenda/'+id+'/handoff';
+  const save={action:'save_addendum',version:0,updatedAt:0,complete:true,parentContractId:'c',
+    type:'extra',contractDate:'1405/08/01',rows:[{description:'جابجایی مصالح',unit:'نفرروز',quantity:2,unitPrice:200}]};
+  let result=await f.call(save,path);
+  assert.equal(result.status,200);
+  let addendum=result.result.contract;
+  assert.equal(addendum.contractNo,'CTR-1-A01');
+  assert.equal(addendum.amount,400);
+  assert.equal(addendum.approvalStatus,'pending');
+  const act=(action,options={})=>f.call({action,version:addendum.handoffVersion,updatedAt:addendum.updatedAt,...options},path);
+  assert.equal((await act('send_finance')).status,400);
+  result=await act('approve_addendum');
+  assert.equal(result.status,200);
+  addendum=result.result.contract;
+  assert.equal(addendum.approvalStatus,'approved');
+  const signed={...file,recordId:id};
+  f.storage.metadata=async()=>signed;
+  result=await act('save_signed',{files:[signed]});
+  assert.equal(result.status,200);
+  addendum=result.result.contract;
+  result=await act('send_finance');
+  assert.equal(result.status,200);
+  addendum=result.result.contract;
+  assert.equal(addendum.accountingPackage.contract.parentDocument.contractNo,'CTR-1');
+  assert.equal(addendum.accountingPackage.contract.parentDocument.amount,1000);
+  assert.equal(f.payload.contracts[0].amount,1000);
+  assert.equal((await act('approve_finance')).status,403);
+  f.setPermissions({modules:{accounting:'create'}});
+  assert.equal((await act('approve_finance')).result.contract.accountingStatus,'accepted');
+});
+
+test('completing an addendum without reviewers skips reviewer approval',async()=>{
+  const f=fixture();
+  f.payload.contracts[0].contractNo='CTR-1';
+  const result=await f.call({action:'save_addendum',version:0,updatedAt:0,complete:true,parentContractId:'c',
+    type:'other',contractDate:'1405/08/01',note:'تغییر شرح کار'},'/api/v1/projects/p/addenda/addendum-00000000-0000-4000-8000-000000000000/handoff');
+  assert.equal(result.status,200);
+  assert.equal(result.result.contract.approvalStatus,'approved');
+  assert.deepEqual(result.result.contract.contractApproverContactIds,[]);
 });

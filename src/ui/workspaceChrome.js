@@ -28,6 +28,7 @@ const MENU_TITLES = Object.freeze({
 });
 
 const ACCOUNTING_SUBPAGE_TITLES = Object.freeze({
+  'contract-addenda': 'الحاقیه‌ها',
   'done-works': 'کارهای انجام‌شده',
   'work-delays': 'دیرکردها',
   'accounting-contracts': 'قراردادها',
