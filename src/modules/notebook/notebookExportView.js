@@ -31,7 +31,7 @@ export const notebookPaperFrameStyles = (inset = '-5mm') => `@media print{
   body::before{content:'';position:fixed;inset:${inset};border:1px solid #333;pointer-events:none}
 }`;
 
-export function installNotebookExportView({documentRef=globalThis.document,windowRef=globalThis.window,idPrefix='notebookExport',historyKey='notebook-export',documentBuilder=null,extraStyles='',paginateDocument=null,onNoteChange=null,pdfOnly=false,preparePrint=null}={}){
+export function installNotebookExportView({documentRef=globalThis.document,windowRef=globalThis.window,idPrefix='notebookExport',historyKey='notebook-export',documentBuilder=null,extraStyles='',paginateDocument=null,onNoteChange=null,pdfOnly=false,preparePrint=null,validatePrint=null}={}){
   const get=id=>documentRef.getElementById(id.replace('notebookExport',idPrefix));
   const page=get('notebookExportPage');
   if(!page) return {open(){return false;}};
@@ -71,6 +71,8 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
   const documentStyles=`${iranSansFaceCss(fontBase)}body,.nb-export-document{font-family:'IRANSansX',Tahoma,sans-serif;color:#202124}body{margin:0;padding:14mm;direction:rtl}.nb-export-document header{display:flex;justify-content:space-between;align-items:start;margin-bottom:18px}.nb-export-document h1{font-size:21px;margin:0;font-weight:600}.nb-export-document time{font-size:21px;color:#202124}.nb-export-document table{width:100%;border-collapse:collapse}.nb-export-document th,.nb-export-document td{padding:8px 6px;border-bottom:1px solid #ddd;text-align:right}.nb-export-document th{border-bottom:2px solid #333;color:#666;font-size:12px}.nb-export-document .num{display:inline-block;margin-left:8px;font-weight:600}.nb-export-document .title{font-size:13px;font-weight:400}.nb-export-document .title.parent{font-weight:600}.nb-export-document .box{display:inline-block;width:11px;height:11px;margin-left:8px;border:1.5px solid #000;box-sizing:border-box;vertical-align:-1px;print-color-adjust:exact;-webkit-print-color-adjust:exact}.nb-export-document .box.filled{width:13px;height:13px;background:#000;border-color:#000}.nb-export-document .cost{text-align:left;white-space:nowrap}.nb-export-document small{font-size:10px;color:#666}.nb-export-document .total td{font-weight:600;border-top:2px solid #333}.nb-export-document .note{white-space:pre-wrap;margin-top:24px;padding-top:0}.nb-export-document .signature{margin-top:30px;text-align:left;display:flex;flex-direction:column;align-items:flex-start}.nb-export-document .signature img{max-width:180px;max-height:75px;object-fit:contain}.nb-export-document .signature span{font-size:11px;color:#666}`;
 
   function printPdf(){
+    const validationMessage=validatePrint?.(list);
+    if(validationMessage){notify(validationMessage);return;}
     if(!documentBuilder&&!selected.size){notify('حداقل یک مورد را انتخاب کنید');return;}
     const popup=windowRef.open?.('','_blank');
     if(!popup){notify('پنجره چاپ توسط مرورگر مسدود شد');return;}
