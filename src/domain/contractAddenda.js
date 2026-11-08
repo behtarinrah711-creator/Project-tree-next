@@ -5,6 +5,12 @@ export const ADDENDUM_TYPES=Object.freeze({
   other:'سایر تغییرات',
 });
 
+export function canEditContractAddenda(access){
+  const permissions=access?.permissions||{};
+  return !access || access.role==='owner' || ['edit','create','full'].includes(permissions.modules?.contracts ?? permissions.contracts)
+    || (!permissions.modules && permissions.edit===true);
+}
+
 export function parentContractOf(project,addendum){
   return (project.contracts||[]).find(contract=>!contract.trashed && String(contract.id)===String(addendum.parentContractId));
 }
@@ -24,5 +30,5 @@ export function addendumReviewers(project,parent){
 }
 
 export function addendumAmount(rows){
-  return (rows||[]).reduce((sum,row)=>sum+(row.unit ? Math.round(row.quantity*row.unitPrice) : row.amount),0);
+  return (rows||[]).reduce((sum,row)=>sum+(row.pricingMode==='quantity' || row.unit ? Math.round(row.quantity*row.unitPrice) : (row.amount ?? 0)),0);
 }

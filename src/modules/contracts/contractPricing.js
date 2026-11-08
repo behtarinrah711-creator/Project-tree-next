@@ -58,7 +58,7 @@ export function makeQuantityRow(){
 }
 
 // Same row editor for pricing and payment quantities; arrays remain independent.
-export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,onDirty,operations=false,agreed=false,mixed=false}){
+export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,onDirty,operations=false,agreed=false,mixed=false,allowRemeasurement=true,newPricingMode='quantity'}){
   const money=value=>new Intl.NumberFormat('fa-IR').format(value)+' تومان';
   const list=document.createElement('div');
   list.className='contract-quantity-list';
@@ -101,7 +101,7 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
       });
       card.appendChild(choices);
     }
-    if(operations && row.pricingMode==='quantity'){
+    if(operations && allowRemeasurement && row.pricingMode==='quantity'){
       const measurement=document.createElement('label');measurement.className='ft-row';
       const check=document.createElement('input');check.type='checkbox';check.checked=!!row.remeasurement;
       check.onchange=()=>{row.remeasurement=check.checked;onChange();};
@@ -125,7 +125,7 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
     list.appendChild(card);
   });
   const add=document.createElement('button');add.type='button';add.className='ctf-add-material contract-quantity-add';add.textContent=operations?'+ افزودن عملیات':'+ افزودن مرحله';
-  add.onclick=()=>{rows.push({...makeQuantityRow(),...(mixed?{pricingMode:'quantity',agreedPrice:''}:{})});onChange();};
+  add.onclick=()=>{rows.push({...makeQuantityRow(),...(mixed?{pricingMode:newPricingMode,agreedPrice:''}:{})});onChange();};
   list.appendChild(add);
   root.appendChild(list);
 }

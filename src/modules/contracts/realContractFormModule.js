@@ -103,7 +103,7 @@ function ftTextRow(root, label, value, onChange, opts = {}) {
   return row;
 }
 
-function ftSelectRow(root, label, displayValue, onOpen, opts = {}) {
+export function ftSelectRow(root, label, displayValue, onOpen, opts = {}) {
   const row = document.createElement('div');
   row.className = 'ft-row ft-tap';
 
@@ -135,7 +135,7 @@ function ftDateRow(root, label, value, onChange, opts = {}) {
   }, { placeholder: opts.placeholder || 'انتخاب تاریخ' });
 }
 
-function ftNumberRow(root, label, value, onChange, opts = {}) {
+export function ftNumberRow(root, label, value, onChange, opts = {}) {
   let display = '';
   if (value !== '' && value != null && String(value).length) {
     const normalized = helper('toEnglishDigits', String(value)) ?? value;
@@ -149,8 +149,11 @@ function ftNumberRow(root, label, value, onChange, opts = {}) {
   return ftSelectRow(root, label, display, () => {
     helper('openNumpadGeneric', value || '', raw => {
       onChange?.(raw);
-      if (opts.dirty !== false) dirty = true;
-      renderContractForm();
+      if(opts.onCommit) opts.onCommit();
+      else {
+        if (opts.dirty !== false) dirty = true;
+        renderContractForm();
+      }
     }, {
       suffix: opts.suffix || '',
       maxLen: opts.maxLen || 16,
@@ -169,7 +172,27 @@ function ftCalcRow(root, text) {
   return row;
 }
 
-function ftAmountSummary(root,label,amount){
+export function renderContractSavebar({onSave,onComplete,onCancel}){
+  const bar = document.createElement('div');
+  bar.className = 'real-contract-savebar';
+
+  const save = document.createElement('button');
+  save.className = 'if-save';
+  save.textContent = 'ذخیره';
+  save.onclick = onSave;
+
+  const cancel = document.createElement('button');
+  cancel.className = 'if-cancel';
+  cancel.textContent = 'انصراف';
+  cancel.onclick = onCancel;
+
+  const complete=document.createElement('button');complete.className='if-complete';complete.textContent='اعلام تکمیل';
+  complete.onclick=onComplete;
+  bar.append(save,complete,cancel);
+  return bar;
+}
+
+export function ftAmountSummary(root,label,amount){
   const display=(helper('formatCost',amount) ?? String(amount||0))+' تومان';
   const row=ftSelectRow(root,label,display,null);
   row.onclick=null;
@@ -581,23 +604,11 @@ function renderContractForm() {
   const actions = document.getElementById('contractFormActions');
   if (actions) {
     actions.innerHTML = '';
-    const bar = document.createElement('div');
-    bar.className = 'real-contract-savebar';
-
-    const save = document.createElement('button');
-    save.className = 'if-save';
-    save.textContent = 'ذخیره';
-    save.onclick = () => realContractFormModule.save(activeProjectId, false);
-
-    const cancel = document.createElement('button');
-    cancel.className = 'if-cancel';
-    cancel.textContent = 'انصراف';
-    cancel.onclick = () => realContractFormModule.requestClose();
-
-    const complete=document.createElement('button');complete.className='if-complete';complete.textContent='اعلام تکمیل';
-    complete.onclick=()=>realContractFormModule.declareComplete();
-    bar.append(save,complete,cancel);
-    actions.appendChild(bar);
+    actions.appendChild(renderContractSavebar({
+      onSave:()=>realContractFormModule.save(activeProjectId,false),
+      onComplete:()=>realContractFormModule.declareComplete(),
+      onCancel:()=>realContractFormModule.requestClose(),
+    }));
   }
 
   const raf = helper('requestAnimationFrame', () => {

@@ -1,8 +1,7 @@
-import { ADDENDUM_TYPES, addendumAmount, addendumReviewers, parentContractOf } from '../../domain/contractAddenda.js';
+import { ADDENDUM_TYPES, addendumAmount, addendumReviewers, canEditContractAddenda, parentContractOf } from '../../domain/contractAddenda.js';
 import { syncContractPartyData } from '../../domain/contractPartyData.js';
-import { canCancelContractCompletion, canReviewContract, canRevokeContractApproval } from '../../domain/contractApproval.js';
+import { canCancelContractCompletion, canReviewContract, canRevokeContractApproval, canSubmitContract } from '../../domain/contractApproval.js';
 import { isContractInFinance } from '../../domain/contractHandoff.js';
-import { workPath } from '../../domain/wbs/workTaskContractSync.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { formatJalaliDisplay, todayJalaliStr } from '../../ui/jalali.js';
 import { toEnglishDigits } from '../../ui/digits.js';
@@ -11,7 +10,11 @@ import { openConfirm } from '../../ui/confirm.js';
 import { closeWbsSheet, fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
 import { openStaticChoicePicker } from './contractPickers.js';
-import { syncContractAmount } from './contractPricing.js';
+import { contactApi } from '../../domain/contactApi.js';
+import { activityApi } from '../../domain/activityApi.js';
+import { contractProjectPath, normalizeContractSearch, renderContractCardHeading } from './contractsModule.js';
+import { ftAmountSummary, ftNumberRow, ftSelectRow, renderContractSavebar } from './realContractFormModule.js';
+import { makeQuantityRow, renderQuantityRows, rowAmount, syncContractAmount } from './contractPricing.js';
 import { openContractPreview } from './contractPreviewView.js';
 import { openContractExport } from './contractExportView.js';
 import { renderContractFinanceReview } from './contractFinanceReviewView.js';
@@ -24,12 +27,9 @@ const toast=message=>window.KarhaUI?.showToast?.(message);
 const number=value=>new Intl.NumberFormat('fa-IR').format(value);
 const money=value=>number(value)+' تومان';
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
-const writable=project=>{
-  const access=window.KarhaSaosaWorkspaceAccess?.[project.id];
-  const permissions=access?.permissions||{};
-  return !access || access.role==='owner' || ['edit','create','full'].includes(permissions.modules?.contracts ?? permissions.contracts)
-    || (!permissions.modules && permissions.edit===true);
-};
+const writable=project=>canEditContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id]);
+const pickFixed=(title,listTitle,options,current,onPick)=>openStaticChoicePicker(title,listTitle,options,current,onPick,null,{preserveOrder:true});
+const newOperation=()=>({...makeQuantityRow(),pricingMode:'agreed',agreedPrice:''});
 
 function button(label,action,style='contract-review-action'){
   const element=document.createElement('button');
@@ -40,23 +40,41 @@ function button(label,action,style='contract-review-action'){
   return element;
 }
 
-function contractLabel(project,contract){
-  const contact=project.contacts?.find(row=>!row.trashed && String(row.id)===String(contract.contractorId||contract.contactId));
-  const name=[contact?.firstName,contact?.lastName].filter(Boolean).join(' ') || contact?.name || contract.contractorName;
-  const activity=project.activityTemplates?.find(row=>String(row.id)===String(contract.activityId));
+function contractPickerItem(project,contract){
+  const contact=contactApi.lookup(project.id,contract.contractorId||contract.contactId);
+  const person=[contact?.firstName,contact?.lastName].filter(Boolean).join(' ') || contact?.name || contract.contractorName || 'بدون پیمانکار';
+  const activity=activityApi.lookup(project.id,contract.activityId);
+  const activityName=activity?.name || activity?.title || contract.documentActivityName || 'بدون فعالیت';
   const template=project.contractTemplates?.find(row=>String(row.id)===String(contract.templateId));
-  return [contract.contractNo,name,activity?.name,contract.title,template?.title,contract.category,contract.categoryName,
-    contract.projectItemId ? workPath(project,contract.projectItemId) : '',contract.projectItemPath].filter(Boolean).join(' | ');
+  const path=contractProjectPath(project,contract);
+  const pathParts=path.split(' ← ').filter(Boolean);
+  const work=pathParts.pop() || contract.workTaskTitle || activityName;
+  const name=person+' | '+work;
+  const detailLines=[contract.contractNo+' | '+activityName,pathParts.join(' ← ')].filter(Boolean);
+  return {id:contract.id,name,detailLines,
+    searchText:[name,contract.contractNo,activityName,path,contract.title,template?.title,contract.category,contract.categoryName].filter(Boolean).join(' | ')};
 }
 
-function pickContract(project,onPick){
+export function openAddendumPicker(projectId,onChanged){
+  const project=projectRepository.find(projectId);
+  if(!project || !writable(project))return;
   const contracts=(project.contracts||[]).filter(contract=>!contract.trashed && contract.contractNo);
   openSearchPicker({
-    title:'انتخاب قرارداد اصلی',listTitle:'قراردادهای پروژه',contextKey:'addendum:'+project.id,
-    items:contracts.map(contract=>({id:contract.id,name:contractLabel(project,contract)})),
-    showAdd:false,showStar:false,
-    normalizeSearch:value=>toEnglishDigits(value||'').normalize('NFKC').replace(/[يى]/g,'ی').replace(/ك/g,'ک').replace(/[\s\u200c]/g,'').toLocaleLowerCase('fa'),
-    onSelect:item=>{const contract=contracts.find(contract=>String(contract.id)===String(item.id));if(contract)onPick(contract);},
+    title:'انتخاب قرارداد',listTitle:'قراردادهای پروژه',contextKey:'addendum:'+project.id,
+    items:contracts.map(contract=>contractPickerItem(project,contract)),
+    showAdd:false,showStar:false,normalizeSearch:normalizeContractSearch,
+    onSelect:item=>{
+      const openForm=()=>{
+        if(window.KarhaRoute?.moduleId!=='contract-addenda' || String(window.KarhaRoute.projectId)!==String(projectId))return;
+        const current=projectRepository.find(projectId);
+        const contract=current && parentContractOf(current,{parentContractId:item.id});
+        if(contract && writable(current))openAddendumForm(current,contract,null,onChanged);
+      };
+      // The picker closes its history entry before opening the form.
+      const history=window.KarhaChildHistory;
+      if(history?.currentTraversalTransaction?.())history.afterNextPop(openForm);
+      else openForm();
+    },
   });
 }
 
@@ -64,27 +82,43 @@ function openAddendumForm(project,parent,record,onChanged){
   if(!parent){toast('قرارداد اصلی پیدا نشد');return;}
   const addendum=record || {id:'addendum-'+crypto.randomUUID(),parentContractId:String(parent.id)};
   const draft={type:'extra',contractDate:todayJalaliStr(),endDate:'',note:'',rows:[],...record};
-  draft.rows=draft.rows.map(row=>({...row}));
-  if(!draft.rows.length)draft.rows.push({});
+  const priceRows=draft.type==='price' && draft.rows.length ? draft.rows.map(row=>({...row})) : [{}];
+  const operations=draft.type==='extra' && draft.rows.length ? draft.rows.map(row=>({
+    ...makeQuantityRow(),...row,pricingMode:row.pricingMode || (row.unit?'quantity':'agreed'),
+    agreedPrice:row.amount ?? '',
+  })) : [newOperation()];
+  let dirty=false;
   let busy=false;
   let sheet;
   const save=async complete=>{
     if(busy)return;
     busy=true;
     try{
-      const {type,contractDate,endDate,note,rows}=draft;
-      await saveContractHandoff(project.id,addendum,'save_addendum',{type,contractDate,endDate,note,rows,complete,parentContractId:addendum.parentContractId});
+      const {type,contractDate,endDate,note}=draft;
+      const rows=type==='extra' ? operations.map(({pricingMode,description,unit,quantity,unitPrice,agreedPrice})=>
+        pricingMode==='quantity' ? {pricingMode,description,unit,quantity,unitPrice} : {pricingMode,description,amount:agreedPrice}
+      ) : priceRows;
+      await saveContractHandoff(project.id,addendum,'save_addendum',{type,contractDate,endDate,note,rows,complete,deferSubmission:true,parentContractId:addendum.parentContractId});
+      dirty=false;
       if(sheet.isConnected)closeWbsSheet();
       onChanged();
     }catch(error){toast(error.message);}
     finally{busy=false;}
   };
+  const requestClose=()=>{
+    if(busy)return;
+    if(!dirty){closeWbsSheet();return;}
+    window.KarhaUI?.showIncompleteFormExitChoice?.({onYes:()=>save(false),onNo:()=>closeWbsSheet()});
+  };
+  const header=renderContractCardHeading(project,parent,{onExport:trigger=>openContractExport(project,parent,{trigger})});
+  const footer=document.createElement('div');
+  footer.className='contract-addendum-actions';
+  footer.append(renderContractSavebar({onSave:()=>save(false),onComplete:()=>save(true),onCancel:requestClose}));
   sheet=openWbsSheet({
     title:record?'ویرایش الحاقیه':'ثبت الحاقیه',presentation:'stage-create',historyKey:'addendum:'+addendum.id,autoFocus:false,
+    header,footer,requestClose,hasUnsavedChanges:()=>dirty || busy,
     body(root){
-      const parentInfo=document.createElement('p');
-      parentInfo.className='wbs-note';
-      parentInfo.textContent=contractLabel(project,parent);
+      root.classList.add('contract-form-body','form-template');
       const reviewerInfo=document.createElement('p');
       reviewerInfo.className='wbs-note';
       const reviewerIds=record?.contractApproverContactIds ?? addendumReviewers(project,parent);
@@ -93,18 +127,17 @@ function openAddendumForm(project,parent,record,onChanged){
         return [contact?.firstName,contact?.lastName].filter(Boolean).join(' ') || contact?.name || 'مخاطب حذف‌شده';
       });
       reviewerInfo.textContent=names.length?'مسئولان تأیید: '+names.join('، '):'بدون مسئول تأیید';
-      root.append(parentInfo,reviewerInfo);
       const fields=document.createElement('div');
       const noteField=()=>{
         const input=document.createElement('textarea');
         input.className='wbs-input today-textarea';
         input.value=draft.note;
-        input.oninput=()=>{draft.note=input.value;};
+        input.oninput=()=>{draft.note=input.value;dirty=true;};
         return fieldRow('شرح تغییرات',input);
       };
       const dateField=(label,key)=>{
         const control=button(formatJalaliDisplay(draft[key])||'انتخاب تاریخ',()=>window.KarhaUI?.openJalaliPicker?.(draft[key],date=>{
-          draft[key]=date;control.textContent=formatJalaliDisplay(date);
+          draft[key]=date;dirty=true;control.textContent=formatJalaliDisplay(date);
         }),'wbs-input');
         return fieldRow(label,control);
       };
@@ -115,42 +148,50 @@ function openAddendumForm(project,parent,record,onChanged){
           old.textContent='پایان قرارداد اصلی: '+(formatJalaliDisplay(parent.endDate)||'ثبت نشده');
           fields.append(old,dateField('تاریخ پایان جدید','endDate'));
         }
-        if(['extra','price'].includes(draft.type)){
+        if(draft.type==='extra'){
+          const change=()=>{dirty=true;paint();};
+          renderQuantityRows(fields,operations,{
+            operations:true,mixed:true,allowRemeasurement:false,newPricingMode:'agreed',
+            selectRow:ftSelectRow,pick:pickFixed,onChange:change,onDirty:()=>{dirty=true;},
+            numberRow:(parent,label,value,onChange,opts)=>ftNumberRow(parent,label,value,onChange,{...opts,onCommit:change}),
+          });
+          ftAmountSummary(fields,'جمع مبلغ الحاقیه',operations.reduce((total,row)=>total+rowAmount(row),0));
+        }
+        if(draft.type==='price'){
           const total=document.createElement('p');total.className='wbs-note';
-          const normalized=()=>draft.rows.map(row=>({...row,
+          const normalized=()=>priceRows.map(row=>({...row,
             quantity:Number(toEnglishDigits(row.quantity??'')),unitPrice:Number(toEnglishDigits(row.unitPrice??'')),amount:Number(toEnglishDigits(row.amount??'')),
           }));
           const paintTotal=()=>{total.textContent='جمع الحاقیه: '+money(addendumAmount(normalized())||0);};
-          draft.rows.forEach((row,index)=>{
+          priceRows.forEach((row,index)=>{
             const card=document.createElement('div');card.className='contract-row';
             const title=document.createElement('strong');title.textContent='عملیات '+number(index+1);
             const addField=(label,key,numeric=false)=>{
               const input=document.createElement('input');input.className='wbs-input';input.value=row[key]??'';
               if(numeric)input.inputMode='decimal';
-              input.oninput=()=>{row[key]=numeric?toEnglishDigits(input.value):input.value;paintTotal();};
+              input.oninput=()=>{row[key]=numeric?toEnglishDigits(input.value):input.value;dirty=true;paintTotal();};
               card.append(fieldRow(label,input));
             };
             card.append(title);
-            if(draft.rows.length>1)card.append(button('حذف',()=>{draft.rows.splice(index,1);paint();}));
+            if(priceRows.length>1)card.append(button('حذف',()=>{priceRows.splice(index,1);dirty=true;paint();}));
             addField('شرح عملیات','description');addField('واحد (اختیاری)','unit');
             addField('مقدار','quantity',true);addField('بهای واحد (تومان)','unitPrice',true);
             addField('مبلغ توافقی در صورت خالی بودن واحد (تومان)','amount',true);
             fields.append(card);
           });
-          fields.append(button('افزودن ردیف',()=>{draft.rows.push({});paint();}),total);
+          fields.append(button('افزودن ردیف',()=>{priceRows.push({});dirty=true;paint();}),total);
           paintTotal();
         }
       };
       const type=button(ADDENDUM_TYPES[draft.type],()=>openStaticChoicePicker(
         'نوع الحاقیه','انواع الحاقیه',Object.entries(ADDENDUM_TYPES).map(([value,label])=>({value,label})),draft.type,
-        next=>{draft.type=next;type.textContent=ADDENDUM_TYPES[next];paint();},null,{preserveOrder:true}
+        next=>{draft.type=next;dirty=true;type.textContent=ADDENDUM_TYPES[next];paint();},null,{preserveOrder:true}
       ),'wbs-input');
-      root.append(fieldRow('نوع الحاقیه',type),dateField('تاریخ الحاقیه','contractDate'),fields,
-        noteField(),button('اعلام تکمیل',()=>save(true)));
+      root.append(fieldRow('نوع الحاقیه',type),dateField('تاریخ الحاقیه','contractDate'),fields,reviewerInfo,noteField());
       paint();
     },
-    onSave(){save(false);return false;},
   });
+  sheet.classList.add('contract-addendum-form');
 }
 
 function addendumDocument(addendum,parent){
@@ -163,7 +204,7 @@ function addendumDocument(addendum,parent){
     (note?'<p class="doc-clause">'+esc(note)+'</p>':'')+
     (endDate?'<p>تاریخ پایان قبلی: '+esc(formatJalaliDisplay(previousEndDate)||'—')+' | تاریخ پایان جدید: '+esc(formatJalaliDisplay(endDate))+'</p>':'')+
     (rows||[]).map((row,index)=>'<div class="doc-clause"><b>عملیات '+number(index+1)+'</b> · '+esc(row.description)+
-      (row.unit?' · '+number(row.quantity)+' '+esc(row.unit)+' × '+money(row.unitPrice):'')+' · '+money(addendumAmount([row]))+'</div>').join('')+
+      ((row.pricingMode==='quantity' || row.unit)?' · '+number(row.quantity)+' '+esc(row.unit)+' × '+money(row.unitPrice):'')+' · '+money(addendumAmount([row]))+'</div>').join('')+
     (rows?.length?'<p><b>جمع الحاقیه: '+money(amount)+'</b></p>':'')+'</section>';
 }
 
@@ -192,6 +233,9 @@ function addendumCard(project,addendum,onChanged,finance){
     try{await saveContractHandoff(project.id,addendum,action,{reason});onChanged();return true;}
     catch(error){toast(error.message);return false;}finally{busy=false;}
   };
+  if(!finance && writable(project) && addendum.contractApproverContactIds?.length && canSubmitContract(addendum)){
+    actions.append(button('ارسال برای تأیید',()=>review('submit_addendum')));
+  }
   if(!finance && canReviewContract(addendum,actor))actions.append(button('تأیید الحاقیه',()=>openConfirm('الحاقیه تأیید شود؟',()=>review('approve_addendum'),'تأیید')));
   const returnForEdit=(label,action)=>openWbsSheet({title:label,historyKey:'addendum-return:'+addendum.id,
     body(root){const reason=document.createElement('textarea');reason.name='reason';reason.className='wbs-input today-textarea';root.append(fieldRow('علت برگشت',reason));},
@@ -238,18 +282,7 @@ export function renderContractAddenda(body,projectId,{finance=false,onChanged}={
   if(finance){
     if(!records.length)return;
     const title=document.createElement('h3');title.textContent='الحاقیه‌ها';section.append(title);
-  }else{
-    body.replaceChildren();
-    const header=document.createElement('div');header.className='inner-section-bar';
-    const title=document.createElement('h2');title.textContent='الحاقیه‌ها';
-    header.append(title);
-    if(writable(project)){
-      const add=button('+',()=>pickContract(project,parent=>openAddendumForm(project,parent,null,refresh)),'inner-section-action');
-      add.setAttribute('aria-label','افزودن الحاقیه');
-      header.append(add);
-    }
-    section.append(header);
-  }
+  }else body.replaceChildren();
   if(!records.length){
     const empty=document.createElement('p');empty.className='contract-empty';empty.textContent='هنوز الحاقیه‌ای ثبت نشده است.';
     section.append(empty);
