@@ -6,8 +6,17 @@ export function renderContractHistory(documentRef,contract,{finance=false}={}){
   const summary=documentRef.createElement('summary');summary.textContent='تاریخچه';details.appendChild(summary);
   details.onclick=event=>event.stopPropagation();
   const financialActions=['send_finance','withdraw_finance','approve_finance','reject_finance','revoke_finance'];
-  const events=finance?(contract.financeHistory || (contract.approvalHistory||[]).filter(e=>financialActions.includes(e.action))):[...(contract.creationEvent?[contract.creationEvent]:[]),...(contract.approvalHistory||[])];
-  const entries=[...events].sort((a,b)=>Number(b.at)-Number(a.at));
+  const history=contract.approvalHistory||[];
+  const isAddendum=!!contract.parentContractId;
+  const creation=contract.creationEvent || (isAddendum && contract.createdAt
+    ? {action:'create',at:contract.createdAt,actor:contract.createdBy} : null);
+  const completion=isAddendum && contract.completedAt && !history.some(e=>e.action==='complete' && e.at===contract.completedAt)
+    ? {action:'complete',at:contract.completedAt,actor:contract.completedBy} : null;
+  const events=finance?(contract.financeHistory || history.filter(e=>financialActions.includes(e.action)))
+    : [creation,completion,...history].filter(Boolean);
+  const entries=[...events];
+  if(isAddendum)entries.reverse();
+  entries.sort((a,b)=>Number(b.at)-Number(a.at));
   if(!entries.length){
     const empty=documentRef.createElement('div');empty.className='contract-history-empty';empty.textContent='هنوز رویدادی ثبت نشده است.';details.appendChild(empty);
   }
@@ -15,7 +24,8 @@ export function renderContractHistory(documentRef,contract,{finance=false}={}){
     const row=documentRef.createElement('div');row.className='contract-history-entry';
     const heading=documentRef.createElement('div');
     const date=new Date(entry.at);
-    heading.textContent=[labels[entry.action] || 'تغییر وضعیت',entry.actor?.name || 'کاربر',entry.at && Number.isFinite(date.getTime())?moment.format(date):'زمان نامشخص'].join(' · ');
+    const label=isAddendum && entry.action==='complete' ? 'تکمیل الحاقیه اعلام شد' : labels[entry.action];
+    heading.textContent=[label || 'تغییر وضعیت',entry.actor?.name || (isAddendum?'نام ثبت نشده':'کاربر'),entry.at && Number.isFinite(date.getTime())?moment.format(date):'زمان نامشخص'].join(' · ');
     row.appendChild(heading);
     if(entry.manualFields?.length){const note=documentRef.createElement('p');const names={contractDate:'تاریخ تنظیم',employerId:'کارفرما',startDate:'تاریخ شروع',endDate:'تاریخ پایان',retentionDuration:'مدت نگهداری'};note.textContent='تکمیل دستی پس از چاپ: '+entry.manualFields.map(key=>names[key]||key).join('، ');row.appendChild(note);}
     if(entry.files?.length){const files=documentRef.createElement('p');files.textContent=entry.files.join('، ');row.appendChild(files);}

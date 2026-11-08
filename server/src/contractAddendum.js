@@ -42,6 +42,8 @@ export function saveAddendumDraft(project,current,body,actor,id,at){
     previousEndDate:type==='duration'?parent.endDate||'':'',note,rows,amount,
     contractApproverContactIds:reviewers,updatedAt:at,createdAt:current?.createdAt??at,
     status:'draft',isDraft:true,
+    ...(!current && {createdBy:{...actor},creationEvent:{action:'create',at,actor:{...actor}}}),
+    ...(body.complete && {approvalHistory:[...(current?.approvalHistory||[]),{action:'complete',at,actor:{...actor}}]}),
   };
   if(!body.complete)return {ok:true,contract:next};
   Object.assign(next,{status:'final',isDraft:false,completedAt:at,approvalStatus:reviewers.length?null:'approved'});

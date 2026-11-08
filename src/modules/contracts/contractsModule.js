@@ -1,3 +1,4 @@
+import { canCreateAddendumFromContract, canEditContractAddenda } from '../../domain/contractAddenda.js';
 import {renderContractFinanceReview} from './contractFinanceReviewView.js';
 import {renderContractSignedSection} from './contractSignedView.js';
 import { renderContractProgress } from './contractProgressView.js';
@@ -161,6 +162,16 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
       }
       if(canReviewContract(c,actor)){
         button('تأیید',()=>openConfirm('این قرارداد تأیید شود؟',()=>run('approve'),'تأیید'));
+      }
+      if(canCreateAddendumFromContract(c) && canEditContractAddenda(window.KarhaSaosaWorkspaceAccess?.[id])){
+        const addendum=document.createElement('button');
+        addendum.type='button';addendum.className='contract-review-action contract-addendum-create';addendum.textContent='ایجاد الحاقیه';
+        addendum.onclick=async event=>{
+          event.stopPropagation();
+          const {openAddendumForContract}=await import('./contractAddendaView.js');
+          if(row.isConnected)openAddendumForContract(id,c.id);
+        };
+        statusRow.appendChild(addendum);
       }
       if(c.approvalRejectionReason && ['unapproved','incomplete'].includes(contractApprovalState(c))){
         const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='علت لغو تأیید: '+c.approvalRejectionReason;statusRow.appendChild(reason);
