@@ -1851,7 +1851,8 @@ textarea.contract-project-item-input{
 /* Shared contract list: filters and workflow details stay on the same card. */
 :is(#contractsPageBody,#accountingPageBody) .contract-list{padding:0 10px 12px;}
 :is(#contractsPageBody,#accountingPageBody) .contract-row{display:block;box-sizing:border-box;min-width:0;}
-:is(#contractsPageBody,#accountingPageBody,.contract-addendum-form) .contract-card-heading{display:grid;grid-template-columns:70px minmax(0,1fr) 34px;align-items:center;gap:8px;}
+.contract-addendum-form .contract-card-heading,
+:is(#contractsPageBody,#accountingPageBody) .contract-card-heading{display:grid;grid-template-columns:70px minmax(0,1fr) 34px;align-items:center;gap:8px;}
 :is(#contractsPageBody,#accountingPageBody,.contract-addendum-form) .contract-card-heading .contract-main{grid-column:2;grid-row:1;text-align:center;}
 :is(#contractsPageBody,#accountingPageBody,.contract-addendum-form) .contract-card-heading .contract-created{grid-column:1;grid-row:1;text-align:center;}
 :is(#contractsPageBody,#accountingPageBody,.contract-addendum-form) .contract-card-heading .contract-actions{grid-column:3;grid-row:1;}
