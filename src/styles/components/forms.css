@@ -175,4 +175,13 @@
 .saosa-file-viewer-body img{display:block;max-width:100%;max-height:100%;object-fit:contain;}
 .saosa-file-viewer-body.is-zoomed{display:block;}
 .saosa-file-viewer-body.is-zoomed img{max-width:none;max-height:none;}
+.saosa-file-viewer--compact[open]{display:grid;grid-template-rows:auto minmax(0,1fr);}
+.saosa-file-viewer--compact .saosa-file-viewer-head{flex-wrap:nowrap;gap:0;padding:6px 16px 6px 0;padding-top:max(6px,env(safe-area-inset-top));background:#467cd4;}
+.saosa-file-viewer--compact .saosa-file-viewer-head span{min-width:0;white-space:nowrap;font-weight:700;}
+.saosa-file-viewer--compact .saosa-file-viewer-head button{display:grid;place-items:center;flex:0 0 44px;width:44px;padding:0;}
+.saosa-file-viewer--compact .saosa-file-viewer-head svg{width:23px;height:23px;}
+.saosa-file-viewer--compact .saosa-file-viewer-body{height:auto;min-height:0;box-sizing:border-box;}
+.saosa-file-image-zoom{display:grid;grid-template:minmax(0,1fr)/minmax(0,1fr);place-items:center;width:100%;height:100%;min-width:0;min-height:0;padding:0;border:0;background:transparent;cursor:zoom-in;}
+.is-zoomed .saosa-file-image-zoom{display:block;width:max-content;height:auto;cursor:zoom-out;}
+
 .saosa-file-replace{display:block;width:100%;min-height:40px;border:0;background:transparent;color:#1565c0;font:inherit;cursor:pointer;}

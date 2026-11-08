@@ -38,7 +38,7 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
     files.forEach(file=>{
       const card=document.createElement('div');card.className='saosa-file-card';
       const open=document.createElement('button');open.type='button';open.className='saosa-file-open';open.setAttribute('aria-label','نمایش '+(file.name||'عکس'));
-      open.onclick=()=>{viewerClose?.();viewerClose=openFileViewer(file,{onError});};
+      open.onclick=()=>{viewerClose?.();viewerClose=openFileViewer(file,{onError,compactImageHeader:category==='contracts'});};
       if(typeof file==='string' || file.mime?.startsWith('image/')){
         const img=document.createElement('img');img.alt=file.name||'تصویر پیوست';img.loading='lazy';img.fileReference=file;open.appendChild(img);if(observer)observer.observe(img);else load(img,file);
       }else{const name=document.createElement('span');name.textContent=file.name;open.appendChild(name);}
