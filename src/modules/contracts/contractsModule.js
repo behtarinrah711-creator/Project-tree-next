@@ -116,7 +116,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
       const row=document.createElement('article'); row.className='contract-row';
       row.dataset.searchText=normalizeContractSearch(title+' '+meta+' '+path+' '+(created ? `${created.date} ${created.time}` : ''));
       row.dataset.approvalState=contractApprovalState(c);row.dataset.reviewMine=String(canReviewContract(c,actor));
-      row.appendChild(renderContractCardHeading(p,c,{
+      const heading=renderContractCardHeading(p,c,{
         onEdit:finance?undefined:()=>{if(c.status==='final' && contractApprovalState(c)==='ready'){window.KarhaLegacy?.showToast?.('برای ویرایش ابتدا اعلام تکمیل را لغو کنید');return;}if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
         onExport:trigger=>openContractExport(p,finance?c.accountingPackage.contract:c,{trigger,frozen:finance}),
         onDelete:finance?undefined:()=>openConfirm('آیا از حذف این قرارداد اطمینان دارید؟',()=>{
@@ -128,7 +128,8 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
           }
           onChanged();
         },'حذف'),
-      }));
+      });
+      row.appendChild(heading);
       if(!finance){
       const statusRow=document.createElement('div');statusRow.className='contract-workflow-row';
       const status=document.createElement('span');
@@ -178,7 +179,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
       const signedSection=renderContractSignedSection(p,c,{onChanged});if(signedSection)row.appendChild(signedSection);
       }else row.appendChild(renderContractFinanceReview(p,c,{onChanged}));
       row.appendChild(renderContractHistory(document,c,{finance}));
-      row.onclick=()=>openContractPreview(p,finance?c.accountingPackage.contract:c,{trigger:main,frozen:finance,signedFiles:finance?c.accountingPackage.signedFiles:null});
+      row.onclick=()=>openContractPreview(p,finance?c.accountingPackage.contract:c,{trigger:heading.querySelector('.contract-main'),frozen:finance,signedFiles:finance?c.accountingPackage.signedFiles:null});
       return row;
 }
 

@@ -1752,6 +1752,7 @@ textarea.contract-project-item-input{
 
 .contract-menu-wrap .nb-project-menu{right:auto;left:0;}
 .contract-menu-wrap:has(.nb-project-menu){z-index:24;}
+.contract-menu-wrap > .nb-more[aria-expanded="true"]{position:relative;z-index:22;}
 #contractExportPage.page-overlay{z-index:70;}
 #contractExportPage [hidden]{display:none!important;}
 #contractExportPage .export-toolbar{justify-content:flex-end;}
