@@ -201,6 +201,15 @@ function handleWorkspaceContextBack(){
 
 function handleWorkspaceContextAction(){
   if(workspaceSubpage === 'contracts'){ openContractForm(null); return; }
+  if(workspaceSubpage === 'contract-addenda'){
+    const projectId=getActiveTab();
+    import('../modules/contracts/contractAddendaView.js').then(({openAddendumPicker,renderContractAddenda})=>{
+      if(workspaceSubpage!=='contract-addenda' || getActiveTab()!==projectId)return;
+      const body=document.getElementById('reportsPageBody');
+      if(body)openAddendumPicker(projectId,()=>renderContractAddenda(body,projectId));
+    });
+    return;
+  }
   if(workspaceSubpage === 'collab') showToast('اشتراک‌گذاری حذف شده است');
 }
 

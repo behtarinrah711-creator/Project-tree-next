@@ -1,3 +1,4 @@
+import { canEditContractAddenda } from '../domain/contractAddenda.js';
 import { planningPermissionState } from '../modules/roleManagement/planningAccess.js';
 import { getGlobalRoute, getGlobalRouteByModule } from '../core/globalRoutes.js';
 
@@ -218,9 +219,11 @@ export function installWorkspaceChrome({
       backBtn.onclick = handleContextBack;
     }
     if(actionBtn){
-      const hasAction = !INNER_SECTION_SUBPAGES.has(subpage) && subpage === 'contracts';
+      const isAddenda = subpage === 'contract-addenda';
+      const hasAction = (!INNER_SECTION_SUBPAGES.has(subpage) && subpage === 'contracts')
+        || (isAddenda && !!routeProject && canEditContractAddenda(windowRef.KarhaSaosaWorkspaceAccess?.[routeProject.id]));
       actionBtn.hidden = !hasAction;
-      actionBtn.title = 'ایجاد قرارداد';
+      actionBtn.title = isAddenda ? 'افزودن الحاقیه' : 'ایجاد قرارداد';
       actionBtn.setAttribute('aria-label', actionBtn.title);
       actionBtn.onclick = handleContextAction;
     }

@@ -174,7 +174,7 @@ function renderSearchTemplateBody(){
   const q=normalize(searchTemplateState.query);
   let items=searchTemplateState.items.filter(it=>{
     if(!q) return true;
-    return normalize(it.name).includes(q);
+    return normalize(it._raw.searchText ?? it.name).includes(q);
   });
 
   if(!items.length){
@@ -233,6 +233,12 @@ function makeSearchTemplateRow(item){
   const name=document.createElement('div');
   name.className='stpl-name';
   name.textContent=item.name||'—';
+  for(const line of item._raw.detailLines || []){
+    const detail=document.createElement('div');
+    detail.className='stpl-row-detail';
+    detail.textContent=line;
+    name.appendChild(detail);
+  }
   if(item.disabledReason){
     const reason=document.createElement('div');reason.className='stpl-disabled-reason';
     reason.textContent=item.disabledReason;name.appendChild(reason);

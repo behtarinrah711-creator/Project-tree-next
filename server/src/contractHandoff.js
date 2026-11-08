@@ -58,6 +58,8 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       else if(reviewAction){
         transition=transitionContractApproval(contract,body.action==='approve_addendum'?'approve':'revoke',actor,{reason:body.reason});
         if(transition.ok && body.action==='revoke_addendum')Object.assign(transition.contract,{isDraft:true,status:'draft'});
+      }else if(addendum && body.action==='submit_addendum'){
+        transition=transitionContractApproval(contract,'submit',actor,{approverIds:contract.contractApproverContactIds});
       }else if(addendum && ['cancel_completion','withdraw_submission'].includes(body.action)){
         transition=transitionContractApproval(contract,body.action,actor,{reason:body.reason});
       }else{

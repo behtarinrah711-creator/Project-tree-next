@@ -166,3 +166,31 @@ test('completing an addendum without reviewers skips reviewer approval',async()=
   assert.equal(result.result.contract.approvalStatus,'approved');
   assert.deepEqual(result.result.contract.contractApproverContactIds,[]);
 });
+
+
+test('addendum editor keeps incomplete draft rows and submits only after completing both pricing modes',async()=>{
+  const f=fixture();
+  Object.assign(f.payload.contracts[0],{contractNo:'CTR-1',contractApproverContactIds:['reviewer']});
+  const path='/api/v1/projects/p/addenda/addendum-00000000-0000-4000-8000-000000000000/handoff';
+  const draft={action:'save_addendum',parentContractId:'c',type:'extra',contractDate:'1405/08/01',deferSubmission:true};
+  const rows=[{description:'جابجایی مصالح',amount:'125'},{description:'کار اضافه',pricingMode:'quantity',unit:'',quantity:'2.5',unitPrice:''}];
+  const saved=await f.call({...draft,version:0,updatedAt:0,rows},path);
+  assert.equal(saved.status,200);
+  const contract=saved.result.contract;
+  assert.equal(contract.isDraft,true);
+  assert.equal(contract.rows[1].unitPrice,null);
+  assert.equal(contract.amount,125);
+  const version={version:contract.handoffVersion,updatedAt:contract.updatedAt};
+  assert.equal((await f.call({...draft,...version,rows,complete:true},path)).status,400);
+  rows[1].unitPrice='100';
+  const complete=await f.call({...draft,...version,rows,complete:true},path);
+  assert.equal(complete.status,200);
+  assert.equal(complete.result.contract.isDraft,false);
+  assert.equal(complete.result.contract.amount,375);
+  assert.equal(complete.result.contract.approvalStatus,null);
+  const submitted=await f.call({action:'submit_addendum',version:complete.result.contract.handoffVersion,
+    updatedAt:complete.result.contract.updatedAt},path);
+  assert.equal(submitted.status,200);
+  assert.equal(submitted.result.contract.approvalStatus,'pending');
+  assert.deepEqual(submitted.result.contract.approvalContactIds,['reviewer']);
+});

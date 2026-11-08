@@ -62,7 +62,7 @@ function legacy(name,...args){
   return false;
 }
 function softDeleteTemplate(projectId,id){return contractApi.trashTemplate(projectId,id).ok;}
-function contractProjectPath(project, contract){
+export function contractProjectPath(project, contract){
   const { projectItemId, workTaskId } = contract;
   const item = projectItemId ? findInTree(project.tasks, projectItemId)?.item : null;
   const task = workTaskId && item?.workTasks?.find(row => row && !row.trashed && String(row.id) === String(workTaskId));
@@ -83,24 +83,41 @@ function contractRowData(projectId,c){
   return {title,meta,number,created:contractCreatedParts(c.createdAt)};
 }
 
+export function renderContractCardHeading(project, contract, menu){
+  const {title,number,created}=contractRowData(project.id,contract);
+  const path=contractProjectPath(project,contract);
+  const heading=document.createElement('div');
+  heading.className='contract-card-heading';
+  const main=document.createElement('div'); main.className='contract-main';
+  const t=document.createElement('div'); t.className='contract-title'; t.textContent=title;
+  const numberRow=document.createElement('div');numberRow.className='contract-meta contract-number';numberRow.dir='ltr';numberRow.textContent=number;
+  main.append(t,numberRow);
+  if(path){
+    const pathRow=document.createElement('div');pathRow.className='contract-meta contract-project-path';pathRow.dir='rtl';pathRow.textContent=path;
+    main.appendChild(pathRow);
+  }
+  const actions=document.createElement('div'); actions.className='contract-actions';
+  actions.appendChild(contractActionsMenu(menu));
+  if(created){
+    const createdBox=document.createElement('div'); createdBox.className='contract-created';
+    const date=document.createElement('div'); date.className='contract-created-date'; date.textContent=created.date;
+    const time=document.createElement('div'); time.className='contract-created-time'; time.textContent=created.time;
+    createdBox.append(date,time);
+    heading.append(main,createdBox,actions);
+  }else{
+    heading.append(main,actions);
+  }
+  return heading;
+}
+
 export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
   const id=p.id,actor=currentExecutionActor(p);
-      const {title,meta,number,created}=contractRowData(id,c);
+      const {title,meta,created}=contractRowData(id,c);
       const path=contractProjectPath(p,c);
       const row=document.createElement('article'); row.className='contract-row';
-      const heading=document.createElement('div');heading.className='contract-card-heading';
       row.dataset.searchText=normalizeContractSearch(title+' '+meta+' '+path+' '+(created ? `${created.date} ${created.time}` : ''));
       row.dataset.approvalState=contractApprovalState(c);row.dataset.reviewMine=String(canReviewContract(c,actor));
-      const main=document.createElement('div'); main.className='contract-main';
-      const t=document.createElement('div'); t.className='contract-title'; t.textContent=title;
-      const numberRow=document.createElement('div');numberRow.className='contract-meta contract-number';numberRow.dir='ltr';numberRow.textContent=number;
-      main.append(t,numberRow);
-      if(path){
-        const pathRow=document.createElement('div');pathRow.className='contract-meta contract-project-path';pathRow.dir='rtl';pathRow.textContent=path;
-        main.appendChild(pathRow);
-      }
-      const actions=document.createElement('div'); actions.className='contract-actions';
-      actions.appendChild(contractActionsMenu({
+      const heading=renderContractCardHeading(p,c,{
         onEdit:finance?undefined:()=>{if(c.status==='final' && contractApprovalState(c)==='ready'){window.KarhaLegacy?.showToast?.('برای ویرایش ابتدا اعلام تکمیل را لغو کنید');return;}if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
         onExport:trigger=>openContractExport(p,finance?c.accountingPackage.contract:c,{trigger,frozen:finance}),
         onDelete:finance?undefined:()=>openConfirm('آیا از حذف این قرارداد اطمینان دارید؟',()=>{
@@ -112,16 +129,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
           }
           onChanged();
         },'حذف'),
-      }));
-      if(created){
-        const createdBox=document.createElement('div'); createdBox.className='contract-created';
-        const date=document.createElement('div'); date.className='contract-created-date'; date.textContent=created.date;
-        const time=document.createElement('div'); time.className='contract-created-time'; time.textContent=created.time;
-        createdBox.append(date,time);
-        heading.append(main,createdBox,actions);
-      }else{
-        heading.append(main,actions);
-      }
+      });
       row.appendChild(heading);
       if(!finance){
       const statusRow=document.createElement('div');statusRow.className='contract-workflow-row';
@@ -182,7 +190,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
       const signedSection=renderContractSignedSection(p,c,{onChanged});if(signedSection)row.appendChild(signedSection);
       }else row.appendChild(renderContractFinanceReview(p,c,{onChanged}));
       row.appendChild(renderContractHistory(document,c,{finance}));
-      row.onclick=()=>openContractPreview(p,finance?c.accountingPackage.contract:c,{trigger:main,frozen:finance,signedFiles:finance?c.accountingPackage.signedFiles:null});
+      row.onclick=()=>openContractPreview(p,finance?c.accountingPackage.contract:c,{trigger:heading.querySelector('.contract-main'),frozen:finance,signedFiles:finance?c.accountingPackage.signedFiles:null});
       return row;
 }
 

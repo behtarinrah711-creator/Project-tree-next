@@ -431,22 +431,22 @@ Total output lines: 1757
   box-sizing:border-box !important;
   field-sizing:content;
 }
-#contractFormActions{
+:is(#contractFormActions,.contract-addendum-actions){
   flex:0 0 auto !important;
   padding:10px 12px max(10px,env(safe-area-inset-bottom)) !important;
   background:var(--surface-2,#f1f3f5) !important;
   border-top:1px solid var(--divider) !important;
   box-sizing:border-box !important;
 }
-#contractFormActions .real-contract-savebar{
+:is(#contractFormActions,.contract-addendum-actions) .real-contract-savebar{
   direction:ltr !important;
   display:flex !important;
   gap:10px !important;
   width:100% !important;
 }
-#contractFormActions .real-contract-savebar .if-save,
-#contractFormActions .real-contract-savebar .if-draft,
-#contractFormActions .real-contract-savebar .if-cancel{
+:is(#contractFormActions,.contract-addendum-actions) .real-contract-savebar .if-save,
+:is(#contractFormActions,.contract-addendum-actions) .real-contract-savebar .if-draft,
+:is(#contractFormActions,.contract-addendum-actions) .real-contract-savebar .if-cancel{
   flex:1 1 0 !important;
   min-height:48px !important;
   border-radius:11px !important;
@@ -454,17 +454,17 @@ Total output lines: 1757
   font-size:14px !important;
   font-weight:600 !important;
 }
-#contractFormActions .real-contract-savebar .if-save{
+:is(#contractFormActions,.contract-addendum-actions) .real-contract-savebar .if-save{
   background:var(--primary) !important;
   color:#fff !important;
   border:1px solid var(--primary) !important;
 }
-#contractFormActions .real-contract-savebar .if-draft{
+:is(#contractFormActions,.contract-addendum-actions) .real-contract-savebar .if-draft{
   background:#eee !important;
   color:var(--text) !important;
   border:1px solid #eee !important;
 }
-#contractFormActions .real-contract-savebar .if-cancel{
+:is(#contractFormActions,.contract-addendum-actions) .real-contract-savebar .if-cancel{
   background:#fff !important;
   color:var(--text) !important;
   border:1px solid var(--divider) !important;
@@ -1113,7 +1113,7 @@ Total output lines: 1757
 
 /* legacy style real-contract-actions-match-settings-v259 */
 /* نوار عملیات فرم قرارداد پیمانکاران — دقیقاً هم‌الگوی فرم‌های تنظیمات */
-#contractFormActions{
+:is(#contractFormActions,.contract-addendum-actions){
   flex:0 0 auto !important;
   position:sticky !important;
   bottom:0 !important;
@@ -1129,7 +1129,7 @@ Total output lines: 1757
   border-top:1px solid var(--divider) !important;
   z-index:20 !important;
 }
-#contractFormActions .real-contract-savebar{
+:is(#contractFormActions,.contract-addendum-actions) .real-contract-savebar{
   display:flex !important;
   flex-direction:row !important;
   direction:ltr !important;
@@ -1139,7 +1139,7 @@ Total output lines: 1757
   margin:0 !important;
   padding:0 !important;
 }
-#contractFormActions .real-contract-savebar > button{
+:is(#contractFormActions,.contract-addendum-actions) .real-contract-savebar > button{
   flex:1 1 0 !important;
   width:0 !important;
   min-width:0 !important;
@@ -1156,25 +1156,25 @@ Total output lines: 1757
   appearance:none !important;
   -webkit-appearance:none !important;
 }
-#contractFormActions .real-contract-savebar .if-save{
+:is(#contractFormActions,.contract-addendum-actions) .real-contract-savebar .if-save{
   order:1 !important;
   background:var(--primary) !important;
   color:#fff !important;
   border:1px solid var(--primary) !important;
 }
-#contractFormActions .real-contract-savebar .if-draft{
+:is(#contractFormActions,.contract-addendum-actions) .real-contract-savebar .if-draft{
   order:2 !important;
   background:var(--surface) !important;
   color:var(--text) !important;
   border:1px solid var(--divider) !important;
 }
-#contractFormActions .real-contract-savebar .if-cancel{
+:is(#contractFormActions,.contract-addendum-actions) .real-contract-savebar .if-cancel{
   order:3 !important;
   background:#eee !important;
   color:var(--text) !important;
   border:1px solid #eee !important;
 }
-#contractFormActions .real-contract-savebar > button:active{
+:is(#contractFormActions,.contract-addendum-actions) .real-contract-savebar > button:active{
   opacity:.88 !important;
 }
 
@@ -1752,6 +1752,8 @@ textarea.contract-project-item-input{
 
 .contract-menu-wrap .nb-project-menu{right:auto;left:0;}
 .contract-menu-wrap:has(.nb-project-menu){z-index:24;}
+.contract-menu-wrap > .nb-more[aria-expanded="true"]{position:relative;z-index:22;}
+#contractExportPage.page-overlay{z-index:70;}
 #contractExportPage [hidden]{display:none!important;}
 #contractExportPage .export-toolbar{justify-content:flex-end;}
 
@@ -1850,10 +1852,11 @@ textarea.contract-project-item-input{
 /* Shared contract list: filters and workflow details stay on the same card. */
 :is(#contractsPageBody,#accountingPageBody) .contract-list{padding:0 10px 12px;}
 :is(#contractsPageBody,#accountingPageBody) .contract-row{display:block;box-sizing:border-box;min-width:0;}
+.contract-addendum-form .contract-card-heading,
 :is(#contractsPageBody,#accountingPageBody) .contract-card-heading{display:grid;grid-template-columns:70px minmax(0,1fr) 34px;align-items:center;gap:8px;}
-:is(#contractsPageBody,#accountingPageBody) .contract-card-heading .contract-main{grid-column:2;grid-row:1;text-align:center;}
-:is(#contractsPageBody,#accountingPageBody) .contract-card-heading .contract-created{grid-column:1;grid-row:1;text-align:center;}
-:is(#contractsPageBody,#accountingPageBody) .contract-card-heading .contract-actions{grid-column:3;grid-row:1;}
+:is(#contractsPageBody,#accountingPageBody,.contract-addendum-form) .contract-card-heading .contract-main{grid-column:2;grid-row:1;text-align:center;}
+:is(#contractsPageBody,#accountingPageBody,.contract-addendum-form) .contract-card-heading .contract-created{grid-column:1;grid-row:1;text-align:center;}
+:is(#contractsPageBody,#accountingPageBody,.contract-addendum-form) .contract-card-heading .contract-actions{grid-column:3;grid-row:1;}
 :is(#contractsPageBody,#accountingPageBody) .contract-main{flex-basis:50%;min-width:0;}
 :is(#contractsPageBody,#accountingPageBody) .contract-workflow-row{flex:1 0 100%;box-sizing:border-box;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--divider);padding:12px 0;margin:0;min-width:0;font-size:12px;}
 :is(#contractsPageBody,#accountingPageBody) .contract-workflow-row>span{flex:1;min-width:120px;}
@@ -1884,9 +1887,17 @@ textarea.contract-project-item-input{
 
 /* Contract-owned presentation matches the execution work-card design. */
 :is(#contractsPageBody,#accountingPageBody) .contract-row{margin:12px 0;padding:0 12px;border:1px solid #e5ded3;border-radius:var(--wbs-frame-radius,5px);background:#fff}
-:is(#contractsPageBody,#accountingPageBody) .contract-card-heading{margin-inline:-12px;padding:10px 12px;background:#f4f1ec;border-radius:var(--wbs-frame-radius,5px) var(--wbs-frame-radius,5px) 0 0}
-:is(#contractsPageBody,#accountingPageBody) .contract-title{font-size:13px;font-weight:600;color:#4d4741;text-align:center;overflow-wrap:anywhere}
-:is(#contractsPageBody,#accountingPageBody) .contract-meta{font-size:11px;color:#4d4741;text-align:center}
+:is(#contractsPageBody,#accountingPageBody,.contract-addendum-form) .contract-card-heading{margin-inline:-12px;padding:10px 12px;background:#f4f1ec;border-radius:var(--wbs-frame-radius,5px) var(--wbs-frame-radius,5px) 0 0}
+:is(#contractsPageBody,#accountingPageBody,.contract-addendum-form) .contract-title{font-size:13px;font-weight:600;color:#4d4741;text-align:center;overflow-wrap:anywhere}
+:is(#contractsPageBody,#accountingPageBody,.contract-addendum-form) .contract-meta{font-size:11px;color:#4d4741;text-align:center}
+
+/* Addendum form uses the same card header and operation editor. */
+.contract-addendum-form .wbs-sheet > .contract-card-heading{margin:0;direction:rtl;flex:none;}
+.contract-addendum-form .contract-form-body{min-height:0;overflow-y:auto;direction:rtl;}
+.contract-addendum-form .contract-form-body .contract-quantity-row .ft-tap{cursor:pointer;}
+.contract-addendum-form .contract-form-body .ft-value:not(.ft-placeholder){color:#1565c0 !important;}
+.contract-addendum-form .contract-form-body .contract-amount-summary .ft-value,
+.contract-addendum-form .contract-form-body .contract-quantity-row > .ft-row:not(.ft-tap) .ft-value{color:#202124 !important;}
 
 /* Contract progress uses real saved lifecycle state; it has no manual controls. */
 :is(#contractsPageBody,#accountingPageBody) .contract-progress{display:flex;direction:rtl;list-style:none;margin:0;padding:16px 0;border-top:1px solid var(--divider,#e4ddd3);}
@@ -1900,13 +1911,13 @@ textarea.contract-project-item-input{
 :is(#contractsPageBody,#accountingPageBody) .contract-progress-step.is-complete{color:#187638;}
 :is(#contractsPageBody,#accountingPageBody) .contract-progress-step.is-complete .contract-progress-dot{background:#24934f;}
 
-:is(#contractsPageBody,#accountingPageBody) .contract-menu-wrap > .nb-more{color:#1565c0;}
+:is(#contractsPageBody,#accountingPageBody,.contract-addendum-form) .contract-menu-wrap > .nb-more{color:#1565c0;}
 :is(#contractsPageBody,#accountingPageBody) .contract-workflow-row > .contract-status-badge{flex:0 1 auto;min-width:0;margin-inline-end:auto;padding:5px 10px;border-radius:6px;line-height:1.7;}
 :is(#contractsPageBody,#accountingPageBody) .contract-status-badge.is-incomplete{background:#e5e7eb;color:#374151;}
 :is(#contractsPageBody,#accountingPageBody) .contract-status-badge.is-approved{background:#dcfce7;color:#166534;}
 :is(#contractsPageBody,#accountingPageBody) .contract-status-badge.is-unapproved{background:#fee2e2;color:#991b1b;}
 
-#contractFormActions .real-contract-savebar .if-complete{order:2!important;background:#1565c0!important;color:#fff!important;border:1px solid #1565c0!important;line-height:1.4!important;}
+:is(#contractFormActions,.contract-addendum-actions) .real-contract-savebar .if-complete{order:2!important;background:#1565c0!important;color:#fff!important;border:1px solid #1565c0!important;line-height:1.4!important;}
 
 /* Three fixed horizontal photo slots per annex, inside the shared A4 sheet frame. */
 .contract-document-attachment{break-inside:avoid;box-sizing:border-box;width:100%;}

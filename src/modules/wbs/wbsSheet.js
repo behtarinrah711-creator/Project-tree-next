@@ -32,7 +32,7 @@ export function closeWbsSheet(fromPopState = false){
   }
 }
 
-export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', presentation = '', autoFocus = true, readOnly = false, showSave = true, closeOnBackdrop = true, historyKey = '' } = {}){
+export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', presentation = '', autoFocus = true, readOnly = false, showSave = true, closeOnBackdrop = true, historyKey = '', header, footer, requestClose, hasUnsavedChanges } = {}){
   closeWbsSheet();
   const overlay = document.createElement('div');
   overlay.id = 'wbsSheetOverlay';
@@ -69,7 +69,9 @@ export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', pr
   `;
   overlay.querySelector('.sheet-caption').textContent = title || '';
   overlay.querySelector('.wbs-sheet-save').hidden = !showSave;
+  if(header) overlay.querySelector('.sheet-head').replaceWith(header);
   const bodyEl = overlay.querySelector('.sheet-body');
+  if(footer) bodyEl.after(footer);
   if(typeof body === 'function') body(bodyEl);
   else if(body) bodyEl.append(body);
   if(readOnly){
@@ -77,16 +79,21 @@ export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', pr
     overlay.querySelector('.wbs-sheet-save').hidden=true;
     bodyEl.querySelectorAll('input,textarea,select,button').forEach(control=>{control.disabled=true;});
   }
-  overlay.querySelector('.close-btn').addEventListener('click', () => closeWbsSheet(false));
-  overlay.addEventListener('click', ev => { if(closeOnBackdrop && ev.target === overlay) closeWbsSheet(); });
-  overlay.querySelector('.wbs-sheet-save').addEventListener('click', () => {
+  const close = requestClose || (()=>closeWbsSheet());
+  overlay.querySelector('.close-btn')?.addEventListener('click', close);
+  overlay.addEventListener('click', ev => { if(closeOnBackdrop && ev.target === overlay) close(); });
+  overlay.querySelector('.wbs-sheet-save')?.addEventListener('click', () => {
     const ok = onSave ? onSave(bodyEl) : true;
     if(ok !== false) closeWbsSheet();
   });
   document.body.appendChild(overlay);
   if(historyKey){
     sheetHistoryKey = String(historyKey);
-    window.KarhaChildHistory?.register(sheetHistoryKey, { onPop:() => closeWbsSheet(true) });
+    const history=window.KarhaChildHistory;
+    const onPop=()=>closeWbsSheet(true);
+    if(hasUnsavedChanges && history?.registerGuardedForm){
+      history.registerGuardedForm(sheetHistoryKey,{shouldIntercept:hasUnsavedChanges,requestExit:close,onPop});
+    }else history?.register(sheetHistoryKey,{onPop});
     window.KarhaChildHistory?.open(sheetHistoryKey);
   }
   if(autoFocus && !readOnly) bodyEl.querySelector('input,textarea,select')?.focus();

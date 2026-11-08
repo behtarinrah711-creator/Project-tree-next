@@ -34,5 +34,5 @@ export function canCreateAddendumFromContract(contract){
 }
 
 export function addendumAmount(rows){
-  return (rows||[]).reduce((sum,row)=>sum+(row.unit ? Math.round(row.quantity*row.unitPrice) : row.amount),0);
+  return (rows||[]).reduce((sum,row)=>sum+(row.pricingMode==='quantity' || row.unit ? Math.round(row.quantity*row.unitPrice) : (row.amount ?? 0)),0);
 }

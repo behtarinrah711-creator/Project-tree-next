@@ -27,7 +27,12 @@ const project = {
 
 test.beforeEach(async ({ page }, testInfo) => {
   const stageMode = testInfo.title.match(/tree squares are absent in (none|single|multiple)/)?.[1];
-  const seed = stageMode ? { ...project, settings:{ stageMode } } : project;
+  const reportSeed=testInfo.title.startsWith('Planning contains tree') ? {
+    activityTemplates:[{id:'a1',name:'آرماتوربندی'}],
+    contracts:[{id:'contract-1',contractNo:'CTR-TEST-0001',title:'قرارداد پیمانکاری',contractorId:'c1',activityId:'a1',
+      projectItemPath:'فونداسیون / اجرای ریشه دیوار برشی',category:'سازه',createdAt:1793916000000,status:'draft',isDraft:true}],
+  } : {};
+  const seed = stageMode ? { ...project, settings:{ stageMode } } : { ...project,...reportSeed };
   await page.addInitScript(seedProject => {
     window.addEventListener('karha:ready', () => { window.__wbsTestReady = true; }, {once:true});
     localStorage.clear();
@@ -321,7 +326,31 @@ test('Planning contains tree, timeline and estimate while Execution and Reports 
   await expect(reportRows).toHaveCount(4);
   await reportRows.filter({ has:page.locator('.workspace-option-title', { hasText:'الحاقیه‌ها' }) }).click();
   await expect(page).toHaveURL(/\/contract-addenda$/);
-  await expect(page.locator('#reportsPageBody').getByRole('heading', { name:'الحاقیه‌ها' })).toBeVisible();
+  const addendaBar=page.locator('#workspaceProjectContext');
+  await expect(addendaBar.locator('#workspaceProjectName')).toHaveText('الحاقیه‌ها');
+  await expect(addendaBar.locator('#workspaceContextBack')).toBeVisible();
+  const addendumAction=addendaBar.getByRole('button', {name:'افزودن الحاقیه'});
+  await expect(addendumAction).toBeVisible();
+  await expect(page.locator('#reportsPageBody .inner-section-bar')).toHaveCount(0);
+  await addendumAction.click();
+  await expect(page.locator('#searchTemplateTitle')).toHaveText('انتخاب قرارداد');
+  const choice=page.locator('#searchTemplateBody .stpl-row').filter({hasText:'اجرای ریشه دیوار برشی'});
+  await expect(choice.locator('.stpl-name')).toContainText('مهندس احمدی | اجرای ریشه دیوار برشی');
+  await expect(choice.locator('.stpl-row-detail')).toHaveText(['CTR-TEST-0001 | آرماتوربندی','فونداسیون']);
+  await choice.click();
+  const form=page.getByRole('dialog',{name:'ثبت الحاقیه'});
+  await expect(form.locator('.contract-card-heading .contract-title')).toHaveText('قرارداد پیمانکاری مهندس احمدی');
+  await expect(form.locator('.contract-created-time')).toBeVisible();
+  await form.getByRole('button',{name:'عملیات قرارداد'}).click();
+  await expect(form.getByRole('menuitem')).toHaveCount(1);
+  await expect(form.getByRole('menuitem',{name:'خروجی'})).toBeVisible();
+  await form.getByRole('button',{name:'عملیات قرارداد'}).click();
+  await expect(form.getByRole('radio',{name:'مبلغ توافقی'})).toBeChecked();
+  await form.getByRole('button',{name:'افزودن عملیات'}).click();
+  await expect(form.locator('.contract-quantity-row')).toHaveCount(2);
+  await form.getByRole('button',{name:'انصراف'}).click();
+  await page.locator('.global-incomplete-exit-choice').getByRole('button',{name:'خیر'}).click();
+  await expect(form).toBeHidden();
   await page.locator('#workspaceContextBack').click();
   await expect(page).toHaveURL(/\/reports$/);
   await reportRows.filter({ has:page.locator('.workspace-option-title', { hasText:'قرارداد پیمانکاران' }) }).click();
