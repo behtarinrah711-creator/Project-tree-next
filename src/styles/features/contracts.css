@@ -1869,10 +1869,15 @@ textarea.contract-project-item-input{
 :is(#contractsPageBody,#accountingPageBody) .contract-filter-dismiss{position:fixed;inset:0;z-index:1;border:0;background:transparent;cursor:default;}
 :is(#contractsPageBody,#accountingPageBody) .contract-mine-reset{border:1px solid var(--divider);border-radius:8px;padding:8px;background:var(--surface);color:#1565c0;font:inherit;cursor:pointer;}
 
+#reportsPageBody .contract-addenda-list .contract-history,
 :is(#contractsPageBody,#accountingPageBody) .contract-history{min-width:0;margin:0;padding:0;border-top:1px solid var(--divider,#e4ddd3);color:var(--text-dim,#77706a);font-size:11px}
+#reportsPageBody .contract-addenda-list .contract-history summary,
 :is(#contractsPageBody,#accountingPageBody) .contract-history summary{min-height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#000;font:inherit;font-weight:600}
+#reportsPageBody .contract-addenda-list .contract-history-entry,
 :is(#contractsPageBody,#accountingPageBody) .contract-history-entry{padding:8px 0;line-height:1.9;overflow-wrap:anywhere}
+#reportsPageBody .contract-addenda-list .contract-history-entry p,
 :is(#contractsPageBody,#accountingPageBody) .contract-history-entry p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+#reportsPageBody .contract-addenda-list .contract-history-empty,
 :is(#contractsPageBody,#accountingPageBody) .contract-history-empty{padding:8px 0 14px;text-align:center}
 
 .contract-form-body .contract-quantity-list > .contract-quantity-add{color:#1565c0;}
@@ -1943,3 +1948,5 @@ textarea.contract-project-item-input{
 .contract-signed-overlay .saosa-file-card .saosa-file-remove{
   width:30px;height:30px;min-width:0;min-height:0;padding:0;font-size:18px;line-height:1;
 }
+
+#contractsPageBody .contract-workflow-row > .contract-addendum-create{margin-inline-start:auto;padding:7px 12px;border-radius:8px;background:#1565c0;color:#fff;white-space:nowrap;}

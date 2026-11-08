@@ -128,6 +128,9 @@ test('an addendum requires inherited review, keeps its own signed file, and free
   let addendum=result.result.contract;
   assert.equal(addendum.contractNo,'CTR-1-A01');
   assert.equal(addendum.amount,400);
+  assert.deepEqual(addendum.creationEvent,{action:'create',at:addendum.createdAt,actor:addendum.createdBy});
+  assert.equal(addendum.createdBy.name,'مسئول تأیید');
+  assert.deepEqual(addendum.approvalHistory.map(event=>event.action),['complete','submit']);
   assert.equal(addendum.approvalStatus,'pending');
   const act=(action,options={})=>f.call({action,version:addendum.handoffVersion,updatedAt:addendum.updatedAt,...options},path);
   assert.equal((await act('send_finance')).status,400);
@@ -148,7 +151,10 @@ test('an addendum requires inherited review, keeps its own signed file, and free
   assert.equal(f.payload.contracts[0].amount,1000);
   assert.equal((await act('approve_finance')).status,403);
   f.setPermissions({modules:{accounting:'create'}});
-  assert.equal((await act('approve_finance')).result.contract.accountingStatus,'accepted');
+  const accepted=(await act('approve_finance')).result.contract;
+  assert.equal(accepted.accountingStatus,'accepted');
+  assert.deepEqual(accepted.creationEvent,addendum.creationEvent);
+  assert.deepEqual(accepted.approvalHistory.map(event=>event.action),['complete','submit','approve','add_signed','send_finance','approve_finance']);
 });
 
 test('completing an addendum without reviewers skips reviewer approval',async()=>{

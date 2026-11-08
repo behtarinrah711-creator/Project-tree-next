@@ -15,6 +15,7 @@ import { syncContractAmount } from './contractPricing.js';
 import { openContractPreview } from './contractPreviewView.js';
 import { openContractExport } from './contractExportView.js';
 import { renderContractFinanceReview } from './contractFinanceReviewView.js';
+import { canCreateAddendumFromContract } from '../../domain/contractAddenda.js';
 import { renderContractHistory } from './contractHistoryView.js';
 import { renderContractProgress } from './contractProgressView.js';
 import { renderContractSignedSection } from './contractSignedView.js';
@@ -229,12 +230,23 @@ function addendumCard(project,addendum,onChanged,finance){
   return row;
 }
 
+export function openAddendumForContract(projectId,contractId){
+  const project=projectRepository.find(projectId);
+  if(!project || !writable(project))return;
+  const contract=parentContractOf(project,{parentContractId:contractId});
+  if(!canCreateAddendumFromContract(contract)){
+    toast('ابتدا قرارداد را تکمیل کنید');
+    return;
+  }
+  openAddendumForm(project,contract,null,()=>{});
+}
+
 export function renderContractAddenda(body,projectId,{finance=false,onChanged}={}){
   const project=projectRepository.find(projectId);
   if(!project)return;
   const refresh=onChanged||(()=>renderContractAddenda(body,projectId,{finance}));
   const records=(project.contractAddenda||[]).filter(row=>!finance || isContractInFinance(row));
-  const section=document.createElement('section');section.className='contract-list';
+  const section=document.createElement('section');section.className=finance?'contract-list':'contract-list contract-addenda-list';
   if(finance){
     if(!records.length)return;
     const title=document.createElement('h3');title.textContent='الحاقیه‌ها';section.append(title);

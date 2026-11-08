@@ -63,3 +63,25 @@ test('template search removes unmatched rows, normalizes Persian letters and res
     assert.equal(list.children.length,3);
   }finally{projectRepository.getActiveProject=previous;globalThis.document=previousDocument;}
 });
+
+
+test('only contract writers see the addendum shortcut on completed report cards',async()=>{
+  const {renderContractCard}=await import('./contractsModule.js');
+  const previousWindow=globalThis.window,previousDocument=globalThis.document;
+  const make=()=>({children:[],dataset:{},append(...nodes){this.children.push(...nodes);},
+    appendChild(node){this.children.push(node);},setAttribute(){}});
+  globalThis.window={location:{hash:''}};
+  globalThis.document={createElement:make};
+  const project={id:'p',tasks:[]};
+  const contract={id:'c',contractNo:'CTR-1',status:'final',isDraft:false,approvalStatus:'approved',contractApproverContactIds:[]};
+  const shortcut=record=>renderContractCard(project,record).children
+    .find(node=>node.className==='contract-workflow-row').children
+    .find(node=>node.textContent==='ایجاد الحاقیه');
+  try{
+    assert.equal(shortcut(contract).type,'button');
+    assert.equal(shortcut({...contract,status:'draft',isDraft:true}),undefined);
+    assert.equal(shortcut({...contract,contractNo:''}),undefined);
+    window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'read'}}}};
+    assert.equal(shortcut(contract),undefined);
+  }finally{globalThis.window=previousWindow;globalThis.document=previousDocument;}
+});

@@ -28,3 +28,17 @@ test('creation event appears with its creator and date alongside approval events
  assert.match(view.children[2].children[0].textContent,/ایجاد شد · مهندس احمدی/);
  assert.ok(!view.children[2].children[0].textContent.includes('زمان نامشخص'));
 });
+
+
+test('legacy addendum history shows its own known times and financial decisions only',()=>{
+ const addendum={parentContractId:'parent',createdAt:100,completedAt:200,completedBy:'legacy-id',
+  parentDocument:{creationEvent:{action:'create',at:1,actor:{name:'سازنده قرارداد'}}},
+  approvalHistory:[{action:'approve_finance',at:300,actor:{name:'واحد مالی'}}]};
+ const view=renderContractHistory(documentRef,addendum);
+ assert.equal(view.children.length,4);
+ assert.match(view.children[1].children[0].textContent,/توسط بخش مالی تأیید شد · واحد مالی/);
+ assert.match(view.children[2].children[0].textContent,/تکمیل الحاقیه اعلام شد · نام ثبت نشده/);
+ assert.match(view.children[3].children[0].textContent,/ایجاد شد · نام ثبت نشده/);
+ const financial=renderContractHistory(documentRef,addendum,{finance:true});
+ assert.equal(financial.children.length,2);
+});
