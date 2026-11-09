@@ -31,17 +31,45 @@ function mutate(projectId, ref, updater, { completion } = {}){
   if(!canWriteProjectModule(projectId, scope)) return { ok:false, code:'forbidden' };
   const saved = todayRepository.update(projectId, ref, updater);
   if(!saved) return { ok:false, code:'not_found' };
-  if(ref.kind === 'task' && completion !== undefined){
-    workTaskApi.setCompleted(projectId, ref.workId, ref.id, completion);
+  const completed = typeof completion==='function' ? completion(saved) : completion;
+  if(ref.kind === 'task' && completed !== undefined){
+    workTaskApi.setCompleted(projectId, ref.workId, ref.id, completed);
   }else publish(projectId);
   return { ok:true, entity:saved };
 }
 
+function completeExecution(entity,ref,by,at,day){
+  const immediate = !entity.approvalContactId;
+  const status = immediate ? 'approved' : 'pending_approval';
+  const workProgress = immediate
+    ? {progress:100,status:'completed'}
+    : {progressBeforeApproval:Number(entity.progress)||0,status:'in_progress'};
+  return {
+    ...entity, completed:immediate, done:immediate, completionState:status, workflowStatus:status,
+    completionSubmittedAt:at, completionSubmittedBy:by, actualFinishDay:immediate ? day : null,
+    ...(immediate ? { completedAt:at } : {}),
+    ...(ref.kind==='work' ? workProgress : {}),
+    executionHistory:[...(entity.executionHistory||[]),event('marked_complete',by,at),
+      event(immediate?'completed_without_approval':'sent_for_approval',by,at)],
+    updatedAt:at,
+  };
+}
+
 export const todayApi = {
-  saveReport(projectId, ref, description, actor, clock = Date.now, progress = null){
+  saveReport(projectId, ref, description, actor, clock = Date.now, progress = null, {files, completeAt100=false}={}){
     const text = String(description || '').trim();
     if(text.length < REPORT_MIN_LENGTH) return { ok:false, code:'report_too_short' };
     const at = clock(); const by = actorValue(actor); const reportDay = tehranTodayJalali(new Date(at));
+    if(completeAt100){
+      const entity = todayRepository.get(projectId, ref);
+      if(!entity || entity.trashed || !entity.assigneeContactId || String(entity.assigneeContactId)!==by.contactId){
+        return {ok:false,code:'forbidden'};
+      }
+      if(entity.completed || ['approved','pending_approval'].includes(entity.completionState)){
+        return {ok:false,code:'locked'};
+      }
+    }
+    const attachments = Array.isArray(files) ? { photos:[...files] } : {};
     return mutate(projectId, ref, entity => {
       const reports = [...(entity.executionReports || []).filter(report => report && !report.trashed)];
       const history = [...(entity.executionHistory || [])];
@@ -53,15 +81,16 @@ export const todayApi = {
         : Math.min(100, Math.max(0, Number(progress) || 0));
       if(reportIndex >= 0){
         const current = reports[reportIndex];
-        reports[reportIndex] = { ...current, description:text, progress:nextProgress, reportDay, updatedBy:by, updatedAt:at };
+        reports[reportIndex] = { ...current, ...attachments, description:text, progress:nextProgress, reportDay, updatedBy:by, updatedAt:at };
         history.push(event('report_edited', by, at, { reportId:current.id }));
       }else{
-        const report = { id:uid(), description:text, progress:nextProgress, reportDay, createdBy:by, createdAt:at, updatedAt:null, updatedBy:null };
+        const report = { id:uid(), ...attachments, description:text, progress:nextProgress, reportDay, createdBy:by, createdAt:at, updatedAt:null, updatedBy:null };
         reports.push(report);
         history.push(event('report_created', by, at, { reportId:report.id }));
       }
-      return { ...entity, progress:nextProgress, actualStart:entity.actualStart || reportDay, executionReports:reports, executionHistory:history, workflowStatus:'in_progress', updatedAt:at };
-    });
+      const updated = { ...entity, progress:nextProgress, actualStart:entity.actualStart || reportDay, executionReports:reports, executionHistory:history, workflowStatus:'in_progress', updatedAt:at };
+      return completeAt100 && nextProgress===100 ? completeExecution(updated,ref,by,at,reportDay) : updated;
+    },{completion:completeAt100 ? saved=>saved.completed || undefined : undefined});
   },
 
   addComment(projectId, ref, text, actor, clock = Date.now, type = 'comment_added'){
@@ -115,27 +144,9 @@ export const todayApi = {
   markComplete(projectId, ref, actor, clock = Date.now){
     const at = clock(); const by = actorValue(actor);
     const day = tehranTodayJalali(new Date(at));
-    let completesImmediately = false;
-    const result = mutate(projectId, ref, entity => {
-      if(!entity.actualStart) return entity;
-      completesImmediately = !entity.approvalContactId;
-      if(completesImmediately) return {
-        ...entity, completed:true, done:true, completionState:'approved', workflowStatus:'approved',
-        completionSubmittedAt:at, completionSubmittedBy:by, completedAt:at, actualFinishDay:day,
-        ...(ref.kind === 'work' ? { progress:100, status:'completed' } : {}),
-        executionHistory:[...(entity.executionHistory || []), event('marked_complete', by, at), event('completed_without_approval', by, at)],
-        updatedAt:at,
-      };
-      return ({
-      ...entity, completed:false, done:false, completionState:'pending_approval', workflowStatus:'pending_approval',
-      completionSubmittedAt:at, actualFinishDay:null,
-      actualStart: entity.actualStart,
-      ...(ref.kind === 'work' ? { progressBeforeApproval:Number(entity.progress) || 0, status:'in_progress' } : {}),
-      completionSubmittedBy:by,
-      executionHistory:[...(entity.executionHistory || []), event('marked_complete', by, at), event('sent_for_approval', by, at)],
-      updatedAt:at,
-    }); });
-    if(result.ok && ref.kind === 'task') workTaskApi.setCompleted(projectId, ref.workId, ref.id, completesImmediately);
+    const result = mutate(projectId, ref, entity => entity.actualStart
+      ? completeExecution(entity,ref,by,at,day) : entity);
+    if(result.ok && ref.kind === 'task') workTaskApi.setCompleted(projectId, ref.workId, ref.id, Boolean(result.entity.actualStart && !result.entity.approvalContactId));
     return result;
   },
 

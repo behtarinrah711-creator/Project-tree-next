@@ -5,7 +5,7 @@ import { SHOPPING_MODES, shoppingItemsForMode, shoppingStatusLabel } from '../..
 import { fieldRow, openWbsSheet } from './wbsSheet.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { currentExecutionActor, isExecutionApprover, isExecutionAssignee } from './executionActor.js';
-import { openDailyExecutionReport, progressCircle } from './dailyExecutionReport.js';
+import { appendReportPhotos, openDailyExecutionReport, progressCircle } from './dailyExecutionReport.js';
 
 export const SHOPPING_ICON = 'M221-120q-27 0-48-16.5T144-179L42-549q-5-19 6.5-35T80-600h190l176-262q5-8 14-13t19-5q10 0 19 5t14 13l176 262h192q20 0 31.5 16t6.5 35L816-179q-8 26-29 42.5T739-120H221Zm-1-80h520l88-320H132l88 320Zm316.5-103.5Q560-327 560-360t-23.5-56.5Q513-440 480-440t-56.5 23.5Q400-393 400-360t23.5 56.5Q447-280 480-280t56.5-23.5ZM367-600h225L479-768 367-600Zm113 240Z';
 
@@ -25,7 +25,7 @@ function reportsOf(entity){return(entity.executionReports||[]).filter(report=>re
 function commentsOf(entity){return(entity.executionComments||[]).filter(comment=>comment&&!comment.trashed).slice().sort((a,b)=>Number(b.createdAt)-Number(a.createdAt));}
 function textArea(documentRef,value,name){const field=documentRef.createElement('textarea');field.className='wbs-input today-textarea';field.name=name;field.value=value||'';return field;}
 function openReject(item,onChanged){openWbsSheet({title:'رد تأیید خرید',saveLabel:'ثبت رد',body(root){root.appendChild(fieldRow('علت رد',textArea(document,'','rejectionReason')));},onSave(root){const result=todayApi.reject(activeProjectId,refOf(item),root.querySelector('[name="rejectionReason"]').value,actor());if(!result.ok){window.KarhaUI?.showToast?.(`علت رد حداقل ${toPersianDigits(REJECTION_MIN_LENGTH)} حرف باشد`);return false;}activeMode=timeState(result.entity, tehranTodayJalali());onChanged?.();return true;}});}
-function renderReports(documentRef,entity){const host=documentRef.createElement('div');host.className='today-reports';reportsOf(entity).forEach(report=>{const row=documentRef.createElement('article');row.className='today-report';row.innerHTML=`<p>${esc(report.description)}</p><div>${esc(report.createdBy?.name||'کاربر')} · ${esc(formatMoment(report.createdAt))}${report.updatedAt?` · <b>ویرایش‌شده ${esc(formatMoment(report.updatedAt))}</b>`:''}</div>`;host.appendChild(row);});return host;}
+function renderReports(documentRef,entity){const host=documentRef.createElement('div');host.className='today-reports';reportsOf(entity).forEach(report=>{const row=documentRef.createElement('article');row.className='today-report';row.innerHTML=`<p>${esc(report.description)}</p><div>${esc(report.createdBy?.name||'کاربر')} · ${esc(formatMoment(report.createdAt))}${report.updatedAt?` · <b>ویرایش‌شده ${esc(formatMoment(report.updatedAt))}</b>`:''}</div>`;appendReportPhotos(row,report.photos);host.appendChild(row);});return host;}
 function renderComments(documentRef,item,onChanged,writable){
   const host=documentRef.createElement('div');host.className='today-comments';const comments=commentsOf(item.entity);let expanded=false;const list=documentRef.createElement('div');
   const paint=()=>{list.replaceChildren();(expanded?comments:comments.slice(0,2)).forEach(comment=>{const row=documentRef.createElement('div');row.className='today-comment'+(comment.type==='approval_rejected'?' is-rejection':'');row.innerHTML=`<p>${esc(comment.text)}</p><span>${esc(comment.createdBy?.name||'کاربر')} · ${esc(formatMoment(comment.createdAt))}</span>`;list.appendChild(row);});};paint();host.appendChild(list);

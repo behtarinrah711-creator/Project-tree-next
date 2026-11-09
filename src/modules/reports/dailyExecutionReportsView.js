@@ -1,3 +1,4 @@
+import { appendReportPhotos } from '../wbs/dailyExecutionReport.js';
 import { executionReportDay, jalaliDayNumber, tehranTodayJalali } from '../../domain/wbs/todayDomain.js';
 import { formatJalaliDisplay, openJalaliPicker } from '../../ui/jalali.js';
 import { toEnglishDigits, toPersianDigits } from '../../ui/digits.js';
@@ -24,7 +25,7 @@ export function collectDailyExecutionReports(project){
       const day = executionReportDay(report);
       if(jalaliDayNumber(day) === null) continue;
       rows.push({ work, kind:'progress', day, at:report.createdAt, author:report.createdBy?.name,
-        description:report.description, progress:report.progress });
+        description:report.description, progress:report.progress, photos:report.photos });
     }
     for(const entry of entity.executionHistory || []){
       if(entry?.type !== 'start_delayed') continue;
@@ -168,6 +169,7 @@ export function renderDailyExecutionReports(project, documentRef = document, req
           element('small','',[kindLabel[row.kind]+progress,row.author || 'کاربر',time].filter(Boolean).join(' · ')),
         );
         card.append(heading,element('p','',row.description || '—'));
+        appendReportPhotos(card,row.photos);
         group.appendChild(card);
       }
       body.appendChild(group);

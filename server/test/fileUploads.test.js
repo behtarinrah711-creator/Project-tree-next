@@ -70,3 +70,44 @@ test('authenticated upload/download survive adapter recreation and cannot cross 
   assert.equal((await fetch(base+path+'/'+file.id)).status,401);
   await assert.rejects(storage.read('../contacts/person/file'));
 });
+
+test('report photos require the assigned writer and become readable with the saved report',async t=>{
+  const root=await mkdtemp(join(tmpdir(),'saosa-report-photos-'));
+  const task={id:'task-1',type:'اجرا',assigneeContactId:'a',executionReports:[]};
+  const row={
+    owner_account_id:'owner',membership_status:'active',phone:'0912',
+    permissions:{modules:{'execution:today':'create'}},
+    payload:{contacts:[{id:'a',phones:['0912']}],projectMembers:[{mobile:'0912',status:'active'}],
+      tasks:[{id:'work-1',kind:'work',workTasks:[task]}]},
+  };
+  const pool={async query(sql,args){
+    if(sql.includes('SELECT account_id'))return {rows:args[0]===hashToken('valid','secret')?[{account_id:'member'}]:[]};
+    return {rows:args[0]==='project-1'?[row]:[]};
+  }};
+  const server=createServer(createApp({pool,sessionSecret:'secret',fileStorage:createLocalFileStorage(root),logger:{error(){}}}));
+  server.listen(0,'127.0.0.1');await once(server,'listening');
+  t.after(async()=>{server.closeAllConnections();await new Promise(resolve=>server.close(resolve));await rm(root,{recursive:true,force:true});});
+  const url='http://127.0.0.1:'+server.address().port+'/api/v1/projects/project-1/files/reports/task-1';
+  const headers={authorization:'Bearer valid','content-type':'application/octet-stream'};
+  const image=await sharp({create:{width:40,height:20,channels:3,background:'blue'}}).png().toBuffer();
+  const upload=body=>fetch(url+'?name=progress.png',{method:'POST',headers,body});
+  row.permissions.modules['execution:today']='view';
+  assert.equal((await upload(image)).status,403);
+  row.permissions.modules['execution:today']='create';
+  task.assigneeContactId='different';
+  assert.equal((await upload(image)).status,403);
+  task.assigneeContactId='a';
+  assert.equal((await upload('%PDF-1.7\nexample')).status,415);
+  const response=await upload(image);
+  assert.equal(response.status,201);
+  const {file}=await response.json();
+  assert.equal(file.category,'reports');
+  assert.equal((await fetch(url+'/'+file.id+'?variant=thumbnail',{headers})).status,200);
+  row.permissions.modules={'reports:reports':'view'};
+  assert.equal((await fetch(url+'/'+file.id,{headers})).status,403);
+  task.executionReports=[{photos:[file]}];
+  task.completionState='pending_approval';
+  assert.equal((await fetch(url+'/'+file.id,{headers})).status,200);
+  row.permissions.modules={};
+  assert.equal((await fetch(url+'/'+file.id,{headers})).status,403);
+});

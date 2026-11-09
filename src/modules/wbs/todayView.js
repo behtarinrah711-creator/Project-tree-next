@@ -4,7 +4,7 @@ import { canRecordStartDelay, contractorForItem, executionStatus, itemsForMode, 
 import { fieldRow, openWbsSheet } from './wbsSheet.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { currentExecutionActor, isExecutionApprover, isExecutionAssignee } from './executionActor.js';
-import { openDailyExecutionReport, progressCircle, todayReportOf } from './dailyExecutionReport.js';
+import { appendReportPhotos, openDailyExecutionReport, progressCircle, todayReportOf } from './dailyExecutionReport.js';
 import { executionWorkKey } from '../reports/dailyExecutionReportsView.js';
 
 export const TODAY_ICON = 'M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v255l-80 80v-175H200v400h248l80 80H200Zm0-560h560v-80H200v80Zm0 0v-80 80ZM662-60 520-202l56-56 85 85 170-170 56 57L662-60Z';
@@ -102,6 +102,7 @@ function renderReports(documentRef, projectId, item){
     const text=String(report.description || '');
     const summary=canBrowse && text.length>140 ? text.slice(0,140)+'…' : text;
     row.innerHTML=`<p>${esc(summary)}</p><div>${esc(report.createdBy?.name||'کاربر')} · ${esc(formatMoment(report.createdAt))}${report.updatedAt?` · <b>ویرایش‌شده ${esc(formatMoment(report.updatedAt))}</b>`:''}</div>`;
+    appendReportPhotos(row,report.photos);
     host.appendChild(row);
   }
   if(canBrowse && (reports.length || (item.entity.executionHistory||[]).some(entry=>entry?.type==='start_delayed'))){
