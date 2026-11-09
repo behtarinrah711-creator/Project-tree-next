@@ -1,6 +1,6 @@
 import { ADDENDUM_TYPES, addendumAmount, addendumReviewers, canEditAddendumRecord, canEditContractAddenda, parentContractOf } from '../../domain/contractAddenda.js';
 import { syncContractPartyData } from '../../domain/contractPartyData.js';
-import { canCancelContractCompletion, canReviewContract, canRevokeContractApproval, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
+import { approvedContractContactIds, contractApproverIds, contractApprovalState, canCancelContractCompletion, canReviewContract, canRevokeContractApproval, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
 import { isAddendumVisibleInFinance } from '../../domain/contractHandoff.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { formatJalaliDisplay, todayJalaliStr } from '../../ui/jalali.js';
@@ -32,6 +32,11 @@ const money=value=>number(value)+' تومان';
 const confirmCompletion=(hasReviewer,onConfirm)=>openConfirm(
   hasReviewer?'آیا الحاقیه تکمیل است و برای تأیید ارسال شود؟':'آیا الحاقیه تکمیل است؟',onConfirm,'بله'
 );
+function reviewerName(project,id){
+  const contact=project.contacts?.find(person=>String(person.id)===String(id));
+  return [contact?.firstName,contact?.lastName].filter(Boolean).join(' ') || contact?.name || 'مخاطب حذف‌شده';
+}
+
 const writable=project=>canEditContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id]);
 const pickFixed=(title,listTitle,options,current,onPick)=>openStaticChoicePicker(title,listTitle,options,current,onPick,null,{preserveOrder:true});
 const newOperation=()=>({...makeQuantityRow(),pricingMode:'agreed',agreedPrice:''});
@@ -86,7 +91,7 @@ export function openAddendumPicker(projectId,onChanged){
 function openAddendumForm(project,parent,record,onChanged){
   if(!parent){toast('قرارداد اصلی پیدا نشد');return;}
   const addendum=record || {id:'addendum-'+crypto.randomUUID(),parentContractId:String(parent.id)};
-  const reviewerIds=record?.contractApproverContactIds ?? addendumReviewers(project,parent);
+  const reviewerIds=addendumReviewers(project,parent);
   const draft={type:'extra',contractDate:todayJalaliStr(),endDate:'',note:'',rows:[],...record};
   const priceRows=draft.type==='price' && draft.rows.length ? draft.rows.map(row=>({...row})) : [{}];
   const operations=draft.type==='extra' && draft.rows.length ? draft.rows.map(row=>({
@@ -127,10 +132,7 @@ function openAddendumForm(project,parent,record,onChanged){
       root.classList.add('contract-form-body','form-template');
       const reviewerInfo=document.createElement('p');
       reviewerInfo.className='wbs-note';
-      const names=reviewerIds.map(id=>{
-        const contact=project.contacts?.find(contact=>String(contact.id)===id);
-        return [contact?.firstName,contact?.lastName].filter(Boolean).join(' ') || contact?.name || 'مخاطب حذف‌شده';
-      });
+      const names=reviewerIds.map(id=>reviewerName(project,id));
       reviewerInfo.textContent=names.length?'مسئولان تأیید: '+names.join('، '):'بدون مسئول تأیید';
       const fields=document.createElement('div');
       const noteField=()=>{
@@ -271,6 +273,18 @@ function addendumCard(project,addendum,onChanged,finance){
   if(!finance){
     if(actions.children.length)row.append(actions);
     row.append(renderContractProgress(document,addendum,project));
+    const reviewers=contractApproverIds(addendum);
+    if(reviewers.length && ['pending','approved'].includes(contractApprovalState(addendum))){
+      const approved=new Set(approvedContractContactIds(addendum));
+      const list=document.createElement('ul');list.className='contract-meta contract-addendum-reviewers';
+      list.setAttribute('aria-label','وضعیت تأیید مسئولان الحاقیه');
+      for(const id of reviewers){
+        const item=document.createElement('li');
+        item.textContent=reviewerName(project,id)+' · '+(approved.has(id)?'تأیید کرد':'در انتظار تأیید');
+        list.append(item);
+      }
+      row.append(list);
+    }
     if(signed)row.append(signed);
   }
   if(finance){

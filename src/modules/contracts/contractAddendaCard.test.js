@@ -127,5 +127,16 @@ test('saved addenda use the contract card layout and their own status, number an
     assert.equal(body.children.length,1);
     assert.ok(!menuActions(body.children[0].children[0]).includes('ویرایش'));
     assert.ok(body.children[0].children.every(card=>!card.children.some(row=>row.children.some(node=>node.textContent==='تأیید الحاقیه'))));
+    delete window.KarhaSaosaWorkspaceAccess;
+    project.contacts.push({id:'first',name:'مسئول اول',phones:['0913']});
+    project.contacts[0].name='مسئول دوم';
+    project.contractAddenda=[{...pending,approvalContactIds:['first','reviewer-contact'],approvedContactIds:['first']}];
+    renderContractAddenda(body,'p');
+    assert.equal(body.children[0].textContent,'۱ الحاقیه منتظر تأیید شما ‹');
+    const card=body.children[1].children[0];
+    assert.deepEqual(card.children.find(node=>node.className.includes('contract-addendum-reviewers')).children.map(node=>node.textContent),
+      ['مسئول اول · تأیید کرد','مسئول دوم · در انتظار تأیید']);
+    const approvalStep=card.children.find(node=>node.className==='contract-progress').children.find(node=>node.dataset.step==='approved');
+    assert.ok(!approvalStep.className.includes('is-complete'));
   }finally{[globalThis.window,globalThis.document,projectRepository.find,contactApi.lookup]=old;}
 });
