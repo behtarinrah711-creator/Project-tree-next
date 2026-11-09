@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 globalThis.window={location:{hash:'',search:''}};
-const {approvalNavigationRow,pendingApprovals}=await import('./pendingApprovals.js');
+const {projectRepository}=await import('../../data/projectRepository.js');
+const {approvalNavigationRow,pendingApprovals,renderPendingApprovals}=await import('./pendingApprovals.js');
 
 const actor={uid:'user',phoneNumber:'0912'};
 const windowFor=modules=>({firebase:{auth:()=>({currentUser:actor})},KarhaSaosaWorkspaceAccess:{p:{role:'member',permissions:{modules}}}});
@@ -44,4 +45,64 @@ test('an approval navigation row shows its title, count and arrow and opens its 
   assert.match(row.children[1].children[1].innerHTML,/<svg/);
   row.onclick();
   assert.equal(opened,true);
+});
+
+test('the approval inbox renders the original cards with only review controls',()=>{
+  class Element {
+    constructor(tag){
+      this.tag=tag;this.children=[];this.dataset={};this.className='';this.ownerDocument=documentRef;
+      this.classList={add:className=>{this.className+=' '+className;}};
+    }
+    append(...children){this.children.push(...children);}
+    appendChild(child){this.append(child);}
+    replaceChildren(...children){this.children=children;}
+    setAttribute(){}
+    addEventListener(){}
+    querySelector(selector){
+      if(selector==='.today-task-primary' && this.innerHTML?.includes('today-task-primary')){
+        const primary=new Element('div');
+        primary.className='today-task-primary';
+        this.append(primary);
+        return primary;
+      }
+      return null;
+    }
+    nodes(){return [this,...this.children.flatMap(child=>child.nodes())];}
+  }
+  const documentRef={createElement:tag=>new Element(tag)};
+  const old=[globalThis.window,globalThis.document,globalThis.Node,projectRepository.find];
+  globalThis.window={...old[0],...windowFor({contracts:'create','execution:today':'create','execution:shopping':'create'})};
+  globalThis.document=documentRef;
+  globalThis.Node=Element;
+  projectRepository.find=()=>project;
+  const body=documentRef.createElement('div');
+  try{
+    renderPendingApprovals(body,'p','approvals-addenda',()=>{});
+    const contracts=body.children[1].children;
+    assert.equal(contracts.length,2);
+    for(const card of contracts){
+      assert.equal(card.className,'contract-row');
+      assert.ok(card.nodes().some(node=>node.className==='contract-card-heading'));
+      assert.ok(card.nodes().some(node=>node.className==='contract-progress'));
+      assert.deepEqual(card.nodes().filter(node=>node.tag==='button').map(node=>node.textContent),['مشاهده سند','تأیید']);
+    }
+    assert.match(contracts[1].nodes().find(node=>node.className==='contract-title').textContent,/^الحاقیه /);
+    for(const [group,css,label] of [
+      ['execution','wbs-costline-work','تأیید'],
+      ['shopping','shopping-item-card','تأیید خرید'],
+    ]){
+      renderPendingApprovals(body,'p','approvals-'+group,()=>{});
+      const card=body.children[1].children[0];
+      assert.ok(card.className.split(' ').includes(css));
+      const buttons=card.nodes().filter(node=>node.tag==='button');
+      assert.deepEqual(buttons.map(node=>node.textContent),[undefined,label]);
+      assert.equal(buttons[0].disabled,true);
+    }
+    window.KarhaSaosaWorkspaceAccess.p.permissions.modules.contracts='view';
+    renderPendingApprovals(body,'p','approvals-addenda',()=>{});
+    assert.deepEqual(body.children[1].nodes().filter(node=>node.tag==='button').map(node=>node.textContent),
+      ['مشاهده سند','مشاهده سند']);
+  }finally{
+    [globalThis.window,globalThis.document,globalThis.Node,projectRepository.find]=old;
+  }
 });

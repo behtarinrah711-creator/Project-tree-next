@@ -1,18 +1,18 @@
-import {appendReportPhotos} from '../wbs/dailyExecutionReport.js';
 import {projectRepository} from '../../data/projectRepository.js';
-import {approvedContractContactIds, canReviewContract, contractApproverIds} from '../../domain/contractApproval.js';
-import {parentContractOf} from '../../domain/contractAddenda.js';
+import {canReviewContract, contractApproverIds} from '../../domain/contractApproval.js';
 import {contractApi} from '../../domain/contractApi.js';
 import {isSaosaHost} from '../../cloud/saosaWorkspaceSync.js';
-import {collectTodayItems, contractorForItem} from '../../domain/wbs/todayDomain.js';
+import {collectTodayItems, tehranTodayJalali} from '../../domain/wbs/todayDomain.js';
 import {collectShoppingItems} from '../../domain/wbs/shoppingDomain.js';
 import {applyExecutionApproval,executionApprovalItem} from '../../domain/wbs/executionApproval.js';
 import {fileToken} from '../files/fileApi.js';
 import {todayApi} from '../../domain/wbs/todayApi.js';
 import {canWriteProjectModule, projectPermissionState} from '../roleManagement/permissionState.js';
 import {currentExecutionActor, isExecutionApprover} from '../wbs/executionActor.js';
-import {contractProjectPath} from '../contracts/contractsModule.js';
-import {openContractPreview} from '../contracts/contractPreviewView.js';
+import {renderContractCard} from '../contracts/contractsModule.js';
+import {renderAddendumCard} from '../contracts/contractAddendaView.js';
+import {renderTodayCard} from '../wbs/todayView.js';
+import {renderShoppingCard} from '../wbs/shoppingView.js';
 import {saveContractHandoff} from '../contracts/contractHandoffApi.js';
 import {openConfirm} from '../../ui/confirm.js';
 
@@ -23,7 +23,6 @@ export const approvalGroups=[
 ];
 
 const number=value=>Number(value).toLocaleString('fa-IR');
-const contactName=contact=>[contact?.firstName,contact?.lastName].filter(Boolean).join(' ') || contact?.name || '';
 const emptyQueue=()=>({assigned:false,groups:[],count:0});
 
 async function approveExecution(projectId,scope,item,actor){
@@ -98,52 +97,13 @@ export function approvalNavigationRow(documentRef,title,count,onClick,descriptio
   return row;
 }
 
-function contractDetails(project,record,isAddendum){
-  const source=isAddendum?parentContractOf(project,record):record;
-  const contact=(project.contacts||[]).find(item=>!item.trashed && String(item.id)===String(source?.contractorId || source?.contactId || ''));
-  const contractor=contactName(contact) || source?.contractorName;
-  return {
-    parent:isAddendum?source:null,
-    title:[record.title || (isAddendum?'الحاقیه':'قرارداد پیمانکاری'),contractor].filter(Boolean).join(' · '),
-    meta:[record.contractNo,source && contractProjectPath(project,source)].filter(Boolean).join(' · '),
-  };
-}
-
 function renderApprovalItem(documentRef,project,group,item,onChanged){
   const execution=!!group.collect;
+  const shopping=group.id==='shopping';
   const addendum=!execution && Boolean(item.parentContractId);
-  const details=execution?null:contractDetails(project,item,addendum);
-  const contractor=execution?contactName(contractorForItem(project,item).contact):'';
-  const card=element(documentRef,'article','approval-queue-card');
-  card.append(
-    element(documentRef,'strong','',execution?item.entity.title || item.entity.text:details.title),
-    element(documentRef,'span','workspace-option-meta',execution?[item.path.join(' ← '),contractor].filter(Boolean).join(' · '):details.meta),
-  );
-  if(execution){
-    const reports=(item.entity.executionReports||[]).filter(report=>report && !report.trashed);
-    if(reports.length){
-      const reportList=element(documentRef,'details');
-      reportList.append(element(documentRef,'summary','','گزارش‌های ثبت‌شده'));
-      for(const report of reports){
-        reportList.append(element(documentRef,'p','',report.description));
-        appendReportPhotos(reportList,report.photos);
-      }
-      card.append(reportList);
-    }
-  }else{
-    const reviewers=contractApproverIds(item).length;
-    card.append(element(documentRef,'span','workspace-option-meta',number(approvedContractContactIds(item).length)+' از '+number(reviewers)+' تأیید'));
-  }
-
-  const actions=element(documentRef,'div','approval-queue-actions');
-  if(!execution){
-    const preview=button(documentRef,'مشاهده سند',()=>openContractPreview(project,item,{
-      trigger:preview,addendum:addendum?{parent:details.parent}:null,
-    }),'wbs-tree-mode-tab');
-    actions.append(preview);
-  }
+  const approval={};
   if(group.writable){
-    const approve=button(documentRef,'تأیید',()=>openConfirm('این مورد تأیید شود؟',async()=>{
+    const approve=button(documentRef,shopping?'تأیید خرید':'تأیید',()=>openConfirm('این مورد تأیید شود؟',async()=>{
       approve.disabled=true;
       try{
         const latest=projectRepository.find(project.id);
@@ -167,11 +127,13 @@ function renderApprovalItem(documentRef,project,group,item,onChanged){
         window.KarhaUI?.showToast?.(error.message);
         approve.disabled=false;
       }
-    },'تأیید'),'wbs-tree-mode-tab');
-    actions.append(approve);
+    },'تأیید'),execution ? (shopping ? '' : 'wbs-costline-manual') : 'contract-review-action');
+    approval.action=approve;
   }
-  card.append(actions);
-  return card;
+  if(addendum)return renderAddendumCard(project,item,onChanged,false,approval);
+  if(!execution)return renderContractCard(project,item,{approval});
+  const renderCard=shopping?renderShoppingCard:renderTodayCard;
+  return renderCard(documentRef,project,item,tehranTodayJalali(),onChanged,approval);
 }
 
 export function renderPendingApprovals(body,projectId,section,openSection){
@@ -203,7 +165,8 @@ export function renderPendingApprovals(body,projectId,section,openSection){
     body.append(element(documentRef,'p','mgmt-empty','موردی در این دسته منتظر تأیید شما نیست.'));
     return;
   }
-  const list=element(documentRef,'section','approval-queue-list');
+  const cardScope=group.id==='shopping'?'wbs-shopping-frame':group.id==='execution'?'wbs-today-frame':'approval-queue-contracts';
+  const list=element(documentRef,'section','approval-queue-list '+cardScope);
   const refresh=()=>{if(list.isConnected)renderPendingApprovals(body,projectId,section,openSection);};
   for(const item of group.items)list.append(renderApprovalItem(documentRef,project,group,item,refresh));
   body.append(list);
