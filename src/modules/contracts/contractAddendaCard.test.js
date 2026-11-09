@@ -33,7 +33,7 @@ test('saved addenda use the contract card layout and their own status, number an
       const body=make('div');
       renderContractAddenda(body,'p',{finance});
       const card=body.children[0].children.at(-1);
-      const [heading,status,progress]=card.children;
+      const [heading,status]=card.children;
       assert.equal(heading.className,'contract-card-heading');
       assert.equal(typeof heading.onclick,'function');
       assert.equal(heading.children[0].tabIndex,0);
@@ -45,8 +45,13 @@ test('saved addenda use the contract card layout and their own status, number an
         ['الحاقیه قرارداد پیمانکاری جواد قریشی','CTR-1-A01','تصفیه خانه ← فونداسیون']);
       assert.equal(status.children[0].textContent,finance?'وضعیت: تأیید شده توسط بخش مالی':'وضعیت: ناقص');
       assert.equal(status.children[1].textContent,'مشاهده قرارداد اصلی');
-      assert.equal(progress.className,'contract-progress');
-      assert.equal(progress.children.filter(node=>node.className.includes('is-complete')).length,finance?5:1);
+      const progress=card.children.find(node=>node.className==='contract-progress');
+      if(finance){
+        assert.equal(progress,undefined);
+      }else{
+        assert.equal(progress,card.children[2]);
+        assert.equal(progress.children.filter(node=>node.className.includes('is-complete')).length,1);
+      }
       assert.equal(card.children.at(-1).className,'contract-history');
     }
   }finally{[globalThis.window,globalThis.document,projectRepository.find,contactApi.lookup]=old;}

@@ -253,7 +253,8 @@ function addendumCard(project,addendum,onChanged,finance){
       actions.append(message);
     }
   }
-  row.append(actions,renderContractProgress(document,addendum,project));
+  row.append(actions);
+  if(!finance)row.append(renderContractProgress(document,addendum,project));
   const signed=renderContractSignedSection(project,addendum,{onChanged,finance});
   if(signed)row.append(signed);
   if(finance){
