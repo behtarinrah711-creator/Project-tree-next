@@ -210,3 +210,63 @@ test('an assigned addendum reviewer must have write permission to approve',async
   assert.equal((await approve()).status,200);
   assert.equal(f.payload.contractAddenda[0].approvalStatus,'approved');
 });
+
+test('finance can read a rejected addendum snapshot and reports can resend it after recompletion',async()=>{
+  const f=fixture();
+  const id='addendum-00000000-0000-4000-8000-000000000002';
+  const path='/api/v1/projects/p/addenda/'+id+'/handoff';
+  const signed={...file,recordId:id,uploadedBy:'reports'};
+  const other={...signed,id:'replacement'};
+  f.storage.metadata=async key=>key.endsWith('/replacement')?other:signed;
+  Object.assign(f.payload.contracts[0],{contractNo:'CTR-1',amount:1000});
+  const draft={parentContractId:'c',type:'other',contractDate:'1405/08/01',note:'شرح اولیه',complete:true};
+  let current;
+  const act=async(action,options={})=>{
+    const response=await f.call({action,version:current?.handoffVersion||0,updatedAt:current?.updatedAt||0,...options},path);
+    if(response.status===200)current=response.result.contract;
+    return response.status;
+  };
+
+  assert.equal(await act('save_addendum',draft),200);
+  assert.equal(await act('save_signed',{files:[signed]}),200);
+  assert.equal(await act('send_finance'),200);
+  const packageBeforeRejection=current.accountingPackage;
+
+  f.setPermissions({modules:{accounting:'view',contracts:'full'}});
+  assert.equal(await act('reject_finance',{reason:'اسکن نامشخص است'}),403);
+  f.setPermissions({modules:{accounting:'full'}});
+  assert.equal(await act('reject_finance',{reason:'    رد'}),400);
+  assert.equal(await act('reject_finance',{reason:'اسکن نامشخص است'}),200);
+  assert.equal(current.accountingStatus,'rejected');
+  assert.deepEqual(current.accountingPackage,packageBeforeRejection);
+  assert.equal(await act('approve_finance'),400);
+  assert.equal(await act('save_addendum',draft),403);
+
+  f.setPermissions({modules:{contracts:'full'}});
+  assert.equal(await act('save_signed',{files:[other]}),200);
+  const handler=createFileUploadHandler({pool:f.pool,sessionSecret:'s',storage:f.storage});
+  const readSignedFile=async fileId=>{
+    let status;
+    await handler({method:'GET',headers:{authorization:'Bearer token'}},
+      {writeHead(code){status=code;},end(){}},
+      new URL('http://local/api/v1/projects/p/files/contracts/'+id+'/'+fileId));
+    return status;
+  };
+  f.setPermissions({modules:{accounting:'view'}});
+  assert.equal(await readSignedFile(signed.id),200);
+  assert.equal(await readSignedFile(other.id),403);
+  f.setPermissions({modules:{contracts:'view'}});
+  assert.equal(await act('save_addendum',draft),403);
+  assert.equal(await act('send_finance'),403);
+  f.setPermissions({modules:{contracts:'full'}});
+  assert.equal(await act('save_signed',{files:[signed]}),200);
+  assert.equal(await act('save_addendum',{...draft,note:'شرح اصلاح‌شده'}),200);
+  assert.equal(await act('send_finance'),400);
+  assert.equal(await act('cancel_completion',{reason:'اصلاح شرح الحاقیه'}),200);
+  assert.equal(await act('save_addendum',draft),200);
+  assert.equal(await act('send_finance'),200);
+  assert.equal(current.accountingStatus,'sent');
+  assert.equal(current.financeRejection,null);
+  assert.equal(current.signedAt,packageBeforeRejection.contract.signedAt);
+  assert.deepEqual(current.financeHistory.map(event=>event.action),['send_finance','reject_finance','send_finance']);
+});

@@ -1,4 +1,5 @@
 export const HANDOFF_FIELDS=['signedFiles','signedFilesUpdatedAt','signedAt','signedBy','handoffVersion','accountingStatus','sentToAccountingAt','sentToAccountingBy','accountingPackage','accountingWithdrawal','accountingDecision','financeRejection','financeHistory'];
+export const FINANCE_REJECTION_MIN_LENGTH=5;
 export const isContractSigned=c=>!!c?.signedAt && Array.isArray(c.signedFiles) && c.signedFiles.length>0;
 export const isContractInFinance=c=>['sent','accepted'].includes(c?.accountingStatus) && !!c.sentToAccountingAt && !!c.accountingPackage;
 export const canAttachSignedContract=c=>!c?.trashed && c?.status==='final' && !c.isDraft && c.approvalStatus==='approved';
@@ -7,6 +8,26 @@ export function signedContractFiles(contract){
   if(Array.isArray(contract?.signedFiles) && (contract.signedFiles.length || contract.signedFilesUpdatedAt || contract.accountingStatus!=='rejected'))return contract.signedFiles;
   return contract?.accountingStatus==='rejected'?(contract.accountingPackage?.signedFiles||[]):[];
 }
+export function isAddendumVisibleInFinance(addendum){
+  return !!addendum?.parentContractId && !addendum.trashed && (isContractInFinance(addendum)
+    || (addendum.accountingStatus==='rejected' && !!addendum.accountingPackage?.contract));
+}
+
+export function canReuseReturnedAddendumSignature(addendum){
+  if(!addendum?.parentContractId || addendum.accountingStatus!=='rejected' || !canAttachSignedContract(addendum))return false;
+  const previous=addendum.accountingPackage?.contract;
+  const previousFiles=addendum.accountingPackage?.signedFiles || [];
+  const files=signedContractFiles(addendum);
+  if(!previous?.signedAt || !files.length || files.length!==previousFiles.length
+    || files.some((file,index)=>file.id!==previousFiles[index].id))return false;
+
+  const fields=['type','title','parentContractId','parentContractNo','contractNo','contractDate','note','previousEndDate','endDate','amount'];
+  const operationFields=['description','pricingMode','unit','quantity','unitPrice','amount'];
+  const operationValues=record=>(record.rows||[]).map(row=>operationFields.map(key=>row[key]));
+  return fields.every(key=>addendum[key]===previous[key])
+    && JSON.stringify(operationValues(addendum))===JSON.stringify(operationValues(previous));
+}
+
 export function transitionContractHandoff(contract,action,actor,{files=[],reason='',at=Date.now(),projectName,activityName}={}){
   const fail=message=>({ok:false,message});
   if(!actor?.id || actor.id==='guest')return fail('ابتدا وارد حساب کاربری شوید');
@@ -16,12 +37,12 @@ export function transitionContractHandoff(contract,action,actor,{files=[],reason
     if(!isContractInFinance(contract))return fail('قرارداد در واحد مالی نیست');
     if(action==='revoke_finance'){
       if(contract.accountingStatus!=='accepted' || contract.accountingDecision?.actor?.id!==actor.id)return fail('فقط می‌توانید تأیید مالی خودتان را پس بگیرید');
-      if(String(reason).trim().length<5)return fail('توضیح پس‌گرفتن تأیید مالی حداقل ۵ حرف باشد');
+      if(String(reason).trim().length<FINANCE_REJECTION_MIN_LENGTH)return fail('توضیح پس‌گرفتن تأیید مالی حداقل ۵ حرف باشد');
       next.accountingStatus='rejected';next.accountingDecision=null;
     }else{
       if(contract.accountingStatus!=='sent')return fail('ابتدا تأیید مالی را پس بگیرید');
       const text=String(reason).trim();
-      if(action==='reject_finance' && text.length<5)return fail('دلیل رد قرارداد حداقل ۵ حرف باشد');
+      if(action==='reject_finance' && text.length<FINANCE_REJECTION_MIN_LENGTH)return fail('دلیل رد قرارداد حداقل ۵ حرف باشد');
       next.accountingDecision={status:action==='approve_finance'?'accepted':'rejected',at,actor:{...actor},reason:text};
       next.accountingStatus=next.accountingDecision.status;
     }
@@ -51,13 +72,19 @@ export function transitionContractHandoff(contract,action,actor,{files=[],reason
         if(removed.length)events.push({action:'remove_signed',files:removed.map(f=>f.name)});
       }
     }else if(action==='send_finance'){
-      if(!isContractSigned(contract))return fail('ابتدا نسخه امضاشده قرارداد را ذخیره کنید');
-      const snapshot=JSON.parse(JSON.stringify(contract));
+      if(!isContractSigned(contract)){
+        if(!canReuseReturnedAddendumSignature(contract))return fail('ابتدا نسخه امضاشده قرارداد را ذخیره کنید');
+        const previous=contract.accountingPackage.contract;
+        next.signedAt=previous.signedAt;
+        next.signedBy=previous.signedBy;
+        next.signedFiles=signedContractFiles(contract);
+      }
+      const snapshot=JSON.parse(JSON.stringify(next));
       snapshot.projectName=projectName ?? snapshot.projectName ?? '';
       snapshot.documentActivityName=activityName ?? snapshot.documentActivityName ?? '';
       for(const key of ['accountingPackage','accountingWithdrawal','financeHistory'])delete snapshot[key];
       next.accountingDecision=null;next.financeRejection=null;next.accountingStatus='sent';next.sentToAccountingAt=at;next.sentToAccountingBy={...actor};
-      next.accountingPackage={contract:snapshot,signedFiles:JSON.parse(JSON.stringify(contract.signedFiles)),sentAt:at,sentBy:{...actor}};
+      next.accountingPackage={contract:snapshot,signedFiles:JSON.parse(JSON.stringify(next.signedFiles)),sentAt:at,sentBy:{...actor}};
       events.push({action});
     }else return fail('عملیات نامعتبر است');
   }

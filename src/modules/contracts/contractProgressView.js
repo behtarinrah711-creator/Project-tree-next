@@ -1,4 +1,4 @@
-import {isContractSigned,isContractInFinance} from '../../domain/contractHandoff.js';
+import {canReuseReturnedAddendumSignature,isContractSigned,isContractInFinance} from '../../domain/contractHandoff.js';
 import { contractApprovalState, contractApproverIds } from '../../domain/contractApproval.js';
 
 function linkedTask(project,contract){
@@ -23,8 +23,9 @@ export function contractProgressSteps(contract,project){
     {id:'completed',label:contract.parentContractId?'تکمیل الحاقیه':'تکمیل قرارداد',done:complete},
   ];
   if(reviewers.filter(Boolean).length)steps.push({id:'approved',label:contract.parentContractId?'تأیید الحاقیه':'تأیید قرارداد',done:complete && contractApprovalState(contract)==='approved'});
-  steps.push({id:'signed',label:contract.parentContractId?'امضای الحاقیه':'امضای قرارداد',done:complete && contract.approvalStatus==='approved' && isContractSigned(contract)},{id:'finance',label:'ارسال به مالی',done:isContractInFinance(contract)});
-  steps.push({id:'finance-approved',label:'تأیید بخش مالی',done:isContractInFinance(contract) && contract.accountingStatus==='accepted'});
+  steps.push({id:'signed',label:contract.parentContractId?'امضای الحاقیه':'امضای قرارداد',done:complete && contract.approvalStatus==='approved' && (isContractSigned(contract) || canReuseReturnedAddendumSignature(contract))},{id:'finance',label:'ارسال به مالی',done:isContractInFinance(contract)});
+  const rejected=!!contract.parentContractId && contract.accountingStatus==='rejected';
+  steps.push({id:'finance-approved',label:rejected?'توسط مالی رد شد':'تأیید بخش مالی',rejected,done:isContractInFinance(contract) && contract.accountingStatus==='accepted'});
   return steps;
 }
 
@@ -35,9 +36,9 @@ export function renderContractProgress(documentRef,contract,project){
   const current=steps.findIndex(step=>!step.done);
   steps.forEach((step,index)=>{
     const item=documentRef.createElement('li');
-    item.className='contract-progress-step'+(step.done?' is-complete':'')+(step.done && steps[index+1]?.done?' has-complete-next':'');
+    item.className='contract-progress-step'+(step.rejected?' is-rejected':'')+(step.done?' is-complete':'')+(step.done && steps[index+1]?.done?' has-complete-next':'');
     item.dataset.step=step.id;
-    item.setAttribute('aria-label',step.label+'؛ '+(step.done?'انجام شده':'انجام نشده'));
+    item.setAttribute('aria-label',step.label+'؛ '+(step.rejected?'رد شده':step.done?'انجام شده':'انجام نشده'));
     if(index===current)item.setAttribute('aria-current','step');
     const label=documentRef.createElement('span');label.className='contract-progress-label';label.textContent=step.label;
     const dot=documentRef.createElement('span');dot.className='contract-progress-dot';dot.setAttribute('aria-hidden','true');

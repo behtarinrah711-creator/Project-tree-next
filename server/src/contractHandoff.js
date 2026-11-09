@@ -5,7 +5,7 @@ import {syncContractPartyData} from '../../src/domain/contractPartyData.js';
 import {authenticate} from './auth.js';
 import {readJson,sendJson} from './http.js';
 import {canAccessFiles} from './fileUploads.js';
-import {transitionContractHandoff} from '../../src/domain/contractHandoff.js';
+import {canReuseReturnedAddendumSignature,isContractSigned,transitionContractHandoff} from '../../src/domain/contractHandoff.js';
 
 export function createContractHandoffHandler({pool,sessionSecret,storage}){
   return async(request,response,url)=>{
@@ -70,7 +70,9 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
           if(addendum){
             const parent=parentContractOf(row.payload,contract);
             if(!parent){sendJson(response,409,{message:'قرارداد اصلی پیدا نشد'});return true;}
-            const parentDocument=parent.accountingPackage?.contract || syncContractPartyData({...parent},row.payload);
+            const previousParent=!isContractSigned(contract) && canReuseReturnedAddendumSignature(contract)
+              ? contract.accountingPackage.contract.parentDocument : null;
+            const parentDocument=previousParent || parent.accountingPackage?.contract || syncContractPartyData({...parent},row.payload);
             const {accountingPackage,approvalHistory,financeHistory,...frozen}=parentDocument;
             const parentActivity=(row.payload.activityTemplates||[]).find(a=>String(a.id)===String(parent.activityId));
             source={...contract,parentDocument:{...frozen,documentActivityName:frozen.documentActivityName || parentActivity?.name || ''}};

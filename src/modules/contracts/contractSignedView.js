@@ -1,14 +1,13 @@
 import {canWriteProjectModule} from '../roleManagement/permissionState.js';
-import {canAttachSignedContract,canReviseReturnedSignedContract,signedContractFiles,isContractInFinance,isContractSigned} from '../../domain/contractHandoff.js';
+import {canAttachSignedContract,canReuseReturnedAddendumSignature,canReviseReturnedSignedContract,signedContractFiles,isContractInFinance,isContractSigned} from '../../domain/contractHandoff.js';
 import {mountFileUploader} from '../files/fileUploader.js';
 import {openWbsSheet,closeWbsSheet,fieldRow} from '../wbs/wbsSheet.js';
 import {openConfirm} from '../../ui/confirm.js';
 import {saveContractHandoff} from './contractHandoffApi.js';
 const toast=message=>window.KarhaLegacy?.showToast?.(message);
-export function renderContractSignedSection(project,contract,{onChanged=()=>{},finance=false,inlineActions=null}={}){
+export function renderContractSignedSection(project,contract,{onChanged=()=>{},finance=false,inlineActions=null,attachmentActions=null}={}){
   const label=contract.parentContractId?'الحاقیه':'قرارداد';
-  const financeFiles=inlineActions && contract.accountingPackage?.signedFiles;
-  const existing=financeFiles?.length?financeFiles:signedContractFiles(contract);
+  const existing=finance && inlineActions ? contract.accountingPackage?.signedFiles || [] : signedContractFiles(contract);
   const ready=canAttachSignedContract(contract),returned=canReviseReturnedSignedContract(contract);
   const sent=isContractInFinance(contract),writable=canWriteProjectModule(project.id,'contracts');
   const editable=writable && (ready || returned) && !sent && !finance;
@@ -18,7 +17,7 @@ export function renderContractSignedSection(project,contract,{onChanged=()=>{},f
     section.className='contract-signed-section';
     section.onclick=event=>event.stopPropagation();
   }
-  const button=(text,action)=>{const b=document.createElement('button');b.type='button';b.className='contract-review-action';b.textContent=text;b.onclick=action;section.appendChild(b);return b;};
+  const button=(text,action,target=section)=>{const b=document.createElement('button');b.type='button';b.className='contract-review-action';b.textContent=text;b.onclick=action;target.appendChild(b);return b;};
   let busy=false;
   const run=async(action,options={})=>{
     if(busy)return false;busy=true;
@@ -53,7 +52,10 @@ export function renderContractSignedSection(project,contract,{onChanged=()=>{},f
       onSave(root){const reason=root.querySelector('[name="reason"]').value;if(reason.trim().length<5){toast('دلیل پس‌گرفتن حداقل ۵ حرف باشد');return false;}run('withdraw_finance',{reason}).then(ok=>{if(ok && sheet.isConnected)closeWbsSheet();});return false;}
     });});
   }
-  if(ready || returned || existing.length)button((existing.length?'نسخه امضاشده ':'افزودن عکس یا PDF ')+label,openAttachments).className+=' contract-signed-trigger';
-  if(!sent && writable && ready && isContractSigned(contract))button('ارسال به واحد مالی',()=>openConfirm((contract.parentContractId?label:'قرارداد تنظیم‌شده')+' به همراه نسخه امضاشده به واحد مالی ارسال شود؟',()=>run('send_finance'),'ارسال'));
-  return section;
+  if(ready || returned || existing.length){
+    button((existing.length?'نسخه امضاشده ':'افزودن عکس یا PDF ')+label,openAttachments,attachmentActions || section)
+      .className+=' contract-signed-trigger';
+  }
+  if(!sent && writable && ready && (isContractSigned(contract) || canReuseReturnedAddendumSignature(contract)))button('ارسال به واحد مالی',()=>openConfirm((contract.parentContractId?label:'قرارداد تنظیم‌شده')+' به همراه نسخه امضاشده به واحد مالی ارسال شود؟',()=>run('send_finance'),'ارسال'));
+  return section.children.length ? section : null;
 }

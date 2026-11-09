@@ -1,7 +1,7 @@
 import { ADDENDUM_TYPES, addendumAmount, addendumReviewers, canEditContractAddenda, parentContractOf } from '../../domain/contractAddenda.js';
 import { syncContractPartyData } from '../../domain/contractPartyData.js';
 import { canCancelContractCompletion, canReviewContract, canRevokeContractApproval, canSubmitContract } from '../../domain/contractApproval.js';
-import { isContractInFinance } from '../../domain/contractHandoff.js';
+import { isAddendumVisibleInFinance } from '../../domain/contractHandoff.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { formatJalaliDisplay, todayJalaliStr } from '../../ui/jalali.js';
 import { toEnglishDigits } from '../../ui/digits.js';
@@ -219,12 +219,15 @@ function addendumCard(project,addendum,onChanged,finance){
     }),
   });
   row.append(heading);
-  const actions=renderContractStatusRow(addendum,{showBadge:!finance});
+  const toolbar=renderContractStatusRow(addendum,{showBadge:!finance || addendum.accountingStatus==='rejected'});
+  const actions=finance?toolbar:renderContractStatusRow(addendum,{showBadge:false});
+  if(!finance)toolbar.className='contract-addendum-toolbar';
+  const mainContractLabel=finance?'مشاهده قرارداد اصلی':'نسخه اصلی قرارداد';
   if(finance){
     actions.className+=' contract-workflow-row--signed-addendum';
     renderContractSignedSection(project,addendum,{finance,inlineActions:actions});
   }
-  if(parent)actions.append(button('مشاهده قرارداد اصلی',trigger=>openContractPreview(project,parent,{trigger,frozen:finance || parent===frozenParent})));
+  if(parent)toolbar.append(button(mainContractLabel,trigger=>openContractPreview(project,parent,{trigger,frozen:finance || parent===frozenParent})));
   const actor=currentExecutionActor(project);
   let busy=false;
   const review=async(action,reason)=>{
@@ -245,9 +248,10 @@ function addendumCard(project,addendum,onChanged,finance){
       return false;
     },
   });
+  const signed=finance?null:renderContractSignedSection(project,addendum,{onChanged,attachmentActions:toolbar});
   if(!finance){
     if(writable(project) && canRevokeContractApproval(addendum,actor))actions.append(button('لغو تأیید من',()=>returnForEdit('لغو تأیید الحاقیه','revoke_addendum')));
-    if(writable(project) && canCancelContractCompletion(addendum))actions.append(button('لغو اعلام تکمیل',()=>returnForEdit('لغو تکمیل الحاقیه','cancel_completion')));
+    if(writable(project) && canCancelContractCompletion(addendum))toolbar.append(button('لغو اعلام تکمیل',()=>returnForEdit('لغو تکمیل الحاقیه','cancel_completion'),'contract-review-action danger'));
     if(writable(project) && addendum.approvalStatus==='pending' && addendum.submittedBy?.id===actor.id){
       actions.append(button('پس‌گرفتن از تأیید',()=>returnForEdit('پس‌گرفتن الحاقیه از تأیید','withdraw_submission')));
     }
@@ -257,18 +261,18 @@ function addendumCard(project,addendum,onChanged,finance){
       actions.append(message);
     }
   }
-  row.append(actions);
+  row.append(toolbar);
   if(!finance){
+    if(actions.children.length)row.append(actions);
     row.append(renderContractProgress(document,addendum,project));
-    const signed=renderContractSignedSection(project,addendum,{onChanged});
     if(signed)row.append(signed);
   }
   if(finance){
     const original=parent && syncContractAmount(structuredClone(parent));
     const adjustments=(project.contractAddenda||[]).filter(record=>record.parentContractId===addendum.parentContractId
-      && isContractInFinance(record) && record.accountingStatus==='accepted').reduce((sum,record)=>sum+record.amount,0);
+      && isAddendumVisibleInFinance(record) && record.accountingStatus==='accepted').reduce((sum,record)=>sum+record.amount,0);
     const summary=document.createElement('div');summary.className='contract-meta';
-    summary.textContent='اثر مالی این الحاقیه: '+money(addendum.amount)+' | جمع الحاقیه‌های تأییدشده: '+money(adjustments);
+    summary.textContent='اثر مالی این الحاقیه: '+money(documentAddendum.amount ?? addendum.amount)+' | جمع الحاقیه‌های تأییدشده: '+money(adjustments);
     if(original!=null && original!=='')summary.textContent+=' | مبلغ اصلی: '+money(Number(original))+' | مبلغ به‌روز: '+money(Number(original)+adjustments);
     row.append(summary,renderContractFinanceReview(project,addendum,{onChanged}));
   }
@@ -291,7 +295,7 @@ export function renderContractAddenda(body,projectId,{finance=false,onChanged}={
   const project=projectRepository.find(projectId);
   if(!project)return;
   const refresh=onChanged||(()=>renderContractAddenda(body,projectId,{finance}));
-  const records=(project.contractAddenda||[]).filter(row=>!finance || isContractInFinance(row));
+  const records=(project.contractAddenda||[]).filter(row=>!finance || isAddendumVisibleInFinance(row));
   const section=document.createElement('section');section.className=finance?'contract-list':'contract-list contract-addenda-list';
   if(finance){
     if(!records.length)return;
