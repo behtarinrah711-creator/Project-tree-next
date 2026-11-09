@@ -34,6 +34,11 @@ export function createSmsInvitationAdapter({windowRef=globalThis.window}={}){
       const suffix=invitationId?`/${encodeURIComponent(invitationId)}`:'';
       return request(windowRef,`/api/v1/projects/${encodeURIComponent(projectId)}/invitations${suffix}`,{method:'DELETE',body:JSON.stringify({phone:mobile})});
     },
+    async updateAdminAccess({projectId,permissions}){
+      return request(windowRef,`/api/v1/projects/${encodeURIComponent(projectId)}/admin-access`,{
+        method:'PATCH',body:JSON.stringify({permissions}),
+      });
+    },
     async updateMember({projectId,member}){
       if(!configured) return Object.freeze({updated:false,reason:'provider-not-configured',member});
       return request(windowRef,`/api/v1/projects/${encodeURIComponent(projectId)}/members`,{

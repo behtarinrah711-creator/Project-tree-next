@@ -17,9 +17,10 @@ function fail(message,statusCode=400){return Object.assign(new Error(message),{s
 
 export function canAccessFiles(row,accountId,write=false,module='people'){
   if(!row || row.payload?.trashed || row.payload?.archived)return false;
-  if(String(row.owner_account_id)===String(accountId))return true;
-  if(row.membership_status!=='active' || !(row.payload?.projectMembers||[]).some(member=>member.mobile===row.phone && member.status==='active'))return false;
+  const owner=String(row.owner_account_id)===String(accountId);
   const permissions=row.permissions||{};
+  if(owner && permissions.adminAccess!==true)return true;
+  if(row.membership_status!=='active' || (!owner && !(row.payload?.projectMembers||[]).some(member=>member.mobile===row.phone && member.status==='active')))return false;
   const level=permissions.modules?.[module] ?? (!permissions.modules ? permissions[module] : null);
   return write ? (level?['create','edit','full'].includes(level):!permissions.modules && permissions.edit===true)
     : (level?['view','create','edit','full'].includes(level):!permissions.modules && (permissions.view===true || permissions.edit===true));

@@ -32,15 +32,28 @@ export function createRoleManagementModule({
 
   function closeSheet(){ activeSheet?.remove?.();activeSheet=null; }
 
-  function openMemberSheet(projectId, registry, existing=null){
+  function bindRouteClose(){
+    if(routeCloseBound || !windowRef?.addEventListener)return;
+    windowRef.addEventListener('karha:workspace-route-synced',event=>{
+      if(!activeSheet)return;
+      const {projectId,moduleId}=event.detail||{};
+      if(activeSheet.dataset.projectId!==String(projectId) || activeSheet.dataset.moduleId!==moduleId)closeSheet();
+    });
+    routeCloseBound=true;
+  }
+
+  function openMemberSheet(projectId, registry, existing=null, {admin=false}={}){
     closeSheet();
+    bindRouteClose();
     const overlay=documentRef.createElement('div');overlay.className='role-sheet-backdrop';overlay.dataset.roleSheet='';
+    overlay.dataset.projectId=String(projectId);
+    overlay.dataset.moduleId=admin?'people':'role-management';
     const sheet=documentRef.createElement('section');sheet.className='role-sheet';sheet.setAttribute('role','dialog');sheet.setAttribute('aria-modal','true');sheet.setAttribute('aria-labelledby','roleSheetTitle');
     const form=documentRef.createElement('form');form.className='role-member-form';form.noValidate=true;
-    form.innerHTML=`<header><button type="button" data-close aria-label="بستن">×</button><h2 id="roleSheetTitle">${existing?'ویرایش عضو':'افزودن عضو'}</h2><button type="submit">${existing?'ذخیره':'دعوت'}</button></header>`;
+    form.innerHTML=`<header><button type="button" data-close aria-label="بستن">×</button><h2 id="roleSheetTitle">${admin?'دسترسی ادمین':existing?'ویرایش عضو':'افزودن عضو'}</h2><button type="submit">${existing?'ذخیره':'دعوت'}</button></header>`;
     const fields=documentRef.createElement('div');fields.className='role-form-fields';
     const field=(label,name,type='text',required=false)=>{const wrap=documentRef.createElement('label');wrap.textContent=label;wrap.dataset.field=name;const input=documentRef.createElement('input');input.name=name;input.type=type;input.required=required;input.value=existing?.[name] || '';wrap.appendChild(input);fields.appendChild(wrap);return input;};
-    const mobile=field('شماره موبایل','mobile','tel',true);mobile.inputMode='numeric';mobile.dir='ltr';mobile.placeholder='09123456789';
+    const mobile=field('شماره موبایل','mobile','tel',true);mobile.inputMode='numeric';mobile.dir='ltr';mobile.placeholder='09123456789';mobile.readOnly=admin;
 
     const popupField=(label,name,items,current)=>{
       const wrap=documentRef.createElement('label');wrap.className='role-popup-field';
@@ -63,7 +76,7 @@ export function createRoleManagementModule({
       return input;
     };
 
-    if(existing && existing.status !== 'invited'){
+    if(existing && !admin && existing.status !== 'invited'){
       popupField('وضعیت','status',EDITABLE_MEMBER_STATUSES,existing.status === 'inactive' ? 'inactive' : 'active');
     }
 
@@ -86,6 +99,22 @@ export function createRoleManagementModule({
       event.preventDefault();
       clearInvalid();
       const data=new FormData(form);const mobileValue=String(data.get('mobile') || '');
+      const permissionValues=Object.fromEntries(permissionModules(registry).map(module=>[module.id,data.get(`permission:${module.id}`)]));
+      if(admin){
+        const submit=form.querySelector('[type="submit"]');
+        if(submit.disabled)return;
+        submit.disabled=true;
+        try{
+          const {access}=await smsAdapter.updateAdminAccess({projectId,permissions:normalizePermissions(permissionValues,registry)});
+          windowRef.KarhaSaosaWorkspaceAccess={...windowRef.KarhaSaosaWorkspaceAccess,[projectId]:access};
+          if(activeSheet===overlay)close();
+          if(String(windowRef.KarhaRoute?.projectId)===String(projectId))router.sync?.();
+        }catch{
+          error.textContent='ذخیره دسترسی ادمین انجام نشد. دوباره تلاش کنید.';
+          submit.disabled=false;
+        }
+        return;
+      }
       if(!isValidIranianMobile(mobileValue)){setInvalid(mobile,'شماره موبایل را به‌صورت ۱۱ رقمی و با 09 وارد کنید.');return;}
       const project=repository.find(projectId);const session=sessionProvider();const saosaSession=readSaosaSession(windowRef);const ownerPhone=String(saosaSession?.phone || session?.phoneNumber || session?.phone || '').trim();
       if(!existing && ownerPhone===mobileValue){setInvalid(mobile,'این کاربر مالک پروژه است.');return;}
@@ -96,7 +125,6 @@ export function createRoleManagementModule({
         else setInvalid(mobile,message);
         return;
       }
-      const permissionValues=Object.fromEntries(permissionModules(registry).map(module=>[module.id,data.get(`permission:${module.id}`)]));
       const values={mobile:mobileValue,permissions:permissionValues};
       let member;
       if(existing){
@@ -125,7 +153,7 @@ export function createRoleManagementModule({
       });
       close();render(projectId,registry);
     });
-    mobile.focus?.();
+    if(!admin)mobile.focus?.();
   }
 
   function replaceMember(projectId,member){
@@ -203,13 +231,19 @@ export function createRoleManagementModule({
     mount({projectId,registry}={}){
       const project=repository.find(projectId);
       if(!canManageProjectRoles(project,sessionProvider())){router.navigate(projectId,'people',{replace:true});return {projectId,moduleId:'people',denied:true};}
-      if(!routeCloseBound && windowRef?.addEventListener){
-        windowRef.addEventListener('karha:workspace-route-synced',event=>{if(event?.detail?.moduleId!=='role-management')closeSheet();});
-        routeCloseBound=true;
-      }
       const back=documentRef.getElementById('closeRoleManagementPage');if(back)back.onclick=()=>windowRef?.KarhaBrowserHistory?.back?.();
       const add=documentRef.getElementById('addProjectMember');if(add)add.onclick=()=>openMemberSheet(projectId,registry);
       render(projectId,registry);return {projectId,moduleId:'role-management'};
+    },
+    openAdminAccess(projectId,registry){
+      const access=windowRef?.KarhaSaosaWorkspaceAccess?.[projectId];
+      if(!smsAdapter.configured || !(access?.role==='owner' || access?.isOwner))return false;
+      const session=readSaosaSession(windowRef);
+      if(!session)return false;
+      const permissions=(access.isOwner && access.permissions?.modules) ||
+        Object.fromEntries(permissionModules(registry).map(module=>[module.id,'full']));
+      openMemberSheet(projectId,registry,{mobile:session.phone,permissions},{admin:true});
+      return true;
     },
     render,
     closeSheet,
