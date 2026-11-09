@@ -353,8 +353,7 @@ function renderNotificationsPage(){
     const queue=pendingApprovals(findProject(projectId));
     if(!queue.assigned){marker.remove();return;}
     marker.className='workspace-option-list';
-    const count=queue.groups.reduce((sum,group)=>sum+group.items.length,0);
-    marker.append(approvalNavigationRow(document,'در انتظار تأیید من',count,()=>openNotificationSection('approvals')));
+    marker.append(approvalNavigationRow(document,'در انتظار تأیید من',queue.count,()=>openNotificationSection('approvals')));
   }).catch(()=>{
     if(marker.isConnected && approvalsSection)marker.textContent='دریافت موارد در انتظار تأیید انجام نشد.';
   });

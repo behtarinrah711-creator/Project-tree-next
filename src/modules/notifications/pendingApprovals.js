@@ -16,15 +16,14 @@ import {saveContractHandoff} from '../contracts/contractHandoffApi.js';
 import {openConfirm} from '../../ui/confirm.js';
 
 export const approvalGroups=[
-  {id:'contracts',title:'قراردادها',scope:'contracts'},
-  {id:'addenda',title:'تأییدیه‌ها',description:'الحاقیه‌های منتظر تأیید',scope:'contracts'},
+  {id:'addenda',title:'قراردادها و الحاقیه‌ها',scope:'contracts'},
   {id:'shopping',title:'خریدها',scope:'execution:shopping',collect:collectShoppingItems},
   {id:'execution',title:'اجرا',scope:'execution:today',collect:collectTodayItems},
 ];
 
 const number=value=>Number(value).toLocaleString('fa-IR');
 const contactName=contact=>[contact?.firstName,contact?.lastName].filter(Boolean).join(' ') || contact?.name || '';
-const emptyQueue=()=>({assigned:false,groups:[]});
+const emptyQueue=()=>({assigned:false,groups:[],count:0});
 
 async function approveExecution(projectId,scope,item,actor){
   const {kind,id,workId}=item;
@@ -60,14 +59,14 @@ export function pendingApprovals(project,windowRef=globalThis.window){
       assigned ||= mine.length>0;
       return {...group,writable,items:mine.filter(item=>item.entity.completionState==='pending_approval')};
     }
-    const collection=group.id==='contracts'?project.contracts:project.contractAddenda;
-    const mine=(collection||[]).filter(record=>record && !record.trashed && (
+    const collection=[...(project.contracts||[]),...(project.contractAddenda||[])];
+    const mine=collection.filter(record=>record && !record.trashed && (
       contractApproverIds(record).includes(actor.contactId)
       || (record.contractApproverContactIds||[]).some(id=>String(id)===actor.contactId)));
     assigned ||= mine.length>0;
     return {...group,writable,items:mine.filter(record=>canReviewContract(record,actor))};
   });
-  return {assigned,actor,groups};
+  return {assigned,actor,groups,count:groups.reduce((sum,group)=>sum+group.items.length,0)};
 }
 
 function element(documentRef,tag,className,text){
@@ -90,7 +89,7 @@ export function approvalNavigationRow(documentRef,title,count,onClick,descriptio
   main.append(element(documentRef,'span','workspace-option-title',title));
   if(description)main.append(element(documentRef,'span','workspace-option-meta',description));
   const end=element(documentRef,'span','approval-option-end');
-  const badge=element(documentRef,'span','approval-option-count',number(count));
+  const badge=element(documentRef,'span',count===0?'approval-option-count is-zero':'approval-option-count',number(count));
   badge.setAttribute('aria-label',number(count)+' مورد در انتظار تأیید');
   const arrow=element(documentRef,'span','workspace-option-arrow');
   arrow.innerHTML='<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>';
@@ -111,7 +110,7 @@ function contractDetails(project,record,isAddendum){
 
 function renderApprovalItem(documentRef,project,group,item,onChanged){
   const execution=!!group.collect;
-  const addendum=group.id==='addenda';
+  const addendum=!execution && Boolean(item.parentContractId);
   const details=execution?null:contractDetails(project,item,addendum);
   const contractor=execution?contactName(contractorForItem(project,item).contact):'';
   const card=element(documentRef,'article','approval-queue-card');
@@ -147,7 +146,9 @@ function renderApprovalItem(documentRef,project,group,item,onChanged){
         const queue=pendingApprovals(latest);
         const currentGroup=queue.groups.find(candidate=>candidate.id===group.id);
         const current=currentGroup?.items.find(candidate=>String(candidate.id)===String(item.id)
-          && (!execution || String(candidate.workId)===String(item.workId) && candidate.kind===item.kind));
+          && (execution
+            ? String(candidate.workId)===String(item.workId) && candidate.kind===item.kind
+            : Boolean(candidate.parentContractId)===addendum));
         if(!current || !currentGroup.writable)throw new Error('این مورد دیگر در انتظار تأیید شما نیست.');
         if(execution){
           await approveExecution(project.id,group.scope,current,queue.actor);
@@ -174,7 +175,8 @@ export function renderPendingApprovals(body,projectId,section,openSection){
   const project=projectRepository.find(projectId);
   const queue=pendingApprovals(project);
   body.replaceChildren();
-  const group=queue.groups.find(candidate=>'approvals-'+candidate.id===section);
+  const category=section==='approvals-contracts'?'approvals-addenda':section;
+  const group=queue.groups.find(candidate=>'approvals-'+candidate.id===category);
   const header=element(documentRef,'header','inner-section-bar approval-queue-header');
   const back=button(documentRef,'',()=>window.KarhaBrowserHistory?.back?.(),'inner-section-back');
   back.setAttribute('aria-label','بازگشت');
