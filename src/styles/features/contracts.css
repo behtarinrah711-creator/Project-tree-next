@@ -1867,7 +1867,7 @@ textarea.contract-project-item-input{
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list)) .contract-review-action{border:0;background:transparent;color:#1565c0;font:inherit;padding:6px;cursor:pointer;}
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list)) .contract-review-action.danger,:is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list)) .contract-rejection-reason{color:var(--danger,#b23b3b);}
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list)) .contract-rejection-reason{width:100%;white-space:pre-wrap;overflow-wrap:anywhere;}
-:is(#contractsPageBody,#accountingPageBody) .contract-review-banner{display:block;width:calc(100% - 24px);margin:8px 12px;padding:14px;border:1px solid #1565c0;border-radius:10px;background:var(--surface);color:#1565c0;font:inherit;text-align:right;cursor:pointer;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody) .contract-review-banner{display:block;width:calc(100% - 24px);margin:8px 12px;padding:14px;border:1px solid #1565c0;border-radius:10px;background:var(--surface);color:#1565c0;font:inherit;text-align:right;cursor:pointer;}
 :is(#contractsPageBody,#accountingPageBody) .contract-status-filter{margin:8px 12px;padding:8px 12px;background:var(--surface);border:1px solid var(--divider);border-radius:8px;color:var(--text);font:inherit;cursor:pointer;}
 
 :is(#contractsPageBody,#accountingPageBody) .contract-filter-wrap{position:relative;z-index:6;display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin:8px 12px;}

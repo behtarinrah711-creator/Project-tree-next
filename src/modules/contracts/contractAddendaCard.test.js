@@ -91,5 +91,30 @@ test('saved addenda use the contract card layout and their own status, number an
       if(withdraw)assert.ok(withdraw.className.includes('danger'));
       assert.ok(!card.children.some(node=>node.className.includes('contract-signed-section')));
     }
+    delete window.KarhaSaosaWorkspaceAccess;
+    window.firebase={auth:()=>({currentUser:{uid:'reviewer',phoneNumber:'0912'}})};
+    project.contacts=[{id:'reviewer-contact',phones:['0912']}];
+    const ready={...draft,status:'final',isDraft:false,contractApproverContactIds:['reviewer-contact']};
+    const pending={...ready,id:'pending',approvalStatus:'pending',approvalContactIds:['reviewer-contact'],approvedContactIds:[]};
+    project.contractAddenda=[ready,pending];
+    const body=make('div');
+    renderContractAddenda(body,'p');
+    const [banner,list]=body.children;
+    assert.equal(banner.textContent,'۱ الحاقیه منتظر تأیید شما ‹');
+    assert.equal(list.children.length,2);
+    const readyBadge=list.children[0].children[1].children[0];
+    assert.equal(readyBadge.textContent,'وضعیت: در انتظار تأیید');
+    assert.ok(readyBadge.className.includes('is-incomplete'));
+    assert.ok(list.children[0].children[2].children.some(node=>node.textContent==='ارسال برای تأیید'));
+    assert.ok(!list.children[0].children[2].children.some(node=>node.textContent==='تأیید الحاقیه'));
+    banner.onclick();
+    assert.equal(body.children[1].children.length,1);
+    assert.ok(body.children[1].children[0].children[2].children.some(node=>node.textContent==='تأیید الحاقیه'));
+    body.children[0].onclick();
+    assert.equal(body.children[1].children.length,2);
+    window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'view'}}}};
+    renderContractAddenda(body,'p');
+    assert.equal(body.children.length,1);
+    assert.ok(body.children[0].children.every(card=>!card.children.some(row=>row.children.some(node=>node.textContent==='تأیید الحاقیه'))));
   }finally{[globalThis.window,globalThis.document,projectRepository.find,contactApi.lookup]=old;}
 });

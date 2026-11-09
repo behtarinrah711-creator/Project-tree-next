@@ -127,7 +127,9 @@ export function renderContractStatusRow(c,{showBadge=true}={}){
   statusRow.onclick=event=>event.stopPropagation();
   if(!showBadge)return statusRow;
   const status=document.createElement('span');
-  const approvalState=contractApprovalState(c);
+  const state=contractApprovalState(c);
+  const awaitingSubmission=state==='ready' && c.parentContractId && c.contractApproverContactIds?.some(Boolean);
+  const approvalState=awaitingSubmission?'pending':state;
   const rejectedByFinance=c.parentContractId && c.accountingStatus==='rejected';
   const pendingFinance=c.parentContractId && c.accountingStatus==='sent';
   const statusLabel=rejectedByFinance?'توسط مالی رد شد':pendingFinance?'ارسال شده به مالی':c.accountingStatus==='accepted'?'تأیید شده توسط بخش مالی':approvalState==='incomplete'?'ناقص':approvalState==='approved'?'تأیید شده است':['ready','unapproved','returned'].includes(approvalState)?'تأیید نشده است':approvalLabels[approvalState];

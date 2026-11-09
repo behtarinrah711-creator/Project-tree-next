@@ -290,20 +290,27 @@ export function openAddendumForContract(projectId,contractId){
   openAddendumForm(project,contract,null,()=>{});
 }
 
-export function renderContractAddenda(body,projectId,{finance=false,onChanged}={}){
+export function renderContractAddenda(body,projectId,{finance=false,onChanged,reviewMine=false}={}){
   const project=projectRepository.find(projectId);
   if(!project)return;
-  const refresh=onChanged||(()=>renderContractAddenda(body,projectId,{finance}));
+  const refresh=onChanged||(()=>renderContractAddenda(body,projectId,{finance,reviewMine}));
   const records=(project.contractAddenda||[]).filter(row=>!finance || isAddendumVisibleInFinance(row));
   const section=document.createElement('section');section.className=finance?'contract-list':'contract-list contract-addenda-list';
   if(finance){
     if(!records.length)return;
     const title=document.createElement('h3');title.textContent='الحاقیه‌ها';section.append(title);
   }else body.replaceChildren();
+  const actor=!finance && writable(project)?currentExecutionActor(project):null;
+  const myReviews=actor?records.filter(record=>canReviewContract(record,actor)):[];
+  if(myReviews.length){
+    const label=reviewMine?'نمایش همه الحاقیه‌ها ×':number(myReviews.length)+' الحاقیه منتظر تأیید شما ‹';
+    body.append(button(label,()=>renderContractAddenda(body,projectId,{onChanged,reviewMine:!reviewMine}),'contract-review-banner'));
+  }
   if(!records.length){
     const empty=document.createElement('p');empty.className='contract-empty';empty.textContent='هنوز الحاقیه‌ای ثبت نشده است.';
     section.append(empty);
   }
-  for(const record of [...records].sort((a,b)=>b.createdAt-a.createdAt))section.append(addendumCard(project,record,refresh,finance));
+  const visibleRecords=reviewMine && myReviews.length?myReviews:records;
+  for(const record of [...visibleRecords].sort((a,b)=>b.createdAt-a.createdAt))section.append(addendumCard(project,record,refresh,finance));
   body.append(section);
 }
