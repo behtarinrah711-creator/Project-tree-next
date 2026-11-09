@@ -41,7 +41,7 @@ export function saveAddendumDraft(project,current,body,actor,id,at){
   }
   const amount=addendumAmount(rows);
   if(!Number.isSafeInteger(amount))return fail('جمع مبلغ الحاقیه نامعتبر است');
-  const reviewers=current?.contractApproverContactIds ?? addendumReviewers(project,parent);
+  const reviewers=addendumReviewers(project,parent);
   const sequence=current?.sequence ?? Math.max(0,...(project.contractAddenda||[]).filter(row=>row.parentContractId===String(parent.id)).map(row=>row.sequence||0))+1;
   const next={
     ...current,id,parentContractId:String(parent.id),parentContractNo:parent.contractNo,sequence,

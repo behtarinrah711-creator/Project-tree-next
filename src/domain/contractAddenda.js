@@ -1,3 +1,5 @@
+import {contractApproverIds} from './contractApproval.js';
+
 export const ADDENDUM_TYPES=Object.freeze({
   extra:'کارهای اضافی',
   price:'تغییر مبلغ یا مقادیر',
@@ -17,6 +19,9 @@ export function parentContractOf(project,addendum){
 }
 
 export function addendumReviewers(project,parent){
+  const submittedReviewers=contractApproverIds(parent);
+  if(submittedReviewers.length || (Array.isArray(parent.approvalContactIds)
+    && ['pending','approved'].includes(parent.approvalStatus)))return submittedReviewers;
   const findTask=nodes=>{
     for(const node of nodes||[]){
       if(node.trashed) continue;
@@ -27,7 +32,7 @@ export function addendumReviewers(project,parent){
     }
   };
   const assigned=parent.workTaskId ? findTask(project.tasks)?.contractApproverContactIds : null;
-  return [...new Set((assigned ?? parent.contractApproverContactIds ?? parent.approvalContactIds ?? [parent.approvalContactId]).filter(Boolean).map(String))];
+  return [...new Set((parent.contractApproverContactIds ?? assigned ?? []).filter(Boolean).map(String))];
 }
 
 export function canEditAddendumRecord(addendum){

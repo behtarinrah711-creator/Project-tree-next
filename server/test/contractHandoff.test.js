@@ -339,3 +339,31 @@ test('a completed legacy addendum can be edited and completed again from its for
   assert.deepEqual(pending.approvalHistory.map(event=>event.action),['complete','complete','submit']);
   assert.equal((await complete(pending)).status,400);
 });
+
+test('an addendum waits for every reviewer recorded on the original contract',async()=>{
+  const f=fixture(),id='addendum-00000000-0000-4000-8000-000000000005';
+  const path='/api/v1/projects/p/addenda/'+id+'/handoff';
+  Object.assign(f.payload.contracts[0],{contractNo:'CTR-1',workTaskId:'task',
+    contractApproverContactIds:['task-reviewer'],approvalContactIds:['first','second']});
+  f.payload.tasks=[{workTasks:[{id:'task',contractApproverContactIds:['task-reviewer']}]}];
+  f.payload.contacts=[{id:'first',name:'نفر اول',phones:['0912']},{id:'second',name:'نفر دوم',phones:['0913']}];
+  const created=await f.call({action:'save_addendum',version:0,updatedAt:0,complete:true,
+    parentContractId:'c',type:'other',contractDate:'1405/08/01',note:'شرح الحاقیه'},path);
+  assert.equal(created.status,200);
+  const pending=created.result.contract;
+  assert.deepEqual(pending.approvalContactIds,['first','second']);
+  const act=(action,record)=>f.call({action,version:record.handoffVersion,updatedAt:record.updatedAt},path);
+  const first=await act('approve_addendum',pending);
+  assert.equal(first.status,200);
+  assert.equal(first.result.contract.approvalStatus,'pending');
+  assert.deepEqual(first.result.contract.approvedContactIds,['first']);
+  assert.equal((await act('approve_addendum',first.result.contract)).status,400);
+  assert.equal((await act('send_finance',first.result.contract)).status,400);
+  f.payload.contacts[0].phones=[];
+  f.payload.contacts[1].phones=['0912'];
+  const last=await act('approve_addendum',first.result.contract);
+  assert.equal(last.status,200);
+  assert.equal(last.result.contract.approvalStatus,'approved');
+  assert.deepEqual(last.result.contract.approvedContactIds,['first','second']);
+  assert.deepEqual(last.result.contract.approvalHistory.filter(event=>event.action==='approve').map(event=>event.actor.name),['نفر اول','نفر دوم']);
+});
