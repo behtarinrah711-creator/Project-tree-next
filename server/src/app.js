@@ -408,6 +408,13 @@ const DEFAULT_ROLES = [
   ['viewer', 'مشاهده‌گر', {view:true, edit:false, manageMembers:false, manageRoles:false, delete:false}],
 ];
 
+function workspaceAccess(role,permissions){
+  if(role==='owner' && permissions?.adminAccess===true){
+    return {role:'member',isOwner:true,permissions};
+  }
+  return {role,permissions};
+}
+
 function normalizeWorkspaceSnapshot(raw){
   if(!raw || typeof raw !== 'object' || Array.isArray(raw) || !Array.isArray(raw.projects)) return null;
   const ids = new Set();
@@ -457,10 +464,8 @@ async function readWorkspace(pool, accountId){
       activeTab:prefs.activeTab ?? null,
       starredOrder:Array.isArray(prefs.starredOrder) ? prefs.starredOrder : [],
     },
-    access:Object.fromEntries(projects.rows.map(row => [row.payload.id, {
-      role:row.role_key,
-      permissions:row.permissions,
-    }])),
+    access:Object.fromEntries(projects.rows.map(row =>
+      [row.payload.id,workspaceAccess(row.role_key,row.permissions)])),
   };
 }
 
@@ -871,6 +876,34 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
             WHERE id=$1 RETURNING id,expires_at`,[item.id,hashToken(rawToken,sessionSecret),String(INVITATION_LIFETIME_DAYS),smsSent,emailSent],
         );
         return sendJson(response,200,{id:resent.rows[0].id,status:'invited',expiresAt:resent.rows[0].expires_at,smsSent,emailSent});
+      }
+
+      const adminAccessRoute=/^\/api\/v1\/projects\/([^/]+)\/admin-access$/.exec(url.pathname);
+      if(adminAccessRoute && request.method==='PATCH'){
+        const projectId=decodeURIComponent(adminAccessRoute[1]);
+        if(!PROJECT_ID_PATTERN.test(projectId))return sendJson(response,400,{error:'invalid_project'});
+        const accountId=await authenticate(request,pool,sessionSecret);
+        if(!accountId)return sendJson(response,401,{error:'unauthorized'});
+        const body=await readJson(request,64*1024);
+        const levels=body?.permissions;
+        const allowedLevels=['none','view','edit','create','full'];
+        if(!levels || typeof levels!=='object' || Array.isArray(levels) ||
+          !Object.keys(levels).length || Object.values(levels).some(level=>!allowedLevels.includes(level))){
+          return sendJson(response,400,{error:'invalid_permissions'});
+        }
+        const permissions=Object.values(levels).every(level=>level==='full')
+          ? DEFAULT_ROLES[0][2] : {...invitationAccess(levels),adminAccess:true};
+        const saved=await pool.query(
+          `UPDATE project_roles r SET permissions=$3::jsonb,updated_at=now()
+            FROM projects p,project_memberships m
+            WHERE p.id=$1 AND p.owner_account_id=$2 AND m.project_id=p.id AND m.account_id=$2
+              AND m.status='active' AND r.id=m.role_id AND r.project_id=p.id AND r.role_key='owner'
+            RETURNING r.role_key,r.permissions`,
+          [projectId,accountId,JSON.stringify(permissions)],
+        );
+        if(!saved.rowCount)return sendJson(response,403,{error:'forbidden_project'});
+        const row=saved.rows[0];
+        return sendJson(response,200,{access:workspaceAccess(row.role_key,row.permissions)});
       }
 
       const memberEditRoute=memberRoute(url.pathname);

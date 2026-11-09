@@ -377,11 +377,21 @@ function renderSettingsWorkspace(){
   const access=window.KarhaSaosaWorkspaceAccess?.[p.id] || null;
   const session=window.KarhaApp?.getSession?.() || {};
   const ownerId=p.ownerUid || p.creatorUid || null;
-  const isOwner=access?.role === 'owner' || (!access && (!ownerId || (session.uid && String(ownerId)===String(session.uid))));
+  const isOwner=access?.role === 'owner' || access?.isOwner || (!access && (!ownerId || (session.uid && String(ownerId)===String(session.uid))));
   if(isOwner){
     const rolesRow=document.createElement('button'); rolesRow.type='button'; rolesRow.className='workspace-option';
     rolesRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">تنظیمات دسترسی ها</span><span class="workspace-option-meta">اعضا، نقش‌ها و سطح دسترسی ماژول‌ها</span></span><span class="workspace-option-arrow"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span>';
     rolesRow.onclick=()=>window.KarhaApp?.router?.navigate(p.id,'role-management'); wrap.appendChild(rolesRow);
+    if(access?.role==='owner' || access?.isOwner){
+      const adminRow=rolesRow.cloneNode(true);
+      adminRow.querySelector('.workspace-option-title').textContent='دسترسی ادمین';
+      adminRow.querySelector('.workspace-option-meta').remove();
+      adminRow.onclick=()=>{
+        const registry=window.KarhaApp?.modules;
+        registry?.get('role-management')?.openAdminAccess?.(p.id,registry);
+      };
+      wrap.appendChild(adminRow);
+    }
   }
   const contactRow=document.createElement('button'); contactRow.type='button'; contactRow.className='workspace-option';
   contactRow.innerHTML='<span class="workspace-option-main"><span class="workspace-option-title">لیست مخاطبین</span></span><span class="workspace-option-arrow"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg></span>';

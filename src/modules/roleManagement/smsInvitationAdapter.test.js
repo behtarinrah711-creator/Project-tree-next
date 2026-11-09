@@ -43,3 +43,13 @@ test('Saosa adapter exposes lifecycle actions on their dedicated endpoints',asyn
   assert.equal(JSON.parse(calls[0][1].body).phone,'09120000000');
   assert.equal(JSON.parse(calls[1][1].body).phone,'09120000000');
 });
+
+test('Saosa adapter saves admin access without editing a member or phone number',async()=>{
+  const calls=[];
+  const windowRef={location:{hostname:'saosa.ir'},localStorage:{getItem:()=>JSON.stringify({token:'t',phone:'09123456789',expiresAt:Date.now()+1000})},fetch:async(...args)=>{calls.push(args);return {ok:true,json:async()=>({access:{isOwner:true}})};}};
+  const result=await createSmsInvitationAdapter({windowRef}).updateAdminAccess({projectId:'p1',permissions:{dashboard:'none',contracts:'view'}});
+  assert.equal(result.access.isOwner,true);
+  assert.equal(calls[0][0],'/api/v1/projects/p1/admin-access');
+  assert.equal(calls[0][1].method,'PATCH');
+  assert.deepEqual(JSON.parse(calls[0][1].body),{permissions:{dashboard:'none',contracts:'view'}});
+});
