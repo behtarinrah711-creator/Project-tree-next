@@ -1,10 +1,11 @@
-import { canWriteProjectModule } from '../roleManagement/permissionState.js';
+import { canWriteProjectModule, projectPermissionState } from '../roleManagement/permissionState.js';
 import { todayApi, COMMENT_MIN_LENGTH, REJECTION_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
 import { canRecordStartDelay, contractorForItem, executionStatus, itemsForMode, remainingLabel, statusLabel, START_DELAY_REASONS, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
 import { fieldRow, openWbsSheet } from './wbsSheet.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { currentExecutionActor, isExecutionApprover, isExecutionAssignee } from './executionActor.js';
 import { openDailyExecutionReport, progressCircle, todayReportOf } from './dailyExecutionReport.js';
+import { executionWorkKey } from '../reports/dailyExecutionReportsView.js';
 
 export const TODAY_ICON = 'M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v255l-80 80v-175H200v400h248l80 80H200Zm0-560h560v-80H200v80Zm0 0v-80 80ZM662-60 520-202l56-56 85 85 170-170 56 57L662-60Z';
 const ICONS = Object.freeze({ overdue:'./src/assets/wbs/pending-actions.svg', today:'./src/assets/wbs/today.svg', future:'./src/assets/wbs/next-week.svg', pending:'./src/assets/wbs/pending-approval.svg', unscheduled:'./src/assets/wbs/event-busy.svg', filter:'./src/assets/wbs/filter-alt.svg' });
@@ -89,7 +90,30 @@ function openStartDelay(item,onChanged){
 }
 
 function openReject(item,onChanged){ openWbsSheet({ title:'رد تأیید', saveLabel:'ثبت رد', body(root){ root.appendChild(fieldRow('علت رد',textArea(document,'','rejectionReason'))); }, onSave(root){ const result=todayApi.reject(activeProjectId,refOf(item),root.querySelector('[name="rejectionReason"]').value,actor()); if(!result.ok){ window.KarhaUI?.showToast?.(`علت رد حداقل ${toPersianDigits(REJECTION_MIN_LENGTH)} حرف باشد`); return false; } activeMode=timeState(result.entity, tehranTodayJalali()); onChanged?.(); return true; } }); }
-function renderReports(documentRef,entity){ const host=documentRef.createElement('div'); host.className='today-reports'; reportsOf(entity).forEach(report=>{ const row=documentRef.createElement('article'); row.className='today-report'; row.innerHTML=`<p>${esc(report.description)}</p><div>${esc(report.createdBy?.name||'کاربر')} · ${esc(formatMoment(report.createdAt))}${report.updatedAt?` · <b>ویرایش‌شده ${esc(formatMoment(report.updatedAt))}</b>`:''}</div>`; host.appendChild(row); }); return host; }
+function renderReports(documentRef, projectId, item){
+  const host=documentRef.createElement('div');
+  host.className='today-reports';
+  const reports=reportsOf(item.entity);
+  const canBrowse=projectPermissionState(projectId,['reports:reports']).visible;
+  const visibleReports=canBrowse ? reports.slice(0,1) : reports;
+  for(const report of visibleReports){
+    const row=documentRef.createElement('article');
+    row.className='today-report';
+    const text=String(report.description || '');
+    const summary=canBrowse && text.length>140 ? text.slice(0,140)+'…' : text;
+    row.innerHTML=`<p>${esc(summary)}</p><div>${esc(report.createdBy?.name||'کاربر')} · ${esc(formatMoment(report.createdAt))}${report.updatedAt?` · <b>ویرایش‌شده ${esc(formatMoment(report.updatedAt))}</b>`:''}</div>`;
+    host.appendChild(row);
+  }
+  if(canBrowse && (reports.length || (item.entity.executionHistory||[]).some(entry=>entry?.type==='start_delayed'))){
+    const link=documentRef.createElement('a');
+    link.className='today-section-action today-report-link';
+    link.textContent='همهٔ گزارش‌های این کار';
+    const params=new URLSearchParams({work:executionWorkKey(refOf(item))});
+    link.href=`#/projects/${encodeURIComponent(projectId)}/daily-execution-reports?${params}`;
+    host.appendChild(link);
+  }
+  return host;
+}
 function renderComments(documentRef,item,onChanged){
   const host=documentRef.createElement('div'); host.className='today-comments'; const comments=commentsOf(item.entity); let expanded=false; const list=documentRef.createElement('div');
   const paint=()=>{ list.replaceChildren(); (expanded?comments:comments.slice(0,2)).forEach(comment=>{ const row=documentRef.createElement('div'); row.className='today-comment'+(comment.type==='approval_rejected'?' is-rejection':''); row.innerHTML=`<p>${esc(comment.text)}</p><span>${esc(comment.createdBy?.name||'کاربر')} · ${esc(formatMoment(comment.createdAt))}</span>`; list.appendChild(row); }); }; paint(); host.appendChild(list);
@@ -173,7 +197,7 @@ function renderCard(documentRef,project,item,today,onChanged){
     report.addEventListener('click',openReport);
     card.appendChild(detailRow(documentRef,'',report));
   }
-  card.appendChild(renderReports(documentRef,entity));
+  card.appendChild(renderReports(documentRef,project.id,item));
   if(writable){
     const comment=linkButton(documentRef,'wbs-costline-manual today-section-action','افزودن نظر');
     comment.addEventListener('click',()=>openComment(item,onChanged));

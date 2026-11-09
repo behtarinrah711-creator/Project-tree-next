@@ -3,7 +3,7 @@ import { uid } from '../../data/projectFactories.js';
 import { todayRepository } from '../../data/todayRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
 import { workTaskApi } from './workTaskApi.js';
-import { canRecordStartDelay, START_DELAY_REASONS, tehranTodayJalali } from './todayDomain.js';
+import { canRecordStartDelay, executionReportDay, START_DELAY_REASONS, tehranTodayJalali } from './todayDomain.js';
 
 export const REPORT_MIN_LENGTH = 3;
 export const COMMENT_MIN_LENGTH = 2;
@@ -45,7 +45,7 @@ export const todayApi = {
       const reports = [...(entity.executionReports || []).filter(report => report && !report.trashed)];
       const history = [...(entity.executionHistory || [])];
       const reportIndex = reports.findLastIndex(report => (
-        (report.reportDay || tehranTodayJalali(new Date(report.createdAt))) === reportDay
+        executionReportDay(report) === reportDay
       ));
       const nextProgress = progress === null || progress === undefined
         ? Number(entity.progress) || 0

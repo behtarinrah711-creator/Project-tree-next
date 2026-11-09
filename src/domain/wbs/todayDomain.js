@@ -27,6 +27,13 @@ export function tehranTodayJalali(now = new Date()){
   return `${value('year')}/${value('month')}/${value('day')}`;
 }
 
+export function executionReportDay(report){
+  if(report?.reportDay) return report.reportDay;
+  if(!report?.createdAt) return '';
+  const date = new Date(report.createdAt);
+  return Number.isFinite(date.getTime()) ? tehranTodayJalali(date) : '';
+}
+
 export function jalaliDayNumber(value){
   const match = String(value || '').match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
   if(!match) return null;
