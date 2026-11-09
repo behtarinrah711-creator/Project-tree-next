@@ -4,6 +4,21 @@ import { isWork, canHoldWorkTasks } from './normalize.js';
 
 export const TODAY_MODES = Object.freeze(['overdue','today','future','pending','unscheduled']);
 
+export const START_DELAY_REASONS = Object.freeze([
+  'آماده نبودن پیش‌نیاز',
+  'تأمین نشدن مصالح',
+  'تغییر نقشه',
+  'مشکل مالی',
+  'سایر',
+]);
+
+export function canRecordStartDelay(entity, day){
+  const start = jalaliDayNumber(entity?.scheduleStart);
+  const today = jalaliDayNumber(day);
+  return !entity?.trashed && executionStatus(entity) === 'not_started'
+    && start !== null && today !== null && start <= today;
+}
+
 export function tehranTodayJalali(now = new Date()){
   const parts = new Intl.DateTimeFormat('en-US-u-ca-persian', {
     timeZone:'Asia/Tehran', year:'numeric', month:'2-digit', day:'2-digit',

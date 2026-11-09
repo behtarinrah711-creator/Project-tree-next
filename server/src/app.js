@@ -7,6 +7,7 @@ import {createHash, randomBytes, randomInt, randomUUID} from 'node:crypto';
 import {constantTimeEqual, hashToken} from './auth.js';
 import {normalizeAccountNotebook, readAccountNotebook, saveAccountNotebook} from './accountNotebook.js';
 import {createFileUploadHandler} from './fileUploads.js';
+import {START_DELAY_REASONS, tehranTodayJalali} from '../../src/domain/wbs/todayDomain.js';
 
 const SCOPE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/i;
 const IRAN_PHONE_PATTERN = /^09\d{9}$/;
@@ -299,7 +300,21 @@ function canWriteExecutionItem(permissions,item){
   return ['edit','create','full'].includes(modules[scope]);
 }
 
-export function hasDeniedExecutionChanges(current,incoming,permissions){
+export function hasDeniedExecutionChanges(current,incoming,permissions,phone){
+  const contactIds=executionContactIds(current,phone);
+  const deniedStartDelay=(previous,item)=>{
+    const prior=new Map((previous?.executionHistory||[])
+      .filter(entry=>entry?.type==='start_delayed').map(entry=>[entry.id,entry]));
+    return (item.executionHistory||[]).some(entry=>{
+      if(entry?.type!=='start_delayed' || JSON.stringify(prior.get(entry.id))===JSON.stringify(entry))return false;
+      const at=new Date(entry.at);
+      return item.type==='خرید' || !previous?.assigneeContactId
+        || !contactIds.has(String(previous.assigneeContactId))
+        || !START_DELAY_REASONS.includes(entry.reason)
+        || (entry.reason==='سایر' && (typeof entry.description!=='string' || !entry.description.trim()))
+        || !Number.isFinite(at.getTime()) || entry.day!==tehranTodayJalali(at);
+    });
+  };
   const meaningful=value=>Array.isArray(value)?value.length>0:value!=null && value!=='';
   const comparable=(item,key)=>{
     const value=item?.[key];
@@ -315,6 +330,7 @@ export function hasDeniedExecutionChanges(current,incoming,permissions){
       if(!item)return false;
       const previous=records.get(String(item.id));
       return (changed(previous,item) && (!canWriteExecutionItem(permissions,previous||item) || !canWriteExecutionItem(permissions,item)))
+        || deniedStartDelay(previous,item)
         || check(previous?.subtasks||[],item.subtasks||[]) || check(previous?.workTasks||[],item.workTasks||[]);
     });
   };
@@ -572,7 +588,7 @@ async function saveWorkspace(pool, accountId, snapshot){
           continue;
         }
         const permissions=membership.rows[0].permissions||{};
-        if(hasDeniedExecutionChanges(currentPayload,project,permissions)){
+        if(hasDeniedExecutionChanges(currentPayload,project,permissions,membership.rows[0].phone)){
           const error=new Error('forbidden_execution_write');error.statusCode=403;throw error;
         }
         const assignedExecution=!canMutateSharedProject(permissions)

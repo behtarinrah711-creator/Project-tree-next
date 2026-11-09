@@ -213,3 +213,21 @@ test('contract view permission takes precedence over write permission for a link
   assert.deepEqual(result.contracts,contracts);
   assert.deepEqual(result.contractTemplates,contractTemplates);
 });
+
+test('start delay requires execution write access and assignment in the stored work',()=>{
+  const current={contacts:[{id:'a',phones:['09120000000']},{id:'b',phones:['09121111111']}],tasks:[
+    {id:'w1',workTasks:[{id:'t1',assigneeContactId:'a',approvalContactId:'b',executionHistory:[]}]},
+  ]};
+  const incoming=structuredClone(current);
+  const at=Date.parse('2026-11-09T20:30:00Z');
+  const entry={id:'e1',type:'start_delayed',at,day:'1405/08/19',reason:'تغییر نقشه',description:''};
+  incoming.tasks[0].workTasks[0].executionHistory.push(entry);
+  const write={modules:{'execution:today':'create'}};
+  const view={modules:{'execution:today':'view','reports:reports':'full'}};
+  assert.equal(hasDeniedExecutionChanges(current,incoming,write,'09120000000'),false);
+  assert.equal(mergeAssignedExecutionPayload(current,incoming,'09120000000',write).ok,true);
+  assert.equal(hasDeniedExecutionChanges(current,incoming,write,'09121111111'),true);
+  assert.equal(hasDeniedExecutionChanges(current,incoming,view,'09120000000'),true);
+  entry.reason='سایر';
+  assert.equal(hasDeniedExecutionChanges(current,incoming,write,'09120000000'),true);
+});
