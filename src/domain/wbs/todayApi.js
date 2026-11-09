@@ -1,3 +1,4 @@
+import { canWriteProjectModule } from '../../modules/roleManagement/permissionState.js';
 import { uid } from '../../data/projectFactories.js';
 import { todayRepository } from '../../data/todayRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
@@ -23,6 +24,10 @@ function event(type, actor, at, extra = {}){
 }
 
 function mutate(projectId, ref, updater, { completion } = {}){
+  const entity = todayRepository.get(projectId, ref);
+  if(!entity) return { ok:false, code:'not_found' };
+  const scope = entity.type === 'خرید' ? 'execution:shopping' : 'execution:today';
+  if(!canWriteProjectModule(projectId, scope)) return { ok:false, code:'forbidden' };
   const saved = todayRepository.update(projectId, ref, updater);
   if(!saved) return { ok:false, code:'not_found' };
   if(ref.kind === 'task' && completion !== undefined){

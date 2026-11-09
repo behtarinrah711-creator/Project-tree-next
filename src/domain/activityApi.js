@@ -1,3 +1,4 @@
+import { canWriteProjectModule } from '../modules/roleManagement/permissionState.js';
 import { activityRepository } from '../data/activityRepository.js';
 import { projectRepository } from '../data/projectRepository.js';
 import { getSession } from '../core/session.js';
@@ -28,6 +29,7 @@ function allow(extra = {}){
 
 function canWriteProject(project){
   if(!project) return deny('not_found', 'پروژه پیدا نشد');
+  if(!canWriteProjectModule(project.id,'activities')) return deny('forbidden','اجازه ثبت تغییرات را ندارید');
   const session = getSession();
   if(session.ready && !session.uid && project.ownerUid){
     return deny('forbidden', 'این پروژه در حالت مهمان قابل ویرایش نیست');

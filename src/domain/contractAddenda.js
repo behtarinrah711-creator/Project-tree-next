@@ -7,8 +7,9 @@ export const ADDENDUM_TYPES=Object.freeze({
 
 export function canEditContractAddenda(access){
   const permissions=access?.permissions||{};
-  return !access || access.role==='owner' || ['edit','create','full'].includes(permissions.modules?.contracts ?? permissions.contracts)
-    || (!permissions.modules && permissions.edit===true);
+  const level=permissions.modules?.contracts ?? permissions.contracts;
+  return !access || access.role==='owner' || ['edit','create','full'].includes(level)
+    || (!permissions.modules && level==null && permissions.edit===true);
 }
 
 export function parentContractOf(project,addendum){

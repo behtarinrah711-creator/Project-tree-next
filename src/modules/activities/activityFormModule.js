@@ -1,3 +1,4 @@
+import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { fitPageAboveKeyboard } from '../wbs/wbsSheet.js';
 import { projectContext } from '../../core/projectContext.js';
 import { activityApi } from '../../domain/activityApi.js';
@@ -17,7 +18,7 @@ function getProjectId(){
 
 function beginForm(activityId=null,onCreated=null,pickerMode=false){
   const projectId=getProjectId();
-  if(!projectId) return null;
+  if(!projectId || (!activityId && !canWriteProjectModule(projectId,'activities'))) return null;
   state.dirty=false;
   state.projectId=projectId;
   state.activityId=activityId;
@@ -46,6 +47,8 @@ function renderForm(activity=null){
   const input=document.createElement('input');
   input.className='internal-form-input';
   input.value=activity?.name||'';
+  const writable=canWriteProjectModule(state.projectId,'activities');
+  input.readOnly=!writable;
   if(!activity) input.placeholder='مثلاً آرماتوربندی';
   input.oninput=()=>{state.dirty=true;};
   field.append(label,input);
@@ -58,9 +61,10 @@ function renderForm(activity=null){
   save.onclick=()=>saveActivity(input,activity);
   const cancel=document.createElement('button');
   cancel.className='if-cancel';
-  cancel.textContent='انصراف';
+  cancel.textContent=writable?'انصراف':'بستن';
   cancel.onclick=()=>closeActivityForm();
-  actions.append(save,cancel);
+  if(writable) actions.appendChild(save);
+  actions.appendChild(cancel);
   releaseFormViewport?.();
   releaseFormViewport=fitPageAboveKeyboard(actions.closest('#activityFormPage'));
   document.getElementById('activityFormHeaderConfirm')?.remove();
@@ -68,7 +72,7 @@ function renderForm(activity=null){
   const confirm=document.createElement('button');
   confirm.id='activityFormHeaderConfirm';confirm.type='button';confirm.className='inner-section-action';
   confirm.textContent='تأیید';confirm.onclick=()=>save.click();
-  header?.appendChild(confirm);
+  if(writable)header?.appendChild(confirm);
   return true;
 }
 

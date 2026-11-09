@@ -1,3 +1,4 @@
+import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { todayApi, COMMENT_MIN_LENGTH, REJECTION_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
 import { contractorForItem, executionStatus, itemsForMode, remainingLabel, statusLabel, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
 import { fieldRow, openWbsSheet } from './wbsSheet.js';
@@ -73,7 +74,8 @@ function renderCard(documentRef,project,item,today,onChanged){
   const type=entity.type||item.work.type||'کار';
   const pending = item.mode==='pending';
   const currentActor=actor();
-  const assigned=isExecutionAssignee(entity,currentActor);
+  const writable=canWriteProjectModule(project.id,'execution:today');
+  const assigned=writable && isExecutionAssignee(entity,currentActor);
   const heading=documentRef.createElement('div'); heading.className='wbs-costline-work-heading today-card-heading';
   const complete=progressCircle(documentRef,entity,{pending,disabled:!assigned,onClick:()=>{
     if(pending){
@@ -102,13 +104,13 @@ function renderCard(documentRef,project,item,today,onChanged){
   else if(entity.actualStart){
     statusText=`وضعیت: ${statusLabel(status)}`;
     const cancel=linkButton(documentRef, 'today-cancel-start today-status-action wbs-costline-manual', 'لغو شروع', 'لغو شروع');
-    statusValue.appendChild(cancel);
-  } else {
+    if(assigned) statusValue.appendChild(cancel);
+  } else if(writable){
     statusValue.appendChild(linkButton(documentRef, 'today-start today-status-action wbs-costline-manual', 'شروع کار', 'شروع کار'));
   }
   const statusRow=detailRow(documentRef,statusText,statusValue); statusRow.classList.add(entity.actualStart?'is-in-progress':'is-not-started'); card.appendChild(statusRow);
   const actions=documentRef.createElement('div'); actions.className='today-task-actions';
-  const mayApprove=isExecutionApprover(entity,currentActor);
+  const mayApprove=writable && isExecutionApprover(entity,currentActor);
   if(pending){
     if(mayApprove){
       const approve=linkButton(documentRef, 'wbs-costline-manual', 'تأیید'); approve.addEventListener('click',()=>{todayApi.approve(activeProjectId,refOf(item),actor());onChanged?.();});
@@ -122,7 +124,11 @@ function renderCard(documentRef,project,item,today,onChanged){
   }
   if(actions.childElementCount) card.appendChild(detailRow(documentRef, 'تأیید', actions));
   card.appendChild(renderReports(documentRef,entity));
-  const comment=linkButton(documentRef,'wbs-costline-manual today-section-action','افزودن نظر');comment.addEventListener('click',()=>openComment(item,onChanged));card.appendChild(detailRow(documentRef,'',comment));
+  if(writable){
+    const comment=linkButton(documentRef,'wbs-costline-manual today-section-action','افزودن نظر');
+    comment.addEventListener('click',()=>openComment(item,onChanged));
+    card.appendChild(detailRow(documentRef,'',comment));
+  }
   card.appendChild(renderComments(documentRef,item,onChanged));
   card.appendChild(renderHistory(documentRef,entity));
   return card;

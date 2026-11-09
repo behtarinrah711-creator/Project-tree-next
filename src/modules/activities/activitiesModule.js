@@ -1,3 +1,4 @@
+import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { searchText } from '../../ui/catalogueSearch.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
@@ -68,7 +69,8 @@ function appendActivityRow({ list, rows, project, activity, projectId, rerender 
   });
 
   actions.append(edit,del);
-  row.append(main,actions);
+  row.append(main);
+  if(canWriteProjectModule(projectId,'activities'))row.append(actions);
   row.dataset.searchText=searchText(activity.name);
   row.addEventListener('click',()=>openActivityEditForm(activity));
   rows.push(row);
@@ -95,6 +97,8 @@ export const activitiesModule = {
     const activeId=getProjectId(projectId);
     const project=getProject(activeId);
     body.innerHTML='';
+    const add=document.getElementById('activityAddBtn');
+    if(add) add.hidden=!!project && !canWriteProjectModule(activeId,'activities');
 
     if(!project){
       body.innerHTML='<div class="mgmt-empty">برای نمایش فعالیت‌ها، یک پروژه را انتخاب کنید.</div>';

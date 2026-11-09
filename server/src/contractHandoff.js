@@ -29,7 +29,9 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       Object.assign(row,member.rows[0]);
       const financeAction=['approve_finance','reject_finance','revoke_finance'].includes(body.action);
       const reviewAction=addendum && ['approve_addendum','revoke_addendum'].includes(body.action);
-      const allowed=reviewAction?canAccessFiles(row,accountId,false,'contracts'):financeAction?(canAccessFiles(row,accountId,true,'accounting') || canAccessFiles(row,accountId,true,'accounting-contracts')):canAccessFiles(row,accountId,true,'contracts');
+      const permissions=row.permissions||{};
+      const financeModule=Object.hasOwn(permissions.modules||permissions,'accounting-contracts')?'accounting-contracts':'accounting';
+      const allowed=canAccessFiles(row,accountId,true,financeAction?financeModule:'contracts');
       if(!allowed){sendJson(response,403,{message:'اجازه تغییر قرارداد را ندارید'});return true;}
       const contract=(row.payload[collection]||[]).find(c=>String(c.id)===contractId && !c.trashed);
       const saveDraft=addendum && body.action==='save_addendum';

@@ -1,3 +1,4 @@
+import { projectPermissionState } from '../roleManagement/permissionState.js';
 import { STAGE_EXAMPLES } from '../../domain/wbs/stagePresentation.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { appRouter } from '../../core/router.js';
@@ -21,7 +22,7 @@ export default {
     body.replaceChildren();
     document.getElementById('closeProjectSettingsPage').onclick = () => appRouter.navigate(projectId, 'people');
     const project = projectRepository.find(projectId);
-    if(!project || !isProjectOwner(projectId)){
+    if(!project || !projectPermissionState(projectId,['project-settings']).visible){
       appRouter.navigate(projectId, 'people');
       return { projectId, moduleId:this.id };
     }

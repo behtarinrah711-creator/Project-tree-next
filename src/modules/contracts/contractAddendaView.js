@@ -236,7 +236,7 @@ function addendumCard(project,addendum,onChanged,finance){
   if(!finance && writable(project) && addendum.contractApproverContactIds?.length && canSubmitContract(addendum)){
     actions.append(button('ارسال برای تأیید',()=>review('submit_addendum')));
   }
-  if(!finance && canReviewContract(addendum,actor))actions.append(button('تأیید الحاقیه',()=>openConfirm('الحاقیه تأیید شود؟',()=>review('approve_addendum'),'تأیید')));
+  if(!finance && writable(project) && canReviewContract(addendum,actor))actions.append(button('تأیید الحاقیه',()=>openConfirm('الحاقیه تأیید شود؟',()=>review('approve_addendum'),'تأیید')));
   const returnForEdit=(label,action)=>openWbsSheet({title:label,historyKey:'addendum-return:'+addendum.id,
     body(root){const reason=document.createElement('textarea');reason.name='reason';reason.className='wbs-input today-textarea';root.append(fieldRow('علت برگشت',reason));},
     onSave(root){
@@ -246,7 +246,7 @@ function addendumCard(project,addendum,onChanged,finance){
     },
   });
   if(!finance){
-    if(canRevokeContractApproval(addendum,actor))actions.append(button('لغو تأیید من',()=>returnForEdit('لغو تأیید الحاقیه','revoke_addendum')));
+    if(writable(project) && canRevokeContractApproval(addendum,actor))actions.append(button('لغو تأیید من',()=>returnForEdit('لغو تأیید الحاقیه','revoke_addendum')));
     if(writable(project) && canCancelContractCompletion(addendum))actions.append(button('لغو اعلام تکمیل',()=>returnForEdit('لغو تکمیل الحاقیه','cancel_completion')));
     if(writable(project) && addendum.approvalStatus==='pending' && addendum.submittedBy?.id===actor.id){
       actions.append(button('پس‌گرفتن از تأیید',()=>returnForEdit('پس‌گرفتن الحاقیه از تأیید','withdraw_submission')));

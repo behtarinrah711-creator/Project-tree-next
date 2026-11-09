@@ -1,3 +1,4 @@
+import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { canCreateAddendumFromContract, canEditContractAddenda } from '../../domain/contractAddenda.js';
 import {renderContractFinanceReview} from './contractFinanceReviewView.js';
 import {renderContractSignedSection} from './contractSignedView.js';
@@ -136,15 +137,16 @@ export function renderContractStatusRow(c,{showBadge=true}={}){
 
 export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
   const id=p.id,actor=currentExecutionActor(p);
+  const writable=!finance && canWriteProjectModule(id,'contracts');
       const {title,meta,created}=contractRowData(id,c);
       const path=contractProjectPath(p,c);
       const row=document.createElement('article'); row.className='contract-row';
       row.dataset.searchText=normalizeContractSearch(title+' '+meta+' '+path+' '+(created ? `${created.date} ${created.time}` : ''));
       row.dataset.approvalState=contractApprovalState(c);row.dataset.reviewMine=String(canReviewContract(c,actor));
       const heading=renderContractCardHeading(p,c,{
-        onEdit:finance?undefined:()=>{if(c.status==='final' && contractApprovalState(c)==='ready'){window.KarhaLegacy?.showToast?.('برای ویرایش ابتدا اعلام تکمیل را لغو کنید');return;}if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
+        onEdit:!writable?undefined:()=>{if(c.status==='final' && contractApprovalState(c)==='ready'){window.KarhaLegacy?.showToast?.('برای ویرایش ابتدا اعلام تکمیل را لغو کنید');return;}if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
         onExport:trigger=>openContractExport(p,finance?c.accountingPackage.contract:c,{trigger,frozen:finance}),
-        onDelete:finance?undefined:()=>openConfirm('آیا از حذف این قرارداد اطمینان دارید؟',()=>{
+        onDelete:!writable?undefined:()=>openConfirm('آیا از حذف این قرارداد اطمینان دارید؟',()=>{
           const result=contractApi.trash(id,c.id);
           if(!result.ok){
             if(result.code==='in_use')window.KarhaLegacy?.showRecordDeleteBlocked?.('contract',result.refs);
@@ -166,12 +168,12 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
         const el=document.createElement('button');el.type='button';el.className='contract-review-action'+(danger?' danger':'');el.textContent=label;
         el.onclick=event=>{event.stopPropagation();handler();};statusRow.appendChild(el);
       };
-      if(canSubmitContract(c)){
+      if(writable && canSubmitContract(c)){
         const submitLabel=contractApprovalState(c)==='unapproved'?'ارسال مجدد برای تأیید':'ارسال برای تأیید';
         if(c.workTaskId || c.contractApproverContactIds?.length)button(submitLabel,()=>run('submit'));
         else button(submitLabel,()=>openStaticChoicePicker('انتخاب مسئول تأیید','مخاطبین',(p.contacts||[]).filter(x=>!x.trashed).map(x=>({value:x.id,label:[x.firstName,x.lastName].filter(Boolean).join(' ')||x.name||'مخاطب'})),c.approvalContactId,value=>run('submit',{approverId:value})));
       }
-      if(canCancelContractCompletion(c) || (contractApprovalState(c)==='pending' && c.submittedBy?.id===actor.id)){
+      if(writable && (canCancelContractCompletion(c) || (contractApprovalState(c)==='pending' && c.submittedBy?.id===actor.id))){
         const action=contractApprovalState(c)==='pending'?'withdraw_submission':'cancel_completion';
         button(action==='withdraw_submission'?'پس‌گرفتن از تأیید':'لغو اعلام تکمیل',()=>openWbsSheet({
           title:action==='withdraw_submission'?'پس‌گرفتن از تأیید':'لغو اعلام تکمیل',saveLabel:'ثبت برگشت',historyKey:'contract-cancel-completion:'+c.id,
@@ -179,14 +181,14 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
           onSave:root=>run(action,{reason:root.querySelector('[name="completionReason"]').value})
         }),true);
       }
-      if(canRevokeContractApproval(c,actor)){
+      if(writable && canRevokeContractApproval(c,actor)){
         button('لغو تأیید من',()=>openWbsSheet({
           title:'لغو تأیید قرارداد',saveLabel:'ثبت لغو تأیید',historyKey:'contract-revoke:'+c.id,
           body(root){const reason=document.createElement('textarea');reason.className='wbs-input today-textarea';reason.name='revocationReason';reason.required=true;reason.minLength=REJECTION_MIN_LENGTH;root.appendChild(fieldRow('علت لغو تأیید (الزامی)',reason));},
           onSave:root=>run('revoke',{reason:root.querySelector('[name="revocationReason"]').value})
         }),true);
       }
-      if(canReviewContract(c,actor)){
+      if(writable && canReviewContract(c,actor)){
         button('تأیید',()=>openConfirm('این قرارداد تأیید شود؟',()=>run('approve'),'تأیید'));
       }
       if(canCreateAddendumFromContract(c) && canEditContractAddenda(window.KarhaSaosaWorkspaceAccess?.[id])){
@@ -218,7 +220,11 @@ export const contractsModule={
   render(explicitProjectId=null){
     const id=resolveProjectId(explicitProjectId),p=project(id),body=document.getElementById('contractsPageBody');
     if(!body)return;
-    const add=document.getElementById('contractAddBtn'); if(add) add.onclick=()=>legacy('openContractForm',null);
+    const add=document.getElementById('contractAddBtn');
+    if(add){
+      add.hidden=!!p && !canWriteProjectModule(id,'contracts');
+      add.onclick=add.hidden?null:()=>legacy('openContractForm',null);
+    }
     closeContractFilter?.();closeContractFilter=null;
     body.innerHTML='';
     if(!p){body.innerHTML='<div class="contract-empty">ابتدا یک پروژه را انتخاب کنید.</div>';return;}
@@ -257,7 +263,7 @@ export const contractsModule={
       reset.remove();if(view.mine)filterWrap.appendChild(reset);
     };
     reset.onclick=()=>{view.mine=false;view.statuses=Object.keys(approvalLabels);closeFilter();filterLabel();applyFilters();};
-    const mine=contracts.filter(c=>canReviewContract(c,actor)).length;
+    const mine=canWriteProjectModule(id,'contracts') ? contracts.filter(c=>canReviewContract(c,actor)).length : 0;
     if(mine){
       const banner=document.createElement('button');banner.type='button';banner.className='contract-review-banner';banner.textContent=new Intl.NumberFormat('fa-IR').format(mine)+' قرارداد منتظر تأیید شما ‹';
       banner.onclick=()=>{view.mine=true;view.statuses=['pending'];closeFilter();filterLabel();applyFilters();};body.appendChild(banner);
@@ -293,10 +299,13 @@ export const contractsModule={
   renderTemplates(explicitProjectId=null){
     const id=resolveProjectId(explicitProjectId),p=project(id),body=document.getElementById('contractTemplatesPageBody'); if(!body)return; body.innerHTML='';
     if(!p){body.innerHTML='<div class="contract-empty">ابتدا یک پروژه را انتخاب کنید.</div>';return;}
+    const writable=canWriteProjectModule(id,'contracts');
+    const add=document.getElementById('contractTemplateAddBtn');
+    if(add)add.hidden=!writable;
     const templates=list(p,'contractTemplates'),head=document.createElement('div');head.className='contract-list-head';head.innerHTML=`<span class="title">قالب‌های قرارداد این پروژه</span><span class="mgmt-count">${new Intl.NumberFormat('fa-IR').format(templates.length)}</span>`;body.appendChild(head);
     if(!templates.length){const e=document.createElement('div');e.className='contract-empty';e.textContent='هنوز قالب قراردادی ثبت نشده است.';body.appendChild(e);return;}
     const listWrap=document.createElement('div');listWrap.className='contract-template-list';const rows=[];const search=searchInput('جستجوی قالب قرارداد…',q=>{const matches=rows.filter(row=>row.dataset.searchText.includes(normalizeContractSearch(q)));listWrap.replaceChildren(...matches);if(!matches.length){const empty=document.createElement('div');empty.className='contract-empty';empty.textContent='قالب قراردادی با این جست‌وجو یافت نشد.';listWrap.appendChild(empty);}});body.append(search.wrap,listWrap);
-    templates.forEach(t=>{const title=t.title||'قرارداد',meta=[new Intl.NumberFormat('fa-IR').format(Array.isArray(t.items)?t.items.length:0)+' ماده اصلی',t.isDraft||t.status==='draft'?'پیش‌نویس':''].filter(Boolean).join(' · ');const row=document.createElement('div');row.className='contract-template-row';row.dataset.searchText=normalizeContractSearch(title+' '+meta);const main=document.createElement('div');main.className='contract-template-main';const tt=document.createElement('div');tt.className='contract-template-title';tt.textContent=title;const mm=document.createElement('div');mm.className='contract-template-meta';mm.textContent=meta;main.append(tt,mm);const actions=document.createElement('div');actions.className='contract-template-actions';const del=document.createElement('button');del.type='button';del.className='contract-template-action danger';del.title='حذف';del.textContent='×';del.onclick=e=>{e.preventDefault();e.stopPropagation();openConfirm('آیا از حذف این قالب قرارداد اطمینان دارید؟',()=>{if(softDeleteTemplate(id,t.id))this.renderTemplates(id);},'حذف');};actions.appendChild(del);row.append(main,actions);row.onclick=()=>legacy('openContractTemplateForm',t.id);rows.push(row);listWrap.appendChild(row);});
+    templates.forEach(t=>{const title=t.title||'قرارداد',meta=[new Intl.NumberFormat('fa-IR').format(Array.isArray(t.items)?t.items.length:0)+' ماده اصلی',t.isDraft||t.status==='draft'?'پیش‌نویس':''].filter(Boolean).join(' · ');const row=document.createElement('div');row.className='contract-template-row';row.dataset.searchText=normalizeContractSearch(title+' '+meta);const main=document.createElement('div');main.className='contract-template-main';const tt=document.createElement('div');tt.className='contract-template-title';tt.textContent=title;const mm=document.createElement('div');mm.className='contract-template-meta';mm.textContent=meta;main.append(tt,mm);const actions=document.createElement('div');actions.className='contract-template-actions';const del=document.createElement('button');del.type='button';del.className='contract-template-action danger';del.title='حذف';del.textContent='×';del.onclick=e=>{e.preventDefault();e.stopPropagation();openConfirm('آیا از حذف این قالب قرارداد اطمینان دارید؟',()=>{if(softDeleteTemplate(id,t.id))this.renderTemplates(id);},'حذف');};actions.appendChild(del);row.append(main);if(writable)row.append(actions);row.onclick=()=>writable?legacy('openContractTemplateForm',t.id):openContractPreview(p,t,{trigger:row,frozen:true});rows.push(row);listWrap.appendChild(row);});
   }
 };
 

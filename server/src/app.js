@@ -79,7 +79,9 @@ function invitationAccess(permissions){
 
 function modulePermissions(permissions){
   const modules=permissions?.modules;
-  return modules && typeof modules==='object' && !Array.isArray(modules) ? modules : null;
+  if(modules && typeof modules==='object' && !Array.isArray(modules)) return modules;
+  const flatLevels=Object.values(permissions||{});
+  return flatLevels.some(value=>['none','view','edit','create','full'].includes(value)) ? permissions : null;
 }
 
 export function canWriteProjectTasks(permissions){
@@ -125,6 +127,7 @@ function mergeTaskCollection(currentItems=[],incomingItems=[],allowDelete=false)
 
 function mergeMemberContracts(current,incoming,tasks,permissions,actor=null){
   const level=modulePermissions(permissions)?.contracts;
+  if(level==='view' || level==='none') return current || [];
   const contractWrite=['edit','create','full'].includes(level);
   const taskWrite=canWriteProjectTasks(permissions);
   const linkedTasks=new Map();
@@ -229,7 +232,7 @@ export function mergeSharedProjectPayload(current,incoming,permissions,actor=nul
       .filter(([,module])=>['edit','create','full'].includes(modules[module]))
       .map(([field,module])=>[field,mergeMemberCatalogue(current?.[field],incoming?.[field],modules[module])])),
     contracts:mergeMemberContracts(current?.contracts,incoming?.contracts,tasks,permissions,actor),
-    contractTemplates:canMutateSharedProject(permissions)
+    contractTemplates:!['view','none'].includes(modules.contracts) && canMutateSharedProject(permissions)
       ? mergeProjectTemplates(current?.contractTemplates,incoming?.contractTemplates)
       : current?.contractTemplates || [],
     ...(costline ? {
@@ -283,6 +286,41 @@ const APPROVER_EXECUTION_FIELDS=new Set([
   'returnedToTodayOn','progress','status','executionComments','executionHistory','updatedAt',
 ]);
 
+const EXECUTION_MUTATION_FIELDS=[
+  'actualStart','actualFinishDay','workflowStatus','executionReports','executionComments','executionHistory',
+  'completed','completionState','completionSubmittedAt','completionSubmittedBy','approvedAt','approvedBy',
+  'progressBeforeApproval','returnedToTodayOn',
+];
+
+function canWriteExecutionItem(permissions,item){
+  const modules=modulePermissions(permissions);
+  if(!modules) return permissions?.edit===true;
+  const scope=item?.type==='خرید'?'execution:shopping':'execution:today';
+  return ['edit','create','full'].includes(modules[scope]);
+}
+
+export function hasDeniedExecutionChanges(current,incoming,permissions){
+  const meaningful=value=>Array.isArray(value)?value.length>0:value!=null && value!=='';
+  const comparable=(item,key)=>{
+    const value=item?.[key];
+    if(key==='workflowStatus' && ['not_started','incomplete'].includes(value))return null;
+    if((key==='completionState' && value==='incomplete') || (key==='completed' && value===false))return null;
+    return meaningful(value)?value:null;
+  };
+  const changed=(previous,next)=>EXECUTION_MUTATION_FIELDS.some(key=>
+    JSON.stringify(comparable(previous,key))!==JSON.stringify(comparable(next,key)));
+  const check=(before=[],after=[])=>{
+    const records=new Map(before.filter(Boolean).map(item=>[String(item.id),item]));
+    return after.some(item=>{
+      if(!item)return false;
+      const previous=records.get(String(item.id));
+      return (changed(previous,item) && (!canWriteExecutionItem(permissions,previous||item) || !canWriteExecutionItem(permissions,item)))
+        || check(previous?.subtasks||[],item.subtasks||[]) || check(previous?.workTasks||[],item.workTasks||[]);
+    });
+  };
+  return check(current?.tasks||[],incoming?.tasks||[]);
+}
+
 function executionContactIds(project,phone){
   const ids=new Set((project?.contacts||[]).filter(contact=>{
     const phones=Array.isArray(contact?.phones)?contact.phones:[contact?.phone];
@@ -299,8 +337,9 @@ function mergeAssignedExecutionItems(currentItems,incomingItems,contactIds,state
   return (currentItems||[]).map(current=>{
     const incoming=incomingById.get(String(current.id));
     if(!incoming){state.invalid=true;return current;}
-    const assigned=Boolean(current.assigneeContactId)&&contactIds.has(String(current.assigneeContactId));
-    const approver=current.approvalContactId&&contactIds.has(String(current.approvalContactId));
+    const permitted=canWriteExecutionItem(state.permissions,current);
+    const assigned=permitted && Boolean(current.assigneeContactId)&&contactIds.has(String(current.assigneeContactId));
+    const approver=permitted && current.approvalContactId&&contactIds.has(String(current.approvalContactId));
     const allowed=new Set([...(assigned?ASSIGNED_EXECUTION_FIELDS:[]),...(approver?APPROVER_EXECUTION_FIELDS:[])]);
     const next={...current};
     const keys=new Set([...Object.keys(current),...Object.keys(incoming)]);
@@ -316,8 +355,8 @@ function mergeAssignedExecutionItems(currentItems,incomingItems,contactIds,state
   });
 }
 
-export function mergeAssignedExecutionPayload(current,incoming,phone){
-  const state={changed:false,invalid:false};
+export function mergeAssignedExecutionPayload(current,incoming,phone,permissions){
+  const state={changed:false,invalid:false,permissions};
   const tasks=mergeAssignedExecutionItems(current?.tasks||[],incoming?.tasks||[],executionContactIds(current,phone),state);
   return {ok:state.changed&&!state.invalid,project:{...current,tasks}};
 }
@@ -528,8 +567,11 @@ async function saveWorkspace(pool, accountId, snapshot){
           continue;
         }
         const permissions=membership.rows[0].permissions||{};
+        if(hasDeniedExecutionChanges(currentPayload,project,permissions)){
+          const error=new Error('forbidden_execution_write');error.statusCode=403;throw error;
+        }
         const assignedExecution=!canMutateSharedProject(permissions)
-          ? mergeAssignedExecutionPayload(currentPayload,project,membership.rows[0].phone)
+          ? mergeAssignedExecutionPayload(currentPayload,project,membership.rows[0].phone,permissions)
           : null;
         if(assignedExecution&&!assignedExecution.ok){const error=new Error('forbidden_project');error.statusCode=403;throw error;}
         if(!assignedExecution?.ok && projectTasksChanged(currentPayload,project) && !canWriteProjectTasks(permissions)){

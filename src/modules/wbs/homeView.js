@@ -1,3 +1,4 @@
+import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { buildTimelineRows } from './timelineRows.js';
 import { openWorkCreationSheet } from './workCreationSheet.js';
 import { openStageEditSheet as openStageEditor } from './stageEditSheet.js';
@@ -293,7 +294,7 @@ function openCreateWorkSheet(parentId = null){
 
 export function openProjectFinishSheet(){
   const project = projectOf();
-  if(!project) return;
+  if(!project || !canWriteProjectModule(project.id,'reports:delay')) return;
   openWbsSheet({
     title:'موعد پایان پروژه',
     saveLabel:'ذخیره',
@@ -304,6 +305,7 @@ export function openProjectFinishSheet(){
       root.appendChild(note);
     },
     onSave(root){
+      if(!canWriteProjectModule(project.id,'reports:delay'))return false;
       projectRepository.updateProject(project.id, current => ({ ...current, plannedFinish:root.querySelector('[name="plannedFinish"]').dataset.value || '' }));
       render(); return true;
     },

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {stampContractCreation,canDeleteProjectTasks,canMutateSharedProject,canWriteProjectCostline,canWriteProjectTasks,mergeAssignedExecutionPayload,mergeSharedProjectPayload,projectFundingChanged,projectPayloadChanged,projectTasksChanged,projectTasksDeleted} from '../src/app.js';
+import {stampContractCreation,canDeleteProjectTasks,canMutateSharedProject,canWriteProjectCostline,canWriteProjectTasks,hasDeniedExecutionChanges,mergeAssignedExecutionPayload,mergeSharedProjectPayload,projectFundingChanged,projectPayloadChanged,projectTasksChanged,projectTasksDeleted} from '../src/app.js';
 
 test('planning and execution write permissions authorize shared task mutations',()=>{
   assert.equal(canWriteProjectTasks({modules:{
@@ -70,16 +70,21 @@ test('cost estimate members save shared receipts without gaining unrelated proje
   assert.equal(merged.fundingAllocations[0].amount,20);
 });
 
-test('assigned member can update only execution fields without general module write access',()=>{
+test('assigned member needs execution write permission and can change only execution fields',()=>{
   const current={id:'p1',name:'پروژه',contacts:[{id:'c1',phones:['09120000000']}],tasks:[{id:'w1',text:'کار',workTasks:[{id:'t1',title:'آرماتوربندی',assigneeContactId:'c1',executionHistory:[]}]}]};
   const incoming=structuredClone(current);
   incoming.tasks[0].workTasks[0].actualStart='1405/07/16';
   incoming.tasks[0].workTasks[0].executionHistory=[{type:'started'}];
-  const allowed=mergeAssignedExecutionPayload(current,incoming,'09120000000');
+  const view={modules:{'execution:today':'view','execution:shopping':'create','planning:tree':'create'}};
+  const write={modules:{'execution:today':'create'}};
+  assert.equal(mergeAssignedExecutionPayload(current,incoming,'09120000000',view).ok,false);
+  assert.equal(hasDeniedExecutionChanges(current,incoming,view),true);
+  assert.equal(hasDeniedExecutionChanges(current,incoming,write),false);
+  const allowed=mergeAssignedExecutionPayload(current,incoming,'09120000000',write);
   assert.equal(allowed.ok,true);
   assert.equal(allowed.project.tasks[0].workTasks[0].actualStart,'1405/07/16');
   incoming.tasks[0].workTasks[0].title='تغییر غیرمجاز';
-  assert.equal(mergeAssignedExecutionPayload(current,incoming,'09120000000').ok,false);
+  assert.equal(mergeAssignedExecutionPayload(current,incoming,'09120000000',write).ok,false);
 });
 
 test('assigned member report survives harmless local project metadata differences',()=>{
@@ -89,7 +94,7 @@ test('assigned member report survives harmless local project metadata difference
   incoming.projectMembers=[...incoming.projectMembers,{mobile:'09000000000',status:'invited'}];
   incoming.tasks[0].workTasks[0].executionReports=[{id:'r1',description:'گزارش مسئول',createdBy:{id:'account-1',name:'مهندس احمدی'},createdAt:10}];
   incoming.tasks[0].workTasks[0].executionHistory=[{type:'report_created',at:10}];
-  const result=mergeAssignedExecutionPayload(current,incoming,'09120000000');
+  const result=mergeAssignedExecutionPayload(current,incoming,'09120000000',{modules:{'execution:today':'create'}});
   assert.equal(result.ok,true);
   assert.equal(result.project.name,'نسخه سرور');
   assert.equal(result.project.projectMembers.length,1);
@@ -193,4 +198,18 @@ test('shared catalogue writes follow each module’s access and preserve newer r
   assert.equal(mergeSharedProjectPayload(current,deletion,{modules:{people:'create'}}).contacts[0].trashed,undefined);
   assert.equal(mergeSharedProjectPayload(current,deletion,{modules:{people:'full'}}).contacts[0].trashed,true);
   assert.equal(canMutateSharedProject({modules:{activities:'full'}}),true);
+});
+
+test('contract view permission takes precedence over write permission for a linked work item',()=>{
+  const tasks=[{id:'w',workTasks:[{id:'t',hasContract:true}]}];
+  const contracts=[{id:'c',projectItemId:'w',workTaskId:'t',status:'draft',amount:100,updatedAt:1}];
+  const contractTemplates=[{id:'template',title:'Original',updatedAt:1}];
+  const current={tasks,contracts,contractTemplates};
+  const incoming={...current,
+    contracts:[{...contracts[0],amount:200,updatedAt:2}],
+    contractTemplates:[{...contractTemplates[0],title:'Edited',updatedAt:2}],
+  };
+  const result=mergeSharedProjectPayload(current,incoming,{modules:{'planning:tree':'full',contracts:'view'}});
+  assert.deepEqual(result.contracts,contracts);
+  assert.deepEqual(result.contractTemplates,contractTemplates);
 });
