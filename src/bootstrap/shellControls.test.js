@@ -345,3 +345,43 @@ test('Saosa authenticated empty-project state keeps only the global drawer entry
   assert.match(css, /#drawerOverlay #drawerProjectsBtn\{[\s\S]*?font-size:14px;/);
   assert.match(html, /id="drawerAddProjectBtn"[^>]*>\+ پروژه جدید<\/button>/);
 });
+
+test('the bell restores pending approvals from the workspace and updates after approval',async()=>{
+  const h=harness({
+    hostname:'saosa.ir',
+    saosaSession:{phone:'09120000000',token:'token',expiresAt:Date.now()+60_000},
+  });
+  const contract={
+    id:'addendum',parentContractId:'contract',status:'final',approvalStatus:'pending',
+    approvalContactIds:['reviewer'],approvedContactIds:[],
+  };
+  const project={id:'p',contacts:[{id:'reviewer',phones:['09120000000']}],contractAddenda:[contract]};
+  let onPersist;
+  h.windowRef.KarhaAppData={
+    getActiveTab:()=>project.id,
+    getProjects:()=>[project],
+    subscribePersist(listener){onPersist=listener;},
+  };
+  h.elements.notificationBadge=element('notificationBadge');
+  let resolveInvitations;
+  h.windowRef.fetch=()=>new Promise(resolve=>{resolveInvitations=resolve;});
+  const previous=globalThis.window;
+  globalThis.window=h.windowRef;
+  try{
+    bindShellControls(h);
+    await import('../modules/notifications/pendingApprovals.js');
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(h.elements.notificationBadge.hidden,false);
+    assert.equal(h.elements.notificationBadge.textContent,'۱');
+    resolveInvitations({ok:true,json:async()=>({items:[]})});
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(h.elements.notificationBadge.textContent,'۱');
+    contract.approvedContactIds=['reviewer'];
+    onPersist();
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(h.elements.notificationBadge.hidden,true);
+  }finally{
+    if(previous)globalThis.window=previous;
+    else delete globalThis.window;
+  }
+});

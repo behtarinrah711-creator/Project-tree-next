@@ -100,8 +100,8 @@ test('saved addenda use the contract card layout and their own status, number an
     project.contractAddenda=[ready,pending];
     const body=make('div');
     renderContractAddenda(body,'p');
-    const [banner,list]=body.children;
-    assert.equal(banner.textContent,'۱ الحاقیه منتظر تأیید شما ‹');
+    const [list]=body.children;
+    assert.equal(body.children.length,1);
     assert.equal(list.children.length,2);
     const readyBadge=list.children[0].children[1].children[0];
     assert.equal(readyBadge.textContent,'وضعیت: در انتظار تأیید');
@@ -115,13 +115,10 @@ test('saved addenda use the contract card layout and their own status, number an
     };
     assert.deepEqual(menuActions(legacyCard),['ویرایش','خروجی','حذف']);
     assert.deepEqual(menuActions(list.children[1]),['خروجی']);
-    banner.onclick();
-    assert.equal(body.children[1].children.length,1);
-    assert.ok(body.children[1].children[0].children[2].children.some(node=>node.textContent==='تأیید الحاقیه'));
-    const withdraw=body.children[1].children[0].children[1].children.find(node=>node.textContent==='× پس گرفتن از مسئول تأیید');
+    const pendingCard=list.children[1];
+    assert.ok(!pendingCard.children.some(row=>row.children.some(node=>node.textContent==='تأیید الحاقیه')));
+    const withdraw=pendingCard.children[1].children.find(node=>node.textContent==='× پس گرفتن از مسئول تأیید');
     assert.ok(withdraw?.className.includes('danger'));
-    body.children[0].onclick();
-    assert.equal(body.children[1].children.length,2);
     window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'view'}}}};
     renderContractAddenda(body,'p');
     assert.equal(body.children.length,1);
@@ -132,8 +129,8 @@ test('saved addenda use the contract card layout and their own status, number an
     project.contacts[0].name='مسئول دوم';
     project.contractAddenda=[{...pending,approvalContactIds:['first','reviewer-contact'],approvedContactIds:['first']}];
     renderContractAddenda(body,'p');
-    assert.equal(body.children[0].textContent,'۱ الحاقیه منتظر تأیید شما ‹');
-    const card=body.children[1].children[0];
+    assert.equal(body.children.length,1);
+    const card=body.children[0].children[0];
     assert.deepEqual(card.children.find(node=>node.className.includes('contract-addendum-reviewers')).children.map(node=>node.textContent),
       ['مسئول اول · تأیید کرد','مسئول دوم · در انتظار تأیید']);
     const approvalStep=card.children.find(node=>node.className==='contract-progress').children.find(node=>node.dataset.step==='approved');

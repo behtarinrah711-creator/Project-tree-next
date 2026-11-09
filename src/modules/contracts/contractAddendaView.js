@@ -1,6 +1,6 @@
 import { ADDENDUM_TYPES, addendumAmount, addendumReviewers, canDeleteAddendumRecord, canDeleteContractAddenda, canEditAddendumRecord, canEditContractAddenda, parentContractOf } from '../../domain/contractAddenda.js';
 import { syncContractPartyData } from '../../domain/contractPartyData.js';
-import { approvedContractContactIds, contractApproverIds, contractApprovalState, canCancelContractCompletion, canReviewContract, canRevokeContractApproval, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
+import { approvedContractContactIds, contractApproverIds, contractApprovalState, canCancelContractCompletion, canRevokeContractApproval, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
 import { isAddendumVisibleInFinance } from '../../domain/contractHandoff.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { formatJalaliDisplay, todayJalaliStr } from '../../ui/jalali.js';
@@ -243,7 +243,6 @@ function addendumCard(project,addendum,onChanged,finance){
     renderContractSignedSection(project,addendum,{finance,inlineActions:actions});
   }
   if(parent)toolbar.append(button('مشاهده قرارداد اصلی',trigger=>openContractPreview(project,parent,{trigger,frozen:finance || parent===frozenParent})));
-  if(!finance && writable(project) && canReviewContract(addendum,actor))actions.append(button('تأیید الحاقیه',()=>openConfirm('الحاقیه تأیید شود؟',()=>review('approve_addendum'),'تأیید')));
   const returnForEdit=(label,action)=>openWbsSheet({title:label,historyKey:'addendum-return:'+addendum.id,
     body(root){const reason=document.createElement('textarea');reason.name='reason';reason.className='wbs-input today-textarea';root.append(fieldRow('علت برگشت',reason));},
     onSave(root){
@@ -313,27 +312,20 @@ export function openAddendumForContract(projectId,contractId){
   openAddendumForm(project,contract,null,()=>{});
 }
 
-export function renderContractAddenda(body,projectId,{finance=false,onChanged,reviewMine=false}={}){
+export function renderContractAddenda(body,projectId,{finance=false,onChanged}={}){
   const project=projectRepository.find(projectId);
   if(!project)return;
-  const refresh=onChanged||(()=>renderContractAddenda(body,projectId,{finance,reviewMine}));
+  const refresh=onChanged||(()=>renderContractAddenda(body,projectId,{finance}));
   const records=(project.contractAddenda||[]).filter(row=>!row.trashed && (!finance || isAddendumVisibleInFinance(row)));
   const section=document.createElement('section');section.className=finance?'contract-list':'contract-list contract-addenda-list';
   if(finance){
     if(!records.length)return;
     const title=document.createElement('h3');title.textContent='الحاقیه‌ها';section.append(title);
   }else body.replaceChildren();
-  const actor=!finance && writable(project)?currentExecutionActor(project):null;
-  const myReviews=actor?records.filter(record=>canReviewContract(record,actor)):[];
-  if(myReviews.length){
-    const label=reviewMine?'نمایش همه الحاقیه‌ها ×':number(myReviews.length)+' الحاقیه منتظر تأیید شما ‹';
-    body.append(button(label,()=>renderContractAddenda(body,projectId,{onChanged,reviewMine:!reviewMine}),'contract-review-banner'));
-  }
   if(!records.length){
     const empty=document.createElement('p');empty.className='contract-empty';empty.textContent='هنوز الحاقیه‌ای ثبت نشده است.';
     section.append(empty);
   }
-  const visibleRecords=reviewMine && myReviews.length?myReviews:records;
-  for(const record of [...visibleRecords].sort((a,b)=>b.createdAt-a.createdAt))section.append(addendumCard(project,record,refresh,finance));
+  for(const record of [...records].sort((a,b)=>b.createdAt-a.createdAt))section.append(addendumCard(project,record,refresh,finance));
   body.append(section);
 }

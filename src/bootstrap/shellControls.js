@@ -313,22 +313,48 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
     windowRef.KarhaApp?.router?.sync?.();
   });
 
-  const syncNotificationBadge = async user => {
-    const badge=byId(documentRef,'notificationBadge');
+  let notificationUser = null;
+  let invitationCount = 0;
+  let approvalCounter;
+  let badgeRevision = 0;
+  const renderNotificationBadge = async () => {
+    const badge = byId(documentRef,'notificationBadge');
     if(!badge) return;
-    const render=count=>{
-      const value=Math.max(0,Number(count)||0);
-      badge.hidden=value===0;
-      badge.textContent=value>99?'۹۹+':value.toLocaleString('fa-IR');
-      notificationsTrigger?.setAttribute?.('aria-label',value?`اعلان‌ها، ${value} خوانده‌نشده`:'اعلان‌ها');
-    };
-    if(!user || !isSaosaHost(windowRef)){render(0);return;}
-    const session=readSaosaSession(windowRef);render(session?.pendingInvitationCount || 0);
-    if(!session?.token || !windowRef.fetch) return;
+    const revision = ++badgeRevision;
+    const store = windowRef.KarhaAppData;
+    const projectId = store?.getActiveTab?.();
+    const project = projectId && store?.getProjects?.()?.find(row=>String(row.id)===String(projectId));
+    let approvals = 0;
+    if(notificationUser && project){
+      try{
+        approvalCounter ||= import('../modules/notifications/pendingApprovals.js');
+        const {pendingApprovals} = await approvalCounter;
+        approvals = pendingApprovals(project,windowRef).count;
+      }catch{}
+    }
+    if(revision!==badgeRevision) return;
+    const value = invitationCount + approvals;
+    badge.hidden = value===0;
+    badge.textContent = value>99?'۹۹+':value.toLocaleString('fa-IR');
+    const counts = [];
+    if(approvals)counts.push(approvals.toLocaleString('fa-IR')+' در انتظار تأیید');
+    if(invitationCount)counts.push(invitationCount.toLocaleString('fa-IR')+' دعوت‌نامه');
+    notificationsTrigger?.setAttribute?.('aria-label',['اعلان‌ها',...counts].join('، '));
+  };
+
+  const syncNotificationBadge = async user => {
+    notificationUser = user;
+    const session = user && isSaosaHost(windowRef) ? readSaosaSession(windowRef) : null;
+    invitationCount = Math.max(0,Number(session?.pendingInvitationCount)||0);
+    void renderNotificationBadge();
+    if(!byId(documentRef,'notificationBadge') || !session?.token || !windowRef.fetch) return;
     try{
-      const response=await windowRef.fetch('/api/v1/invitations',{headers:{authorization:`Bearer ${session.token}`}});
-      const payload=await response.json().catch(()=>({}));
-      if(response.ok) render(Array.isArray(payload.items)?payload.items.length:0);
+      const response = await windowRef.fetch('/api/v1/invitations',{headers:{authorization:`Bearer ${session.token}`}});
+      const payload = await response.json().catch(()=>({}));
+      if(response.ok && readSaosaSession(windowRef)?.token===session.token){
+        invitationCount = Array.isArray(payload.items)?payload.items.length:0;
+        void renderNotificationBadge();
+      }
     }catch{}
   };
 
@@ -409,6 +435,20 @@ function installUnifiedHeader({windowRef, documentRef, drawer, avatar, signin}){
   windowRef.addEventListener?.('karha:saosa-session-synced', syncAccountDrawerImmediately);
   windowRef.addEventListener?.('karha:projects-recovered', syncProjectHeader);
   windowRef.addEventListener?.('karha:workspace-route-synced', () => windowRef.setTimeout(syncProjectHeader, 0));
+  const refreshBadge = () => { void renderNotificationBadge(); };
+  let subscribedToBadgeUpdates = false;
+  const subscribeBadgeUpdates = () => {
+    if(!subscribedToBadgeUpdates && windowRef.KarhaAppData?.subscribePersist){
+      windowRef.KarhaAppData.subscribePersist(refreshBadge);
+      subscribedToBadgeUpdates = true;
+    }
+    refreshBadge();
+  };
+  windowRef.addEventListener?.('karha:ready', subscribeBadgeUpdates);
+  windowRef.addEventListener?.('karha:project-context-changed', refreshBadge);
+  windowRef.addEventListener?.('karha:projects-recovered', refreshBadge);
+  windowRef.addEventListener?.('karha:contract-handoff', refreshBadge);
+  subscribeBadgeUpdates();
   syncProjectHeader();
 
   return { syncProjectHeader, syncAccountDrawerImmediately };
