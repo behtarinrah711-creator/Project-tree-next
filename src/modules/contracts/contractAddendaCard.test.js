@@ -8,6 +8,7 @@ const make=tag=>({tag,children:[],dataset:{},className:'',
   prepend(child){this.children=[child,...this.children.filter(node=>node!==child)];},
   replaceChildren(...children){this.children=children;},
   setAttribute(){},
+  remove(){},
 });
 
 test('saved addenda use the contract card layout and their own status, number and history',async()=>{
@@ -105,8 +106,15 @@ test('saved addenda use the contract card layout and their own status, number an
     const readyBadge=list.children[0].children[1].children[0];
     assert.equal(readyBadge.textContent,'وضعیت: در انتظار تأیید');
     assert.ok(readyBadge.className.includes('is-incomplete'));
-    assert.ok(list.children[0].children[2].children.some(node=>node.textContent==='اعلام تکمیل'));
-    assert.ok(!list.children[0].children[2].children.some(node=>node.textContent==='تأیید الحاقیه'));
+    const legacyCard=list.children[0];
+    assert.ok(!legacyCard.children.some(row=>row.children.some(node=>['اعلام تکمیل','تأیید الحاقیه'].includes(node.textContent))));
+    const menuActions=card=>{
+      const wrap=card.children[0].children[2].children[0];
+      wrap.children[0].onclick({stopPropagation(){}});
+      return wrap.children.find(node=>node.className==='nb-project-menu').children.map(node=>node.title);
+    };
+    assert.ok(menuActions(legacyCard).includes('ویرایش'));
+    assert.ok(!menuActions(list.children[1]).includes('ویرایش'));
     banner.onclick();
     assert.equal(body.children[1].children.length,1);
     assert.ok(body.children[1].children[0].children[2].children.some(node=>node.textContent==='تأیید الحاقیه'));
@@ -117,6 +125,7 @@ test('saved addenda use the contract card layout and their own status, number an
     window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'view'}}}};
     renderContractAddenda(body,'p');
     assert.equal(body.children.length,1);
+    assert.ok(!menuActions(body.children[0].children[0]).includes('ویرایش'));
     assert.ok(body.children[0].children.every(card=>!card.children.some(row=>row.children.some(node=>node.textContent==='تأیید الحاقیه'))));
   }finally{[globalThis.window,globalThis.document,projectRepository.find,contactApi.lookup]=old;}
 });

@@ -1,6 +1,6 @@
-import { ADDENDUM_TYPES, addendumAmount, addendumReviewers, canEditContractAddenda, parentContractOf } from '../../domain/contractAddenda.js';
+import { ADDENDUM_TYPES, addendumAmount, addendumReviewers, canEditAddendumRecord, canEditContractAddenda, parentContractOf } from '../../domain/contractAddenda.js';
 import { syncContractPartyData } from '../../domain/contractPartyData.js';
-import { canCancelContractCompletion, canReviewContract, canRevokeContractApproval, canSubmitContract, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
+import { canCancelContractCompletion, canReviewContract, canRevokeContractApproval, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
 import { isAddendumVisibleInFinance } from '../../domain/contractHandoff.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { formatJalaliDisplay, todayJalaliStr } from '../../ui/jalali.js';
@@ -209,7 +209,7 @@ function addendumCard(project,addendum,onChanged,finance){
   const heading=renderContractCardHeading(project,{
     ...parent,contractNo:addendum.contractNo,createdAt:addendum.createdAt,
   },{
-    onEdit:!finance && parent && addendum.isDraft && writable(project)
+    onEdit:!finance && parent && canEditAddendumRecord(addendum) && writable(project)
       ? ()=>openAddendumForm(project,parent,addendum,onChanged) : undefined,
     onExport:trigger=>openContractExport(project,documentAddendum,{
       trigger,markup:'<section class="contract-export-document" dir="rtl">'+
@@ -239,9 +239,6 @@ function addendumCard(project,addendum,onChanged,finance){
     try{await saveContractHandoff(project.id,addendum,action,{reason});onChanged();return true;}
     catch(error){toast(error.message);return false;}finally{busy=false;}
   };
-  if(!finance && writable(project) && addendum.contractApproverContactIds?.length && canSubmitContract(addendum)){
-    actions.append(button('اعلام تکمیل',()=>confirmCompletion(true,()=>review('submit_addendum'))));
-  }
   if(!finance && writable(project) && canReviewContract(addendum,actor))actions.append(button('تأیید الحاقیه',()=>openConfirm('الحاقیه تأیید شود؟',()=>review('approve_addendum'),'تأیید')));
   const returnForEdit=(label,action)=>openWbsSheet({title:label,historyKey:'addendum-return:'+addendum.id,
     body(root){const reason=document.createElement('textarea');reason.name='reason';reason.className='wbs-input today-textarea';root.append(fieldRow('علت برگشت',reason));},
