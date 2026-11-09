@@ -14,6 +14,13 @@ export function canEditContractAddenda(access){
     || (!permissions.modules && level==null && permissions.edit===true);
 }
 
+export function canDeleteContractAddenda(access){
+  const permissions=access?.permissions||{};
+  if(!access || (access.role==='owner' && permissions.adminAccess!==true))return true;
+  const level=permissions.modules ? permissions.modules.contracts : permissions.contracts;
+  return level==='full' || (!permissions.modules && level==null && permissions.edit===true && permissions.delete===true);
+}
+
 export function parentContractOf(project,addendum){
   return (project.contracts||[]).find(contract=>!contract.trashed && String(contract.id)===String(addendum.parentContractId));
 }
@@ -40,6 +47,11 @@ export function canEditAddendumRecord(addendum){
     && !addendum.sentToAccountingAt && !['sent','accepted'].includes(addendum.accountingStatus)
     && (addendum.isDraft || (addendum.status==='final' && !addendum.approvalStatus
       && addendum.contractApproverContactIds?.some(Boolean)));
+}
+
+export function canDeleteAddendumRecord(addendum){
+  return canEditAddendumRecord(addendum) && !addendum.accountingPackage
+    && !['pending','approved'].includes(addendum.approvalStatus);
 }
 
 export function canCreateAddendumFromContract(contract){

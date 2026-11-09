@@ -1,5 +1,5 @@
 import {saveAddendumDraft} from './contractAddendum.js';
-import {parentContractOf} from '../../src/domain/contractAddenda.js';
+import {canDeleteAddendumRecord,canDeleteContractAddenda,parentContractOf} from '../../src/domain/contractAddenda.js';
 import {transitionContractApproval} from '../../src/domain/contractApproval.js';
 import {syncContractPartyData} from '../../src/domain/contractPartyData.js';
 import {authenticate} from './auth.js';
@@ -31,11 +31,16 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       const reviewAction=addendum && ['approve_addendum','revoke_addendum'].includes(body.action);
       const permissions=row.permissions||{};
       const financeModule=Object.hasOwn(permissions.modules||permissions,'accounting-contracts')?'accounting-contracts':'accounting';
+      const deleteAddendum=addendum && body.action==='delete_addendum';
       const allowed=canAccessFiles(row,accountId,true,financeAction?financeModule:'contracts');
       if(!allowed){sendJson(response,403,{message:'اجازه تغییر قرارداد را ندارید'});return true;}
-      const contract=(row.payload[collection]||[]).find(c=>String(c.id)===contractId && !c.trashed);
+      const owner=String(row.owner_account_id)===String(accountId);
+      if(deleteAddendum && !canDeleteContractAddenda({role:owner?'owner':'member',permissions})){
+        sendJson(response,403,{message:'برای حذف الحاقیه دسترسی کامل قراردادها لازم است'});return true;
+      }
+      const contract=(row.payload[collection]||[]).find(c=>String(c.id)===contractId && (addendum || !c.trashed));
       const saveDraft=addendum && body.action==='save_addendum';
-      if(!contract && !saveDraft){sendJson(response,404,{message:'قرارداد پیدا نشد'});return true;}
+      if(contract?.trashed || (!contract && !saveDraft)){sendJson(response,404,{message:'قرارداد پیدا نشد'});return true;}
       if(Number(body.version)!==Number(contract?.handoffVersion||0) || Number(body.updatedAt)!==Number(contract?.updatedAt||0)){
         sendJson(response,409,{message:'قرارداد تغییر کرده است؛ صفحه را به‌روز کنید'});return true;
       }
@@ -56,7 +61,13 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       const actor={id:String(accountId),contactId:String(person?.id || memberContact || ''),name:[person?.firstName,person?.lastName].filter(Boolean).join(' ')||person?.name||row.phone||'کاربر'};
       const activity=(row.payload.activityTemplates||[]).find(a=>String(a.id)===String(contract?.activityId));
       let transition;
-      if(saveDraft) transition=saveAddendumDraft(row.payload,contract,body,actor,contractId,Date.now());
+      if(deleteAddendum){
+        if(!canDeleteAddendumRecord(contract)){
+          sendJson(response,409,{message:'این الحاقیه در وضعیت فعلی قابل حذف نیست'});return true;
+        }
+        const at=Date.now();
+        transition={ok:true,contract:{...contract,trashed:true,deletedAt:at,deletedBy:actor.id,updatedAt:at}};
+      }else if(saveDraft) transition=saveAddendumDraft(row.payload,contract,body,actor,contractId,Date.now());
       else if(reviewAction){
         transition=transitionContractApproval(contract,body.action==='approve_addendum'?'approve':'revoke',actor,{reason:body.reason});
         if(transition.ok && body.action==='revoke_addendum')Object.assign(transition.contract,{isDraft:true,status:'draft'});
