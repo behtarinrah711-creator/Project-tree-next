@@ -66,7 +66,7 @@ export function transitionContractApproval(contract,action,actor,{approverId='',
   const reviewers=[...new Set((approverIds || [approverId]).filter(Boolean).map(String))];
   if(!actor?.id || actor.id==='guest')return {ok:false,message:'ابتدا وارد حساب کاربری شوید'};
   if(['cancel_completion','withdraw_submission'].includes(action)){
-    const text=String(reason).trim();
+    const text=typeof reason==='string'?reason.trim():'';
     if(text.length<REJECTION_MIN_LENGTH)return {ok:false,message:'علت برگشت حداقل '+REJECTION_MIN_LENGTH+' حرف باشد'};
     if(action==='cancel_completion' && !canCancelContractCompletion(contract))return {ok:false,message:'ابتدا تأیید قرارداد را لغو کنید؛ قرارداد امضاشده قابل برگشت نیست'};
     if(action==='withdraw_submission' && (contractApprovalState(contract)!=='pending' || contract.submittedBy?.id!==actor.id || executedContract(contract)))return {ok:false,message:'فقط ارسال‌کننده می‌تواند درخواست تأیید را پس بگیرد'};

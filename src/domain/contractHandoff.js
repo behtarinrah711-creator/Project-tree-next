@@ -1,5 +1,5 @@
 export const HANDOFF_FIELDS=['signedFiles','signedFilesUpdatedAt','signedAt','signedBy','handoffVersion','accountingStatus','sentToAccountingAt','sentToAccountingBy','accountingPackage','accountingWithdrawal','accountingDecision','financeRejection','financeHistory'];
-export const FINANCE_REJECTION_MIN_LENGTH=5;
+export const FINANCE_REASON_MIN_LENGTH=5;
 export const isContractSigned=c=>!!c?.signedAt && Array.isArray(c.signedFiles) && c.signedFiles.length>0;
 export const isContractInFinance=c=>['sent','accepted'].includes(c?.accountingStatus) && !!c.sentToAccountingAt && !!c.accountingPackage;
 export const canAttachSignedContract=c=>!c?.trashed && c?.status==='final' && !c.isDraft && c.approvalStatus==='approved';
@@ -37,12 +37,12 @@ export function transitionContractHandoff(contract,action,actor,{files=[],reason
     if(!isContractInFinance(contract))return fail('قرارداد در واحد مالی نیست');
     if(action==='revoke_finance'){
       if(contract.accountingStatus!=='accepted' || contract.accountingDecision?.actor?.id!==actor.id)return fail('فقط می‌توانید تأیید مالی خودتان را پس بگیرید');
-      if(String(reason).trim().length<FINANCE_REJECTION_MIN_LENGTH)return fail('توضیح پس‌گرفتن تأیید مالی حداقل ۵ حرف باشد');
+      if(String(reason).trim().length<FINANCE_REASON_MIN_LENGTH)return fail('توضیح پس‌گرفتن تأیید مالی حداقل ۵ حرف باشد');
       next.accountingStatus='rejected';next.accountingDecision=null;
     }else{
       if(contract.accountingStatus!=='sent')return fail('ابتدا تأیید مالی را پس بگیرید');
       const text=String(reason).trim();
-      if(action==='reject_finance' && text.length<FINANCE_REJECTION_MIN_LENGTH)return fail('دلیل رد قرارداد حداقل ۵ حرف باشد');
+      if(action==='reject_finance' && text.length<FINANCE_REASON_MIN_LENGTH)return fail('دلیل رد قرارداد حداقل ۵ حرف باشد');
       next.accountingDecision={status:action==='approve_finance'?'accepted':'rejected',at,actor:{...actor},reason:text};
       next.accountingStatus=next.accountingDecision.status;
     }
@@ -54,7 +54,8 @@ export function transitionContractHandoff(contract,action,actor,{files=[],reason
     events.push({action,...(['reject_finance','revoke_finance'].includes(action)?{reason:String(reason).trim()}:{})});
   }else if(action==='withdraw_finance'){
     if(!isContractInFinance(contract))return fail('قرارداد در واحد مالی نیست');
-    const text=String(reason).trim();if(text.length<5)return fail('دلیل پس‌گرفتن حداقل ۵ حرف باشد');
+    const text=typeof reason==='string'?reason.trim():'';
+    if(text.length<FINANCE_REASON_MIN_LENGTH)return fail('دلیل پس‌گرفتن حداقل ۵ حرف باشد');
     next.accountingDecision=null;next.accountingStatus='withdrawn';next.sentToAccountingAt=null;next.sentToAccountingBy=null;
     next.accountingWithdrawal={at,actor:{...actor},reason:text};
     events.push({action,reason:text});

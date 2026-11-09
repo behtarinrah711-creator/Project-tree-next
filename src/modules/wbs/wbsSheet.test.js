@@ -14,6 +14,12 @@ function el(tag = 'div'){
     tagName: String(tag).toUpperCase(),
     children: [],
     className: '',
+    classList: {
+      add(...classes){
+        const current = node.className.split(/\s+/).filter(Boolean);
+        node.className = [...new Set([...current, ...classes])].join(' ');
+      },
+    },
     id: '',
     innerHTML: '',
     value: '',
@@ -48,6 +54,7 @@ test('WBS sheet mounts overlay instead of window.prompt', () => {
   };
   openWbsSheet({ title:'افزودن مرحله', body(root){ root.appendChild(el('input')); } });
   assert.equal(body.children[0].id, 'wbsSheetOverlay');
+  assert.ok(body.children[0].className.split(' ').includes('wbs-sheet-centered-header'));
   closeWbsSheet();
 });
 
