@@ -59,3 +59,29 @@ test('contract row preview is read-only, preserves data and closes with header/d
   assert.doesNotMatch(output,/Foundation terms/);assert.doesNotMatch(output,/Employer supplies materials/);
   assert.equal(record.items,undefined);
  });
+
+test('addendum preview reuses the contract page and renders saved operations and totals',()=>{
+  const make=()=>({children:[],classList:{add(){},remove(){}},setAttribute(){},append(...x){this.children.push(...x);},appendChild(x){this.children.push(x);},replaceChildren(){this.children=[];}});
+  const root=make();
+  let markup;
+  const view=createContractPreviewView({
+    documentRef:{createElement:make,body:root},windowRef:{},
+    mountPrintPage:(_,preview)=>{markup=preview.innerHTML;},
+  });
+  const project={id:'p'};
+  const parent={contractNo:'CTR-1',contractorName:'جواد قریشی',employerName:'کارفرما'};
+  view.open(project,{contractNo:'CTR-1-A01',type:'extra',rows:[
+    {description:'روز مزد',amount:300},
+    {description:'بتن',pricingMode:'quantity',unit:'مترمکعب',quantity:2,unitPrice:50},
+  ]},{addendum:{parent}});
+  assert.equal(root.children[0].children[0].children[1].textContent,'پیش‌نمایش الحاقیه');
+  assert.match(markup,/شماره الحاقیه: <bdi>CTR-1-A01/);
+  assert.match(markup,/قرارداد اصلی: <bdi>CTR-1<\/bdi>/);
+  assert.match(markup,/contract-document-quantity/);
+  assert.match(markup,/روز مزد<\/td><td>—<\/td><td>—<\/td><td>—<\/td><td>۳۰۰/);
+  assert.match(markup,/بتن<\/td><td>مترمکعب<\/td><td>۲<\/td><td>۵۰<\/td><td>۱۰۰/);
+  assert.match(markup,/جمع کل عملیات‌ها<\/b><\/td><td><b>۴۰۰/);
+  view.open(project,parent,{frozen:true});
+  assert.equal(root.children.length,1);
+  assert.equal(root.children[0].children[0].children[1].textContent,'پیش‌نمایش قرارداد');
+});

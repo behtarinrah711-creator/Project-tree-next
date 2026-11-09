@@ -83,7 +83,7 @@ function contractRowData(projectId,c){
   return {title,meta,number,created:contractCreatedParts(c.createdAt)};
 }
 
-export function renderContractCardHeading(project, contract, menu, {titlePrefix=""}={}){
+export function renderContractCardHeading(project, contract, menu, {titlePrefix="",onPreview}={}){
   const {title,number,created}=contractRowData(project.id,contract);
   const path=contractProjectPath(project,contract);
   const heading=document.createElement('div');
@@ -98,6 +98,17 @@ export function renderContractCardHeading(project, contract, menu, {titlePrefix=
   }
   const actions=document.createElement('div'); actions.className='contract-actions';
   actions.appendChild(contractActionsMenu(menu));
+  if(onPreview){
+    heading.onclick=()=>onPreview(main);
+    actions.onclick=event=>event.stopPropagation();
+    main.tabIndex=0;
+    main.setAttribute('role','button');
+    main.onkeydown=event=>{
+      if(event.key!=='Enter' && event.key!==' ')return;
+      event.preventDefault();
+      onPreview(main);
+    };
+  }
   if(created){
     const createdBox=document.createElement('div'); createdBox.className='contract-created';
     const date=document.createElement('div'); date.className='contract-created-date'; date.textContent=created.date;

@@ -1,6 +1,8 @@
 /** Measure at print width; keep ordinary blocks together and split oversized text. */
 export function paginateContract(source, documentRef=globalThis.document){
-  const contractNumber=source.querySelectorAll('.doc-contract-meta')[0]?.getAttribute?.('data-contract-number') || source.querySelectorAll('.contract-document-attachment')[0]?.getAttribute?.('data-contract-number') || '';
+  const meta=source.querySelectorAll('.doc-contract-meta')[0];
+  const documentKind=meta?.getAttribute?.('data-document-kind')==='addendum'?'الحاقیه':'قرارداد';
+  const contractNumber=meta?.getAttribute?.('data-contract-number') || source.querySelectorAll('.contract-document-attachment')[0]?.getAttribute?.('data-contract-number') || '';
   const pages=documentRef.createElement('div');pages.className='contract-pages';
   const measure=documentRef.createElement('div');
   measure.className='contract-pagination-measure';
@@ -21,6 +23,38 @@ export function paginateContract(source, documentRef=globalThis.document){
     if(fits())return;
     block.remove();
     if(content.childNodes.length){next();content.appendChild(block);if(fits())return;block.remove();}
+    const table=block.querySelectorAll('.contract-document-quantities')[0];
+    const tableBody=table?.tBodies?.[0];
+    if(tableBody?.rows.length>1){
+      const rows=[...tableBody.rows];
+      const startTable=()=>{
+        const section=block.cloneNode(true);
+        const body=section.querySelectorAll('.contract-document-quantities')[0].tBodies[0];
+        body.replaceChildren();
+        content.appendChild(section);
+        return {section,body};
+      };
+      let part=startTable();
+      for(const [index,row] of rows.entries()){
+        part.body.appendChild(row);
+        if(fits())continue;
+        row.remove();
+        if(part.body.rows.length){
+          next();
+          part=startTable();
+          part.body.appendChild(row);
+          if(fits())continue;
+          row.remove();
+        }
+        // Preserve the text of a single row that exceeds an entire page.
+        part.section.remove();
+        const text=documentRef.createElement('div');
+        text.textContent=[...row.cells].map(cell=>cell.textContent).join(' · ');
+        append(text);
+        if(index<rows.length-1){next();part=startTable();}
+      }
+      return;
+    }
     // A single clause may exceed a page. Split by text without losing characters.
     let remaining=block.textContent;
     while(remaining){
@@ -56,7 +90,7 @@ export function paginateContract(source, documentRef=globalThis.document){
       }
       sheet.appendChild(signatures);
       const label=documentRef.createElement('div');label.className='contract-sheet-number';
-      label.textContent=(contractNumber?'شماره قرارداد: '+contractNumber+' — ':'')+`صفحه ${new Intl.NumberFormat('fa-IR').format(i+1)} از ${new Intl.NumberFormat('fa-IR').format(sheets.length)}`;
+      label.textContent=(contractNumber?'شماره '+documentKind+': '+contractNumber+' — ':'')+`صفحه ${new Intl.NumberFormat('fa-IR').format(i+1)} از ${new Intl.NumberFormat('fa-IR').format(sheets.length)}`;
       sheet.appendChild(label);
     });
     pages.remove();return pages;

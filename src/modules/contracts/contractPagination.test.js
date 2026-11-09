@@ -9,6 +9,9 @@ class Element{
   setAttribute(name,value){this.attrs[name]=value;}
   getAttribute(name){return this.attrs[name]??null;}
   get childNodes(){return this.children;}
+  get tBodies(){return this.children.filter(x=>x.tag==='tbody');}
+  get rows(){return this.children.filter(x=>x.tag==='tr');}
+  replaceChildren(){this.children=[];}
   set textContent(value){this.ownText=value;this.children=[];}
   get textContent(){return this.ownText+this.children.map(x=>x.textContent).join('');}
   appendChild(node){node.remove();node.parent=this;this.children.push(node);return node;}
@@ -70,4 +73,23 @@ test('pagination preserves all long text, keeps short blocks whole and labels al
   const printRule='@media print { .contract-sheet { margin:0; } }';
   const styles=getContractPageStyles({styleSheets:[{cssRules:[{styleSheet:{cssRules:[{cssText:'.contract-pages { width:794px; }'}]},cssText:'@import url(contracts.css);'},{cssText:pageRule},{cssText:annexRule},{cssText:fitRule},{cssText:'.unrelated { color:red; }'},{cssText:printRule}]}]});
   assert.ok(styles.includes('.contract-pages'));assert.ok(styles.includes(pageRule));assert.ok(styles.includes(printRule));assert.ok(styles.includes(annexRule));assert.ok(styles.includes(fitRule));assert.ok(!styles.includes('unrelated'));
+});
+
+test('long operation tables repeat their headings and keep every row and the total',()=>{
+  const source=new Element(),meta=new Element();
+  meta.className='doc-contract-meta';meta.setAttribute('data-contract-number','CTR-7-A01');
+  meta.setAttribute('data-document-kind','addendum');source.appendChild(meta);
+  const section=new Element(),table=new Element('table'),head=new Element('thead'),body=new Element('tbody');
+  table.className='contract-document-quantities';head.textContent='شرح عملیات';
+  table.appendChild(head);table.appendChild(body);section.appendChild(table);source.appendChild(section);
+  const descriptions=Array.from({length:20},(_,i)=>'ردیف '+i+' '.repeat(100)).concat('جمع کل عملیات‌ها');
+  for(const description of descriptions){
+    const row=new Element('tr');row.textContent=description;body.appendChild(row);
+  }
+  const pages=paginateContract(source,doc);
+  const tables=pages.querySelectorAll('.contract-document-quantities');
+  assert.ok(tables.length>1);
+  assert.ok(tables.every(part=>part.children[0].textContent==='شرح عملیات'));
+  assert.deepEqual(tables.flatMap(part=>part.tBodies[0].rows.map(row=>row.textContent)),descriptions);
+  assert.match(pages.querySelectorAll('.contract-sheet-number')[0].textContent,/شماره الحاقیه: CTR-7-A01/);
 });

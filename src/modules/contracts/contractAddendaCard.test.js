@@ -35,6 +35,11 @@ test('saved addenda use the contract card layout and their own status, number an
       const card=body.children[0].children.at(-1);
       const [heading,status,progress]=card.children;
       assert.equal(heading.className,'contract-card-heading');
+      assert.equal(typeof heading.onclick,'function');
+      assert.equal(heading.children[0].tabIndex,0);
+      let menuClickStopped=false;
+      heading.children[2].onclick({stopPropagation(){menuClickStopped=true;}});
+      assert.ok(menuClickStopped);
       assert.deepEqual(heading.children.map(node=>node.className),['contract-main','contract-created','contract-actions']);
       assert.deepEqual(heading.children[0].children.map(node=>node.textContent),
         ['الحاقیه قرارداد پیمانکاری جواد قریشی','CTR-1-A01','تصفیه خانه ← فونداسیون']);
