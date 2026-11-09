@@ -113,8 +113,8 @@ test('saved addenda use the contract card layout and their own status, number an
       wrap.children[0].onclick({stopPropagation(){}});
       return wrap.children.find(node=>node.className==='nb-project-menu').children.map(node=>node.title);
     };
-    assert.ok(menuActions(legacyCard).includes('ویرایش'));
-    assert.ok(!menuActions(list.children[1]).includes('ویرایش'));
+    assert.deepEqual(menuActions(legacyCard),['ویرایش','خروجی','حذف']);
+    assert.deepEqual(menuActions(list.children[1]),['خروجی']);
     banner.onclick();
     assert.equal(body.children[1].children.length,1);
     assert.ok(body.children[1].children[0].children[2].children.some(node=>node.textContent==='تأیید الحاقیه'));
@@ -125,7 +125,7 @@ test('saved addenda use the contract card layout and their own status, number an
     window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'view'}}}};
     renderContractAddenda(body,'p');
     assert.equal(body.children.length,1);
-    assert.ok(!menuActions(body.children[0].children[0]).includes('ویرایش'));
+    assert.deepEqual(menuActions(body.children[0].children[0]),['خروجی']);
     assert.ok(body.children[0].children.every(card=>!card.children.some(row=>row.children.some(node=>node.textContent==='تأیید الحاقیه'))));
     delete window.KarhaSaosaWorkspaceAccess;
     project.contacts.push({id:'first',name:'مسئول اول',phones:['0913']});
@@ -138,5 +138,10 @@ test('saved addenda use the contract card layout and their own status, number an
       ['مسئول اول · تأیید کرد','مسئول دوم · در انتظار تأیید']);
     const approvalStep=card.children.find(node=>node.className==='contract-progress').children.find(node=>node.dataset.step==='approved');
     assert.ok(!approvalStep.className.includes('is-complete'));
+    project.contractAddenda=[draft,{...ready,id:'deleted',trashed:true}];
+    window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'create'}}}};
+    renderContractAddenda(body,'p');
+    assert.equal(body.children[0].children.length,1);
+    assert.deepEqual(menuActions(body.children[0].children[0]),['ویرایش','خروجی']);
   }finally{[globalThis.window,globalThis.document,projectRepository.find,contactApi.lookup]=old;}
 });

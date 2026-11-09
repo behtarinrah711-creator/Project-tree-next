@@ -1,4 +1,4 @@
-import { ADDENDUM_TYPES, addendumAmount, addendumReviewers, canEditAddendumRecord, canEditContractAddenda, parentContractOf } from '../../domain/contractAddenda.js';
+import { ADDENDUM_TYPES, addendumAmount, addendumReviewers, canDeleteAddendumRecord, canDeleteContractAddenda, canEditAddendumRecord, canEditContractAddenda, parentContractOf } from '../../domain/contractAddenda.js';
 import { syncContractPartyData } from '../../domain/contractPartyData.js';
 import { approvedContractContactIds, contractApproverIds, contractApprovalState, canCancelContractCompletion, canReviewContract, canRevokeContractApproval, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
 import { isAddendumVisibleInFinance } from '../../domain/contractHandoff.js';
@@ -208,11 +208,21 @@ function addendumCard(project,addendum,onChanged,finance){
   const documentParent=()=>parent && !finance && parent!==frozenParent
     ? syncContractPartyData({...parent},project) : parent;
   const row=document.createElement('article');row.className='contract-row';
+  const actor=currentExecutionActor(project);
+  let busy=false;
+  const review=async(action,reason)=>{
+    if(busy)return false;
+    busy=true;
+    try{await saveContractHandoff(project.id,addendum,action,{reason});onChanged();return true;}
+    catch(error){toast(error.message);return false;}finally{busy=false;}
+  };
   const heading=renderContractCardHeading(project,{
     ...parent,contractNo:addendum.contractNo,createdAt:addendum.createdAt,
   },{
     onEdit:!finance && parent && canEditAddendumRecord(addendum) && writable(project)
       ? ()=>openAddendumForm(project,parent,addendum,onChanged) : undefined,
+    onDelete:!finance && canDeleteAddendumRecord(addendum) && canDeleteContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id])
+      ? ()=>openConfirm('الحاقیه '+addendum.contractNo+' حذف شود؟',()=>review('delete_addendum'),'حذف') : undefined,
     onExport:trigger=>openContractExport(project,documentAddendum,{
       trigger,markup:'<section class="contract-export-document" dir="rtl">'+
         addendumDocumentMarkup(documentAddendum,documentParent())+'</section>',
@@ -233,14 +243,6 @@ function addendumCard(project,addendum,onChanged,finance){
     renderContractSignedSection(project,addendum,{finance,inlineActions:actions});
   }
   if(parent)toolbar.append(button('مشاهده قرارداد اصلی',trigger=>openContractPreview(project,parent,{trigger,frozen:finance || parent===frozenParent})));
-  const actor=currentExecutionActor(project);
-  let busy=false;
-  const review=async(action,reason)=>{
-    if(busy)return false;
-    busy=true;
-    try{await saveContractHandoff(project.id,addendum,action,{reason});onChanged();return true;}
-    catch(error){toast(error.message);return false;}finally{busy=false;}
-  };
   if(!finance && writable(project) && canReviewContract(addendum,actor))actions.append(button('تأیید الحاقیه',()=>openConfirm('الحاقیه تأیید شود؟',()=>review('approve_addendum'),'تأیید')));
   const returnForEdit=(label,action)=>openWbsSheet({title:label,historyKey:'addendum-return:'+addendum.id,
     body(root){const reason=document.createElement('textarea');reason.name='reason';reason.className='wbs-input today-textarea';root.append(fieldRow('علت برگشت',reason));},
@@ -315,7 +317,7 @@ export function renderContractAddenda(body,projectId,{finance=false,onChanged,re
   const project=projectRepository.find(projectId);
   if(!project)return;
   const refresh=onChanged||(()=>renderContractAddenda(body,projectId,{finance,reviewMine}));
-  const records=(project.contractAddenda||[]).filter(row=>!finance || isAddendumVisibleInFinance(row));
+  const records=(project.contractAddenda||[]).filter(row=>!row.trashed && (!finance || isAddendumVisibleInFinance(row)));
   const section=document.createElement('section');section.className=finance?'contract-list':'contract-list contract-addenda-list';
   if(finance){
     if(!records.length)return;
