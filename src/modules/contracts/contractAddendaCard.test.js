@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 
-const make=tag=>({tag,children:[],dataset:{},className:'',
+const make=tag=>({tag,children:[],dataset:{},style:{},className:'',
   append(...children){this.children.push(...children);},
   appendChild(child){this.append(child);},
   replaceChildren(...children){this.children=children;},
@@ -20,7 +20,7 @@ test('saved addenda use the contract card layout and their own status, number an
   const draft={id:'a',parentContractId:'c',contractNo:'CTR-1-A01',createdAt:1000,isDraft:true,
     approvalHistory:[{action:'create',at:1000,actor:{name:'سازنده الحاقیه'}}]};
   const accepted={...draft,isDraft:false,status:'final',approvalStatus:'approved',accountingStatus:'accepted',
-    signedAt:2000,signedFiles:[{id:'file'}],sentToAccountingAt:3000,amount:100,
+    signedAt:2000,sentToAccountingAt:3000,amount:100,
     accountingPackage:{contract:{parentDocument:parent},signedFiles:[{id:'file'}]},
     financeHistory:[{action:'approve_finance',at:4000,actor:{name:'مالی'}}]};
   const project={id:'p',tasks:[],contracts:[parent],contractAddenda:[draft]};
@@ -43,11 +43,14 @@ test('saved addenda use the contract card layout and their own status, number an
       assert.deepEqual(heading.children.map(node=>node.className),['contract-main','contract-created','contract-actions']);
       assert.deepEqual(heading.children[0].children.map(node=>node.textContent),
         ['الحاقیه قرارداد پیمانکاری جواد قریشی','CTR-1-A01','تصفیه خانه ← فونداسیون']);
-      assert.equal(status.children[0].textContent,finance?'وضعیت: تأیید شده توسط بخش مالی':'وضعیت: ناقص');
+      assert.equal(status.children[0].textContent,finance?'نسخه امضا شده الحاقیه':'وضعیت: ناقص');
       assert.equal(status.children[1].textContent,'مشاهده قرارداد اصلی');
       const progress=card.children.find(node=>node.className==='contract-progress');
       if(finance){
         assert.equal(progress,undefined);
+        assert.deepEqual(status.children.map(node=>node.className),['contract-review-action','contract-review-action']);
+        assert.equal(typeof status.children[0].onclick,'function');
+        assert.ok(!card.children.some(node=>node.className.includes('contract-signed-section')));
       }else{
         assert.equal(progress,card.children[2]);
         assert.equal(progress.children.filter(node=>node.className.includes('is-complete')).length,1);
