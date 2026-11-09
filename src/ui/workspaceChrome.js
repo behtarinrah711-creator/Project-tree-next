@@ -1,4 +1,5 @@
 import { canEditContractAddenda } from '../domain/contractAddenda.js';
+import { canViewProjectHome } from '../modules/roleManagement/permissionState.js';
 import { planningPermissionState } from '../modules/roleManagement/planningAccess.js';
 import { getGlobalRoute, getGlobalRouteByModule } from '../core/globalRoutes.js';
 
@@ -65,6 +66,7 @@ export function installWorkspaceChrome({
 
   const get = id => documentRef.getElementById?.(id);
   const footer = get('bottomNav');
+  const homeButton = get('bottomHomeBtn');
   const footerParent = footer?.parentNode || null;
   const footerNextSibling = footer?.nextSibling || null;
   const planningButton=get('bottomPlanningBtn');
@@ -141,6 +143,7 @@ export function installWorkspaceChrome({
     const managementVisible = !get('projectsPage')?.classList?.contains?.('hidden');
     const routeModuleId = routeModuleOverride || windowRef.KarhaRoute?.moduleId;
     const routeProjectId = windowRef.KarhaRoute?.projectId;
+    if(homeButton) homeButton.hidden = !!routeProjectId && !canViewProjectHome(routeProjectId,windowRef);
     setPlanningFooterMounted(!state.project || planningPermissionState(state.project.id,windowRef).visible);
     settingsTrigger?.classList?.toggle?.('active',SETTINGS_MODULES.has(routeModuleId));
     settingsTrigger?.setAttribute?.('aria-pressed',SETTINGS_MODULES.has(routeModuleId)?'true':'false');
