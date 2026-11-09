@@ -30,6 +30,13 @@ export function addendumReviewers(project,parent){
   return [...new Set((assigned ?? parent.contractApproverContactIds ?? parent.approvalContactIds ?? [parent.approvalContactId]).filter(Boolean).map(String))];
 }
 
+export function canEditAddendumRecord(addendum){
+  return !!addendum && !addendum.trashed && !addendum.signedAt && addendum.signatureStatus!=='signed'
+    && !addendum.sentToAccountingAt && !['sent','accepted'].includes(addendum.accountingStatus)
+    && (addendum.isDraft || (addendum.status==='final' && !addendum.approvalStatus
+      && addendum.contractApproverContactIds?.some(Boolean)));
+}
+
 export function canCreateAddendumFromContract(contract){
   return !!contract?.contractNo && !contract.trashed && contract.status==='final' && !contract.isDraft;
 }

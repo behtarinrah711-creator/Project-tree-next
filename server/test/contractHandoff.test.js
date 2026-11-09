@@ -315,3 +315,27 @@ test('the addendum submitter can withdraw a pending review only with a reason',a
   assert.equal(resubmitted.result.contract.approvalStatus,'pending');
   assert.deepEqual(resubmitted.result.contract.approvalHistory.map(event=>event.action),['complete','submit','withdraw_submission','complete','submit']);
 });
+
+test('a completed legacy addendum can be edited and completed again from its form',async()=>{
+  const f=fixture(),id='addendum-00000000-0000-4000-8000-000000000004';
+  const path='/api/v1/projects/p/addenda/'+id+'/handoff';
+  Object.assign(f.payload.contracts[0],{contractNo:'CTR-1',contractApproverContactIds:['reviewer']});
+  const draft={action:'save_addendum',parentContractId:'c',type:'other',contractDate:'1405/08/01',note:'شرح اولیه'};
+  const legacy=await f.call({...draft,version:0,updatedAt:0,complete:true,deferSubmission:true},path);
+  assert.equal(legacy.status,200);
+  const original=legacy.result.contract;
+  assert.equal(original.approvalStatus,null);
+  const complete=contract=>f.call({...draft,note:'شرح اصلاح‌شده',complete:true,
+    version:contract.handoffVersion,updatedAt:contract.updatedAt},path);
+  f.setPermissions({modules:{contracts:'view'}});
+  assert.equal((await complete(original)).status,403);
+  f.setPermissions({modules:{contracts:'full'}});
+  const submitted=await complete(original);
+  assert.equal(submitted.status,200);
+  const pending=submitted.result.contract;
+  assert.equal(pending.contractNo,original.contractNo);
+  assert.equal(pending.note,'شرح اصلاح‌شده');
+  assert.equal(pending.approvalStatus,'pending');
+  assert.deepEqual(pending.approvalHistory.map(event=>event.action),['complete','complete','submit']);
+  assert.equal((await complete(pending)).status,400);
+});

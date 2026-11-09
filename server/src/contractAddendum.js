@@ -1,4 +1,4 @@
-import { ADDENDUM_TYPES, addendumAmount, addendumReviewers, parentContractOf } from '../../src/domain/contractAddenda.js';
+import { ADDENDUM_TYPES, addendumAmount, addendumReviewers, canEditAddendumRecord, parentContractOf } from '../../src/domain/contractAddenda.js';
 import { transitionContractApproval } from '../../src/domain/contractApproval.js';
 import { jalaliMonthLength } from '../../src/ui/jalali.js';
 
@@ -13,7 +13,7 @@ const validDate=value=>{
 export function saveAddendumDraft(project,current,body,actor,id,at){
   const parent=parentContractOf(project,current||body);
   if(!parent?.contractNo)return fail('ابتدا یک قرارداد شماره‌دار انتخاب کنید');
-  if(current && (!current.isDraft || current.signedAt))return fail('الحاقیه در حال ویرایش نیست');
+  if(current && !canEditAddendumRecord(current))return fail('الحاقیه در حال ویرایش نیست');
   const type=body.type, note=text(body.note,4000), contractDate=text(body.contractDate,10), endDate=text(body.endDate,10);
   if(!Object.hasOwn(ADDENDUM_TYPES,type)||!validDate(contractDate))return fail('نوع و تاریخ الحاقیه را مشخص کنید');
   if(type==='duration' && (body.complete || endDate) && (!validDate(endDate) || (parent.endDate && endDate<=parent.endDate)))return fail('تاریخ پایان جدید باید بعد از تاریخ پایان قرارداد باشد');
@@ -49,7 +49,7 @@ export function saveAddendumDraft(project,current,body,actor,id,at){
     type,title:'الحاقیه '+ADDENDUM_TYPES[type],contractDate,endDate:type==='duration'?endDate:'',
     previousEndDate:type==='duration'?parent.endDate||'':'',note,rows,amount,
     contractApproverContactIds:reviewers,updatedAt:at,createdAt:current?.createdAt??at,
-    status:'draft',isDraft:true,
+    status:'draft',isDraft:true,completedAt:null,completedBy:null,
     ...(!current && {createdBy:{...actor},creationEvent:{action:'create',at,actor:{...actor}}}),
     ...(body.complete && {approvalHistory:[...(current?.approvalHistory||[]),{action:'complete',at,actor:{...actor}}]}),
   };
