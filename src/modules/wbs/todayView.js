@@ -4,7 +4,7 @@ import { contractorForItem, executionStatus, itemsForMode, remainingLabel, statu
 import { fieldRow, openWbsSheet } from './wbsSheet.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { currentExecutionActor, isExecutionApprover, isExecutionAssignee } from './executionActor.js';
-import { openDailyExecutionReport, progressCircle } from './dailyExecutionReport.js';
+import { openDailyExecutionReport, progressCircle, todayReportOf } from './dailyExecutionReport.js';
 
 export const TODAY_ICON = 'M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v255l-80 80v-175H200v400h248l80 80H200Zm0-560h560v-80H200v80Zm0 0v-80 80ZM662-60 520-202l56-56 85 85 170-170 56 57L662-60Z';
 const ICONS = Object.freeze({ overdue:'./src/assets/wbs/pending-actions.svg', today:'./src/assets/wbs/today.svg', future:'./src/assets/wbs/next-week.svg', pending:'./src/assets/wbs/pending-approval.svg', unscheduled:'./src/assets/wbs/event-busy.svg', filter:'./src/assets/wbs/filter-alt.svg' });
@@ -77,13 +77,18 @@ function renderCard(documentRef,project,item,today,onChanged){
   const writable=canWriteProjectModule(project.id,'execution:today');
   const assigned=writable && isExecutionAssignee(entity,currentActor);
   const heading=documentRef.createElement('div'); heading.className='wbs-costline-work-heading today-card-heading';
+  const openReport=()=>openDailyExecutionReport({
+    projectId:activeProjectId,item,actor:currentActor,onChanged,
+    onSubmitted(updated){activeMode=timeState(updated,tehranTodayJalali());},
+    subject:'کار',
+  });
   const complete=progressCircle(documentRef,entity,{pending,disabled:!assigned,onClick:()=>{
     if(pending){
       const result=todayApi.withdrawCompletion(activeProjectId,refOf(item),actor());
       if(!result.ok){ window.KarhaUI?.showToast?.('لغو ارسال ممکن نیست'); return; }
       activeMode=timeState(result.entity,tehranTodayJalali()); onChanged?.(); return;
     }
-    openDailyExecutionReport({projectId:activeProjectId,item,actor:currentActor,onChanged,onSubmitted(updated){activeMode=timeState(updated,tehranTodayJalali());},subject:'کار'});
+    openReport();
   }});
   const titles=documentRef.createElement('div'); titles.className='today-card-titles'; titles.innerHTML=`<strong>${esc(entity.title||entity.text||'')}</strong><span>${esc(item.path.join(' · '))}</span>`;
   const chip=documentRef.createElement('span'); chip.className=`wbs-type-chip ${TYPE_CLASSES.get(type)||'type-7'}`; chip.textContent=type;
@@ -123,6 +128,11 @@ function renderCard(documentRef,project,item,today,onChanged){
     card.querySelector('.today-cancel-start')?.addEventListener('click',()=>{todayApi.cancelStart(activeProjectId,refOf(item),actor());onChanged?.();});
   }
   if(actions.childElementCount) card.appendChild(detailRow(documentRef, 'تأیید', actions));
+  if(assigned && status==='in_progress' && !todayReportOf(entity,today)){
+    const report=linkButton(documentRef,'wbs-costline-manual today-section-action','ثبت گزارش');
+    report.addEventListener('click',openReport);
+    card.appendChild(detailRow(documentRef,'',report));
+  }
   card.appendChild(renderReports(documentRef,entity));
   if(writable){
     const comment=linkButton(documentRef,'wbs-costline-manual today-section-action','افزودن نظر');
