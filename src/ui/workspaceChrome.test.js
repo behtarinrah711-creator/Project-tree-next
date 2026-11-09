@@ -84,6 +84,18 @@ function harness({hash=''}={}){
   return {ids,footers,events,calls,chrome,windowRef,documentRef,body,get state(){return state;},set state(value){state=value;}};
 }
 
+test('child workspace pages start at the topbar while the parent context keeps its measured height',async()=>{
+  const h=harness();
+  h.state={...h.state,workspaceSubpage:'contract-addenda'};
+  h.chrome.setBottomNavActive('Reports');
+  const style=h.documentRef.documentElement.style;
+  assert.equal(style['--workspace-topbar-height'],'50px');
+  assert.equal(style['--workspace-page-top'],'70px');
+  const css=await readFile(new URL('../styles/workspace/workspace.css',import.meta.url),'utf8');
+  assert.match(css,/\.workspace-page--own-section-bar\{top:var\(--workspace-topbar-height/);
+  assert.match(css,/body:has\(> \.workspace-page--own-section-bar:not\(\.hidden\)\) #workspaceProjectContext\{visibility:hidden;\}/);
+});
+
 test('route presentation preserves mounted dashboard content while switching page shells',()=>{
   const h=harness();
   assert.equal(installProjectRouteSurfaceSync({windowRef:h.windowRef,documentRef:h.documentRef}),true);

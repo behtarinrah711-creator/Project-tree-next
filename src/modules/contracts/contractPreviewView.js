@@ -18,7 +18,7 @@ export function createContractPreviewView({documentRef=globalThis.document,windo
     disposeDocuments?.();disposeSigned?.();
     if(!page){
       page=documentRef.createElement('div');
-      page.id='contractPreviewPage';page.className='page-overlay workspace-page hidden';
+      page.id='contractPreviewPage';page.className='page-overlay workspace-page workspace-page--own-section-bar hidden';
       const header=documentRef.createElement('div');header.className='inner-section-bar';
       const back=documentRef.createElement('button');back.type='button';back.className='inner-section-back';
       back.setAttribute('aria-label','بازگشت');
