@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 
-const make=tag=>({tag,children:[],dataset:{},style:{},className:'',
+const make=tag=>({tag,children:[],dataset:{},className:'',
   append(...children){this.children.push(...children);},
   appendChild(child){this.append(child);},
   replaceChildren(...children){this.children=children;},
@@ -48,6 +48,7 @@ test('saved addenda use the contract card layout and their own status, number an
       const progress=card.children.find(node=>node.className==='contract-progress');
       if(finance){
         assert.equal(progress,undefined);
+        assert.equal(status.className,'contract-workflow-row contract-workflow-row--signed-addendum');
         assert.deepEqual(status.children.map(node=>node.className),['contract-review-action','contract-review-action']);
         assert.equal(typeof status.children[0].onclick,'function');
         assert.ok(!card.children.some(node=>node.className.includes('contract-signed-section')));

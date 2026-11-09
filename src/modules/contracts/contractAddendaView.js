@@ -221,7 +221,7 @@ function addendumCard(project,addendum,onChanged,finance){
   row.append(heading);
   const actions=renderContractStatusRow(addendum,{showBadge:!finance});
   if(finance){
-    actions.style.justifyContent='space-between';
+    actions.className+=' contract-workflow-row--signed-addendum';
     renderContractSignedSection(project,addendum,{finance,inlineActions:actions});
   }
   if(parent)actions.append(button('مشاهده قرارداد اصلی',trigger=>openContractPreview(project,parent,{trigger,frozen:finance || parent===frozenParent})));
