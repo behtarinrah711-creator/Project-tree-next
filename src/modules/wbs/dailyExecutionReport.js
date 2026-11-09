@@ -1,17 +1,13 @@
 import { REPORT_MIN_LENGTH, todayApi } from '../../domain/wbs/todayApi.js';
-import { tehranTodayJalali } from '../../domain/wbs/todayDomain.js';
+import { executionReportDay, tehranTodayJalali } from '../../domain/wbs/todayDomain.js';
 import { toEnglishDigits, toPersianDigits } from '../../ui/digits.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
 
 const SEND_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20.5 22 12 3 3.5v6l13 2.5-13 2.5v6Z"/></svg>';
 
-function reportDay(report){
-  return report?.reportDay || (report?.createdAt ? tehranTodayJalali(new Date(report.createdAt)) : '');
-}
-
 export function todayReportOf(entity, day = tehranTodayJalali()){
-  return (entity?.executionReports || []).filter(report => report && !report.trashed && reportDay(report) === day).at(-1) || null;
+  return (entity?.executionReports || []).filter(report => report && !report.trashed && executionReportDay(report) === day).at(-1) || null;
 }
 
 function textarea(documentRef, value){

@@ -5,6 +5,7 @@ export const PROJECT_ROUTE_SURFACES = Object.freeze({
   tasks: Object.freeze({ pageId:null, footer:'Execution', subpage:null }),
   reports: Object.freeze({ pageId:'reportsPage', footer:'Reports', subpage:null }),
   'contract-addenda': Object.freeze({ pageId:'reportsPage', footer:'Reports', subpage:'contract-addenda' }),
+  'daily-execution-reports': Object.freeze({ pageId:'reportsPage', footer:'Reports', subpage:'daily-execution-reports' }),
   'done-works': Object.freeze({ pageId:'reportsPage', footer:'Reports', subpage:'done-works' }),
   'work-delays': Object.freeze({ pageId:'reportsPage', footer:'Reports', subpage:'work-delays' }),
   contracts: Object.freeze({ pageId:'contractsPage', footer:'Reports', subpage:'contracts' }),

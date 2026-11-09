@@ -1,10 +1,11 @@
-import { canWriteProjectModule } from '../roleManagement/permissionState.js';
+import { canWriteProjectModule, projectPermissionState } from '../roleManagement/permissionState.js';
 import { todayApi, COMMENT_MIN_LENGTH, REJECTION_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
-import { contractorForItem, executionStatus, itemsForMode, remainingLabel, statusLabel, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
+import { canRecordStartDelay, contractorForItem, executionStatus, itemsForMode, remainingLabel, statusLabel, START_DELAY_REASONS, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
 import { fieldRow, openWbsSheet } from './wbsSheet.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { currentExecutionActor, isExecutionApprover, isExecutionAssignee } from './executionActor.js';
-import { openDailyExecutionReport, progressCircle } from './dailyExecutionReport.js';
+import { openDailyExecutionReport, progressCircle, todayReportOf } from './dailyExecutionReport.js';
+import { executionWorkKey } from '../reports/dailyExecutionReportsView.js';
 
 export const TODAY_ICON = 'M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v255l-80 80v-175H200v400h248l80 80H200Zm0-560h560v-80H200v80Zm0 0v-80 80ZM662-60 520-202l56-56 85 85 170-170 56 57L662-60Z';
 const ICONS = Object.freeze({ overdue:'./src/assets/wbs/pending-actions.svg', today:'./src/assets/wbs/today.svg', future:'./src/assets/wbs/next-week.svg', pending:'./src/assets/wbs/pending-approval.svg', unscheduled:'./src/assets/wbs/event-busy.svg', filter:'./src/assets/wbs/filter-alt.svg' });
@@ -57,16 +58,70 @@ function openComment(item,onChanged){
     root.appendChild(fieldRow('نظر',textArea(document,'','commentText')));
   },onSave(root){const result=todayApi.addComment(activeProjectId,refOf(item),root.querySelector('[name="commentText"]').value,actor());if(!result.ok){window.KarhaUI?.showToast?.(`نظر حداقل ${toPersianDigits(COMMENT_MIN_LENGTH)} حرف باشد`);return false;}onChanged?.();return true;}});
 }
+function openStartDelay(item,onChanged){
+  openWbsSheet({
+    title:'ثبت دلیل شروع نشدن', autoFocus:false,
+    historyKey:`execution-start-delay:${activeProjectId}:${item.id}`,
+    body(root){
+      const select=document.createElement('select');
+      select.className='wbs-input'; select.name='startDelayReason';
+      for(const reason of ['', ...START_DELAY_REASONS]){
+        const option=document.createElement('option');
+        option.value=reason; option.textContent=reason || 'انتخاب کنید';
+        select.appendChild(option);
+      }
+      const note=textArea(document,'','startDelayDescription');
+      note.placeholder='برای گزینهٔ سایر، توضیح را بنویسید';
+      root.append(fieldRow('دلیل',select),fieldRow('توضیحات',note));
+    },
+    onSave(root){
+      const reason=root.querySelector('[name="startDelayReason"]').value;
+      const note=root.querySelector('[name="startDelayDescription"]').value;
+      const result=todayApi.recordStartDelay(activeProjectId,refOf(item),reason,note,actor());
+      if(!result.ok){
+        const message=result.code==='invalid_reason' ? 'دلیل را انتخاب کنید و برای «سایر» توضیح بنویسید' : 'ثبت دلیل شروع نشدن ممکن نیست';
+        window.KarhaUI?.showToast?.(message);
+        return false;
+      }
+      onChanged?.();
+      return true;
+    },
+  });
+}
+
 function openReject(item,onChanged){ openWbsSheet({ title:'رد تأیید', saveLabel:'ثبت رد', body(root){ root.appendChild(fieldRow('علت رد',textArea(document,'','rejectionReason'))); }, onSave(root){ const result=todayApi.reject(activeProjectId,refOf(item),root.querySelector('[name="rejectionReason"]').value,actor()); if(!result.ok){ window.KarhaUI?.showToast?.(`علت رد حداقل ${toPersianDigits(REJECTION_MIN_LENGTH)} حرف باشد`); return false; } activeMode=timeState(result.entity, tehranTodayJalali()); onChanged?.(); return true; } }); }
-function renderReports(documentRef,entity){ const host=documentRef.createElement('div'); host.className='today-reports'; reportsOf(entity).forEach(report=>{ const row=documentRef.createElement('article'); row.className='today-report'; row.innerHTML=`<p>${esc(report.description)}</p><div>${esc(report.createdBy?.name||'کاربر')} · ${esc(formatMoment(report.createdAt))}${report.updatedAt?` · <b>ویرایش‌شده ${esc(formatMoment(report.updatedAt))}</b>`:''}</div>`; host.appendChild(row); }); return host; }
+function renderReports(documentRef, projectId, item){
+  const host=documentRef.createElement('div');
+  host.className='today-reports';
+  const reports=reportsOf(item.entity);
+  const canBrowse=projectPermissionState(projectId,['reports:reports']).visible;
+  const visibleReports=canBrowse ? reports.slice(0,1) : reports;
+  for(const report of visibleReports){
+    const row=documentRef.createElement('article');
+    row.className='today-report';
+    const text=String(report.description || '');
+    const summary=canBrowse && text.length>140 ? text.slice(0,140)+'…' : text;
+    row.innerHTML=`<p>${esc(summary)}</p><div>${esc(report.createdBy?.name||'کاربر')} · ${esc(formatMoment(report.createdAt))}${report.updatedAt?` · <b>ویرایش‌شده ${esc(formatMoment(report.updatedAt))}</b>`:''}</div>`;
+    host.appendChild(row);
+  }
+  if(canBrowse && (reports.length || (item.entity.executionHistory||[]).some(entry=>entry?.type==='start_delayed'))){
+    const link=documentRef.createElement('a');
+    link.className='today-section-action today-report-link';
+    link.textContent='همهٔ گزارش‌های این کار';
+    const params=new URLSearchParams({work:executionWorkKey(refOf(item))});
+    link.href=`#/projects/${encodeURIComponent(projectId)}/daily-execution-reports?${params}`;
+    host.appendChild(link);
+  }
+  return host;
+}
 function renderComments(documentRef,item,onChanged){
   const host=documentRef.createElement('div'); host.className='today-comments'; const comments=commentsOf(item.entity); let expanded=false; const list=documentRef.createElement('div');
   const paint=()=>{ list.replaceChildren(); (expanded?comments:comments.slice(0,2)).forEach(comment=>{ const row=documentRef.createElement('div'); row.className='today-comment'+(comment.type==='approval_rejected'?' is-rejection':''); row.innerHTML=`<p>${esc(comment.text)}</p><span>${esc(comment.createdBy?.name||'کاربر')} · ${esc(formatMoment(comment.createdAt))}</span>`; list.appendChild(row); }); }; paint(); host.appendChild(list);
   if(comments.length>2){ const more=documentRef.createElement('button'); more.type='button'; more.className='today-show-comments'; more.textContent=`مشاهده ${toPersianDigits(comments.length-2)} نظر قبلی`; more.addEventListener('click',()=>{ expanded=true; paint(); more.remove(); }); host.appendChild(more); }
   return host;
 }
-function historyLabel(type){ return ({started:'شروع شد',start_cancelled:'شروع لغو شد',report_created:'گزارش ثبت شد',report_edited:'گزارش ویرایش شد',comment_added:'نظر ثبت شد',marked_complete:'انجام‌شده اعلام شد',completed_without_approval:'بدون نیاز به تأیید تکمیل شد',sent_for_approval:'برای تأیید ارسال شد',approval_rejected:'تأیید رد شد',approval_cancelled:'تأیید نهایی لغو شد',returned_to_active:'به فهرست فعال برگشت',completion_withdrawn:'تیک انجام‌شدن برداشته شد',returned_to_previous:'به تب قبلی برگشت',approved:'تأیید نهایی شد'})[type]||type; }
-function renderHistory(documentRef,entity){ const history=(entity.executionHistory||[]).slice().sort((a,b)=>Number(b.at)-Number(a.at)); const details=documentRef.createElement('details'); details.className='today-history'; details.innerHTML='<summary>تاریخچه</summary>'; history.forEach(entry=>{ const row=documentRef.createElement('div'); row.textContent=`${historyLabel(entry.type)} · ${entry.actor?.name||'کاربر'} · ${formatMoment(entry.at)}`; details.appendChild(row); }); return details; }
+function historyLabel(type){ return ({started:'شروع شد',start_delayed:'دلیل شروع نشدن ثبت شد',start_cancelled:'شروع لغو شد',report_created:'گزارش ثبت شد',report_edited:'گزارش ویرایش شد',comment_added:'نظر ثبت شد',marked_complete:'انجام‌شده اعلام شد',completed_without_approval:'بدون نیاز به تأیید تکمیل شد',sent_for_approval:'برای تأیید ارسال شد',approval_rejected:'تأیید رد شد',approval_cancelled:'تأیید نهایی لغو شد',returned_to_active:'به فهرست فعال برگشت',completion_withdrawn:'تیک انجام‌شدن برداشته شد',returned_to_previous:'به تب قبلی برگشت',approved:'تأیید نهایی شد'})[type]||type; }
+function renderHistory(documentRef,entity){ const history=(entity.executionHistory||[]).slice().sort((a,b)=>Number(b.at)-Number(a.at)); const details=documentRef.createElement('details'); details.className='today-history'; details.innerHTML='<summary>تاریخچه</summary>'; history.forEach(entry=>{ const row=documentRef.createElement('div'); row.textContent=`${historyLabel(entry.type)} · ${entry.actor?.name||'کاربر'} · ${formatMoment(entry.at)}${entry.type==='start_delayed' ? [entry.reason,entry.description].filter(Boolean).map(value=>` · ${value}`).join('') : ''}`; details.appendChild(row); }); return details; }
 function renderCard(documentRef,project,item,today,onChanged){
   const entity=item.entity,status=executionStatus(entity),assignee=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.assigneeContactId||'')),contractor=contractorForItem(project,item).contact;
   const card=documentRef.createElement('article'); card.className='today-task-card wbs-costline-work'; card.dataset.entityId=item.id; card.dataset.entityKind=item.kind;
@@ -77,13 +132,18 @@ function renderCard(documentRef,project,item,today,onChanged){
   const writable=canWriteProjectModule(project.id,'execution:today');
   const assigned=writable && isExecutionAssignee(entity,currentActor);
   const heading=documentRef.createElement('div'); heading.className='wbs-costline-work-heading today-card-heading';
+  const openReport=()=>openDailyExecutionReport({
+    projectId:activeProjectId,item,actor:currentActor,onChanged,
+    onSubmitted(updated){activeMode=timeState(updated,tehranTodayJalali());},
+    subject:'کار',
+  });
   const complete=progressCircle(documentRef,entity,{pending,disabled:!assigned,onClick:()=>{
     if(pending){
       const result=todayApi.withdrawCompletion(activeProjectId,refOf(item),actor());
       if(!result.ok){ window.KarhaUI?.showToast?.('لغو ارسال ممکن نیست'); return; }
       activeMode=timeState(result.entity,tehranTodayJalali()); onChanged?.(); return;
     }
-    openDailyExecutionReport({projectId:activeProjectId,item,actor:currentActor,onChanged,onSubmitted(updated){activeMode=timeState(updated,tehranTodayJalali());},subject:'کار'});
+    openReport();
   }});
   const titles=documentRef.createElement('div'); titles.className='today-card-titles'; titles.innerHTML=`<strong>${esc(entity.title||entity.text||'')}</strong><span>${esc(item.path.join(' · '))}</span>`;
   const chip=documentRef.createElement('span'); chip.className=`wbs-type-chip ${TYPE_CLASSES.get(type)||'type-7'}`; chip.textContent=type;
@@ -109,6 +169,15 @@ function renderCard(documentRef,project,item,today,onChanged){
     statusValue.appendChild(linkButton(documentRef, 'today-start today-status-action wbs-costline-manual', 'شروع کار', 'شروع کار'));
   }
   const statusRow=detailRow(documentRef,statusText,statusValue); statusRow.classList.add(entity.actualStart?'is-in-progress':'is-not-started'); card.appendChild(statusRow);
+  if(status==='not_started'){
+    const latestDelay=(entity.executionHistory || []).findLast(entry=>entry?.type==='start_delayed');
+    if(latestDelay) card.appendChild(detailRow(documentRef,'دلیل شروع نشدن',`${latestDelay.reason} · ${formatMoment(latestDelay.at)}`));
+    if(assigned && canRecordStartDelay(entity,today)){
+      const delay=linkButton(documentRef,'wbs-costline-manual today-section-action','ثبت دلیل شروع نشدن');
+      delay.addEventListener('click',()=>openStartDelay(item,onChanged));
+      card.appendChild(detailRow(documentRef,'',delay));
+    }
+  }
   const actions=documentRef.createElement('div'); actions.className='today-task-actions';
   const mayApprove=writable && isExecutionApprover(entity,currentActor);
   if(pending){
@@ -123,7 +192,12 @@ function renderCard(documentRef,project,item,today,onChanged){
     card.querySelector('.today-cancel-start')?.addEventListener('click',()=>{todayApi.cancelStart(activeProjectId,refOf(item),actor());onChanged?.();});
   }
   if(actions.childElementCount) card.appendChild(detailRow(documentRef, 'تأیید', actions));
-  card.appendChild(renderReports(documentRef,entity));
+  if(assigned && status==='in_progress' && !todayReportOf(entity,today)){
+    const report=linkButton(documentRef,'wbs-costline-manual today-section-action','ثبت گزارش');
+    report.addEventListener('click',openReport);
+    card.appendChild(detailRow(documentRef,'',report));
+  }
+  card.appendChild(renderReports(documentRef,project.id,item));
   if(writable){
     const comment=linkButton(documentRef,'wbs-costline-manual today-section-action','افزودن نظر');
     comment.addEventListener('click',()=>openComment(item,onChanged));

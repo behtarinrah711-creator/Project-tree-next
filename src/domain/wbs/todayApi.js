@@ -4,7 +4,7 @@ import { uid } from '../../data/projectFactories.js';
 import { todayRepository } from '../../data/todayRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
 import { workTaskApi } from './workTaskApi.js';
-import { tehranTodayJalali } from './todayDomain.js';
+import { canRecordStartDelay, executionReportDay, START_DELAY_REASONS, tehranTodayJalali } from './todayDomain.js';
 
 export const REPORT_MIN_LENGTH = 3;
 export const COMMENT_MIN_LENGTH = 2;
@@ -46,7 +46,7 @@ export const todayApi = {
       const reports = [...(entity.executionReports || []).filter(report => report && !report.trashed)];
       const history = [...(entity.executionHistory || [])];
       const reportIndex = reports.findLastIndex(report => (
-        (report.reportDay || tehranTodayJalali(new Date(report.createdAt))) === reportDay
+        executionReportDay(report) === reportDay
       ));
       const nextProgress = progress === null || progress === undefined
         ? Number(entity.progress) || 0
@@ -72,6 +72,27 @@ export const todayApi = {
       ...entity,
       executionComments:[...(entity.executionComments || []), { id:commentId, text:description, createdBy:by, createdAt:at, type }],
       executionHistory:[...(entity.executionHistory || []), event(type, by, at, { commentId })],
+      updatedAt:at,
+    }));
+  },
+
+  recordStartDelay(projectId, ref, reason, note, actor, clock = Date.now){
+    const entity = todayRepository.get(projectId, ref);
+    if(!entity) return { ok:false, code:'not_found' };
+    if(!canWriteProjectModule(projectId,'execution:today') || entity.type === 'خرید'
+      || !entity.assigneeContactId || String(entity.assigneeContactId) !== String(actor?.contactId || '')){
+      return { ok:false, code:'forbidden' };
+    }
+    const at = clock();
+    const day = tehranTodayJalali(new Date(at));
+    if(!canRecordStartDelay(entity, day)) return { ok:false, code:'not_due_or_started' };
+    const description = typeof note === 'string' ? note.trim() : '';
+    if(!START_DELAY_REASONS.includes(reason) || (reason === 'سایر' && !description)){
+      return { ok:false, code:'invalid_reason' };
+    }
+    return mutate(projectId, ref, current => ({
+      ...current,
+      executionHistory:[...(current.executionHistory || []),event('start_delayed', actor, at, { day, reason, description })],
       updatedAt:at,
     }));
   },

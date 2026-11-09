@@ -54,3 +54,18 @@
 .wbs-today-frame .today-history{margin:0;border-top:0;padding:0}
 .wbs-today-frame .today-history summary{min-height:40px;display:flex;align-items:center;justify-content:center;color:#033E8A;font-size:11px;font-weight:600;text-align:center}
 .wbs-today-frame .today-history div{padding:4px 0 8px}
+
+.today-report-link{display:block;margin:6px 0;text-align:center;font-size:11px;font-weight:600}
+.daily-execution-reports{padding:12px;box-sizing:border-box}
+.daily-execution-filters,.daily-execution-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.daily-execution-filters input[type="search"],.daily-execution-dates{grid-column:1/-1}
+.daily-execution-dates[hidden],.daily-execution-work[hidden]{display:none}
+.daily-execution-filters .wbs-input{box-sizing:border-box;min-width:0;background:var(--surface,#fff);color:inherit}
+.daily-execution-work,.daily-execution-totals{padding:8px 0;overflow-wrap:anywhere}
+.daily-execution-work small,.daily-execution-summary small{display:block;color:var(--text-dim,#6c6560)}
+.daily-execution-totals,.daily-execution-day>small{font-size:12px;color:var(--text-dim,#6c6560)}
+.daily-execution-day{padding:8px 0}
+.daily-execution-day h3{margin:0;font-size:14px}
+.daily-execution-summary{cursor:pointer;overflow-wrap:anywhere}
+.daily-execution-summary small{margin:3px 0}
+.daily-execution-day .today-report p{margin-top:6px}

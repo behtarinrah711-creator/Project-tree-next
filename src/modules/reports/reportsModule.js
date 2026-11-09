@@ -1,12 +1,15 @@
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { renderDelayView } from '../wbs/delayView.js';
+import { projectPermissionState } from '../roleManagement/permissionState.js';
+import { renderDailyExecutionReports } from './dailyExecutionReportsView.js';
 import { renderDoneWorks } from './doneWorksView.js';
 import { openProjectFinishSheet } from '../wbs/homeView.js';
 
 export const REPORT_SECTIONS = Object.freeze([
   { id:'contracts', title:'قرارداد پیمانکاران', meta:'ایجاد و مدیریت قراردادهای واقعی پیمانکاران' },
   { id:'contract-addenda', title:'الحاقیه‌ها', meta:'ثبت و پیگیری الحاقیه‌های قرارداد' },
+  { id:'daily-execution-reports', title:'گزارش‌های روزانهٔ اجرا', meta:'آمار روزانه و سوابق گزارش هر کار' },
   { id:'done-works', title:'کارهای انجام‌شده', meta:'مشاهده گزارش کارهای تکمیل‌شده پروژه' },
   { id:'work-delays', title:'دیرکردها', meta:'مشاهده کارهای عقب‌افتاده پروژه' },
 ]);
@@ -46,6 +49,8 @@ export const reportsModule = {
     body.innerHTML = '';
 
     const activeProjectId = getProjectId(projectId);
+    const canViewDailyReports = projectPermissionState(activeProjectId,['reports:reports']).visible;
+    if(viewId==='daily-execution-reports' && !canViewDailyReports) return;
     const project = getActiveProject(activeProjectId);
 
     // Reports is project-scoped. No project means no report data.
@@ -61,6 +66,11 @@ export const reportsModule = {
       });
       return;
     }
+    if(viewId === 'daily-execution-reports'){
+      const params = new URLSearchParams(window.location.hash.split('?')[1]);
+      body.appendChild(renderDailyExecutionReports(project,document,params.get('work')));
+      return;
+    }
     if(viewId === 'work-delays'){
       body.appendChild(renderDelayView(project, document, openProjectFinishSheet));
       return;
@@ -74,6 +84,7 @@ export const reportsModule = {
     wrap.className = 'workspace-option-list';
 
     REPORT_SECTIONS.forEach(section => {
+      if(section.id==='daily-execution-reports' && !canViewDailyReports) return;
       const row = document.createElement('button');
       row.type = 'button';
       row.className = 'workspace-option';
