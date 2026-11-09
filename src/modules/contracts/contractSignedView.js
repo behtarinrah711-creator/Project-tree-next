@@ -1,29 +1,23 @@
+import {canWriteProjectModule} from '../roleManagement/permissionState.js';
 import {canAttachSignedContract,canReviseReturnedSignedContract,signedContractFiles,isContractInFinance,isContractSigned} from '../../domain/contractHandoff.js';
 import {mountFileUploader} from '../files/fileUploader.js';
 import {openWbsSheet,closeWbsSheet,fieldRow} from '../wbs/wbsSheet.js';
 import {openConfirm} from '../../ui/confirm.js';
 import {saveContractHandoff} from './contractHandoffApi.js';
 const toast=message=>window.KarhaLegacy?.showToast?.(message);
-function canWrite(project){
-  const access=window.KarhaSaosaWorkspaceAccess?.[project.id];
-  if(!access || access.role==='owner')return true;
-  const permissions=access.permissions||{};
-  const level=permissions.modules?.contracts ?? permissions.contracts;
-  return ['create','edit','full'].includes(level) || (!permissions.modules && permissions.edit===true);
-}
 export function renderContractSignedSection(project,contract,{onChanged=()=>{},finance=false,inlineActions=null}={}){
   const label=contract.parentContractId?'الحاقیه':'قرارداد';
   const financeFiles=inlineActions && contract.accountingPackage?.signedFiles;
   const existing=financeFiles?.length?financeFiles:signedContractFiles(contract);
   const ready=canAttachSignedContract(contract),returned=canReviseReturnedSignedContract(contract);
-  if(!existing.length && (inlineActions || (!ready && !returned)))return null;
+  const sent=isContractInFinance(contract),writable=canWriteProjectModule(project.id,'contracts');
+  const editable=writable && (ready || returned) && !sent && !finance;
+  if(!existing.length && !editable)return null;
   const section=inlineActions || document.createElement('section');
   if(!inlineActions){
     section.className='contract-signed-section';
     section.onclick=event=>event.stopPropagation();
   }
-  const sent=isContractInFinance(contract),writable=canWrite(project);
-  const editable=writable && (ready || returned) && !sent && !finance;
   const button=(text,action)=>{const b=document.createElement('button');b.type='button';b.className='contract-review-action';b.textContent=text;b.onclick=action;section.appendChild(b);return b;};
   let busy=false;
   const run=async(action,options={})=>{

@@ -1,3 +1,4 @@
+import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { todayApi, COMMENT_MIN_LENGTH, REJECTION_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
 import { contractorForItem, remainingLabel, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
 import { SHOPPING_MODES, shoppingItemsForMode, shoppingStatusLabel } from '../../domain/wbs/shoppingDomain.js';
@@ -25,10 +26,11 @@ function commentsOf(entity){return(entity.executionComments||[]).filter(comment=
 function textArea(documentRef,value,name){const field=documentRef.createElement('textarea');field.className='wbs-input today-textarea';field.name=name;field.value=value||'';return field;}
 function openReject(item,onChanged){openWbsSheet({title:'رد تأیید خرید',saveLabel:'ثبت رد',body(root){root.appendChild(fieldRow('علت رد',textArea(document,'','rejectionReason')));},onSave(root){const result=todayApi.reject(activeProjectId,refOf(item),root.querySelector('[name="rejectionReason"]').value,actor());if(!result.ok){window.KarhaUI?.showToast?.(`علت رد حداقل ${toPersianDigits(REJECTION_MIN_LENGTH)} حرف باشد`);return false;}activeMode=timeState(result.entity, tehranTodayJalali());onChanged?.();return true;}});}
 function renderReports(documentRef,entity){const host=documentRef.createElement('div');host.className='today-reports';reportsOf(entity).forEach(report=>{const row=documentRef.createElement('article');row.className='today-report';row.innerHTML=`<p>${esc(report.description)}</p><div>${esc(report.createdBy?.name||'کاربر')} · ${esc(formatMoment(report.createdAt))}${report.updatedAt?` · <b>ویرایش‌شده ${esc(formatMoment(report.updatedAt))}</b>`:''}</div>`;host.appendChild(row);});return host;}
-function renderComments(documentRef,item,onChanged){
+function renderComments(documentRef,item,onChanged,writable){
   const host=documentRef.createElement('div');host.className='today-comments';const comments=commentsOf(item.entity);let expanded=false;const list=documentRef.createElement('div');
   const paint=()=>{list.replaceChildren();(expanded?comments:comments.slice(0,2)).forEach(comment=>{const row=documentRef.createElement('div');row.className='today-comment'+(comment.type==='approval_rejected'?' is-rejection':'');row.innerHTML=`<p>${esc(comment.text)}</p><span>${esc(comment.createdBy?.name||'کاربر')} · ${esc(formatMoment(comment.createdAt))}</span>`;list.appendChild(row);});};paint();host.appendChild(list);
   if(comments.length>2){const more=documentRef.createElement('button');more.type='button';more.className='today-show-comments';more.textContent=`مشاهده ${toPersianDigits(comments.length-2)} نظر قبلی`;more.addEventListener('click',()=>{expanded=true;paint();more.remove();});host.appendChild(more);}
+  if(!writable)return host;
   const form=documentRef.createElement('form');form.className='today-comment-form';form.innerHTML=`<input class="wbs-input" name="comment" minlength="${COMMENT_MIN_LENGTH}" placeholder="افزودن نظر"><button type="submit">ثبت</button>`;form.addEventListener('submit',event=>{event.preventDefault();const result=todayApi.addComment(activeProjectId,refOf(item),form.elements.comment.value,actor());if(!result.ok){window.KarhaUI?.showToast?.(`نظر حداقل ${toPersianDigits(COMMENT_MIN_LENGTH)} حرف باشد`);return;}onChanged?.();});host.appendChild(form);return host;
 }
 
@@ -37,8 +39,9 @@ function renderCard(documentRef,project,item,today,onChanged){
   const dateText=entity.scheduleStart&&entity.scheduleEnd?(entity.scheduleStart===entity.scheduleEnd?formatDate(entity.scheduleStart):`${formatDate(entity.scheduleStart)} ← ${formatDate(entity.scheduleEnd)}`):'بدون تاریخ';
   const card=documentRef.createElement('article');card.className='today-task-card shopping-item-card';card.dataset.entityId=item.id;card.dataset.entityKind=item.kind;
   const pending=item.mode==='pending';
-  const currentActor=actor();const assigned=isExecutionAssignee(entity,currentActor);
-  const statusText=pending
+  const writable=canWriteProjectModule(project.id,'execution:shopping');
+  const currentActor=actor();const assigned=writable && isExecutionAssignee(entity,currentActor);
+  const statusText=pending || !assigned
     ? `<span class="today-status-slot">وضعیت: ${esc(shoppingStatusLabel(entity))}</span>`
     : (entity.actualStart
       ? `<span class="today-status-slot">وضعیت: ${esc(shoppingStatusLabel(entity))} <button type="button" class="today-cancel-start today-status-action" aria-label="لغو شروع">لغو شروع</button></span>`
@@ -55,7 +58,7 @@ function renderCard(documentRef,project,item,today,onChanged){
   }});
   card.querySelector('.today-task-primary').appendChild(complete);
   const actions=documentRef.createElement('div');actions.className='today-task-actions';
-  const mayApprove=isExecutionApprover(entity,currentActor);
+  const mayApprove=writable && isExecutionApprover(entity,currentActor);
   if(pending){
     if(mayApprove){const approve=documentRef.createElement('button');approve.type='button';approve.textContent='تأیید خرید';approve.addEventListener('click',()=>{todayApi.approve(activeProjectId,refOf(item),actor());onChanged?.();});const reject=documentRef.createElement('button');reject.type='button';reject.className='is-danger';reject.textContent='رد';reject.addEventListener('click',()=>openReject(item,onChanged));actions.append(approve,reject);}
   } else {
@@ -63,7 +66,7 @@ function renderCard(documentRef,project,item,today,onChanged){
     card.querySelector('.today-cancel-start')?.addEventListener('click',()=>{todayApi.cancelStart(activeProjectId,refOf(item),actor());onChanged?.();});
   }
   const history=(entity.executionHistory||[]).slice().sort((a,b)=>Number(b.at)-Number(a.at));
-  card.append(actions,renderReports(documentRef,entity),renderComments(documentRef,item,onChanged));
+  card.append(actions,renderReports(documentRef,entity),renderComments(documentRef,item,onChanged,writable));
   if(history.length){ const details=documentRef.createElement('details'); details.className='today-history'; details.innerHTML='<summary>تاریخچه</summary>'; history.forEach(entry=>{ const row=documentRef.createElement('div'); row.textContent=`${({started:'شروع شد',start_cancelled:'شروع لغو شد',report_created:'گزارش ثبت شد',report_edited:'گزارش ویرایش شد',comment_added:'نظر ثبت شد',marked_complete:'انجام‌شده اعلام شد',completed_without_approval:'بدون نیاز به تأیید تکمیل شد',sent_for_approval:'برای تأیید ارسال شد',approval_rejected:'تأیید رد شد',returned_to_active:'به فهرست فعال برگشت',completion_withdrawn:'تیک انجام‌شدن برداشته شد',returned_to_previous:'به تب قبلی برگشت',approved:'تأیید نهایی شد'})[entry.type]||entry.type} · ${entry.actor?.name||'کاربر'} · ${formatMoment(entry.at)}`; details.appendChild(row); }); card.appendChild(details); }
   return card;
 }

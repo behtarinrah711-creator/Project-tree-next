@@ -25,6 +25,7 @@ test('read-only project members cannot see mutation actions on signed or finance
   globalThis.document=documentRef;window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'view'}}}};
   const c={id:'c',status:'final',approvalStatus:'approved',signedAt:1,signedFiles:[file]};
   assert.deepEqual(labels(renderContractSignedSection(project,c)),['نسخه امضاشده قرارداد']);
+  assert.equal(renderContractSignedSection(project,{...c,signedFiles:[]}),null);
   assert.deepEqual(labels(renderContractSignedSection(project,{...c,accountingStatus:'sent',sentToAccountingAt:2,accountingPackage:{contract:c}},{finance:true})),['نسخه امضاشده قرارداد']);
   delete window.KarhaSaosaWorkspaceAccess;
 });

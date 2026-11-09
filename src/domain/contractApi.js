@@ -1,3 +1,4 @@
+import { canWriteProjectModule } from '../modules/roleManagement/permissionState.js';
 import { workTaskRepository } from '../data/workTaskRepository.js';
 import { transitionContractApproval, contractApprovalState, contractRevisionContent } from './contractApproval.js';
 import { contractRepository } from '../data/contractRepository.js';
@@ -43,6 +44,7 @@ function allow(extra = {}){
 
 function canWriteProject(project){
   if(!project) return deny('not_found', 'پروژه پیدا نشد');
+  if(!canWriteProjectModule(project.id,'contracts')) return deny('forbidden','اجازه تغییر قرارداد را ندارید');
   const session = getSession();
   if(session.ready && !session.uid && project.ownerUid){
     return deny('forbidden', 'این پروژه در حالت مهمان قابل ویرایش نیست');

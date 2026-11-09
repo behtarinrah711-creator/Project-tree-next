@@ -42,3 +42,7 @@ export function canViewProjectHome(projectId,windowRef=globalThis.window){
 export function canViewPermission(level){return level!=='none';}
 export function canWritePermission(level){return EDIT_LEVELS.has(level);}
 export function canDeletePermission(level){return level==='full';}
+
+export function canWriteProjectModule(projectId,key,windowRef=globalThis.window){
+  return canWritePermission(projectPermissionState(projectId,[key],windowRef).levels[key]);
+}

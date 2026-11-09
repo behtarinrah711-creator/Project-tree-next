@@ -1,3 +1,4 @@
+import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { makeContractItem, renumberContractItems } from './contractTemplatesDomain.js';
 import { paginateContract } from './contractPagination.js';
 import { projectContext } from '../../core/projectContext.js';
@@ -239,7 +240,7 @@ export const contractTemplateFormModule={
 
   open(id=null, projectId=null){
     const p=activeProject(projectId);
-    if(!p) return false;
+    if(!p || !canWriteProjectModule(p.id,'contracts')) return false;
     formProjectId=p.id;
     editingId=id||null;
     const existing=id ? helper("findContractTemplate",id,p) : null;

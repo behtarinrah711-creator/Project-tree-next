@@ -72,6 +72,8 @@ test('only financial writers can approve, revoke their approval and reject with 
   assert.equal((await decision('approve_finance')).status,403,'contract writer is not a finance reviewer');
   f.setPermissions({modules:{contracts:'none',accounting:'view'}});
   assert.equal((await decision('approve_finance')).status,403);
+  f.setPermissions({modules:{contracts:'none',accounting:'create','accounting-contracts':'view'}});
+  assert.equal((await decision('approve_finance')).status,403);
   f.setPermissions({modules:{contracts:'none',accounting:'create'}});
   let result=await decision('approve_finance');assert.equal(result.status,200);c=result.result.contract;
   assert.equal(c.accountingStatus,'accepted');
@@ -193,4 +195,18 @@ test('addendum editor keeps incomplete draft rows and submits only after complet
   assert.equal(submitted.status,200);
   assert.equal(submitted.result.contract.approvalStatus,'pending');
   assert.deepEqual(submitted.result.contract.approvalContactIds,['reviewer']);
+});
+
+test('an assigned addendum reviewer must have write permission to approve',async()=>{
+  const f=fixture(),id='addendum-00000000-0000-4000-8000-000000000001';
+  f.payload.contacts=[{id:'reviewer',phones:['0912']}];
+  f.payload.contractAddenda=[{id,status:'final',approvalStatus:'pending',approvalContactId:'reviewer',
+    approvalContactIds:['reviewer'],approvedContactIds:[],updatedAt:1}];
+  const approve=()=>f.call({action:'approve_addendum',version:0,updatedAt:1},'/api/v1/projects/p/addenda/'+id+'/handoff');
+  f.setPermissions({modules:{contracts:'view','execution:today':'full'}});
+  assert.equal((await approve()).status,403);
+  assert.equal(f.commits,0);
+  f.setPermissions({modules:{contracts:'create'}});
+  assert.equal((await approve()).status,200);
+  assert.equal(f.payload.contractAddenda[0].approvalStatus,'approved');
 });

@@ -1,3 +1,4 @@
+import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
 import { fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
 import { ensureOperationRows, renderQuantityRows, syncContractAmount } from './contractPricing.js';
@@ -651,7 +652,7 @@ export const realContractFormModule = {
 
   open(id = null, projectId = null) {
     const project = activeProject(projectId);
-    if (!project) return false;
+    if (!project || !canWriteProjectModule(project.id,'contracts')) return false;
 
     activeProjectId = project.id;
     if (!openFormShell(project.id)) {

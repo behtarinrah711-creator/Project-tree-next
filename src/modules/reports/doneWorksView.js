@@ -1,3 +1,4 @@
+import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
 import { jalaliDayNumber } from '../../domain/wbs/costline.js';
 import { todayApi } from '../../domain/wbs/todayApi.js';
@@ -29,6 +30,7 @@ function rowOf(entity, path, ref){
   const delta = planned != null && actual != null ? actual - planned : null;
   return {
     id: entity.id, ref,
+    executionModule:entity.type==='خرید'?'execution:shopping':'execution:today',
     title: entity.title || entity.text || '',
     path: path.join(' ← '),
     plannedStart, plannedEnd, actualStart, actualEnd, delta,
@@ -91,13 +93,14 @@ export function renderDoneWorks(project, documentRef = document, onChanged){
       cancel.className = 'wbs-primary-action is-secondary';
       cancel.textContent = 'لغو انجام کار';
       cancel.addEventListener('click', () => {
+        if(!canWriteProjectModule(project.id,'reports:reports'))return;
         const user = documentRef.defaultView?.firebase?.auth?.()?.currentUser;
         const result = todayApi.cancelApproval(project.id, row.ref, { id:user?.uid || 'guest', name:user?.displayName || user?.email || 'کاربر' });
         if(!result.ok) return;
         onChanged?.();
         paint();
       });
-      card.appendChild(cancel);
+      if(canWriteProjectModule(project.id,'reports:reports') && canWriteProjectModule(project.id,row.executionModule))card.appendChild(cancel);
       body.appendChild(card);
     });
     if(!rows.length) body.insertAdjacentHTML('beforeend', '<div class="empty-state">کار تأییدشده‌ای نیست.</div>');

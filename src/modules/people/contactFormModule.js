@@ -1,3 +1,4 @@
+import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { projectContext } from '../../core/projectContext.js';
 import { contactApi } from '../../domain/contactApi.js';
 import { localStorageAdapter } from '../../data/storageAdapter.js';
@@ -19,6 +20,8 @@ function clearContactDraft(id){ const draft=readContactDraft(); if(!draft||!id||
 export function openContactForm(contact=null,{activityId=null,onCreated=null,pickerMode=false}={}){
   const projectId=getProjectId();
   if(!projectId) return false;
+  const writable=canWriteProjectModule(projectId,'people');
+  if(!contact && !writable)return false;
   const storedContact=contact?.id ? contactApi.get(projectId, contact.id) : null;
   contact=storedContact || contact;
   const isEdit=!!contact;
@@ -54,6 +57,7 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null,pic
   const addBtn=document.getElementById('contactAddBtn');
   if(pickerMode) page?.classList.remove('hidden');
   if(!enterContactFormShell({page,body,title:h2,addButton:addBtn,isEdit,setFormMode:runtime.setInternalFormMode})) return;
+  if(!writable && h2) h2.textContent='مشاهده مخاطب';
 
   const wrap=document.createElement('div'); wrap.className='contacts-page-form form-template';
   const uploaders=[];
@@ -90,7 +94,7 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null,pic
     }catch(e){ return false; }
   };
   const commitDraftNow=()=>{ clearTimeout(draftTimer); return writeCurrentContactDraft(); };
-  window.__commitContactDraft=commitDraftNow;
+  if(writable) window.__commitContactDraft=commitDraftNow;
 
   const saveContactDraft=()=>{ formIsDirty=true; };
 
@@ -174,6 +178,7 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null,pic
   syncActVal();
   actSec.append(actLab, actVal);
   actSec.onclick=()=>{
+    if(!writable)return;
     const acts=getActivities(projectId).filter(a=>a&&!a.trashed);
     openSearchTemplate({
       title:'انتخاب فعالیت',
@@ -221,8 +226,16 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null,pic
 
   const bar=document.createElement('div'); bar.className='contact-savebar'; const save=document.createElement('button'); save.className='mini-btn primary'; save.textContent='ذخیره'; const draftBtn=document.createElement('button'); draftBtn.className='mini-btn'; draftBtn.textContent='پیش‌نویس'; const cancel=document.createElement('button'); cancel.className='mini-btn ghost'; cancel.textContent='انصراف'; bar.append(save,draftBtn,cancel); wrap.appendChild(bar); body.appendChild(wrap);
 
+  if(!writable){
+    wrap.querySelectorAll('button,input,textarea,select').forEach(control=>{
+      if(control!==cancel) control.disabled=true;
+    });
+    save.remove();
+    draftBtn.remove();
+    cancel.textContent='بستن';
+  }
   for(const [root,files,label] of [[foreignUpload,c.foreignIdImages,'افزودن عکس یا فایل مدارک اتباع'],[iranUpload,c.iranianDocumentImages,'افزودن عکس یا فایل مدارک']]){
-    uploaders.push(mountFileUploader(root,{projectId,recordId:c.id,files,label,onChange:()=>{formIsDirty=true;saveContactDraft();},onError:message=>runtime.showToast(message)}));
+    uploaders.push(mountFileUploader(root,{projectId,recordId:c.id,files,label,readOnly:!writable,onChange:()=>{formIsDirty=true;saveContactDraft();},onError:message=>runtime.showToast(message)}));
   }
 
   const toggleNationality=()=>{const iranian=(natRow.querySelector('input:checked')?.value||'ایرانی')==='ایرانی';foreignBox.classList.toggle('hidden',iranian);nationalField.classList.toggle('hidden',!iranian);iranianDocs.classList.toggle('hidden',!iranian);};
@@ -311,12 +324,13 @@ export function openContactForm(contact=null,{activityId=null,onCreated=null,pic
   };
 
   document.getElementById('contactFormHeaderConfirm')?.remove();
-  const headerConfirm=document.createElement('button');headerConfirm.id='contactFormHeaderConfirm';headerConfirm.type='button';headerConfirm.className='inner-section-action';headerConfirm.textContent='تأیید';headerConfirm.onclick=()=>save.click();header?.appendChild(headerConfirm);
+  const headerConfirm=document.createElement('button');headerConfirm.id='contactFormHeaderConfirm';headerConfirm.type='button';headerConfirm.className='inner-section-action';headerConfirm.textContent='تأیید';headerConfirm.onclick=()=>save.click();if(writable)header?.appendChild(headerConfirm);
 
   const clearInvalid=el=>{if(el) el.classList.remove('contact-invalid');};
   const markInvalid=el=>{if(el) el.classList.add('contact-invalid');};
   [ 'lastName','type' ].forEach(k=>{const el=wrap.querySelector(`[data-key="${k}"]`)?.closest('.contact-field'); if(el){const input=wrap.querySelector(`[data-key="${k}"]`); input?.addEventListener('input',()=>clearInvalid(el)); input?.addEventListener('change',()=>clearInvalid(el));}});
   save.onclick=()=>{
+    if(!canWriteProjectModule(projectId,'people'))return;
     if(uploadsPending()){runtime.showToast('ابتدا بارگذاری فایل‌ها را کامل یا لغو کنید');return;}
     const get=k=>wrap.querySelector(`[data-key="${k}"]`)?.value.trim()||'';
     const nat=natRow.querySelector('input:checked')?.value||'ایرانی';

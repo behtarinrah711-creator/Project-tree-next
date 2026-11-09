@@ -30,6 +30,11 @@ function updateTarget(nodes, ref, updater){
 export class TodayRepository{
   constructor(projectRepo = projectRepository){ this.projectRepository = projectRepo; }
 
+  get(projectId, ref){
+    const project = this.projectRepository.find(projectId);
+    return updateTarget(project?.tasks, ref, entity => entity).updated;
+  }
+
   update(projectId, ref, updater){
     let updated = null;
     const saved = this.projectRepository.updateProject(projectId, project => {

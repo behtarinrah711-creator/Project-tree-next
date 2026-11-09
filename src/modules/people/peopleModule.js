@@ -1,3 +1,4 @@
+import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { searchText } from '../../ui/catalogueSearch.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
@@ -85,7 +86,8 @@ function appendContactRow({ list, rows, projectId, contact, rerender }){
     if(deleteContact(projectId,contact.id)) rerender();
   });
   actions.append(del,edit);
-  row.append(main,actions);
+  row.append(main);
+  if(canWriteProjectModule(projectId,'people'))row.append(actions);
   row.dataset.searchText=searchText(displayName+' '+activityText+' '+(contact.type||''));
   row.addEventListener('click',()=>openContactForm(contact));
   rows.push(row);
@@ -111,6 +113,8 @@ export const peopleModule = {
     const activeId=getProjectId(projectId);
     const project=getProject(activeId);
     body.innerHTML='';
+    const add=document.getElementById('contactAddBtn');
+    if(add) add.hidden=!!project && !canWriteProjectModule(activeId,'people');
 
     if(!project){
       body.innerHTML='<div class="mgmt-empty">برای نمایش مخاطبین، یک پروژه را انتخاب کنید.</div>';

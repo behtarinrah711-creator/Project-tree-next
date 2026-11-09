@@ -111,3 +111,21 @@ test('approved task reaches 100 percent and cancellation returns it to its activ
   assert.equal(entity(store).executionHistory.at(-2).type,'approval_cancelled');
   assert.equal(entity(store).executionHistory.at(-1).type,'returned_to_active');
 });
+
+test('an assigned user with execution view access cannot start, report, or approve a task',()=>{
+  const store=install();
+  const previous=globalThis.window;
+  const actor={id:'a',contactId:'a',name:'الف'};
+  entity(store).assigneeContactId='a';
+  const original=structuredClone(entity(store));
+  const modules={'execution:today':'view','execution:shopping':'full','planning:tree':'full'};
+  globalThis.window={KarhaSaosaWorkspaceAccess:{p1:{role:'invite',permissions:{modules}}}};
+  try{
+    assert.equal(todayApi.start('p1',ref,actor).code,'forbidden');
+    assert.equal(todayApi.saveReport('p1',ref,'گزارش اجرا',actor).code,'forbidden');
+    assert.equal(todayApi.approve('p1',ref,actor).code,'forbidden');
+    assert.deepEqual(entity(store),original);
+    modules['execution:today']='create';
+    assert.equal(todayApi.start('p1',ref,actor).ok,true);
+  }finally{globalThis.window=previous;}
+});
