@@ -219,7 +219,11 @@ function addendumCard(project,addendum,onChanged,finance){
     }),
   });
   row.append(heading);
-  const actions=renderContractStatusRow(addendum);
+  const actions=renderContractStatusRow(addendum,{showBadge:!finance});
+  if(finance){
+    actions.className+=' contract-workflow-row--signed-addendum';
+    renderContractSignedSection(project,addendum,{finance,inlineActions:actions});
+  }
   if(parent)actions.append(button('مشاهده قرارداد اصلی',trigger=>openContractPreview(project,parent,{trigger,frozen:finance || parent===frozenParent})));
   const actor=currentExecutionActor(project);
   let busy=false;
@@ -253,9 +257,12 @@ function addendumCard(project,addendum,onChanged,finance){
       actions.append(message);
     }
   }
-  row.append(actions,renderContractProgress(document,addendum,project));
-  const signed=renderContractSignedSection(project,addendum,{onChanged,finance});
-  if(signed)row.append(signed);
+  row.append(actions);
+  if(!finance){
+    row.append(renderContractProgress(document,addendum,project));
+    const signed=renderContractSignedSection(project,addendum,{onChanged});
+    if(signed)row.append(signed);
+  }
   if(finance){
     const original=parent && syncContractAmount(structuredClone(parent));
     const adjustments=(project.contractAddenda||[]).filter(record=>record.parentContractId===addendum.parentContractId

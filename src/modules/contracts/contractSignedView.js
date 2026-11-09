@@ -11,12 +11,17 @@ function canWrite(project){
   const level=permissions.modules?.contracts ?? permissions.contracts;
   return ['create','edit','full'].includes(level) || (!permissions.modules && permissions.edit===true);
 }
-export function renderContractSignedSection(project,contract,{onChanged=()=>{},finance=false}={}){
+export function renderContractSignedSection(project,contract,{onChanged=()=>{},finance=false,inlineActions=null}={}){
   const label=contract.parentContractId?'الحاقیه':'قرارداد';
-  const existing=signedContractFiles(contract),ready=canAttachSignedContract(contract),returned=canReviseReturnedSignedContract(contract);
-  if(!ready && !returned && !existing.length)return null;
-  const section=document.createElement('section');section.className='contract-signed-section';
-  section.onclick=event=>event.stopPropagation();
+  const financeFiles=inlineActions && contract.accountingPackage?.signedFiles;
+  const existing=financeFiles?.length?financeFiles:signedContractFiles(contract);
+  const ready=canAttachSignedContract(contract),returned=canReviseReturnedSignedContract(contract);
+  if(!existing.length && (inlineActions || (!ready && !returned)))return null;
+  const section=inlineActions || document.createElement('section');
+  if(!inlineActions){
+    section.className='contract-signed-section';
+    section.onclick=event=>event.stopPropagation();
+  }
   const sent=isContractInFinance(contract),writable=canWrite(project);
   const editable=writable && (ready || returned) && !sent && !finance;
   const button=(text,action)=>{const b=document.createElement('button');b.type='button';b.className='contract-review-action';b.textContent=text;b.onclick=action;section.appendChild(b);return b;};
@@ -43,6 +48,10 @@ export function renderContractSignedSection(project,contract,{onChanged=()=>{},f
     const observer=new MutationObserver(()=>{if(!sheet.isConnected){uploader.destroy();observer.disconnect();}});
     observer.observe(document.body,{childList:true});
   };
+  if(inlineActions){
+    button('نسخه امضا شده '+label,openAttachments);
+    return section;
+  }
   if(sent){
     section.className+=' contract-signed-section--sent';
     if(writable && !finance)button('پس‌گرفتن از مالی',()=>{const sheet=openWbsSheet({title:'پس‌گرفتن قرارداد از مالی',saveLabel:'ثبت برگشت',historyKey:'withdraw-finance:'+contract.id,

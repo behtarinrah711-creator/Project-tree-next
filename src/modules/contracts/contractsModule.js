@@ -121,15 +121,16 @@ export function renderContractCardHeading(project, contract, menu, {titlePrefix=
   return heading;
 }
 
-export function renderContractStatusRow(c){
+export function renderContractStatusRow(c,{showBadge=true}={}){
   const statusRow=document.createElement('div');statusRow.className='contract-workflow-row';
+  statusRow.onclick=event=>event.stopPropagation();
+  if(!showBadge)return statusRow;
   const status=document.createElement('span');
   const approvalState=contractApprovalState(c);
   const statusLabel=c.accountingStatus==='accepted'?'تأیید شده توسط بخش مالی':approvalState==='incomplete'?'ناقص':approvalState==='approved'?'تأیید شده است':['ready','unapproved','returned'].includes(approvalState)?'تأیید نشده است':approvalLabels[approvalState];
   status.className='contract-status-badge '+(approvalState==='approved'?'is-approved':['ready','unapproved','returned'].includes(approvalState)?'is-unapproved':'is-incomplete');
   status.textContent='وضعیت: '+statusLabel;statusRow.appendChild(status);
   if(c.approvalStatus==='pending' && c.approvalContactIds?.length)status.textContent+=' ('+new Intl.NumberFormat('fa-IR').format(c.approvedContactIds?.length || 0)+' از '+new Intl.NumberFormat('fa-IR').format(c.approvalContactIds.length)+')';
-  statusRow.onclick=event=>event.stopPropagation();
   return statusRow;
 }
 

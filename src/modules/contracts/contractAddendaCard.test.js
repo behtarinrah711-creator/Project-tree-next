@@ -20,7 +20,7 @@ test('saved addenda use the contract card layout and their own status, number an
   const draft={id:'a',parentContractId:'c',contractNo:'CTR-1-A01',createdAt:1000,isDraft:true,
     approvalHistory:[{action:'create',at:1000,actor:{name:'سازنده الحاقیه'}}]};
   const accepted={...draft,isDraft:false,status:'final',approvalStatus:'approved',accountingStatus:'accepted',
-    signedAt:2000,signedFiles:[{id:'file'}],sentToAccountingAt:3000,amount:100,
+    signedAt:2000,sentToAccountingAt:3000,amount:100,
     accountingPackage:{contract:{parentDocument:parent},signedFiles:[{id:'file'}]},
     financeHistory:[{action:'approve_finance',at:4000,actor:{name:'مالی'}}]};
   const project={id:'p',tasks:[],contracts:[parent],contractAddenda:[draft]};
@@ -33,7 +33,7 @@ test('saved addenda use the contract card layout and their own status, number an
       const body=make('div');
       renderContractAddenda(body,'p',{finance});
       const card=body.children[0].children.at(-1);
-      const [heading,status,progress]=card.children;
+      const [heading,status]=card.children;
       assert.equal(heading.className,'contract-card-heading');
       assert.equal(typeof heading.onclick,'function');
       assert.equal(heading.children[0].tabIndex,0);
@@ -43,10 +43,19 @@ test('saved addenda use the contract card layout and their own status, number an
       assert.deepEqual(heading.children.map(node=>node.className),['contract-main','contract-created','contract-actions']);
       assert.deepEqual(heading.children[0].children.map(node=>node.textContent),
         ['الحاقیه قرارداد پیمانکاری جواد قریشی','CTR-1-A01','تصفیه خانه ← فونداسیون']);
-      assert.equal(status.children[0].textContent,finance?'وضعیت: تأیید شده توسط بخش مالی':'وضعیت: ناقص');
+      assert.equal(status.children[0].textContent,finance?'نسخه امضا شده الحاقیه':'وضعیت: ناقص');
       assert.equal(status.children[1].textContent,'مشاهده قرارداد اصلی');
-      assert.equal(progress.className,'contract-progress');
-      assert.equal(progress.children.filter(node=>node.className.includes('is-complete')).length,finance?5:1);
+      const progress=card.children.find(node=>node.className==='contract-progress');
+      if(finance){
+        assert.equal(progress,undefined);
+        assert.equal(status.className,'contract-workflow-row contract-workflow-row--signed-addendum');
+        assert.deepEqual(status.children.map(node=>node.className),['contract-review-action','contract-review-action']);
+        assert.equal(typeof status.children[0].onclick,'function');
+        assert.ok(!card.children.some(node=>node.className.includes('contract-signed-section')));
+      }else{
+        assert.equal(progress,card.children[2]);
+        assert.equal(progress.children.filter(node=>node.className.includes('is-complete')).length,1);
+      }
       assert.equal(card.children.at(-1).className,'contract-history');
     }
   }finally{[globalThis.window,globalThis.document,projectRepository.find,contactApi.lookup]=old;}
