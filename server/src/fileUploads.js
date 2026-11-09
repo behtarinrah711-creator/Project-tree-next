@@ -1,4 +1,4 @@
-import {canAttachSignedContract,canReviseReturnedSignedContract,isContractInFinance} from '../../src/domain/contractHandoff.js';
+import {canAttachSignedContract,canReviseReturnedSignedContract,isAddendumVisibleInFinance,isContractInFinance} from '../../src/domain/contractHandoff.js';
 import {randomUUID, createHash} from 'node:crypto';
 import sharp from 'sharp';
 import {fileTypeFromBuffer} from 'file-type';
@@ -104,9 +104,12 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
       LEFT JOIN project_roles r ON r.id=m.role_id AND r.project_id=p.id WHERE p.id=$1`,[projectId,accountId]);
     const row=result.rows[0];
     const contract=category==='contracts'?[...(row?.payload?.contracts||[]),...(row?.payload?.contractAddenda||[])].find(c=>!c.trashed && String(c.id)===recordId):null;
+    const financeFile=contract?.accountingStatus==='rejected'
+      ? isAddendumVisibleInFinance(contract) && contract.accountingPackage.signedFiles?.some(file=>file.id===id)
+      : isContractInFinance(contract);
     const allowed=category==='contacts'
       ? canAccessFiles(row,accountId,write) || (!write && canReadContractDocument(row,accountId,url.searchParams.get('contractId'),recordId,id))
-      : !!contract && (canAccessFiles(row,accountId,write,'contracts') || (!write && isContractInFinance(contract) && (canAccessFiles(row,accountId,false,'accounting') || canAccessFiles(row,accountId,false,'accounting-contracts'))));
+      : !!contract && (canAccessFiles(row,accountId,write,'contracts') || (!write && financeFile && (canAccessFiles(row,accountId,false,'accounting') || canAccessFiles(row,accountId,false,'accounting-contracts'))));
     if(!allowed){sendJson(response,403,{error:'forbidden_project_files'});return true;}
     if(category==='contracts' && write && (!(canAttachSignedContract(contract) || canReviseReturnedSignedContract(contract)) || isContractInFinance(contract))){sendJson(response,409,{error:'contract_files_locked'});return true;}
     if(!storage){sendJson(response,503,{error:'file_storage_unavailable'});return true;}

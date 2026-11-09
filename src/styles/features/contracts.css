@@ -1965,3 +1965,21 @@ textarea.contract-project-item-input{
 }
 
 #contractsPageBody .contract-workflow-row > .contract-addendum-create{margin-inline-start:auto;padding:7px 12px;border-radius:8px;background:#1565c0;color:#fff;white-space:nowrap;}
+
+
+.contract-addendum-toolbar{display:flex;gap:4px;align-items:stretch;padding:12px 0;border-top:1px solid var(--divider);}
+#reportsPageBody .contract-addenda-list .contract-addendum-toolbar > :is(.contract-review-action,.contract-status-badge){
+  display:flex;align-items:center;justify-content:center;flex:1 1 0;min-width:0;min-height:36px;
+  border-radius:6px;padding:5px 4px;color:#fff;font-size:11px;line-height:1.5;text-align:center;overflow-wrap:anywhere;
+}
+#reportsPageBody .contract-addenda-list .contract-addendum-toolbar > .contract-review-action{background:#1565c0;}
+#reportsPageBody .contract-addenda-list .contract-addendum-toolbar > .contract-status-badge{order:1;background:#4b5563;}
+#reportsPageBody .contract-addenda-list .contract-addendum-toolbar > .contract-status-badge.is-approved{background:#166534;}
+#reportsPageBody .contract-addenda-list .contract-addendum-toolbar > :is(.contract-status-badge.is-unapproved,.contract-review-action.danger){background:#b91c1c;}
+#reportsPageBody .contract-addenda-list .contract-addendum-toolbar > .contract-review-action.danger{order:2;}
+#reportsPageBody .contract-addenda-list .contract-progress-step.is-rejected{color:#b91c1c;}
+#reportsPageBody .contract-addenda-list .contract-progress-step.is-rejected .contract-progress-dot{background:#b91c1c;}
+.contract-addenda-list .contract-card-heading .contract-created-time{width:100%;text-align:center;}
+.finance-rejection-count{color:var(--text-dim,#6b7280);font-size:12px;}
+.finance-rejection-count.is-valid{color:#166534;}
+.wbs-sheet-centered-header .wbs-sheet-save:disabled{opacity:.45;cursor:default;}

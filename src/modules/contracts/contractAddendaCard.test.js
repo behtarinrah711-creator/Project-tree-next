@@ -44,7 +44,7 @@ test('saved addenda use the contract card layout and their own status, number an
       assert.deepEqual(heading.children[0].children.map(node=>node.textContent),
         ['الحاقیه قرارداد پیمانکاری جواد قریشی','CTR-1-A01','تصفیه خانه ← فونداسیون']);
       assert.equal(status.children[0].textContent,finance?'نسخه امضا شده الحاقیه':'وضعیت: ناقص');
-      assert.equal(status.children[1].textContent,'مشاهده قرارداد اصلی');
+      assert.equal(status.children[1].textContent,finance?'مشاهده قرارداد اصلی':'نسخه اصلی قرارداد');
       const progress=card.children.find(node=>node.className==='contract-progress');
       if(finance){
         assert.equal(progress,undefined);
@@ -57,6 +57,22 @@ test('saved addenda use the contract card layout and their own status, number an
         assert.equal(progress.children.filter(node=>node.className.includes('is-complete')).length,1);
       }
       assert.equal(card.children.at(-1).className,'contract-history');
+    }
+    project.contractAddenda=[{...accepted,accountingStatus:'rejected',sentToAccountingAt:null,signedAt:null,
+      signedFiles:accepted.accountingPackage.signedFiles,financeRejection:{reason:'اسکن ناقص است'}}];
+    for(const finance of [false,true]){
+      const body=make('div');
+      renderContractAddenda(body,'p',{finance});
+      const card=body.children[0].children.at(-1);
+      const toolbar=card.children[1];
+      assert.equal(toolbar.children[0].textContent,'وضعیت: توسط مالی رد شد');
+      assert.ok(toolbar.children[0].className.includes('is-unapproved'));
+      if(!finance){
+        assert.ok(toolbar.children.some(node=>node.textContent==='نسخه امضاشده الحاقیه'));
+        assert.ok(toolbar.children.some(node=>node.textContent==='لغو اعلام تکمیل' && node.className.includes('danger')));
+        const progress=card.children.find(node=>node.className==='contract-progress');
+        assert.ok(progress.children.at(-1).className.includes('is-rejected'));
+      }
     }
   }finally{[globalThis.window,globalThis.document,projectRepository.find,contactApi.lookup]=old;}
 });
