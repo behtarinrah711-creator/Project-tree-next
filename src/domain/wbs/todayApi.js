@@ -1,3 +1,4 @@
+import {approveExecutionEntity} from './executionApproval.js';
 import { canWriteProjectModule } from '../../modules/roleManagement/permissionState.js';
 import { uid } from '../../data/projectFactories.js';
 import { todayRepository } from '../../data/todayRepository.js';
@@ -119,14 +120,7 @@ export const todayApi = {
 
   approve(projectId, ref, actor, clock = Date.now){
     const at = clock(); const by = actorValue(actor);
-    return mutate(projectId, ref, entity => ({
-      ...entity, completed:true, done:true, completionState:'approved', workflowStatus:'approved',
-      completedAt:entity.completionSubmittedAt || at,
-      actualFinishDay:entity.completionSubmittedAt || at,
-      approvedAt:at, approvedBy:by,
-      ...(ref.kind === 'work' ? { progress:100, status:'completed' } : {}),
-      executionHistory:[...(entity.executionHistory || []), event('approved', by, at)], updatedAt:at,
-    }), { completion:true });
+    return mutate(projectId,ref,entity=>approveExecutionEntity(entity,ref.kind,by,at),{completion:true});
   },
 
   cancelApproval(projectId, ref, actor, clock = Date.now){

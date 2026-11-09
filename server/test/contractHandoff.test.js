@@ -404,3 +404,42 @@ test('deleting an addendum requires full contract access and retains its number'
   assert.equal(next.result.contract.contractNo,'CTR-1-A02');
   assert.equal(f.payload.contractAddenda.length,2);
 });
+
+test('the inbox approves only assigned execution items under the matching module permission',async()=>{
+  const f=fixture();
+  f.payload.contacts=[{id:'reviewer',name:'مسئول تأیید',phones:['0912']}];
+  f.payload.tasks=[{id:'w',text:'کار',kind:'work',workTasks:[
+    {id:'buy',title:'خرید',type:'خرید',approvalContactId:'reviewer',completionState:'pending_approval',updatedAt:1},
+    {id:'exec',title:'اجرا',type:'اجرا',approvalContactId:'other',completionState:'pending_approval',updatedAt:2},
+  ]}];
+  const approve=(id,scope,updatedAt)=>f.call({action:'approve_execution',kind:'task',workId:'w',scope,updatedAt},
+    '/api/v1/projects/p/execution-approvals/'+id+'/handoff');
+  f.setPermissions({modules:{'execution:shopping':'view','execution:today':'full',contracts:'full'}});
+  assert.equal((await approve('buy','execution:shopping',1)).status,403);
+  assert.equal((await approve('buy','execution:today',1)).status,403);
+  assert.equal((await approve('exec','execution:today',2)).status,403);
+  f.setPermissions({modules:{'execution:shopping':'create',contracts:'full'}});
+  assert.equal((await approve('buy','execution:shopping',0)).status,409);
+  const response=await approve('buy','execution:shopping',1);
+  assert.equal(response.status,200);
+  assert.equal(response.result.entity.approvedBy.contactId,'reviewer');
+  assert.equal(f.payload.tasks[0].workTasks[0].completionState,'approved');
+  assert.equal(f.payload.tasks[0].workTasks[1].completionState,'pending_approval');
+  assert.equal((await approve('buy','execution:shopping',1)).status,409);
+});
+
+test('the inbox approves contracts with an authenticated assigned reviewer',async()=>{
+  const f=fixture();
+  f.payload.contacts=[{id:'reviewer',phones:['0912']}];
+  const contract=f.payload.contracts[0];
+  Object.assign(contract,{approvalStatus:'pending',approvalContactIds:['reviewer','second'],approvedContactIds:[]});
+  const action={action:'approve_contract',version:0,updatedAt:1};
+  f.setPermissions({modules:{contracts:'view',accounting:'full'}});
+  assert.equal((await f.call(action)).status,403);
+  f.setPermissions({modules:{contracts:'create'}});
+  const response=await f.call(action);
+  assert.equal(response.status,200);
+  assert.equal(response.result.contract.approvalStatus,'pending');
+  assert.deepEqual(response.result.contract.approvedContactIds,['reviewer']);
+  assert.equal(response.result.contract.handoffVersion,1);
+});

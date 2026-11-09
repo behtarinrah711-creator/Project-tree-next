@@ -340,7 +340,25 @@ function renderNotificationsPage(){
   if(!body) return;
   body.replaceChildren();
   const params=new URLSearchParams(String(location.hash||'').split('?')[1]||'');
-  if(params.get('section')==='invitations'){void renderInvitationList(body);return;}
+  const section=params.get('section') || '';
+  const approvalsSection=section==='approvals' || section.startsWith('approvals-');
+  body.parentElement?.classList.toggle('workspace-page--own-section-bar',approvalsSection);
+  if(section==='invitations'){void renderInvitationList(body);return;}
+  const projectId=getActiveTab();
+  const marker=document.createElement('div');
+  body.append(marker);
+  import('../modules/notifications/pendingApprovals.js').then(({pendingApprovals,approvalNavigationRow,renderPendingApprovals})=>{
+    if(!marker.isConnected)return;
+    if(approvalsSection){renderPendingApprovals(body,projectId,section,openNotificationSection);return;}
+    const queue=pendingApprovals(findProject(projectId));
+    if(!queue.assigned){marker.remove();return;}
+    marker.className='workspace-option-list';
+    const count=queue.groups.reduce((sum,group)=>sum+group.items.length,0);
+    marker.append(approvalNavigationRow(document,'در انتظار تأیید من',count,()=>openNotificationSection('approvals')));
+  }).catch(()=>{
+    if(marker.isConnected && approvalsSection)marker.textContent='دریافت موارد در انتظار تأیید انجام نشد.';
+  });
+  if(approvalsSection)return;
   const wrap=document.createElement('div'); wrap.className='workspace-option-list';
   [{id:'invitations',label:'دعوت‌نامه‌ها'},{id:'messages',label:'پیام‌های من'},{id:'alerts',label:'اعلان‌ها'}].forEach(item=>{
     const row=document.createElement('button'); row.type='button'; row.className='workspace-option';
