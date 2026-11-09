@@ -8,7 +8,7 @@ function purchaseAmount(entity){
   return entity?.workId ? Math.max(0, Number(entity.amount) || 0) : Math.max(0, lineTotal(entity));
 }
 
-export function collectShoppingItems(project, today = tehranTodayJalali()){
+export function collectShoppingItems(project, today = tehranTodayJalali(), {includeApproved=false}={}){
   const result = [];
   const walk = (nodes, ancestors = []) => (nodes || []).forEach(node => {
     if(!node || node.trashed) return;
@@ -16,11 +16,11 @@ export function collectShoppingItems(project, today = tehranTodayJalali()){
     if(canHoldWorkTasks(node)){
       const tasks = activeWorkTasks(node);
       if(tasks.length){
-        tasks.filter(task => task.type === 'خرید' && executionStatus(task) !== 'approved').forEach(task => result.push({
+        tasks.filter(task => task.type === 'خرید' && (includeApproved || executionStatus(task) !== 'approved')).forEach(task => result.push({
           id:String(task.id), kind:'task', entity:task, work:node, workId:String(node.id),
           path:[...ancestors, title].filter(Boolean), mode:timeState(task, today), amount:purchaseAmount(task),
         }));
-      }else if(isWork(node) && node.type === 'خرید' && executionStatus(node) !== 'approved'){
+      }else if(isWork(node) && node.type === 'خرید' && (includeApproved || executionStatus(node) !== 'approved')){
         result.push({ id:String(node.id), kind:'work', entity:node, work:node, workId:String(node.id), path:[...ancestors].filter(Boolean), mode:timeState(node, today), amount:purchaseAmount(node) });
       }
     }
