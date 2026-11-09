@@ -146,6 +146,33 @@ test('footer binding delegates navigation and routed surfaces own active state a
   assert.equal(h.ids.get('projectSettingsTrigger').classList.contains('active'),false);
 });
 
+test('Home visibility follows the active project and restores when permission is granted',async()=>{
+  const h=harness();
+  const home=h.ids.get('bottomHomeBtn');
+  const modules={dashboard:'none','planning:tree':'view'};
+  h.windowRef.KarhaSaosaWorkspaceAccess={
+    A:{role:'invite',permissions:{modules}},
+    B:{role:'owner',permissions:{modules:{dashboard:'none'}}},
+  };
+  h.chrome.setBottomNavActive('Planning');
+  assert.equal(home.hidden,true);
+  assert.ok(h.footers.slice(1).every(tab=>!tab.hidden && tab.parentNode===h.ids.get('bottomNav')));
+
+  modules.dashboard='view';
+  h.chrome.updateWorkspaceContextBar();
+  assert.equal(home.hidden,false);
+
+  modules.dashboard='none';
+  h.windowRef.KarhaRoute={projectId:'B',moduleId:'dashboard'};
+  h.state={...h.state,project:{id:'B',name:'Beta'}};
+  h.chrome.setBottomNavActive('Home');
+  assert.equal(home.hidden,false);
+
+  const css=await readFile(new URL('../styles/workspace/chrome.css',import.meta.url),'utf8');
+  assert.match(css,/grid-auto-flow:column;grid-auto-columns:minmax\(0,1fr\)/);
+  assert.match(css,/\.bottom-nav-item\[hidden\]\{display:none;\}/);
+});
+
 test('planning footer item is removed from DOM only when all planning modules are denied',()=>{
   const h=harness();
   h.windowRef.KarhaSaosaWorkspaceAccess={A:{role:'invite',permissions:{modules:{

@@ -35,6 +35,10 @@ export function projectPermissionState(projectId,moduleKeys,windowRef=globalThis
   });
 }
 
+export function canViewProjectHome(projectId,windowRef=globalThis.window){
+  return projectPermissionState(projectId,['dashboard'],windowRef).visible;
+}
+
 export function canViewPermission(level){return level!=='none';}
 export function canWritePermission(level){return EDIT_LEVELS.has(level);}
 export function canDeletePermission(level){return level==='full';}

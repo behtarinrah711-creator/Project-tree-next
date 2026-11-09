@@ -5,6 +5,14 @@ import { isProjectVisibleForSession } from './projectVisibility.js';
 import { isCondemnedRoute } from '../modules/condemned/index.js';
 import { isSaosaHost, readSaosaSession } from '../cloud/saosaWorkspaceSync.js';
 import { getGlobalRoute } from './globalRoutes.js';
+import { canViewProjectHome, projectPermissionState } from '../modules/roleManagement/permissionState.js';
+import { planningPermissionState } from '../modules/roleManagement/planningAccess.js';
+
+function projectLandingModule(projectId){
+  if(planningPermissionState(projectId).visible) return 'planning';
+  if(projectPermissionState(projectId,['execution:today','execution:shopping']).visible) return 'execution';
+  return 'reports';
+}
 
 export function parseRoute(){
   const hash = window.location.hash.replace(/^#\/?/, '');
@@ -119,7 +127,7 @@ export class AppRouter{
       window.KarhaAppData.setActiveTab(projectId);
       window.KarhaAppData.persistLocal?.();
     }
-    // Phase 5: condemned deep links → dashboard of the same project (not global home).
+    // Keep obsolete links in the same project, using its permitted landing tab.
     let moduleId = route.projectId && !allowed ? 'dashboard' : route.moduleId;
     if(route.projectId && !allowed){
       const safe = '#/';
@@ -130,21 +138,24 @@ export class AppRouter{
         window.KarhaBrowserHistory?.replace?.(state,safe);
       }
     }
-    if(isCondemnedRoute(moduleId)){
-      moduleId = 'dashboard';
-      if(projectId){
-        const safe = `#/projects/${encodeURIComponent(projectId)}/dashboard`;
-        if(window.location.hash !== safe){
-          window.KarhaBrowserHistory?.replace(
-            window.KarhaBrowserHistory.stateForRoute({projectId,moduleId:'dashboard',hash:safe}),safe
-          );
-        }
-      }
+    const globalSurface = route.surface === 'global' || route.moduleId === 'notebook' || route.moduleId === 'notebook-export';
+    if(isCondemnedRoute(moduleId)) moduleId = 'dashboard';
+    const homeDenied = !!projectId && !globalSurface && !canViewProjectHome(projectId);
+    if(homeDenied && (moduleId === 'dashboard' || !moduleRegistry.get(moduleId))){
+      moduleId = projectLandingModule(projectId);
     }
-    const module = moduleRegistry.get(moduleId) || ((route.surface === 'global' || route.moduleId === 'notebook' || route.moduleId === 'notebook-export') ? null : moduleRegistry.get('dashboard'));
+    if(projectId && moduleId !== route.moduleId){
+      const hash = `#/projects/${encodeURIComponent(projectId)}/${encodeURIComponent(moduleId)}`;
+      if(window.location.hash !== hash){
+        const state = window.KarhaBrowserHistory?.stateForRoute?.({projectId,moduleId,hash});
+        window.KarhaBrowserHistory?.replace?.(state,hash);
+      }
+      this.lastSyncedHash = hash;
+    }
+    const module = moduleRegistry.get(moduleId) || (globalSurface || homeDenied ? null : moduleRegistry.get('dashboard'));
     window.KarhaRoute = { ...route, projectId, moduleId, module };
-    document.body?.classList?.toggle?.('global-surface', (route.surface === 'global' || route.moduleId === 'notebook' || route.moduleId === 'notebook-export'));
-    if((route.surface === 'global' || route.moduleId === 'notebook' || route.moduleId === 'notebook-export')){
+    document.body?.classList?.toggle?.('global-surface', globalSurface);
+    if(globalSurface){
       this.currentMounted = module?.mount?.({ projectId: null, route: { ...route, projectId: null, moduleId }, registry: moduleRegistry }) || { moduleId, projectId: null };
     } else if(module && projectId){
       this.currentMounted = module.mount({ projectId, route: { ...route, projectId, moduleId }, registry: moduleRegistry });

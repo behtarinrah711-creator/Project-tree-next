@@ -65,6 +65,9 @@ async function createRouterHarness({initialHash,initialProjects,activeTab,hostna
     id:'reports',
     mount({projectId}){ return {projectId,moduleId:'reports'}; },
   });
+  for(const id of ['planning','execution']){
+    moduleRegistry.register({id,mount({projectId}){return {projectId,moduleId:id};}});
+  }
   window.addEventListener('karha:workspace-route-synced',event=>{ data.activeTab=event.detail.projectId; });
   const router=new AppRouter();
   router.start();
@@ -273,4 +276,30 @@ test('authenticated Saosa may resolve its allowed project workspace route', asyn
   assert.notEqual(window.KarhaRoute.surface,'public');
   assert.equal(window.KarhaRoute.projectId,'A');
   assert.equal(harness.router.currentMounted?.projectId,'A');
+});
+
+test('denied Home reroutes to another tab when permissions change or a saved link is opened',async()=>{
+  const harness=await createRouterHarness({
+    initialHash:'#/projects/A/dashboard',initialProjects:[{id:'A'}],activeTab:'A',
+  });
+  const modules={dashboard:'none','planning:timeline':'view'};
+  window.KarhaSaosaWorkspaceAccess={A:{role:'invite',permissions:{modules}}};
+  harness.router.sync();
+  assert.equal(window.location.hash,'#/projects/A/planning');
+  assert.equal(harness.router.currentMounted.moduleId,'planning');
+
+  modules['planning:timeline']='none';
+  modules['execution:shopping']='view';
+  harness.router.navigate('A','dashboard');
+  assert.equal(window.location.hash,'#/projects/A/execution');
+
+  modules['execution:shopping']='none';
+  harness.router.navigate('A','unknown-link');
+  assert.equal(window.location.hash,'#/projects/A/reports');
+  assert.deepEqual(harness.dashboardMounts,['A']);
+
+  modules.dashboard='view';
+  harness.router.navigate('A','dashboard');
+  assert.equal(harness.router.currentMounted.moduleId,'dashboard');
+  assert.deepEqual(harness.dashboardMounts,['A','A']);
 });
