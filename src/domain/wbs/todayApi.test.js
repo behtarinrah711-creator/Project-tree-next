@@ -14,8 +14,8 @@ test.afterEach(()=>{delete globalThis.KarhaAppData;});
 
 test('one report per Tehran day is edited in place and a later day creates a new report',()=>{
   const store=install(); const a={id:'a',name:'الف'},b={id:'b',name:'ب'};
-  const firstDay=Date.parse('2026-10-08T08:00:00Z');
-  const nextDay=Date.parse('2026-10-09T08:00:00Z');
+  const firstDay=Date.parse('2026-11-09T20:29:58Z');
+  const nextDay=Date.parse('2026-11-09T20:30:00Z');
   todayApi.saveReport('p1',ref,'گزارش اول',a,()=>firstDay,30);
   todayApi.saveReport('p1',ref,'گزارش ویرایش‌شده',b,()=>firstDay+1000,40);
   assert.equal(entity(store).executionReports.length,1);
@@ -25,7 +25,9 @@ test('one report per Tehran day is edited in place and a later day creates a new
   assert.equal(entity(store).executionHistory.at(-1).type,'report_edited');
   todayApi.saveReport('p1',ref,'گزارش روز بعد',a,()=>nextDay,55);
   assert.equal(entity(store).executionReports.length,2);
-  assert.notEqual(entity(store).executionReports[0].reportDay,entity(store).executionReports[1].reportDay);
+  assert.deepEqual(entity(store).executionReports.map(report=>report.reportDay),['1405/08/18','1405/08/19']);
+  assert.equal(entity(store).executionReports[0].description,'گزارش ویرایش‌شده');
+  assert.equal(entity(store).executionHistory.at(-1).type,'report_created');
 });
 
 test('report progress is persisted and capped at one hundred percent',()=>{
