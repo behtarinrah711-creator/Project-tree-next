@@ -1,6 +1,6 @@
 import {canWriteProjectModule} from '../roleManagement/permissionState.js';
 import {openConfirm} from '../../ui/confirm.js';
-import {openFinanceReasonSheet} from './contractFinanceReasonSheet.js';
+import {openContractReasonSheet} from './contractReasonSheet.js';
 import {currentExecutionActor} from '../wbs/executionActor.js';
 import {saveContractHandoff} from './contractHandoffApi.js';
 export function renderContractFinanceReview(project,contract,{onChanged=()=>{}}={}){
@@ -15,7 +15,7 @@ export function renderContractFinanceReview(project,contract,{onChanged=()=>{}}=
   const openRejection=action=>{
     const revoke=action==='revoke_finance';
     const title=contract.parentContractId?'رد کردن الحاقیه':revoke?'پس‌گرفتن تأیید مالی':'رد قرارداد توسط بخش مالی';
-    openFinanceReasonSheet({
+    openContractReasonSheet({
       title,saveLabel:contract.parentContractId?'ذخیره':revoke?'ثبت پس‌گرفتن تأیید':'ثبت رد قرارداد',
       historyKey:(revoke?'finance-revoke:':'finance-reject:')+contract.id,
       fieldLabel:'دلیل رد (الزامی)',submit:reason=>run(action,{reason}),

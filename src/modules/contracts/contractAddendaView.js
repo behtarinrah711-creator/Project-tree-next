@@ -1,6 +1,6 @@
 import { ADDENDUM_TYPES, addendumAmount, addendumReviewers, canEditContractAddenda, parentContractOf } from '../../domain/contractAddenda.js';
 import { syncContractPartyData } from '../../domain/contractPartyData.js';
-import { canCancelContractCompletion, canReviewContract, canRevokeContractApproval, canSubmitContract } from '../../domain/contractApproval.js';
+import { canCancelContractCompletion, canReviewContract, canRevokeContractApproval, canSubmitContract, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
 import { isAddendumVisibleInFinance } from '../../domain/contractHandoff.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { formatJalaliDisplay, todayJalaliStr } from '../../ui/jalali.js';
@@ -23,11 +23,15 @@ import { canCreateAddendumFromContract } from '../../domain/contractAddenda.js';
 import { renderContractHistory } from './contractHistoryView.js';
 import { renderContractProgress } from './contractProgressView.js';
 import { renderContractSignedSection } from './contractSignedView.js';
+import { openContractReasonSheet } from './contractReasonSheet.js';
 import { saveContractHandoff } from './contractHandoffApi.js';
 
 const toast=message=>window.KarhaUI?.showToast?.(message);
 const number=value=>new Intl.NumberFormat('fa-IR').format(value);
 const money=value=>number(value)+' تومان';
+const confirmCompletion=(hasReviewer,onConfirm)=>openConfirm(
+  hasReviewer?'آیا الحاقیه تکمیل است و برای تأیید ارسال شود؟':'آیا الحاقیه تکمیل است؟',onConfirm,'بله'
+);
 const writable=project=>canEditContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id]);
 const pickFixed=(title,listTitle,options,current,onPick)=>openStaticChoicePicker(title,listTitle,options,current,onPick,null,{preserveOrder:true});
 const newOperation=()=>({...makeQuantityRow(),pricingMode:'agreed',agreedPrice:''});
@@ -82,6 +86,7 @@ export function openAddendumPicker(projectId,onChanged){
 function openAddendumForm(project,parent,record,onChanged){
   if(!parent){toast('قرارداد اصلی پیدا نشد');return;}
   const addendum=record || {id:'addendum-'+crypto.randomUUID(),parentContractId:String(parent.id)};
+  const reviewerIds=record?.contractApproverContactIds ?? addendumReviewers(project,parent);
   const draft={type:'extra',contractDate:todayJalaliStr(),endDate:'',note:'',rows:[],...record};
   const priceRows=draft.type==='price' && draft.rows.length ? draft.rows.map(row=>({...row})) : [{}];
   const operations=draft.type==='extra' && draft.rows.length ? draft.rows.map(row=>({
@@ -99,7 +104,7 @@ function openAddendumForm(project,parent,record,onChanged){
       const rows=type==='extra' ? operations.map(({pricingMode,description,unit,quantity,unitPrice,agreedPrice})=>
         pricingMode==='quantity' ? {pricingMode,description,unit,quantity,unitPrice} : {pricingMode,description,amount:agreedPrice}
       ) : priceRows;
-      await saveContractHandoff(project.id,addendum,'save_addendum',{type,contractDate,endDate,note,rows,complete,deferSubmission:true,parentContractId:addendum.parentContractId});
+      await saveContractHandoff(project.id,addendum,'save_addendum',{type,contractDate,endDate,note,rows,complete,parentContractId:addendum.parentContractId});
       dirty=false;
       if(sheet.isConnected)closeWbsSheet();
       onChanged();
@@ -114,7 +119,7 @@ function openAddendumForm(project,parent,record,onChanged){
   const header=renderContractCardHeading(project,parent,{onExport:trigger=>openContractExport(project,parent,{trigger})});
   const footer=document.createElement('div');
   footer.className='contract-addendum-actions';
-  footer.append(renderContractSavebar({onSave:()=>save(false),onComplete:()=>save(true),onCancel:requestClose}));
+  footer.append(renderContractSavebar({onSave:()=>save(false),onComplete:()=>confirmCompletion(reviewerIds.some(Boolean),()=>save(true)),onCancel:requestClose}));
   sheet=openWbsSheet({
     title:record?'ویرایش الحاقیه':'ثبت الحاقیه',presentation:'stage-create',historyKey:'addendum:'+addendum.id,autoFocus:false,
     header,footer,requestClose,hasUnsavedChanges:()=>dirty || busy,
@@ -122,7 +127,6 @@ function openAddendumForm(project,parent,record,onChanged){
       root.classList.add('contract-form-body','form-template');
       const reviewerInfo=document.createElement('p');
       reviewerInfo.className='wbs-note';
-      const reviewerIds=record?.contractApproverContactIds ?? addendumReviewers(project,parent);
       const names=reviewerIds.map(id=>{
         const contact=project.contacts?.find(contact=>String(contact.id)===id);
         return [contact?.firstName,contact?.lastName].filter(Boolean).join(' ') || contact?.name || 'مخاطب حذف‌شده';
@@ -236,7 +240,7 @@ function addendumCard(project,addendum,onChanged,finance){
     catch(error){toast(error.message);return false;}finally{busy=false;}
   };
   if(!finance && writable(project) && addendum.contractApproverContactIds?.length && canSubmitContract(addendum)){
-    actions.append(button('ارسال برای تأیید',()=>review('submit_addendum')));
+    actions.append(button('اعلام تکمیل',()=>confirmCompletion(true,()=>review('submit_addendum'))));
   }
   if(!finance && writable(project) && canReviewContract(addendum,actor))actions.append(button('تأیید الحاقیه',()=>openConfirm('الحاقیه تأیید شود؟',()=>review('approve_addendum'),'تأیید')));
   const returnForEdit=(label,action)=>openWbsSheet({title:label,historyKey:'addendum-return:'+addendum.id,
@@ -252,7 +256,13 @@ function addendumCard(project,addendum,onChanged,finance){
     if(writable(project) && canRevokeContractApproval(addendum,actor))actions.append(button('لغو تأیید من',()=>returnForEdit('لغو تأیید الحاقیه','revoke_addendum')));
     if(writable(project) && canCancelContractCompletion(addendum))toolbar.append(button('لغو اعلام تکمیل',()=>returnForEdit('لغو تکمیل الحاقیه','cancel_completion'),'contract-review-action danger'));
     if(writable(project) && addendum.approvalStatus==='pending' && addendum.submittedBy?.id===actor.id){
-      actions.append(button('پس‌گرفتن از تأیید',()=>returnForEdit('پس‌گرفتن الحاقیه از تأیید','withdraw_submission')));
+      toolbar.append(button('× پس گرفتن از مسئول تأیید',()=>openContractReasonSheet({
+        title:'پس گرفتن الحاقیه از مسئول تأیید',
+        historyKey:'withdraw-addendum-review:'+addendum.id,
+        fieldLabel:'دلیل پس گرفتن از مسئول تأیید (الزامی)',
+        minLength:REJECTION_MIN_LENGTH,
+        submit:reason=>review('withdraw_submission',reason),
+      }),'contract-review-action danger'));
     }
     const reason=addendum.accountingStatus==='rejected'?addendum.financeRejection?.reason:addendum.approvalRejectionReason;
     if(reason && addendum.isDraft){

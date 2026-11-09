@@ -2,7 +2,7 @@ import {canWriteProjectModule} from '../roleManagement/permissionState.js';
 import {canAttachSignedContract,canReuseReturnedAddendumSignature,canReviseReturnedSignedContract,signedContractFiles,isContractInFinance,isContractSigned} from '../../domain/contractHandoff.js';
 import {mountFileUploader} from '../files/fileUploader.js';
 import {openWbsSheet,closeWbsSheet} from '../wbs/wbsSheet.js';
-import {openFinanceReasonSheet} from './contractFinanceReasonSheet.js';
+import {openContractReasonSheet} from './contractReasonSheet.js';
 import {openConfirm} from '../../ui/confirm.js';
 import {saveContractHandoff} from './contractHandoffApi.js';
 const toast=message=>window.KarhaLegacy?.showToast?.(message);
@@ -49,7 +49,7 @@ export function renderContractSignedSection(project,contract,{onChanged=()=>{},f
   if(sent){
     section.className+=' contract-signed-section--sent';
     if(writable && !finance){
-      const withdraw=button(attachmentActions?'× پس گرفتن از مالی':'پس‌گرفتن از مالی',()=>openFinanceReasonSheet({
+      const withdraw=button(attachmentActions?'× پس گرفتن از مالی':'پس‌گرفتن از مالی',()=>openContractReasonSheet({
         title:'پس گرفتن '+label+' از مالی',
         historyKey:'withdraw-finance:'+contract.id,
         fieldLabel:'دلیل پس گرفتن از مالی (الزامی)',

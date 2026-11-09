@@ -1,7 +1,7 @@
 import {FINANCE_REASON_MIN_LENGTH} from '../../domain/contractHandoff.js';
 import {openWbsSheet,closeWbsSheet,fieldRow} from '../wbs/wbsSheet.js';
 
-export function openFinanceReasonSheet({title,saveLabel='ذخیره',historyKey,fieldLabel,submit}){
+export function openContractReasonSheet({title,saveLabel='ذخیره',historyKey,fieldLabel,submit,minLength=FINANCE_REASON_MIN_LENGTH}){
   const count=new Intl.NumberFormat('fa-IR');
   let reason,counter,saving=false;
   const sheet=openWbsSheet({
@@ -30,8 +30,8 @@ export function openFinanceReasonSheet({title,saveLabel='ذخیره',historyKey,
   const save=sheet.querySelector('.wbs-sheet-save');
   const updateCounter=()=>{
     const length=reason.value.trim().length;
-    const valid=length>=FINANCE_REASON_MIN_LENGTH;
-    counter.textContent=count.format(length)+' از '+count.format(FINANCE_REASON_MIN_LENGTH)+' کاراکتر';
+    const valid=length>=minLength;
+    counter.textContent=count.format(length)+' از '+count.format(minLength)+' کاراکتر';
     counter.classList.toggle('is-valid',valid);
     save.disabled=!valid || saving;
   };
