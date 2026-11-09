@@ -2,16 +2,57 @@ import { rowAmount, syncContractAmount, numericValue, hasPaymentRowData, isUnmea
 import { calculatePaymentStages } from './paymentStagesModule.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
+import {ADDENDUM_TYPES} from '../../domain/contractAddenda.js';
 import {planContractAnnexes} from './contractDocumentLayout.js';
 const esc=value=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const persian=value=>toPersianDigits(String(value??''));
+const formatCost=value=>new Intl.NumberFormat('fa-IR').format(Number(value)||0);
+const blank=value=>esc(value).trim()||'................................................';
+
+const totalRow=(columns,amount,label='جمع کل عملیات‌ها')=>'<tr class="doc-operations-total"><td colspan="'+columns+'"><b>'+label+'</b></td><td><b>'+formatCost(amount)+'</b></td></tr>';
+function quantityTable(rows=[],showTotal=false,state={}){
+  const columns=['ردیف','شرح عملیات','واحد','مقدار','بهای واحد (تومان)','بهای کل (تومان)'];
+  const body=(rows||[]).map((row,index)=>{
+    const agreed=row.pricingMode==='agreed';
+    const unmeasured=showTotal && isUnmeasuredRow(row,state);
+    return '<tr><td>'+persian(index+1)+'</td><td>'+esc(row.description)+'</td>'+
+      '<td>'+(agreed?'—':esc(row.unit))+'</td><td>'+(agreed?'—':unmeasured?'پس از متره':persian(row.quantity))+'</td>'+
+      '<td>'+(agreed?'—':formatCost(row.unitPrice))+'</td><td>'+(unmeasured?'پس از متره':formatCost(rowAmount(row)))+'</td></tr>';
+  }).join('');
+  const total=showTotal?totalRow(5,(rows||[]).filter(row=>!isUnmeasuredRow(row,state)).reduce((sum,row)=>sum+rowAmount(row),0),
+    state.remeasurement?'جمع ردیف‌های با مبلغ مشخص':'جمع کل عملیات‌ها'):'';
+  return '<table class="contract-document-quantities contract-document-quantity"><thead><tr>'+
+    columns.map(column=>'<th>'+column+'</th>').join('')+'</tr></thead><tbody>'+body+total+'</tbody></table>';
+}
+const agreedTable=rows=>'<table class="contract-document-quantities contract-document-agreed"><thead><tr><th>عملیات</th><th>شرح عملیات</th><th>بهای توافقی (تومان)</th></tr></thead><tbody>'+rows.map((row,i)=>'<tr><td>'+persian(i+1)+'</td><td>'+esc(row.description)+'</td><td>'+formatCost(row.agreedPrice)+'</td></tr>').join('')+totalRow(2,rows.reduce((sum,row)=>sum+Math.round(numericValue(row.agreedPrice)),0))+'</tbody></table>';
+
+function documentMeta(kind,number,date,{addendum=false}={}){
+  return '<div class="doc-meta doc-contract-meta" data-contract-number="'+esc(number||'')+'"'+(addendum?' data-document-kind="addendum"':'')+'>'+
+    '<div>شماره '+kind+': <bdi>'+blank(number)+'</bdi></div>'+
+    '<div>تاریخ '+kind+': <bdi>'+blank(formatJalaliDisplay(date))+'</bdi></div></div>';
+}
+
+export function addendumDocumentMarkup(addendum,parent){
+  const {contractNo,parentContractNo,contractDate,note,rows,previousEndDate,endDate}=addendum;
+  const operations=(rows||[]).map(row=>({
+    ...row,pricingMode:row.pricingMode || (row.unit?'quantity':'agreed'),agreedPrice:row.amount ?? row.agreedPrice,
+  }));
+  const title=addendum.title || ['الحاقیه',ADDENDUM_TYPES[addendum.type]].filter(Boolean).join(' ');
+  return documentMeta('الحاقیه',contractNo,contractDate,{addendum:true})+
+    '<div class="doc-title">'+esc(title)+'</div>'+
+    '<p class="doc-parties doc-introduction">قرارداد اصلی: <bdi>'+blank(parentContractNo||parent?.contractNo)+'</bdi>'+
+    ' | پیمانکار: '+blank(parent?.contractorName)+' | کارفرما: '+blank(parent?.employerName)+'</p>'+
+    (note?'<p class="doc-clause">'+esc(note)+'</p>':'')+
+    (endDate?'<p>تاریخ پایان قبلی: '+blank(formatJalaliDisplay(previousEndDate))+
+      ' | تاریخ پایان جدید: '+blank(formatJalaliDisplay(endDate))+'</p>':'')+
+    (operations.length?'<div class="doc-pricing"><b>محاسبه مبلغ الحاقیه</b>'+quantityTable(operations,true)+'</div>':'');
+}
+
 export function contractDocumentMarkup(state,activityName=''){
   state={...state,...(Array.isArray(state.operationRows)?{operationRows:state.operationRows.map(row=>({...row}))}:{}),...(Array.isArray(state.amountRows)?{amountRows:state.amountRows.map(row=>({...row}))}:{})};
   syncContractAmount(state);
   const retentionAmount=(Number(state.amount)||0)*(Number(state.retentionPercent)||0)/100;
   const escape=esc;
-  const blank=value=>esc(value).trim()||'................................................';
-  const persian=value=>toPersianDigits(String(value??''));
-  const formatCost=value=>new Intl.NumberFormat('fa-IR').format(Number(value)||0);
 
   let clausesHtml = '';
   (state.items||[]).filter(item => item.included !== false).forEach((item, index) => {
@@ -22,10 +63,7 @@ export function contractDocumentMarkup(state,activityName=''){
     clausesHtml += '</div>';
   });
 
-  const totalRow=(columns,amount,label='جمع کل عملیات‌ها')=>'<tr class="doc-operations-total"><td colspan="'+columns+'"><b>'+label+'</b></td><td><b>'+formatCost(amount)+'</b></td></tr>';
-  const quantityTable=(rows,showTotal=false)=>'<table class="contract-document-quantities contract-document-quantity"><thead><tr>'+['ردیف','شرح عملیات','واحد','مقدار','بهای واحد (تومان)','بهای کل (تومان)'].map(x=>'<th>'+x+'</th>').join('')+'</tr></thead><tbody>'+(rows||[]).map((row,i)=>'<tr><td>'+persian(i+1)+'</td><td>'+escape(row.description)+'</td><td>'+(row.pricingMode==='agreed'?'—':escape(row.unit))+'</td><td>'+(row.pricingMode==='agreed'?'—':(showTotal && isUnmeasuredRow(row,state)?'پس از متره':persian(row.quantity)))+'</td><td>'+(row.pricingMode==='agreed'?'—':formatCost(row.unitPrice))+'</td><td>'+(showTotal && isUnmeasuredRow(row,state)?'پس از متره':formatCost(rowAmount(row)))+'</td></tr>').join('')+(showTotal?totalRow(5,(rows||[]).filter(row=>!isUnmeasuredRow(row,state)).reduce((sum,row)=>sum+rowAmount(row),0),state.remeasurement?'جمع ردیف‌های با مبلغ مشخص':'جمع کل عملیات‌ها'):'')+'</tbody></table>';
-  const agreedTable=rows=>'<table class="contract-document-quantities contract-document-agreed"><thead><tr><th>عملیات</th><th>شرح عملیات</th><th>بهای توافقی (تومان)</th></tr></thead><tbody>'+rows.map((row,i)=>'<tr><td>'+persian(i+1)+'</td><td>'+escape(row.description)+'</td><td>'+formatCost(row.agreedPrice)+'</td></tr>').join('')+totalRow(2,rows.reduce((sum,row)=>sum+Math.round(numericValue(row.agreedPrice)),0))+'</tbody></table>';
-  const pricingHtml=Array.isArray(state.operationRows) ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.operationRows,true)+'</div>' : state.amountMethod==='quantity' ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.amountRows,true)+'</div>' : (state.amountMethod==='agreed' && Array.isArray(state.agreedRows) ? '<div class="doc-pricing"><b>محاسبه مبلغ کل قرارداد</b>'+agreedTable(state.agreedRows)+'</div>' : state.amountDescription?'<p>'+escape(state.amountDescription)+'</p>':'');
+  const pricingHtml=Array.isArray(state.operationRows) ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.operationRows,true,state)+'</div>' : state.amountMethod==='quantity' ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.amountRows,true,state)+'</div>' : (state.amountMethod==='agreed' && Array.isArray(state.agreedRows) ? '<div class="doc-pricing"><b>محاسبه مبلغ کل قرارداد</b>'+agreedTable(state.agreedRows)+'</div>' : state.amountDescription?'<p>'+escape(state.amountDescription)+'</p>':'');
   let paymentHtml = '';
   const stages=state.paymentMethod ? [] : state.paymentStageCount ? calculatePaymentStages(state) : (state.paymentStages || []);
   stages.forEach((stage, index) => {
@@ -36,7 +74,7 @@ export function contractDocumentMarkup(state,activityName=''){
 
   if(state.paymentMethod==='quantity'){
     const rows=(state.paymentRows||[]).filter(hasPaymentRowData);
-    paymentHtml=rows.length?quantityTable(rows):'';
+    paymentHtml=rows.length?quantityTable(rows,false,state):'';
   }
 
   const hasValue=value=>value!=null && String(value).trim()!=='';
@@ -87,10 +125,7 @@ export function contractDocumentMarkup(state,activityName=''){
       '<div class="contract-document-annex-subject">موضوع / فعالیت: '+detail(activityName)+'</div></div></header>'+
       '<div class="contract-document-photo-grid">'+photos+'</div></section>');
   }
-  return '<div class="doc-meta doc-contract-meta" data-contract-number="'+escape(state.contractNo||'')+'">' +
-      '<div>شماره قرارداد: <bdi>' + blank(state.contractNo) + '</bdi></div>' +
-      '<div>تاریخ قرارداد: <bdi>' + blank(formatJalaliDisplay(state.contractDate)) + '</bdi></div>' +
-    '</div>' +
+  return documentMeta('قرارداد',state.contractNo,state.contractDate)+
     '<div class="doc-title">' + escape(state.title || 'قرارداد ' + activityName) + '</div>' +
     '<p class="doc-parties doc-introduction">این قرارداد در ' + blank(state.contractPlace) +
       ' فی‌مابین ' + blank(state.employerName) + ' به‌عنوان کارفرما و ' + blank(state.contractorName) +

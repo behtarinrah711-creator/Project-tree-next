@@ -20,9 +20,16 @@ test('reopening a contract from a cached list reads newly saved contact document
 });
 
 test('contract row preview is read-only, preserves data and closes with header/device Back',()=>{
-  const make=tag=>({tag,children:[],attrs:{},hidden:true,
-    classList:{add(){},remove(){}},setAttribute(k,v){this.attrs[k]=v;},
-    append(...x){this.children.push(...x);},appendChild(x){this.children.push(x);},replaceChildren(){this.children=[];}});
+  const make=tag=>{
+    const element={tag,children:[],attrs:{},className:'',
+      setAttribute(k,v){this.attrs[k]=v;},
+      append(...x){this.children.push(...x);},appendChild(x){this.children.push(x);},replaceChildren(){this.children=[];}};
+    element.classList={
+      add(name){element.className=[...new Set([...element.className.split(' '),name])].join(' ');},
+      remove(name){element.className=element.className.split(' ').filter(value=>value!==name).join(' ');},
+    };
+    return element;
+  };
   const root=make('body'),registered={},events=[];let focused=0,mounts=[];
   const view=createContractPreviewView({
     documentRef:{createElement:make,body:root},
@@ -35,17 +42,21 @@ test('contract row preview is read-only, preserves data and closes with header/d
   view.open(project,contract,{trigger:{focus(){focused++;}}});
   assert.equal(root.children.length,1);
   const page=root.children[0],header=page.children[0];
+  assert.match(page.className,/workspace-page--own-section-bar/);
+  assert.doesNotMatch(page.className,/\bhidden\b/);
   assert.equal(header.children[1].textContent,'پیش‌نمایش قرارداد');
   assert.equal(page.children.length,2);
   assert.match(mounts[0],/Article/);assert.match(mounts[0],/Clause/);assert.match(mounts[0],/Builder/);
   assert.doesNotMatch(mounts[0],/<input|<textarea|contenteditable|<button/);
   assert.equal(JSON.stringify(contract),snapshot);
   header.children[0].onclick();
+  assert.match(page.className,/\bhidden\b/);
   assert.deepEqual(events.at(-1),['close','contract-preview',false]);
   assert.equal(focused,1);
   view.open(project,{...contract,id:'two',items:[{text:'Next contract'}]});
   assert.equal(root.children.length,1);assert.match(mounts.at(-1),/Next contract/);
   registered['contract-preview'].onPop();
+  assert.match(page.className,/\bhidden\b/);
   assert.deepEqual(events.at(-1),['close','contract-preview',true]);
 });
 
@@ -59,3 +70,29 @@ test('contract row preview is read-only, preserves data and closes with header/d
   assert.doesNotMatch(output,/Foundation terms/);assert.doesNotMatch(output,/Employer supplies materials/);
   assert.equal(record.items,undefined);
  });
+
+test('addendum preview reuses the contract page and renders saved operations and totals',()=>{
+  const make=()=>({children:[],classList:{add(){},remove(){}},setAttribute(){},append(...x){this.children.push(...x);},appendChild(x){this.children.push(x);},replaceChildren(){this.children=[];}});
+  const root=make();
+  let markup;
+  const view=createContractPreviewView({
+    documentRef:{createElement:make,body:root},windowRef:{},
+    mountPrintPage:(_,preview)=>{markup=preview.innerHTML;},
+  });
+  const project={id:'p'};
+  const parent={contractNo:'CTR-1',contractorName:'جواد قریشی',employerName:'کارفرما'};
+  view.open(project,{contractNo:'CTR-1-A01',type:'extra',rows:[
+    {description:'روز مزد',amount:300},
+    {description:'بتن',pricingMode:'quantity',unit:'مترمکعب',quantity:2,unitPrice:50},
+  ]},{addendum:{parent}});
+  assert.equal(root.children[0].children[0].children[1].textContent,'پیش‌نمایش الحاقیه');
+  assert.match(markup,/شماره الحاقیه: <bdi>CTR-1-A01/);
+  assert.match(markup,/قرارداد اصلی: <bdi>CTR-1<\/bdi>/);
+  assert.match(markup,/contract-document-quantity/);
+  assert.match(markup,/روز مزد<\/td><td>—<\/td><td>—<\/td><td>—<\/td><td>۳۰۰/);
+  assert.match(markup,/بتن<\/td><td>مترمکعب<\/td><td>۲<\/td><td>۵۰<\/td><td>۱۰۰/);
+  assert.match(markup,/جمع کل عملیات‌ها<\/b><\/td><td><b>۴۰۰/);
+  view.open(project,parent,{frozen:true});
+  assert.equal(root.children.length,1);
+  assert.equal(root.children[0].children[0].children[1].textContent,'پیش‌نمایش قرارداد');
+});

@@ -119,7 +119,9 @@ export function installWorkspaceChrome({
     const topbarHeight = Math.ceil(topbar.getBoundingClientRect().height);
     const contextVisible = !!context && !context.hidden && context.classList.contains('subpage-context');
     const contextHeight = contextVisible ? Math.ceil(context.getBoundingClientRect().height) : 0;
-    documentRef.documentElement?.style?.setProperty?.('--workspace-page-top', `${topbarHeight + contextHeight}px`);
+    const style = documentRef.documentElement?.style;
+    style?.setProperty?.('--workspace-topbar-height', `${topbarHeight}px`);
+    style?.setProperty?.('--workspace-page-top', `${topbarHeight + contextHeight}px`);
   }
 
   function updateWorkspaceContextBar(routeModuleOverride){

@@ -15,6 +15,7 @@ import { activityApi } from '../../domain/activityApi.js';
 import { contractProjectPath, normalizeContractSearch, renderContractCardHeading, renderContractStatusRow } from './contractsModule.js';
 import { ftAmountSummary, ftNumberRow, ftSelectRow, renderContractSavebar } from './realContractFormModule.js';
 import { makeQuantityRow, renderQuantityRows, rowAmount, syncContractAmount } from './contractPricing.js';
+import { addendumDocumentMarkup } from './contractDocument.js';
 import { openContractPreview } from './contractPreviewView.js';
 import { openContractExport } from './contractExportView.js';
 import { renderContractFinanceReview } from './contractFinanceReviewView.js';
@@ -27,7 +28,6 @@ import { saveContractHandoff } from './contractHandoffApi.js';
 const toast=message=>window.KarhaUI?.showToast?.(message);
 const number=value=>new Intl.NumberFormat('fa-IR').format(value);
 const money=value=>number(value)+' تومان';
-const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const writable=project=>canEditContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id]);
 const pickFixed=(title,listTitle,options,current,onPick)=>openStaticChoicePicker(title,listTitle,options,current,onPick,null,{preserveOrder:true});
 const newOperation=()=>({...makeQuantityRow(),pricingMode:'agreed',agreedPrice:''});
@@ -195,24 +195,12 @@ function openAddendumForm(project,parent,record,onChanged){
   sheet.classList.add('contract-addendum-form');
 }
 
-function addendumDocument(addendum,parent){
-  const {contractNo,parentContractNo,contractDate,note,rows,amount,previousEndDate,endDate}=addendum;
-  return '<section class="contract-export-document" dir="rtl">'+
-    '<h1 class="doc-title">'+esc(addendum.title)+'</h1>'+
-    '<div class="doc-contract-meta" data-contract-number="'+esc(contractNo)+'">شماره الحاقیه: '+esc(contractNo)+
-    ' | تاریخ: '+esc(formatJalaliDisplay(contractDate))+' | قرارداد اصلی: '+esc(parentContractNo)+'</div>'+
-    '<p>پیمانکار: '+esc(parent?.contractorName||'—')+' | کارفرما: '+esc(parent?.employerName||'—')+'</p>'+
-    (note?'<p class="doc-clause">'+esc(note)+'</p>':'')+
-    (endDate?'<p>تاریخ پایان قبلی: '+esc(formatJalaliDisplay(previousEndDate)||'—')+' | تاریخ پایان جدید: '+esc(formatJalaliDisplay(endDate))+'</p>':'')+
-    (rows||[]).map((row,index)=>'<div class="doc-clause"><b>عملیات '+number(index+1)+'</b> · '+esc(row.description)+
-      ((row.pricingMode==='quantity' || row.unit)?' · '+number(row.quantity)+' '+esc(row.unit)+' × '+money(row.unitPrice):'')+' · '+money(addendumAmount([row]))+'</div>').join('')+
-    (rows?.length?'<p><b>جمع الحاقیه: '+money(amount)+'</b></p>':'')+'</section>';
-}
-
 function addendumCard(project,addendum,onChanged,finance){
   const documentAddendum=finance ? addendum.accountingPackage.contract : addendum;
   const frozenParent=addendum.accountingPackage?.contract?.parentDocument;
   const parent=finance?frozenParent:parentContractOf(project,addendum)||frozenParent;
+  const documentParent=()=>parent && !finance && parent!==frozenParent
+    ? syncContractPartyData({...parent},project) : parent;
   const row=document.createElement('article');row.className='contract-row';
   const heading=renderContractCardHeading(project,{
     ...parent,contractNo:addendum.contractNo,createdAt:addendum.createdAt,
@@ -220,9 +208,16 @@ function addendumCard(project,addendum,onChanged,finance){
     onEdit:!finance && parent && addendum.isDraft && writable(project)
       ? ()=>openAddendumForm(project,parent,addendum,onChanged) : undefined,
     onExport:trigger=>openContractExport(project,documentAddendum,{
-      trigger,markup:addendumDocument(documentAddendum,parent && !finance ? syncContractPartyData({...parent},project) : parent),
+      trigger,markup:'<section class="contract-export-document" dir="rtl">'+
+        addendumDocumentMarkup(documentAddendum,documentParent())+'</section>',
     }),
-  },{titlePrefix:'الحاقیه'});
+  },{
+    titlePrefix:'الحاقیه',
+    onPreview:trigger=>openContractPreview(project,documentAddendum,{
+      trigger,addendum:{parent:documentParent()},
+      signedFiles:finance?addendum.accountingPackage.signedFiles:null,
+    }),
+  });
   row.append(heading);
   const actions=renderContractStatusRow(addendum);
   if(parent)actions.append(button('مشاهده قرارداد اصلی',trigger=>openContractPreview(project,parent,{trigger,frozen:finance || parent===frozenParent})));

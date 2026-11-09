@@ -2,6 +2,10 @@
   .page-overlay{position:fixed;inset:0;background:var(--bg);z-index:55;display:flex;flex-direction:column;overflow:hidden;}
   .workspace-page{top:var(--workspace-page-top);bottom:68px;inset-inline:0;z-index:55;background:var(--bg);}
   .page-overlay.workspace-page{z-index:55;background:var(--bg);}
+  /* Child pages with their own bar start at the topbar and replace the parent bar.
+     Keep the parent bar measurable so the underlying page retains its scroll position. */
+  .workspace-page--own-section-bar{top:var(--workspace-topbar-height,var(--workspace-page-top));}
+  body:has(> .workspace-page--own-section-bar:not(.hidden)) #workspaceProjectContext{visibility:hidden;}
   /* صفحات مستقل و فرم‌های تمام‌صفحه نباید فضای فوتر را رزرو کنند. */
   #projectsPage.workspace-page,
   #profilePage.workspace-page{
