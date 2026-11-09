@@ -8,9 +8,10 @@ export function hasActiveFileUploads(requestCount,items=[]){
 export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{},onError=()=>{},label='افزودن عکس یا فایل',category='contacts',readOnly=false,allowReplace=false,buttonLabel=false,confirmRemove=remove=>remove()}={}){
   root.classList.add('saosa-file-uploader');
   const input=document.createElement('input');input.type='file';input.multiple=true;
-  input.accept=category==='contracts'?'image/jpeg,image/png,image/heic,image/heif,.heic,.heif,.pdf':'image/jpeg,image/png,image/heic,image/heif,image/avif,image/webp,.heic,.heif,.pdf,.docx,.xlsx,.pptx';
+  const imagesOnly=category==='reports';
+  input.accept=imagesOnly?'image/jpeg,image/png,image/heic,image/heif,image/avif,image/webp,.heic,.heif':category==='contracts'?'image/jpeg,image/png,image/heic,image/heif,.heic,.heif,.pdf':'image/jpeg,image/png,image/heic,image/heif,image/avif,image/webp,.heic,.heif,.pdf,.docx,.xlsx,.pptx';
   input.setAttribute('aria-label',label);input.disabled=true;root.appendChild(input);
-  const note=document.createElement('p');note.className='saosa-file-note';note.textContent=category==='contracts'?'عکس ذخیره‌شده تا ۲ مگابایت؛ PDF تا ۲۵ مگابایت':'عکس ذخیره‌شده تا ۲ مگابایت؛ PDF و فایل‌های اداری تا ۲۵ مگابایت';root.appendChild(note);
+  const note=document.createElement('p');note.className='saosa-file-note';note.textContent=imagesOnly?'هر عکس ذخیره‌شده تا ۲ مگابایت':category==='contracts'?'عکس ذخیره‌شده تا ۲ مگابایت؛ PDF تا ۲۵ مگابایت':'عکس ذخیره‌شده تا ۲ مگابایت؛ PDF و فایل‌های اداری تا ۲۵ مگابایت';root.appendChild(note);
   const gallery=document.createElement('div');gallery.className='saosa-file-gallery';root.appendChild(gallery);
   if(readOnly)input.hidden=true;
   const replacement=allowReplace && !readOnly?document.createElement('input'):null;
@@ -38,7 +39,7 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
     files.forEach(file=>{
       const card=document.createElement('div');card.className='saosa-file-card';
       const open=document.createElement('button');open.type='button';open.className='saosa-file-open';open.setAttribute('aria-label','نمایش '+(file.name||'عکس'));
-      open.onclick=()=>{viewerClose?.();viewerClose=openFileViewer(file,{onError,compactImageHeader:category==='contracts'});};
+      open.onclick=()=>{viewerClose?.();viewerClose=openFileViewer(file,{onError,compactImageHeader:category==='contracts' || imagesOnly});};
       if(typeof file==='string' || file.mime?.startsWith('image/')){
         const img=document.createElement('img');img.alt=file.name||'تصویر پیوست';img.loading='lazy';img.fileReference=file;open.appendChild(img);if(observer)observer.observe(img);else load(img,file);
       }else{const name=document.createElement('span');name.textContent=file.name;open.appendChild(name);}

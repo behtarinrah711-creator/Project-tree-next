@@ -1,10 +1,10 @@
 import { REPORT_MIN_LENGTH, todayApi } from '../../domain/wbs/todayApi.js';
 import { executionReportDay, tehranTodayJalali } from '../../domain/wbs/todayDomain.js';
-import { toEnglishDigits, toPersianDigits } from '../../ui/digits.js';
+import { toPersianDigits } from '../../ui/digits.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
-import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
-
-const SEND_ICON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20.5 22 12 3 3.5v6l13 2.5-13 2.5v6Z"/></svg>';
+import { fieldRow, openWbsSheet } from './wbsSheet.js';
+import { mountFileUploader } from '../files/fileUploader.js';
+import { openFileViewer } from '../files/fileViewer.js';
 
 export function todayReportOf(entity, day = tehranTodayJalali()){
   return (entity?.executionReports || []).filter(report => report && !report.trashed && executionReportDay(report) === day).at(-1) || null;
@@ -18,55 +18,87 @@ function textarea(documentRef, value){
   return field;
 }
 
-function progressInput(documentRef, value, onChange){
+function progressInput(documentRef, value){
   const button=documentRef.createElement('button');
-  button.type='button'; button.name='reportProgress'; button.className='wbs-input wbs-inline-number today-progress-input';
+  button.type='button';
+  button.name='reportProgress';
+  button.className='wbs-input today-progress-input';
   button.dataset.value=String(Math.min(100,Math.max(0,Number(value)||0)));
-  const paint=()=>{ button.textContent=`${toPersianDigits(button.dataset.value)}٪`; onChange?.(Number(button.dataset.value)); };
-  button.addEventListener('click',()=>openNumpadGeneric(button.dataset.value,raw=>{
-    button.dataset.value=String(Math.min(100,Math.max(0,Number(toEnglishDigits(String(raw)).replace(/\D/g,''))||0)));
-    paint();
-  },{suffix:'٪',maxLen:3,group:false}));
-  paint(); return button;
+  const paint=()=>{ button.textContent='٪'+toPersianDigits(button.dataset.value); };
+  button.addEventListener('click',()=>openNumpadGeneric('',raw=>{
+    if(raw!==''){
+      button.dataset.value=String(Number(raw));
+      paint();
+    }
+  },{prefix:'٪',suffix:'',maxLen:3,group:false,validate:raw=>Number(raw)>100?'درصد پیشرفت حداکثر ۱۰۰ است':''}));
+  paint();
+  return button;
 }
 
-function save(projectId,item,actor,root){
-  return todayApi.saveReport(projectId,{kind:item.kind,id:item.id,workId:item.workId},root.querySelector('[name="reportDescription"]').value,actor,Date.now,root.querySelector('[name="reportProgress"]').dataset.value);
+const toast=message=>window.KarhaUI?.showToast?.(message);
+
+export function appendReportPhotos(root,photos){
+  for(const [index,photo] of (photos||[]).entries()){
+    const button=root.ownerDocument.createElement('button');
+    button.type='button';
+    button.className='today-report-photo';
+    button.textContent='مشاهدهٔ عکس '+toPersianDigits(index+1);
+    button.addEventListener('click',()=>openFileViewer(photo,{onError:toast,compactImageHeader:true}));
+    root.appendChild(button);
+  }
 }
 
 export function openDailyExecutionReport({ projectId, item, actor, onChanged, onSubmitted, subject='کار' }){
   const current=todayReportOf(item.entity);
-  openWbsSheet({
-    title:current ? `ویرایش گزارش امروز ${subject}` : `ثبت گزارش امروز ${subject}`,
+  const photos=[...(current?.photos||[])];
+  const ref={kind:item.kind,id:item.id,workId:item.workId};
+  let uploader;
+  const sheet=openWbsSheet({
+    title:`ثبت گزارش:\n${item.entity.title || item.entity.text || subject}`,
     saveLabel:'ذخیره', presentation:'stage-create', autoFocus:false,
     historyKey:`execution-report:${projectId}:${item.id}:${tehranTodayJalali()}`,
     body(root){
-      let progress=Number(item.entity.progress)||0;
-      const send=document.createElement('button');
-      send.type='button'; send.className='today-submit-approval';
-      send.innerHTML=`${SEND_ICON}<span>ارسال جهت تأیید</span>`;
-      const syncSend=value=>{ progress=value; send.hidden=value!==100; };
-      root.appendChild(fieldRow('درصد پیشرفت',progressInput(document,current?.progress ?? item.entity.progress,syncSend)));
-      root.appendChild(fieldRow('شرح گزارش',textarea(document,current?.description||'')));
-      const note=document.createElement('div'); note.className='today-upload-note'; note.innerHTML='<span>پیوست‌ها</span><div><button type="button" disabled>عکس<small>به‌زودی</small></button><button type="button" disabled>ویدئو<small>به‌زودی</small></button><button type="button" disabled>فایل<small>به‌زودی</small></button></div>'; root.appendChild(note);
-      root.appendChild(send); syncSend(progress);
-      send.addEventListener('click',()=>{
-        const description=root.querySelector('[name="reportDescription"]').value.trim();
-        if(description || current){
-          const saved=save(projectId,item,actor,root);
-          if(!saved.ok){ window.KarhaUI?.showToast?.(`شرح گزارش حداقل ${toPersianDigits(REPORT_MIN_LENGTH)} حرف باشد`); return; }
-        }
-        const result=todayApi.markComplete(projectId,{kind:item.kind,id:item.id,workId:item.workId},actor);
-        if(!result.ok){ window.KarhaUI?.showToast?.('ارسال جهت تأیید ممکن نیست'); return; }
-        closeWbsSheet(); onSubmitted?.(result.entity); onChanged?.();
-      });
+      const progress=fieldRow('وارد کردن درصد پیشرفت',progressInput(document,current?.progress ?? item.entity.progress));
+      progress.classList.add('today-report-progress-row');
+      root.append(progress,fieldRow('شرح گزارش',textarea(document,current?.description||'')));
+      const attachments=document.createElement('div');
+      const note=document.createElement('div');
+      note.className='today-upload-note';
+      note.innerHTML='<span>پیوست‌ها</span>';
+      note.appendChild(attachments);
+      root.appendChild(note);
+      uploader=mountFileUploader(attachments,{projectId,recordId:item.id,category:'reports',files:photos,
+        label:'افزودن عکس',buttonLabel:true,allowReplace:true,onError:toast});
+      const placeholders=document.createElement('div');
+      placeholders.className='today-upload-placeholders';
+      placeholders.innerHTML='<button type="button" disabled>ویدئو<small>به‌زودی</small></button><button type="button" disabled>فایل<small>به‌زودی</small></button>';
+      note.appendChild(placeholders);
     },
     onSave(root){
-      const result=save(projectId,item,actor,root);
-      if(!result.ok){ window.KarhaUI?.showToast?.(`شرح گزارش حداقل ${toPersianDigits(REPORT_MIN_LENGTH)} حرف باشد`); return false; }
-      onChanged?.(); return true;
+      if(uploader?.isBusy()){
+        toast('ابتدا بارگذاری عکس‌ها را تمام کنید');
+        return false;
+      }
+      const progress=root.querySelector('[name="reportProgress"]').dataset.value;
+      const result=todayApi.saveReport(projectId,ref,root.querySelector('[name="reportDescription"]').value,
+        actor,Date.now,progress,{files:photos,completeAt100:true});
+      if(!result.ok){
+        toast(result.code==='report_too_short' ? `شرح گزارش حداقل ${toPersianDigits(REPORT_MIN_LENGTH)} حرف باشد` : 'ذخیرهٔ گزارش انجام نشد');
+        return false;
+      }
+      if(Number(progress)===100) onSubmitted?.(result.entity);
+      onChanged?.();
+      return true;
     },
   });
+  sheet.classList.add('today-report-sheet');
+  const observer=new MutationObserver(()=>{
+    if(!sheet.isConnected){
+      uploader?.destroy();
+      observer.disconnect();
+    }
+  });
+  observer.observe(document.body,{childList:true});
 }
 
 export function progressCircle(documentRef, entity, { pending=false, disabled=false, onClick } = {}){
@@ -77,9 +109,6 @@ export function progressCircle(documentRef, entity, { pending=false, disabled=fa
   if(pending){
     button.classList.add('is-pending'); button.innerHTML=`${ring}<span class="today-progress-symbol">◷</span>`;
     button.setAttribute('aria-label','در انتظار تأیید');
-  }else if(progress===100){
-    button.classList.add('is-ready'); button.innerHTML=`${ring}<span class="today-progress-send">${SEND_ICON}<small>ارسال</small></span>`;
-    button.setAttribute('aria-label','ثبت گزارش یا ارسال جهت تأیید');
   }else{
     button.innerHTML=`${ring}<span>${toPersianDigits(progress)}٪</span>`;
     button.setAttribute('aria-label',`ثبت گزارش روزانه؛ پیشرفت ${progress} درصد`);

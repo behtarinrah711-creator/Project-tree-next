@@ -77,8 +77,7 @@ test('shopping report, comment and approval use the same WBS purchase entity',as
   await card.locator('.today-progress-circle').click();
   await page.locator('[name="reportDescription"]').fill('پیش‌فاکتور آهن دریافت شد');
   await page.locator('[name="reportProgress"]').click();
-  await page.locator('#numpadBackspace').click();
-  for(const digit of '100') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
+  for(const digit of '90') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
   await page.locator('#numpadDoneBtn').click();
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
   await expect(card).toContainText('پیش‌فاکتور آهن دریافت شد');
@@ -86,7 +85,10 @@ test('shopping report, comment and approval use the same WBS purchase entity',as
   await card.locator('.today-comment-form button').click();
   await expect(card).toContainText('قیمت با فروشنده بررسی شود');
   await card.locator('.today-progress-circle').click();
-  await page.locator('.today-submit-approval').click();
+  await page.locator('[name="reportProgress"]').click();
+  for(const digit of '100') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
+  await page.locator('#numpadDoneBtn').click();
+  await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
   await expect(page.locator('.wbs-shopping-frame')).toHaveAttribute('data-mode','pending');
   card=page.locator('.shopping-item-card[data-entity-id="w1"]');
   await expect(card).toContainText('در انتظار تأیید خرید');

@@ -159,3 +159,30 @@ test('start delay is recorded only for due, unstarted work by its assignee with 
   assert.equal(record().code,'not_due_or_started');
   assert.ok(entity(store).executionHistory.some(entry=>entry.id===delay.id));
 });
+
+test('saving a report at 100 percent records its photos and submits once for the assigned reviewer',()=>{
+  const store=install();
+  entity(store).assigneeContactId='a';
+  const actor={id:'member',contactId:'a',name:'مسئول'};
+  const clock=()=>Date.parse('2026-11-10T10:00:00Z');
+  const files=[{id:'photo',category:'reports',recordId:'t1'}];
+  const save=progress=>todayApi.saveReport('p1',ref,'گزارش اجرا',actor,clock,progress,{files,completeAt100:true});
+  assert.equal(save(90).entity.workflowStatus,'in_progress');
+  assert.equal(save(100).entity.completionState,'pending_approval');
+  assert.equal(entity(store).progress,100);
+  assert.equal(entity(store).executionReports.length,1);
+  assert.deepEqual(entity(store).executionReports[0].photos,files);
+  assert.equal(entity(store).executionHistory.at(-1).type,'sent_for_approval');
+  assert.equal(save(100).code,'locked');
+  assert.equal(entity(store).executionHistory.filter(event=>event.type==='sent_for_approval').length,1);
+});
+
+test('saving at 100 percent completes work directly when there is no reviewer',()=>{
+  const store=install(false);
+  entity(store).assigneeContactId='a';
+  const actor={id:'member',contactId:'a'};
+  const result=todayApi.saveReport('p1',ref,'پایان اجرا',actor,()=>500,100,{completeAt100:true});
+  assert.equal(result.entity.completionState,'approved');
+  assert.equal(entity(store).executionReports.length,1);
+  assert.equal(entity(store).executionHistory.at(-1).type,'completed_without_approval');
+});

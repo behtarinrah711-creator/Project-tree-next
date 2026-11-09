@@ -1,3 +1,4 @@
+import { isWork } from '../../src/domain/wbs/normalize.js';
 import {canAttachSignedContract,canReviseReturnedSignedContract,isAddendumVisibleInFinance,isContractInFinance} from '../../src/domain/contractHandoff.js';
 import {randomUUID, createHash} from 'node:crypto';
 import sharp from 'sharp';
@@ -85,10 +86,31 @@ export async function prepareFile(input,name='file'){
   }catch(error){if(error.statusCode)throw error;throw fail('invalid_or_unsupported_image',415);}
 }
 
+function reportWork(nodes,recordId){
+  for(const node of nodes || []){
+    if(!node || node.trashed)continue;
+    if(isWork(node) && String(node.id)===recordId)return node;
+    const task=(node.workTasks||[]).find(task=>task && !task.trashed && String(task.id)===recordId);
+    if(task)return task;
+    const nested=reportWork(node.subtasks,recordId);
+    if(nested)return nested;
+  }
+  return null;
+}
+
+function isReportAssignee(row,work){
+  if(!work.assigneeContactId || !row.phone)return false;
+  const id=String(work.assigneeContactId);
+  return (row.payload.contacts||[]).some(contact=>!contact.trashed && String(contact.id)===id
+    && (contact.phones||[contact.phone]).includes(row.phone))
+    || (row.payload.projectMembers||[]).some(member=>member.status==='active' && member.mobile===row.phone
+      && String(member.contactId)===id);
+}
+
 export function createFileUploadHandler({pool,sessionSecret,storage}){
   let active=0;
   return async function handleFiles(request,response,url){
-    const match=/^\/api\/v1\/projects\/([^/]+)\/files\/(contacts|contracts)\/([^/]+)(?:\/([^/]+))?$/.exec(url.pathname);
+    const match=/^\/api\/v1\/projects\/([^/]+)\/files\/(contacts|contracts|reports)\/([^/]+)(?:\/([^/]+))?$/.exec(url.pathname);
     if(!match)return false;
     let projectId,category,recordId,id;
     try{[projectId,category,recordId,id]=match.slice(1).map(value=>value===undefined?undefined:decodeURIComponent(value));}
@@ -107,7 +129,15 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
     const financeFile=contract?.accountingStatus==='rejected'
       ? isAddendumVisibleInFinance(contract) && contract.accountingPackage.signedFiles?.some(file=>file.id===id)
       : isContractInFinance(contract);
-    const allowed=category==='contacts'
+    const work=category==='reports'?reportWork(row?.payload?.tasks,recordId):null;
+    const scope=work?.type==='خرید'?'execution:shopping':'execution:today';
+    const canUploadReport=work && !work.completed && !['approved','pending_approval'].includes(work.completionState)
+      && canAccessFiles(row,accountId,true,scope) && isReportAssignee(row,work);
+    const attachedReportPhoto=work && !write && (work.executionReports||[]).some(report=>
+      report && !report.trashed && (report.photos||[]).some(photo=>String(photo?.id)===id));
+    const canReadReport=attachedReportPhoto && (canAccessFiles(row,accountId,false,scope)
+      || (scope==='execution:today' && canAccessFiles(row,accountId,false,'reports:reports')));
+    const allowed=category==='reports' ? canUploadReport || canReadReport : category==='contacts'
       ? canAccessFiles(row,accountId,write) || (!write && canReadContractDocument(row,accountId,url.searchParams.get('contractId'),recordId,id))
       : !!contract && (canAccessFiles(row,accountId,write,'contracts') || (!write && financeFile && (canAccessFiles(row,accountId,false,'accounting') || canAccessFiles(row,accountId,false,'accounting-contracts'))));
     if(!allowed){sendJson(response,403,{error:'forbidden_project_files'});return true;}
@@ -120,6 +150,7 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
       try{
         const input=await readBytes(request,MAX_FILE_BYTES);
         const file=await prepareFile(input,url.searchParams.get('name'));
+        if(category==='reports' && file.mime!=='image/jpeg'){sendJson(response,415,{error:'unsupported_report_type'});return true;}
         const fileId=randomUUID();
         if(category==='contracts' && !['image/jpeg','application/pdf'].includes(file.mime)){sendJson(response,415,{error:'unsupported_signed_type'});return true;}
         const metadata={id:fileId,projectId,category,recordId,name:file.name,mime:file.mime,size:file.bytes.length,
@@ -131,6 +162,9 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
       try{
         const metadata=await storage.metadata(prefix+id);
         if(category==='contracts' && String(metadata.uploadedBy)!==String(accountId) && ![...(contract.signedFiles||[]),...(contract.accountingPackage?.signedFiles||[])].some(file=>file.id===id)){
+          sendJson(response,403,{error:'forbidden_project_files'});return true;
+        }
+        if(category==='reports' && !canReadReport && String(metadata.uploadedBy)!==String(accountId)){
           sendJson(response,403,{error:'forbidden_project_files'});return true;
         }
         const thumbnail=url.searchParams.get('variant')==='thumbnail' && metadata.hasThumbnail;

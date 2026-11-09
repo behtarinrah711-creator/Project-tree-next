@@ -51,11 +51,13 @@ test('Today shows Tasks instead of their Work, formats one-day dates once, and e
   expect(await card.evaluate(element=>element.scrollWidth<=element.clientWidth)).toBe(true);
 });
 
-test('report is edited in place with edit time and upload placeholders remain disabled',async({page})=>{
+test('report is edited in place with edit time and a photo uploader',async({page})=>{
   const card=page.locator('.today-task-card[data-entity-id="today-task"]');
   await card.locator('.today-progress-circle').click();
   const sheet=page.locator('#wbsSheetOverlay');
-  await expect(sheet.getByRole('button',{name:/عکس/})).toBeDisabled();
+  await expect(sheet.locator('.sheet-caption')).toHaveText('ثبت گزارش: قالب‌بندی');
+  await expect(sheet.locator('.saosa-file-uploader')).toBeVisible();
+  await expect(sheet.locator('.today-submit-approval')).toHaveCount(0);
   await expect(sheet.getByRole('button',{name:/ویدئو/})).toBeDisabled();
   await expect(sheet.getByRole('button',{name:/فایل/})).toBeDisabled();
   await sheet.locator('[name="reportDescription"]').fill('گزارش اجرای امروز');
@@ -74,10 +76,11 @@ test('completion enters pending approval, rejection returns Today with typed new
   await card.locator('.today-progress-circle').click();
   await page.locator('[name="reportDescription"]').fill('گزارش تکمیل قالب‌بندی');
   await page.locator('[name="reportProgress"]').click();
-  await page.locator('#numpadBackspace').click();
+  await expect(page.locator('#numpadDisplay')).toHaveText('وارد کنید…');
   for(const digit of '100') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
+  await expect(page.locator('#numpadDisplay')).toHaveText('٪۱۰۰');
   await page.locator('#numpadDoneBtn').click();
-  await page.locator('.today-submit-approval').click();
+  await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
   await expect(page.locator('.wbs-today-frame')).toHaveAttribute('data-mode','pending');
   card=page.locator('.today-task-card[data-entity-id="today-task"]');
   await expect(card).toContainText('در انتظار تأیید');
@@ -88,7 +91,10 @@ test('completion enters pending approval, rejection returns Today with typed new
   card=page.locator('.today-task-card[data-entity-id="today-task"]');
   await expect(card.locator('.today-comment').first()).toContainText('نیاز به اصلاح');
   await card.locator('.today-progress-circle').click();
-  await page.locator('.today-submit-approval').click();
+  await page.locator('[name="reportProgress"]').click();
+  for(const digit of '100') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
+  await page.locator('#numpadDoneBtn').click();
+  await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
   await page.locator('.today-task-card[data-entity-id="today-task"]').getByRole('button',{name:'تأیید',exact:true}).click();
   await expect(page.locator('.today-task-card[data-entity-id="today-task"]')).toHaveCount(0);
   await expect.poll(()=>page.evaluate(()=>window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0].workTasks[0].completionState)).toBe('approved');

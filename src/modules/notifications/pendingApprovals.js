@@ -1,3 +1,4 @@
+import {appendReportPhotos} from '../wbs/dailyExecutionReport.js';
 import {projectRepository} from '../../data/projectRepository.js';
 import {approvedContractContactIds, canReviewContract, contractApproverIds} from '../../domain/contractApproval.js';
 import {parentContractOf} from '../../domain/contractAddenda.js';
@@ -123,7 +124,10 @@ function renderApprovalItem(documentRef,project,group,item,onChanged){
     if(reports.length){
       const reportList=element(documentRef,'details');
       reportList.append(element(documentRef,'summary','','گزارش‌های ثبت‌شده'));
-      for(const report of reports)reportList.append(element(documentRef,'p','',report.description));
+      for(const report of reports){
+        reportList.append(element(documentRef,'p','',report.description));
+        appendReportPhotos(reportList,report.photos);
+      }
       card.append(reportList);
     }
   }else{
