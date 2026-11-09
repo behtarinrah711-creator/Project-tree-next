@@ -222,12 +222,11 @@ function addendumCard(project,addendum,onChanged,finance){
   const toolbar=renderContractStatusRow(addendum,{showBadge:!finance || addendum.accountingStatus==='rejected'});
   const actions=finance?toolbar:renderContractStatusRow(addendum,{showBadge:false});
   if(!finance)toolbar.className='contract-addendum-toolbar';
-  const mainContractLabel=finance?'مشاهده قرارداد اصلی':'نسخه اصلی قرارداد';
   if(finance){
     actions.className+=' contract-workflow-row--signed-addendum';
     renderContractSignedSection(project,addendum,{finance,inlineActions:actions});
   }
-  if(parent)toolbar.append(button(mainContractLabel,trigger=>openContractPreview(project,parent,{trigger,frozen:finance || parent===frozenParent})));
+  if(parent)toolbar.append(button('مشاهده قرارداد اصلی',trigger=>openContractPreview(project,parent,{trigger,frozen:finance || parent===frozenParent})));
   const actor=currentExecutionActor(project);
   let busy=false;
   const review=async(action,reason)=>{

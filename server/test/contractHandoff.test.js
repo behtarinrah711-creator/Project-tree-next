@@ -269,4 +269,16 @@ test('finance can read a rejected addendum snapshot and reports can resend it af
   assert.equal(current.financeRejection,null);
   assert.equal(current.signedAt,packageBeforeRejection.contract.signedAt);
   assert.deepEqual(current.financeHistory.map(event=>event.action),['send_finance','reject_finance','send_finance']);
+  f.setPermissions({modules:{contracts:'view',accounting:'full'}});
+  assert.equal(await act('withdraw_finance',{reason:'نیاز به بررسی دوباره'}),403);
+  f.setPermissions({modules:{contracts:'full'}});
+  assert.equal(await act('withdraw_finance',{reason:'  کم  '}),400);
+  assert.equal(await act('withdraw_finance',{reason:12345}),400);
+  assert.equal(await act('withdraw_finance',{reason:'  نیاز به بررسی دوباره  '}),200);
+  assert.equal(current.accountingStatus,'withdrawn');
+  const withdrawal=current.financeHistory.at(-1);
+  assert.equal(withdrawal.action,'withdraw_finance');
+  assert.equal(withdrawal.reason,'نیاز به بررسی دوباره');
+  assert.equal(withdrawal.actor.id,'member');
+  assert.equal(withdrawal.at,current.accountingWithdrawal.at);
 });

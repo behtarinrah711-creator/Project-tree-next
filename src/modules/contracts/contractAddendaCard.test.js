@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 const make=tag=>({tag,children:[],dataset:{},className:'',
   append(...children){this.children.push(...children);},
   appendChild(child){this.append(child);},
+  prepend(child){this.children=[child,...this.children.filter(node=>node!==child)];},
   replaceChildren(...children){this.children=children;},
   setAttribute(){},
 });
@@ -44,7 +45,7 @@ test('saved addenda use the contract card layout and their own status, number an
       assert.deepEqual(heading.children[0].children.map(node=>node.textContent),
         ['الحاقیه قرارداد پیمانکاری جواد قریشی','CTR-1-A01','تصفیه خانه ← فونداسیون']);
       assert.equal(status.children[0].textContent,finance?'نسخه امضا شده الحاقیه':'وضعیت: ناقص');
-      assert.equal(status.children[1].textContent,finance?'مشاهده قرارداد اصلی':'نسخه اصلی قرارداد');
+      assert.equal(status.children[1].textContent,'مشاهده قرارداد اصلی');
       const progress=card.children.find(node=>node.className==='contract-progress');
       if(finance){
         assert.equal(progress,undefined);
@@ -65,14 +66,30 @@ test('saved addenda use the contract card layout and their own status, number an
       renderContractAddenda(body,'p',{finance});
       const card=body.children[0].children.at(-1);
       const toolbar=card.children[1];
-      assert.equal(toolbar.children[0].textContent,'وضعیت: توسط مالی رد شد');
-      assert.ok(toolbar.children[0].className.includes('is-unapproved'));
+      const status=toolbar.children.find(node=>node.className.includes('contract-status-badge'));
+      assert.equal(status.textContent,'وضعیت: توسط مالی رد شد');
+      assert.ok(status.className.includes('is-unapproved'));
       if(!finance){
         assert.ok(toolbar.children.some(node=>node.textContent==='نسخه امضاشده الحاقیه'));
         assert.ok(toolbar.children.some(node=>node.textContent==='لغو اعلام تکمیل' && node.className.includes('danger')));
         const progress=card.children.find(node=>node.className==='contract-progress');
         assert.ok(progress.children.at(-1).className.includes('is-rejected'));
       }
+    }
+    project.contractAddenda=[{...accepted,accountingStatus:'sent',signedFiles:accepted.accountingPackage.signedFiles}];
+    for(const readOnly of [false,true]){
+      if(readOnly)window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'view',accounting:'full'}}}};
+      const body=make('div');
+      renderContractAddenda(body,'p');
+      const card=body.children[0].children.at(-1);
+      const toolbar=card.children[1];
+      assert.equal(toolbar.children[0].textContent,'نسخه امضاشده الحاقیه');
+      assert.ok(toolbar.children.some(node=>node.textContent==='وضعیت: ارسال شده به مالی'));
+      assert.ok(toolbar.children.some(node=>node.textContent==='مشاهده قرارداد اصلی'));
+      const withdraw=toolbar.children.find(node=>node.textContent==='× پس گرفتن از مالی');
+      assert.equal(!!withdraw,!readOnly);
+      if(withdraw)assert.ok(withdraw.className.includes('danger'));
+      assert.ok(!card.children.some(node=>node.className.includes('contract-signed-section')));
     }
   }finally{[globalThis.window,globalThis.document,projectRepository.find,contactApi.lookup]=old;}
 });

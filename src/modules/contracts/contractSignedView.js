@@ -1,7 +1,8 @@
 import {canWriteProjectModule} from '../roleManagement/permissionState.js';
 import {canAttachSignedContract,canReuseReturnedAddendumSignature,canReviseReturnedSignedContract,signedContractFiles,isContractInFinance,isContractSigned} from '../../domain/contractHandoff.js';
 import {mountFileUploader} from '../files/fileUploader.js';
-import {openWbsSheet,closeWbsSheet,fieldRow} from '../wbs/wbsSheet.js';
+import {openWbsSheet,closeWbsSheet} from '../wbs/wbsSheet.js';
+import {openFinanceReasonSheet} from './contractFinanceReasonSheet.js';
 import {openConfirm} from '../../ui/confirm.js';
 import {saveContractHandoff} from './contractHandoffApi.js';
 const toast=message=>window.KarhaLegacy?.showToast?.(message);
@@ -37,7 +38,7 @@ export function renderContractSignedSection(project,contract,{onChanged=()=>{},f
         return false;
       }
     });
-    sheet.classList.add('contract-signed-overlay','wbs-sheet-centered-header');
+    sheet.classList.add('contract-signed-overlay');
     const observer=new MutationObserver(()=>{if(!sheet.isConnected){uploader.destroy();observer.disconnect();}});
     observer.observe(document.body,{childList:true});
   };
@@ -47,14 +48,20 @@ export function renderContractSignedSection(project,contract,{onChanged=()=>{},f
   }
   if(sent){
     section.className+=' contract-signed-section--sent';
-    if(writable && !finance)button('پس‌گرفتن از مالی',()=>{const sheet=openWbsSheet({title:'پس‌گرفتن قرارداد از مالی',saveLabel:'ثبت برگشت',historyKey:'withdraw-finance:'+contract.id,
-      body(root){const reason=document.createElement('textarea');reason.className='wbs-input today-textarea';reason.name='reason';root.appendChild(fieldRow('دلیل پس‌گرفتن (الزامی)',reason));},
-      onSave(root){const reason=root.querySelector('[name="reason"]').value;if(reason.trim().length<5){toast('دلیل پس‌گرفتن حداقل ۵ حرف باشد');return false;}run('withdraw_finance',{reason}).then(ok=>{if(ok && sheet.isConnected)closeWbsSheet();});return false;}
-    });});
+    if(writable && !finance){
+      const withdraw=button(attachmentActions?'× پس گرفتن از مالی':'پس‌گرفتن از مالی',()=>openFinanceReasonSheet({
+        title:'پس گرفتن '+label+' از مالی',
+        historyKey:'withdraw-finance:'+contract.id,
+        fieldLabel:'دلیل پس گرفتن از مالی (الزامی)',
+        submit:reason=>run('withdraw_finance',{reason}),
+      }),attachmentActions || section);
+      if(attachmentActions)withdraw.className+=' danger';
+    }
   }
   if(ready || returned || existing.length){
-    button((existing.length?'نسخه امضاشده ':'افزودن عکس یا PDF ')+label,openAttachments,attachmentActions || section)
-      .className+=' contract-signed-trigger';
+    const trigger=button((existing.length?'نسخه امضاشده ':'افزودن عکس یا PDF ')+label,openAttachments,attachmentActions || section);
+    trigger.className+=' contract-signed-trigger';
+    if(attachmentActions)attachmentActions.prepend(trigger);
   }
   if(!sent && writable && ready && (isContractSigned(contract) || canReuseReturnedAddendumSignature(contract)))button('ارسال به واحد مالی',()=>openConfirm((contract.parentContractId?label:'قرارداد تنظیم‌شده')+' به همراه نسخه امضاشده به واحد مالی ارسال شود؟',()=>run('send_finance'),'ارسال'));
   return section.children.length ? section : null;

@@ -130,7 +130,7 @@ export function renderContractStatusRow(c,{showBadge=true}={}){
   const approvalState=contractApprovalState(c);
   const rejectedByFinance=c.parentContractId && c.accountingStatus==='rejected';
   const pendingFinance=c.parentContractId && c.accountingStatus==='sent';
-  const statusLabel=rejectedByFinance?'توسط مالی رد شد':pendingFinance?'در انتظار تأیید مالی':c.accountingStatus==='accepted'?'تأیید شده توسط بخش مالی':approvalState==='incomplete'?'ناقص':approvalState==='approved'?'تأیید شده است':['ready','unapproved','returned'].includes(approvalState)?'تأیید نشده است':approvalLabels[approvalState];
+  const statusLabel=rejectedByFinance?'توسط مالی رد شد':pendingFinance?'ارسال شده به مالی':c.accountingStatus==='accepted'?'تأیید شده توسط بخش مالی':approvalState==='incomplete'?'ناقص':approvalState==='approved'?'تأیید شده است':['ready','unapproved','returned'].includes(approvalState)?'تأیید نشده است':approvalLabels[approvalState];
   status.className='contract-status-badge '+(rejectedByFinance?'is-unapproved':pendingFinance?'is-incomplete':approvalState==='approved'?'is-approved':['ready','unapproved','returned'].includes(approvalState)?'is-unapproved':'is-incomplete');
   status.textContent='وضعیت: '+statusLabel;statusRow.appendChild(status);
   if(!rejectedByFinance && c.approvalStatus==='pending' && c.approvalContactIds?.length)status.textContent+=' ('+new Intl.NumberFormat('fa-IR').format(c.approvedContactIds?.length || 0)+' از '+new Intl.NumberFormat('fa-IR').format(c.approvalContactIds.length)+')';
