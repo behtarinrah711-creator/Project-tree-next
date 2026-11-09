@@ -83,13 +83,13 @@ function contractRowData(projectId,c){
   return {title,meta,number,created:contractCreatedParts(c.createdAt)};
 }
 
-export function renderContractCardHeading(project, contract, menu){
+export function renderContractCardHeading(project, contract, menu, {titlePrefix=""}={}){
   const {title,number,created}=contractRowData(project.id,contract);
   const path=contractProjectPath(project,contract);
   const heading=document.createElement('div');
   heading.className='contract-card-heading';
   const main=document.createElement('div'); main.className='contract-main';
-  const t=document.createElement('div'); t.className='contract-title'; t.textContent=title;
+  const t=document.createElement('div'); t.className='contract-title'; t.textContent=titlePrefix ? titlePrefix+' '+title : title;
   const numberRow=document.createElement('div');numberRow.className='contract-meta contract-number';numberRow.dir='ltr';numberRow.textContent=number;
   main.append(t,numberRow);
   if(path){
@@ -108,6 +108,18 @@ export function renderContractCardHeading(project, contract, menu){
     heading.append(main,actions);
   }
   return heading;
+}
+
+export function renderContractStatusRow(c){
+  const statusRow=document.createElement('div');statusRow.className='contract-workflow-row';
+  const status=document.createElement('span');
+  const approvalState=contractApprovalState(c);
+  const statusLabel=c.accountingStatus==='accepted'?'تأیید شده توسط بخش مالی':approvalState==='incomplete'?'ناقص':approvalState==='approved'?'تأیید شده است':['ready','unapproved','returned'].includes(approvalState)?'تأیید نشده است':approvalLabels[approvalState];
+  status.className='contract-status-badge '+(approvalState==='approved'?'is-approved':['ready','unapproved','returned'].includes(approvalState)?'is-unapproved':'is-incomplete');
+  status.textContent='وضعیت: '+statusLabel;statusRow.appendChild(status);
+  if(c.approvalStatus==='pending' && c.approvalContactIds?.length)status.textContent+=' ('+new Intl.NumberFormat('fa-IR').format(c.approvedContactIds?.length || 0)+' از '+new Intl.NumberFormat('fa-IR').format(c.approvalContactIds.length)+')';
+  statusRow.onclick=event=>event.stopPropagation();
+  return statusRow;
 }
 
 export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
@@ -132,13 +144,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
       });
       row.appendChild(heading);
       if(!finance){
-      const statusRow=document.createElement('div');statusRow.className='contract-workflow-row';
-      const status=document.createElement('span');
-      const approvalState=contractApprovalState(c);
-      const statusLabel=c.accountingStatus==='accepted'?'تأیید شده توسط بخش مالی':approvalState==='incomplete'?'ناقص':approvalState==='approved'?'تأیید شده است':['ready','unapproved','returned'].includes(approvalState)?'تأیید نشده است':approvalLabels[approvalState];
-      status.className='contract-status-badge '+(approvalState==='approved'?'is-approved':['ready','unapproved','returned'].includes(approvalState)?'is-unapproved':'is-incomplete');
-      status.textContent='وضعیت: '+statusLabel;statusRow.appendChild(status);
-      if(c.approvalStatus==='pending' && c.approvalContactIds?.length)status.textContent+=' ('+new Intl.NumberFormat('fa-IR').format(c.approvedContactIds?.length || 0)+' از '+new Intl.NumberFormat('fa-IR').format(c.approvalContactIds.length)+')';
+      const statusRow=renderContractStatusRow(c);
       const run=(action,options={})=>{
         const result=contractApi.review(id,c.id,action,actor,options);
         if(!result.ok){window.KarhaLegacy?.showToast?.(result.message||'ثبت تغییرات انجام نشد');return false;}
@@ -185,7 +191,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
         const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='علت لغو تأیید: '+c.approvalRejectionReason;statusRow.appendChild(reason);
       }
       if(c.financeRejection?.reason && c.accountingStatus==='rejected'){const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='دلیل رد توسط بخش مالی: '+c.financeRejection.reason;statusRow.appendChild(reason);}
-      row.appendChild(statusRow);statusRow.onclick=event=>event.stopPropagation();
+      row.appendChild(statusRow);
       row.appendChild(renderContractProgress(document,c,p));
       const signedSection=renderContractSignedSection(p,c,{onChanged});if(signedSection)row.appendChild(signedSection);
       }else row.appendChild(renderContractFinanceReview(p,c,{onChanged}));

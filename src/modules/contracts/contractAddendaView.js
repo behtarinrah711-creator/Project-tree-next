@@ -12,7 +12,7 @@ import { currentExecutionActor } from '../wbs/executionActor.js';
 import { openStaticChoicePicker } from './contractPickers.js';
 import { contactApi } from '../../domain/contactApi.js';
 import { activityApi } from '../../domain/activityApi.js';
-import { contractProjectPath, normalizeContractSearch, renderContractCardHeading } from './contractsModule.js';
+import { contractProjectPath, normalizeContractSearch, renderContractCardHeading, renderContractStatusRow } from './contractsModule.js';
 import { ftAmountSummary, ftNumberRow, ftSelectRow, renderContractSavebar } from './realContractFormModule.js';
 import { makeQuantityRow, renderQuantityRows, rowAmount, syncContractAmount } from './contractPricing.js';
 import { openContractPreview } from './contractPreviewView.js';
@@ -214,18 +214,18 @@ function addendumCard(project,addendum,onChanged,finance){
   const frozenParent=addendum.accountingPackage?.contract?.parentDocument;
   const parent=finance?frozenParent:parentContractOf(project,addendum)||frozenParent;
   const row=document.createElement('article');row.className='contract-row';
-  const heading=document.createElement('div');heading.className='contract-card-heading';
-  const main=document.createElement('div');main.className='contract-main';
-  const title=document.createElement('div');title.className='contract-title';title.textContent=addendum.title;
-  const meta=document.createElement('div');meta.className='contract-meta';
-  meta.textContent=addendum.contractNo+' · قرارداد اصلی '+addendum.parentContractNo+' · '+formatJalaliDisplay(addendum.contractDate);
-  main.append(title,meta);heading.append(main);row.append(heading);
-  const actions=document.createElement('div');actions.className='contract-workflow-row';
+  const heading=renderContractCardHeading(project,{
+    ...parent,contractNo:addendum.contractNo,createdAt:addendum.createdAt,
+  },{
+    onEdit:!finance && parent && addendum.isDraft && writable(project)
+      ? ()=>openAddendumForm(project,parent,addendum,onChanged) : undefined,
+    onExport:trigger=>openContractExport(project,documentAddendum,{
+      trigger,markup:addendumDocument(documentAddendum,parent && !finance ? syncContractPartyData({...parent},project) : parent),
+    }),
+  },{titlePrefix:'الحاقیه'});
+  row.append(heading);
+  const actions=renderContractStatusRow(addendum);
   if(parent)actions.append(button('مشاهده قرارداد اصلی',trigger=>openContractPreview(project,parent,{trigger,frozen:finance || parent===frozenParent})));
-  actions.append(button('خروجی الحاقیه',trigger=>openContractExport(project,documentAddendum,{
-    trigger,markup:addendumDocument(documentAddendum,parent && !finance ? syncContractPartyData({...parent},project) : parent),
-  })));
-  if(!finance && addendum.isDraft && writable(project))actions.append(button('ویرایش الحاقیه',()=>openAddendumForm(project,parent,addendum,onChanged)));
   const actor=currentExecutionActor(project);
   let busy=false;
   const review=async(action,reason)=>{
