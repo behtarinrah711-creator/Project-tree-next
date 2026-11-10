@@ -53,3 +53,33 @@ test('completion routes to WBS reviewers on the server and stale snapshots canno
     assert.deepEqual(stale.contracts[0],saved);
   }
 });
+
+test('declaring unchanged returned contracts complete starts a fresh review using authenticated permissions',()=>{
+  const contacts=[{id:'reviewer'}];
+  const actor={id:'writer'};
+  for(const reviewers of [[],['reviewer']]){
+    const record={id:'c',status:'draft',isDraft:true,title:'قرارداد بدون تغییر',amount:100,
+      approvalStatus:'unapproved',revisionBaseline:null,contractApproverContactIds:reviewers,
+      approvalHistory:[{action:'revoke',reason:'بررسی دوباره لازم است',at:1}]};
+    const previous={contacts,contracts:[record]};
+    const incoming={contacts,contracts:[{...record,status:'final',isDraft:false,
+      completionDeclarationId:'new-round',completedAt:2}]};
+    const save=permissions=>{
+      const merged=mergeSharedProjectPayload(previous,structuredClone(incoming),permissions,actor);
+      return stampContractCreation(merged,previous,actor.id,'',10).contracts[0];
+    };
+    const denied=save({modules:{contracts:'view',accounting:'full'}});
+    assert.equal(denied.status,'draft');
+    assert.equal(denied.approvalStatus,'unapproved');
+    const saved=save({modules:{contracts:'create'}});
+    assert.equal(saved.title,record.title);
+    assert.equal(saved.amount,record.amount);
+    assert.equal(saved.approvalStatus,reviewers.length?'pending':'approved');
+    assert.deepEqual(saved.approvedContactIds,[]);
+    assert.deepEqual(saved.approvalContactIds,reviewers);
+    assert.equal(saved.completedBy.id,actor.id);
+    assert.equal(saved.approvalHistory[0].reason,'بررسی دوباره لازم است');
+    assert.deepEqual(saved.approvalHistory.map(event=>event.action),reviewers.length
+      ? ['revoke','complete','submit'] : ['revoke','complete']);
+  }
+});

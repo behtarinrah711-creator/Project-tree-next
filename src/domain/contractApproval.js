@@ -36,8 +36,7 @@ export function contractRevisionContent(contract){
 export function canSubmitContract(contract){
   if(contract.isDraft || contract.status!=='final')return false;
   const status=contractApprovalState(contract);
-  return status==='ready' || (status==='unapproved' && typeof contract.revisionBaseline==='string' &&
-    contractRevisionContent(contract)!==contract.revisionBaseline);
+  return status==='ready' || status==='unapproved';
 }
 export function contractApproverIds(contract){
   return [...new Set((Array.isArray(contract.approvalContactIds) ? contract.approvalContactIds : [contract.approvalContactId]).filter(Boolean).map(String))];
@@ -50,7 +49,7 @@ export function configuredContractReviewers(contract,linkedTask){
 }
 
 export function routeCompletedContract(contract,actor,approverIds,at){
-  if(!canSubmitContract(contract))return {ok:false,message:'ابتدا اطلاعات قرارداد را اصلاح کنید'};
+  if(!canSubmitContract(contract))return {ok:false,message:'ابتدا قرارداد را تکمیل کنید'};
   if(approverIds.length)return transitionContractApproval(contract,'submit',actor,{approverIds,at});
   return {ok:true,contract:{...contract,approvalStatus:'approved',approvalContactIds:[],
     approvalContactId:'',approvedContactIds:[],submittedAt:null,submittedBy:null,approvalRejectionReason:'',revisionBaseline:null}};
