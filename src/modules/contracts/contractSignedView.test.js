@@ -39,3 +39,18 @@ test('returned legacy contracts show their printed copies while fresh drafts hav
  assert.ok(!section.children.some(node=>String(node.textContent).includes('فایل ذخیره شده')));
  assert.ok(!section.children.some(node=>String(node.textContent).includes('پس از تکمیل')));
 });
+
+test('recompleted contracts can resend the same signed copy when their content is unchanged',()=>{
+  globalThis.document=documentRef;
+  const previous={id:'c',title:'قرارداد',contractNo:'CTR-1',status:'final',approvalStatus:'approved',signedAt:10,signedFiles:[file]};
+  const returned={...previous,signedAt:null,accountingStatus:'rejected',accountingPackage:{contract:previous,signedFiles:[file]}};
+  assert.deepEqual(labels(renderContractSignedSection(project,returned)),['نسخه امضاشده قرارداد','ارسال به واحد مالی']);
+  assert.deepEqual(contractProgressSteps(returned).map(s=>s.done),[true,true,true,false,false]);
+  for(const contract of [{...returned,approvalStatus:'pending'},{...returned,title:'نسخه اصلاحی'},{...returned,signedFiles:[{...file,id:'replacement'}]}]){
+    assert.deepEqual(labels(renderContractSignedSection(project,contract)),['نسخه امضاشده قرارداد']);
+  }
+  window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'view',accounting:'full'}}}};
+  try{
+    assert.deepEqual(labels(renderContractSignedSection(project,returned)),['نسخه امضاشده قرارداد']);
+  }finally{delete window.KarhaSaosaWorkspaceAccess;}
+});

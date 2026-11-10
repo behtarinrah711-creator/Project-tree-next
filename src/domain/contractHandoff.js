@@ -1,3 +1,5 @@
+import {contractRevisionContent} from './contractApproval.js';
+
 export const HANDOFF_FIELDS=['signedFiles','signedFilesUpdatedAt','signedAt','signedBy','handoffVersion','accountingStatus','sentToAccountingAt','sentToAccountingBy','accountingPackage','accountingWithdrawal','accountingDecision','financeRejection','financeHistory'];
 export const FINANCE_REASON_MIN_LENGTH=5;
 export const isContractSigned=c=>!!c?.signedAt && Array.isArray(c.signedFiles) && c.signedFiles.length>0;
@@ -13,19 +15,27 @@ export function isAddendumVisibleInFinance(addendum){
     || (addendum.accountingStatus==='rejected' && !!addendum.accountingPackage?.contract));
 }
 
-export function canReuseReturnedAddendumSignature(addendum){
-  if(!addendum?.parentContractId || addendum.accountingStatus!=='rejected' || !canAttachSignedContract(addendum))return false;
-  const previous=addendum.accountingPackage?.contract;
-  const previousFiles=addendum.accountingPackage?.signedFiles || [];
-  const files=signedContractFiles(addendum);
+export function canReuseReturnedSignature(contract){
+  if(contract?.accountingStatus!=='rejected' || !canAttachSignedContract(contract))return false;
+  const previous=contract.accountingPackage?.contract;
+  const previousFiles=contract.accountingPackage?.signedFiles || [];
+  const files=signedContractFiles(contract);
   if(!previous?.signedAt || !files.length || files.length!==previousFiles.length
     || files.some((file,index)=>file.id!==previousFiles[index].id))return false;
+
+  if(!contract.parentContractId){
+    const terms=['contractNo','paymentMethod','paymentStageCount'];
+    const stages=record=>(record.paymentStages||[]).map(({progress,paymentPercent,description})=>[progress,paymentPercent,description]);
+    return terms.every(key=>String(contract[key]??'')===String(previous[key]??''))
+      && contractRevisionContent(contract)===contractRevisionContent(previous)
+      && JSON.stringify(stages(contract))===JSON.stringify(stages(previous));
+  }
 
   const fields=['type','title','parentContractId','parentContractNo','contractNo','contractDate','note','previousEndDate','endDate','amount'];
   const operationFields=['description','pricingMode','unit','quantity','unitPrice','amount'];
   const operationValues=record=>(record.rows||[]).map(row=>operationFields.map(key=>row[key]));
-  return fields.every(key=>addendum[key]===previous[key])
-    && JSON.stringify(operationValues(addendum))===JSON.stringify(operationValues(previous));
+  return fields.every(key=>contract[key]===previous[key])
+    && JSON.stringify(operationValues(contract))===JSON.stringify(operationValues(previous));
 }
 
 export function transitionContractHandoff(contract,action,actor,{files=[],reason='',at=Date.now(),projectName,activityName}={}){
@@ -74,7 +84,7 @@ export function transitionContractHandoff(contract,action,actor,{files=[],reason
       }
     }else if(action==='send_finance'){
       if(!isContractSigned(contract)){
-        if(!canReuseReturnedAddendumSignature(contract))return fail('ابتدا نسخه امضاشده قرارداد را ذخیره کنید');
+        if(!canReuseReturnedSignature(contract))return fail('ابتدا نسخه امضاشده قرارداد را ذخیره کنید');
         const previous=contract.accountingPackage.contract;
         next.signedAt=previous.signedAt;
         next.signedBy=previous.signedBy;

@@ -1,5 +1,5 @@
 import {progressCircle} from '../wbs/dailyExecutionReport.js';
-import {canReuseReturnedAddendumSignature,isContractSigned,isContractInFinance} from '../../domain/contractHandoff.js';
+import {canReuseReturnedSignature,isContractSigned,isContractInFinance} from '../../domain/contractHandoff.js';
 import { contractApprovalState, contractApproverIds } from '../../domain/contractApproval.js';
 
 function linkedTask(project,contract){
@@ -24,7 +24,7 @@ export function contractProgressSteps(contract,project){
     {id:'completed',label:contract.parentContractId?'تکمیل الحاقیه':'تکمیل قرارداد',done:complete},
   ];
   if(reviewers.filter(Boolean).length)steps.push({id:'approved',label:contract.parentContractId?'تأیید الحاقیه':'تأیید قرارداد',done:complete && contractApprovalState(contract)==='approved'});
-  steps.push({id:'signed',label:contract.parentContractId?'امضای الحاقیه':'امضای قرارداد',done:complete && contract.approvalStatus==='approved' && (isContractSigned(contract) || canReuseReturnedAddendumSignature(contract))},{id:'finance',label:'ارسال به مالی',done:isContractInFinance(contract)});
+  steps.push({id:'signed',label:contract.parentContractId?'امضای الحاقیه':'امضای قرارداد',done:complete && contract.approvalStatus==='approved' && (isContractSigned(contract) || canReuseReturnedSignature(contract))},{id:'finance',label:'ارسال به مالی',done:isContractInFinance(contract)});
   const rejected=!!contract.parentContractId && contract.accountingStatus==='rejected';
   steps.push({id:'finance-approved',label:rejected?'توسط مالی رد شد':'تأیید بخش مالی',rejected,done:isContractInFinance(contract) && contract.accountingStatus==='accepted'});
   return steps;
