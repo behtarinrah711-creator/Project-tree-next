@@ -9,9 +9,38 @@ export function renderContractFinanceReview(project,contract,{onChanged=()=>{}}=
   const access=window.KarhaSaosaWorkspaceAccess?.[project.id],permissions=access?.permissions||{};
   const module=Object.hasOwn(permissions.modules||permissions,'accounting-contracts')?'accounting-contracts':'accounting';
   if(!canWriteProjectModule(project.id,module))return root;
-  const toast=message=>window.KarhaLegacy?.showToast?.(message);let busy=false;
-  const run=async(action,options={})=>{if(busy || !canWriteProjectModule(project.id,module))return false;busy=true;try{await saveContractHandoff(project.id,contract,action,options);onChanged();return true;}catch(error){toast(error.message);return false;}finally{busy=false;}};
-  const button=(text,action,danger=false)=>{const b=document.createElement('button');b.type='button';b.className='contract-review-action'+(danger?' danger':'');b.textContent=text;b.onclick=action;root.appendChild(b);};
+  const feedback=document.createElement('p');
+  feedback.className='contract-rejection-reason';
+  feedback.setAttribute('role','alert');
+  const showError=message=>{
+    feedback.textContent=message;
+    root.appendChild(feedback);
+  };
+  const buttons=[];
+  let busy=false;
+  const run=async(action,options={})=>{
+    if(busy)return false;
+    if(!canWriteProjectModule(project.id,module)){
+      showError('برای ثبت تصمیم مالی به دسترسی ویرایش نیاز دارید.');
+      return false;
+    }
+    busy=true;
+    feedback.remove();
+    for(const button of buttons)button.disabled=true;
+    try{
+      await saveContractHandoff(project.id,contract,action,options);
+    }catch(error){
+      showError(error.message);
+      if(action!=='approve_finance')window.KarhaLegacy?.showToast?.(error.message);
+      return false;
+    }finally{
+      busy=false;
+      for(const button of buttons)button.disabled=false;
+    }
+    onChanged();
+    return true;
+  };
+  const button=(text,action,danger=false)=>{const b=document.createElement('button');b.type='button';b.className='contract-review-action'+(danger?' danger':'');b.textContent=text;b.onclick=action;buttons.push(b);root.appendChild(b);};
   const openRejection=action=>{
     const revoke=action==='revoke_finance';
     const title=contract.parentContractId?'رد کردن الحاقیه':revoke?'پس‌گرفتن تأیید مالی':'رد قرارداد توسط بخش مالی';

@@ -239,7 +239,7 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
     row.append(renderContractReviewRow(addendum,{...approval,preview}),renderContractProgress(document,addendum,project));
     return row;
   }
-  const toolbar=renderContractStatusRow(addendum,{showBadge:!finance || addendum.accountingStatus==='rejected'});
+  const toolbar=renderContractStatusRow(addendum,{showBadge:!finance || ['accepted','rejected'].includes(addendum.accountingStatus)});
   const actions=finance?toolbar:renderContractStatusRow(addendum,{showBadge:false});
   if(!finance)toolbar.className='contract-addendum-toolbar';
   if(finance){
