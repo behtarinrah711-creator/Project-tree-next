@@ -88,7 +88,7 @@ test('only contract writers see the addendum shortcut on completed report cards'
       approvedContactIds:['me'],submittedBy:{id:'reviewer'}};
     const status=renderContractCard(project,pending).children[1];
     assert.deepEqual(status.children.map(node=>node.textContent),
-      ['وضعیت: در انتظار تأیید (۱ از ۲)','پس‌گرفتن از تأیید']);
+      ['وضعیت: تکمیل و برای مسئول تایید ارسال شد','گام بعد: صبور باشید','پس‌گرفتن از تأیید']);
     window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'view',accounting:'full'}}}};
     assert.equal(shortcut(contract),undefined);
     project.contractAddenda=[
@@ -104,5 +104,38 @@ test('only contract writers see the addendum shortcut on completed report cards'
     toolbar.children[0].onclick();
     assert.equal(list.children.length,1);
     assert.equal(list.children[0].children[0].children[0].children[1].textContent,'CTR-1-A01');
+  }finally{globalThis.window=previousWindow;globalThis.document=previousDocument;}
+});
+
+
+test('contract card explains each normal workflow stage and removes the next step after finance approval',async()=>{
+  const {renderContractCard}=await import('./contractsModule.js');
+  const previousWindow=globalThis.window,previousDocument=globalThis.document;
+  const make=()=>({children:[],dataset:{},append(...nodes){this.children.push(...nodes);},
+    appendChild(node){this.children.push(node);},setAttribute(){}});
+  globalThis.document={createElement:make};
+  globalThis.window={location:{hash:''}};
+  const project={id:'p',tasks:[]};
+  const base={id:'c',contractNo:'CTR-1',status:'final',approvalStatus:'approved'};
+  const file={id:'f',name:'signed.jpg',mime:'image/jpeg'};
+  const signed={signedAt:1,signedFiles:[file]};
+  const sent={...signed,accountingStatus:'sent',sentToAccountingAt:2,accountingPackage:{contract:base,signedFiles:[file]}};
+  const texts=contract=>renderContractCard(project,{...base,...contract}).children[1].children
+    .filter(node=>node.className?.includes('contract-status-badge') || node.className==='contract-next-step')
+    .map(node=>node.textContent);
+  try{
+    for(const reviewed of [false,true]){
+      const approvalContactIds=reviewed?['reviewer']:[];
+      const check=(contract,label,step)=>assert.deepEqual(texts({...contract,approvalContactIds}),
+        ['وضعیت: '+label,...(step?['گام بعد: '+step]:[])]);
+      check({status:'draft',isDraft:true},'ناقص','قرارداد را ویرایش و تکمیل کنید');
+      if(reviewed)check({approvalStatus:'pending'},'تکمیل و برای مسئول تایید ارسال شد','صبور باشید');
+      check({},reviewed?'تکمیل و تایید شد':'تکمیل شد','نسخه امضا شده قرارداد را بارگذاری کنید');
+      check(signed,reviewed?'تکمیل، تایید، امضا و بارگذاری شد':'تکمیل، امضا و بارگذاری شد','ارسال به بخش مالی');
+      check(sent,'در انتظار تایید بخش مالی','صبور باشید');
+      check({...sent,accountingStatus:'accepted'},reviewed?'تکمیل، تایید، امضا، بارگذاری و ثبت مالی شد':'تکمیل، امضا، بارگذاری و ثبت مالی شد');
+    }
+    assert.deepEqual(texts({status:'draft',isDraft:true,approvalStatus:'unapproved',approvalRejectionReason:'نیاز به اصلاح'}),['وضعیت: ناقص']);
+    assert.deepEqual(texts({accountingStatus:'rejected',financeRejection:{reason:'صفحه ناقص است'}}),['وضعیت: تأیید شده است']);
   }finally{globalThis.window=previousWindow;globalThis.document=previousDocument;}
 });

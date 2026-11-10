@@ -4,7 +4,8 @@ import {renderContractFinanceReview} from './contractFinanceReviewView.js';
 import {renderContractSignedSection} from './contractSignedView.js';
 import { renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
 import { renderContractHistory } from './contractHistoryView.js';
-import { approvalLabels, contractApprovalState, canReviewContract, canCancelContractCompletion } from '../../domain/contractApproval.js';
+import { approvalLabels, contractApprovalState, contractApproverIds, canReviewContract, canCancelContractCompletion } from '../../domain/contractApproval.js';
+import { isContractSigned } from '../../domain/contractHandoff.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
 import { fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
 const contractListViews=new Map();
@@ -150,6 +151,56 @@ export function renderContractStatusRow(c,{showBadge=true}={}){
   return statusRow;
 }
 
+function renderContractWorkflowRow(contract){
+  const state=contractApprovalState(contract);
+  if(contract.accountingStatus==='rejected' || contract.approvalRejectionReason
+    || ['unapproved','returned'].includes(contract.approvalStatus) || state==='ready'){
+    return renderContractStatusRow(contract);
+  }
+
+  const reviewed=contractApproverIds(contract).length>0 ||
+    (!Array.isArray(contract.approvalContactIds) && contract.contractApproverContactIds?.some(Boolean));
+  const completion=reviewed?'تکمیل، تایید، امضا، بارگذاری و ثبت مالی شد':'تکمیل، امضا، بارگذاری و ثبت مالی شد';
+  const signed=reviewed?'تکمیل، تایید، امضا و بارگذاری شد':'تکمیل، امضا و بارگذاری شد';
+  let label,nextStep,tone='is-incomplete';
+  if(contract.accountingStatus==='accepted'){
+    label=completion;
+    tone='is-approved';
+  }else if(contract.accountingStatus==='sent'){
+    label='در انتظار تایید بخش مالی';
+    nextStep='صبور باشید';
+  }else if(state==='pending'){
+    label='تکمیل و برای مسئول تایید ارسال شد';
+    nextStep='صبور باشید';
+  }else if(state==='approved'){
+    tone='is-approved';
+    if(isContractSigned(contract)){
+      label=signed;
+      nextStep='ارسال به بخش مالی';
+    }else{
+      label=reviewed?'تکمیل و تایید شد':'تکمیل شد';
+      nextStep='نسخه امضا شده قرارداد را بارگذاری کنید';
+    }
+  }else{
+    label='ناقص';
+    nextStep='قرارداد را ویرایش و تکمیل کنید';
+  }
+
+  const row=renderContractStatusRow(contract,{showBadge:false});
+  row.dataset.contractWorkflow='';
+  const badge=document.createElement('span');
+  badge.className='contract-status-badge '+tone;
+  badge.textContent='وضعیت: '+label;
+  row.appendChild(badge);
+  if(nextStep){
+    const next=document.createElement('span');
+    next.className='contract-next-step';
+    next.textContent='گام بعد: '+nextStep;
+    row.appendChild(next);
+  }
+  return row;
+}
+
 export function renderContractReviewRow(contract,{action,preview}){
   const row=renderContractStatusRow(contract);
   if(contract.parentContractId)row.className='contract-addendum-toolbar';
@@ -189,7 +240,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval}
         return row;
       }
       if(!finance){
-      const statusRow=renderContractStatusRow(c);
+      const statusRow=renderContractWorkflowRow(c);
       const run=(action,options={})=>{
         const result=contractApi.review(id,c.id,action,actor,options);
         if(!result.ok){window.KarhaLegacy?.showToast?.(result.message||'ثبت تغییرات انجام نشد');return false;}
