@@ -1,3 +1,4 @@
+import {progressCircle} from '../wbs/dailyExecutionReport.js';
 import {canReuseReturnedAddendumSignature,isContractSigned,isContractInFinance} from '../../domain/contractHandoff.js';
 import { contractApprovalState, contractApproverIds } from '../../domain/contractApproval.js';
 
@@ -27,6 +28,17 @@ export function contractProgressSteps(contract,project){
   const rejected=!!contract.parentContractId && contract.accountingStatus==='rejected';
   steps.push({id:'finance-approved',label:rejected?'توسط مالی رد شد':'تأیید بخش مالی',rejected,done:isContractInFinance(contract) && contract.accountingStatus==='accepted'});
   return steps;
+}
+
+export function renderContractProgressCircle(documentRef,contract,project){
+  const steps=contractProgressSteps(contract,project);
+  const completed=steps.filter(step=>step.done).length;
+  const count=new Intl.NumberFormat('fa-IR');
+  const value=count.format(completed)+' از '+count.format(steps.length);
+  const next=steps.find(step=>!step.done);
+  return progressCircle(documentRef,{progress:completed/steps.length*100},{
+    summary:{value,label:'پیشرفت قرارداد: '+value+' مرحله'+(next?'؛ مرحله بعد: '+next.label:'')},
+  });
 }
 
 export function renderContractProgress(documentRef,contract,project){
