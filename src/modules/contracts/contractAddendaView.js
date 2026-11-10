@@ -305,7 +305,42 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
   return row;
 }
 
-export function openAddendumForContract(projectId,contractId){
+export function renderContractAddendaRow(project,contract){
+  const records=source=>(source.contractAddenda||[]).filter(addendum=>!addendum.trashed
+    && String(addendum.parentContractId)===String(contract.id));
+  const canCreate=canCreateAddendumFromContract(contract) && writable(project);
+  if(!canCreate && !records(project).length)return null;
+
+  const row=document.createElement('section');row.className='contract-addenda-row';
+  row.onclick=event=>event.stopPropagation();
+  const toolbar=document.createElement('div');toolbar.className='contract-addenda-row-toolbar';
+  const toggle=document.createElement('button');toggle.type='button';toggle.className='contract-review-action contract-addenda-toggle';
+  const list=document.createElement('div');list.className='contract-addenda-children';list.hidden=true;
+  const refresh=(source=projectRepository.find(project.id) || project)=>{
+    const addenda=records(source);
+    toggle.textContent='الحاقیه‌ها ('+number(addenda.length)+')';
+    toggle.setAttribute('aria-expanded',String(!list.hidden));
+    if(list.hidden)return;
+    list.replaceChildren(...addenda.sort((a,b)=>b.createdAt-a.createdAt)
+      .map(addendum=>renderAddendumCard(source,addendum,()=>refresh())));
+    if(!addenda.length){
+      const empty=document.createElement('p');empty.className='contract-meta';empty.textContent='هنوز الحاقیه‌ای ثبت نشده است.';
+      list.appendChild(empty);
+    }
+  };
+  toggle.onclick=()=>{list.hidden=!list.hidden;refresh();};
+  toolbar.appendChild(toggle);
+  if(canCreate){
+    toolbar.appendChild(button('ایجاد الحاقیه',()=>openAddendumForContract(project.id,contract.id,()=>{
+      if(row.isConnected){list.hidden=false;refresh();}
+    }),'contract-review-action contract-addendum-create'));
+  }
+  row.append(toolbar,list);
+  refresh(project);
+  return row;
+}
+
+export function openAddendumForContract(projectId,contractId,onChanged=()=>{}){
   const project=projectRepository.find(projectId);
   if(!project || !writable(project))return;
   const contract=parentContractOf(project,{parentContractId:contractId});
@@ -313,7 +348,7 @@ export function openAddendumForContract(projectId,contractId){
     toast('ابتدا قرارداد را تکمیل کنید');
     return;
   }
-  openAddendumForm(project,contract,null,()=>{});
+  openAddendumForm(project,contract,null,onChanged);
 }
 
 export function renderContractAddenda(body,projectId,{finance=false,onChanged}={}){

@@ -1,10 +1,10 @@
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
-import { canCreateAddendumFromContract, canEditContractAddenda } from '../../domain/contractAddenda.js';
+import { renderContractAddendaRow } from './contractAddendaView.js';
 import {renderContractFinanceReview} from './contractFinanceReviewView.js';
 import {renderContractSignedSection} from './contractSignedView.js';
-import { renderContractProgress } from './contractProgressView.js';
+import { renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
 import { renderContractHistory } from './contractHistoryView.js';
-import { approvalLabels, contractApprovalState, canReviewContract, canRevokeContractApproval, canCancelContractCompletion, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
+import { approvalLabels, contractApprovalState, canReviewContract, canCancelContractCompletion } from '../../domain/contractApproval.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
 import { fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
 const contractListViews=new Map();
@@ -83,7 +83,7 @@ function contractRowData(projectId,c){
   return {title,meta,number,created:contractCreatedParts(c.createdAt)};
 }
 
-export function renderContractCardHeading(project, contract, menu, {titlePrefix="",onPreview}={}){
+export function renderContractCardHeading(project, contract, menu, {titlePrefix="",onPreview,progress}={}){
   const {title,number,created}=contractRowData(project.id,contract);
   const path=contractProjectPath(project,contract);
   const heading=document.createElement('div');
@@ -98,6 +98,7 @@ export function renderContractCardHeading(project, contract, menu, {titlePrefix=
   }
   const actions=document.createElement('div'); actions.className='contract-actions';
   if(menu!==null)actions.appendChild(contractActionsMenu(menu));
+  if(progress)actions.appendChild(progress);
   if(onPreview){
     heading.onclick=()=>onPreview(main);
     actions.onclick=event=>event.stopPropagation();
@@ -170,7 +171,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval}
           }
           onChanged();
         },'حذف'),
-      },{onPreview:approval?preview:undefined});
+      },{onPreview:approval?preview:undefined,progress:approval?null:renderContractProgressCircle(document,c,p)});
       row.appendChild(heading);
       if(approval){
         row.append(renderContractReviewRow(c,{...approval,preview}),renderContractProgress(document,c,p));
@@ -195,35 +196,19 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval}
           onSave:root=>run(action,{reason:root.querySelector('[name="completionReason"]').value})
         }),true);
       }
-      if(writable && canRevokeContractApproval(c,actor)){
-        button('لغو تأیید من',()=>openWbsSheet({
-          title:'لغو تأیید قرارداد',saveLabel:'ثبت لغو تأیید',historyKey:'contract-revoke:'+c.id,
-          body(root){const reason=document.createElement('textarea');reason.className='wbs-input today-textarea';reason.name='revocationReason';reason.required=true;reason.minLength=REJECTION_MIN_LENGTH;root.appendChild(fieldRow('علت لغو تأیید (الزامی)',reason));},
-          onSave:root=>run('revoke',{reason:root.querySelector('[name="revocationReason"]').value})
-        }),true);
-      }
-      if(writable && canReviewContract(c,actor)){
-        button('تأیید',()=>openConfirm('این قرارداد تأیید شود؟',()=>run('approve'),'تأیید'));
-      }
-      if(canCreateAddendumFromContract(c) && canEditContractAddenda(window.KarhaSaosaWorkspaceAccess?.[id])){
-        const addendum=document.createElement('button');
-        addendum.type='button';addendum.className='contract-review-action contract-addendum-create';addendum.textContent='ایجاد الحاقیه';
-        addendum.onclick=async event=>{
-          event.stopPropagation();
-          const {openAddendumForContract}=await import('./contractAddendaView.js');
-          if(row.isConnected)openAddendumForContract(id,c.id);
-        };
-        statusRow.appendChild(addendum);
-      }
       if(c.approvalRejectionReason && ['unapproved','incomplete'].includes(contractApprovalState(c))){
         const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='علت لغو تأیید: '+c.approvalRejectionReason;statusRow.appendChild(reason);
       }
       if(c.financeRejection?.reason && c.accountingStatus==='rejected'){const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='دلیل رد توسط بخش مالی: '+c.financeRejection.reason;statusRow.appendChild(reason);}
       row.appendChild(statusRow);
-      row.appendChild(renderContractProgress(document,c,p));
-      const signedSection=renderContractSignedSection(p,c,{onChanged});if(signedSection)row.appendChild(signedSection);
+      const addendaRow=renderContractAddendaRow(p,c);
+      if(addendaRow)row.appendChild(addendaRow);
       }else row.appendChild(renderContractFinanceReview(p,c,{onChanged}));
       row.appendChild(renderContractHistory(document,c,{finance}));
+      if(!finance){
+        const signedSection=renderContractSignedSection(p,c,{onChanged});
+        if(signedSection)row.appendChild(signedSection);
+      }
       row.onclick=()=>openContractPreview(p,finance?c.accountingPackage.contract:c,{trigger:heading.querySelector('.contract-main'),frozen:finance,signedFiles:finance?c.accountingPackage.signedFiles:null});
       return row;
 }
