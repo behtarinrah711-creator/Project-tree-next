@@ -24,20 +24,6 @@
   }
 })();
 </script>
-<style>
-  #appStartupScreen{display:none}
-  html.app-starting body > :not(#appStartupScreen){visibility:hidden!important;opacity:0!important;pointer-events:none!important}
-  html.app-starting #appStartupScreen{position:fixed;inset:0;z-index:10000;display:grid;grid-template-rows:auto 1fr;background:#f2f3f5;color:#26221e;font-family:IRANSansX,Tahoma,sans-serif}
-  #appStartupScreen header{display:grid;place-items:center;min-height:56px;background:#d7cfc3;font-weight:600}
-  #appStartupStatus,#appStartupError{display:flex;align-items:center;justify-content:center;gap:10px;margin:0;padding:16px;text-align:center;font-size:14px}
-  #appStartupError{display:none}
-  .app-startup-spinner{box-sizing:border-box;width:20px;height:20px;border:2px solid #c9c4bc;border-top-color:#00075d;border-radius:50%;animation:app-startup-spin .8s linear infinite}
-  @keyframes app-startup-spin{to{transform:rotate(1turn)}}
-  @media(prefers-reduced-motion:reduce){.app-startup-spinner{animation:none}}
-  html.app-startup-failed #appStartupStatus{display:none}
-  html.app-startup-failed #appStartupError{display:flex;flex-direction:column}
-  #appStartupError button{font:inherit;color:#00075d}
-</style>
 <script>
   window.addEventListener('karha:ready',()=>{
     requestAnimationFrame(()=>document.documentElement.classList.remove('app-starting','app-startup-failed'));
@@ -49,13 +35,13 @@
   }
   window.addEventListener('karha:startup-error',showAppStartupError,{once:true});
   window.addEventListener('error',event=>{
-    if(event.target?.id==='appStartupEntry')showAppStartupError();
+    if(event.target?.getAttribute?.('src')?.split('?')[0]==='src/bootstrap/app.js')showAppStartupError();
   },true);
 </script>
 <script>window.__KARHA_DEPLOYMENT_VERSION__='__DEPLOYMENT_VERSION__';</script>
 <script src="src/bootstrap/cacheGuard.js?v=__DEPLOYMENT_VERSION__"></script>
 <script type="module" src="src/bootstrap/shellEntry.js?v=__DEPLOYMENT_VERSION__"></script>
-<script type="module" id="appStartupEntry" src="src/bootstrap/app.js?v=__DEPLOYMENT_VERSION__"></script>
+<script type="module" src="src/bootstrap/app.js?v=__DEPLOYMENT_VERSION__"></script>
 <title>کارها</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#00075D">

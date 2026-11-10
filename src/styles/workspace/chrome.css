@@ -1,4 +1,19 @@
 /* C5 owner module: workspace/chrome.css */
+
+/* Startup cover remains visible until the routed workspace is ready. */
+  #appStartupScreen{display:none}
+  html.app-starting body > :not(#appStartupScreen){visibility:hidden!important;opacity:0!important;pointer-events:none!important}
+  html.app-starting #appStartupScreen{position:fixed;inset:0;z-index:10000;display:grid;grid-template-rows:auto 1fr;background:#f2f3f5;color:#26221e;font-family:IRANSansX,Tahoma,sans-serif}
+  #appStartupScreen header{display:grid;place-items:center;min-height:56px;background:#d7cfc3;font-weight:600}
+  #appStartupStatus,#appStartupError{display:flex;align-items:center;justify-content:center;gap:10px;margin:0;padding:16px;text-align:center;font-size:14px}
+  #appStartupError{display:none}
+  .app-startup-spinner{box-sizing:border-box;width:20px;height:20px;border:2px solid #c9c4bc;border-top-color:#00075d;border-radius:50%;animation:app-startup-spin .8s linear infinite}
+  @keyframes app-startup-spin{to{transform:rotate(1turn)}}
+  @media(prefers-reduced-motion:reduce){.app-startup-spinner{animation:none}}
+  html.app-startup-failed #appStartupStatus{display:none}
+  html.app-startup-failed #appStartupError{display:flex;flex-direction:column}
+  #appStartupError button{font:inherit;color:#00075d}
+
   /* ---------- top bar ---------- */
   .topbar{
     display:flex;align-items:center;gap:8px;
