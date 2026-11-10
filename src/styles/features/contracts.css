@@ -1862,6 +1862,11 @@ textarea.contract-project-item-input{
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts),.contract-addendum-form) .contract-card-heading .contract-actions{grid-column:3;grid-row:1;}
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts)) .contract-main{flex-basis:50%;min-width:0;}
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts)) .contract-workflow-row{flex:1 0 100%;box-sizing:border-box;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--divider);padding:12px 0;margin:0;min-width:0;font-size:12px;}
+#contractsPageBody .contract-workflow-row[data-contract-workflow]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));direction:rtl;}
+#contractsPageBody .contract-workflow-row[data-contract-workflow] > .contract-status-badge{margin:0;justify-self:start;text-align:right;overflow-wrap:anywhere;}
+#contractsPageBody .contract-workflow-row[data-contract-workflow] > .contract-status-badge:only-child{grid-column:1/-1;}
+#contractsPageBody .contract-workflow-row[data-contract-workflow] > .contract-next-step{min-width:0;justify-self:end;text-align:left;overflow-wrap:anywhere;}
+#contractsPageBody .contract-workflow-row[data-contract-workflow] > .contract-review-action{grid-column:1/-1;justify-self:end;}
 .contract-workflow-row--signed-addendum{justify-content:space-between;}
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts)) .contract-workflow-row>span{flex:1;min-width:120px;}
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts)) .contract-review-action{border:0;background:transparent;color:#1565c0;font:inherit;padding:6px;cursor:pointer;}

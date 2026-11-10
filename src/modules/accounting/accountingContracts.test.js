@@ -45,7 +45,7 @@ test('finance contracts use the report card header with only financial decision 
     assert.deepEqual(menuWrap.children.find(n=>n.className==='nb-project-menu').children.map(n=>n.title),['خروجی']);
     const accepted={...c,accountingStatus:'accepted',accountingDecision:{actor:{id:'guest'}}};
     const acceptedReport=renderContractCard(p,accepted);
-    assert.equal(acceptedReport.children.find(n=>n.className==='contract-workflow-row').children[0].textContent,'وضعیت: تأیید شده توسط بخش مالی');
+    assert.equal(acceptedReport.children.find(n=>n.className==='contract-workflow-row').children[0].textContent,'وضعیت: تکمیل، امضا، بارگذاری و ثبت مالی شد');
     const acceptedFinance=renderContractCard(p,accepted,{finance:true});
     assert.deepEqual(acceptedFinance.children.find(n=>n.className.includes('contract-finance-actions')).children.map(n=>n.textContent),['پس‌گرفتن تأیید مالی']);
     const rejected=renderContractCard(p,{...c,status:'draft',isDraft:true,approvalStatus:null,accountingStatus:'rejected',signedAt:null,signedFiles:[],financeRejection:{reason:'صفحه ناقص است'}});
