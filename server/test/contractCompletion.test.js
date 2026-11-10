@@ -29,3 +29,27 @@ test('replaying an old declaration does not duplicate completion history or repl
  stampContractCreation(next,old,'another','',20);
  assert.equal(next.contracts[0].completedAt,10);assert.equal(next.contracts[0].completedBy.id,'author');assert.equal(next.contracts[0].approvalHistory.length,1);
 });
+
+test('completion routes to WBS reviewers on the server and stale snapshots cannot undo it',()=>{
+  const contacts=[{id:'reviewer'},{id:'other'}];
+  const tasks=[{id:'w',kind:'work',workTasks:[{id:'t',hasContract:true,contractApproverContactIds:['reviewer','other']}]}];
+  const record={id:'c',status:'draft',projectItemId:'w',workTaskId:'t'};
+  const previous={tasks,contacts,contracts:[record]};
+  const submitted={...record,status:'final',isDraft:false,completedAt:1,completionDeclarationId:'new',
+    approvalStatus:'approved',approvedContactIds:['reviewer'],submittedBy:{id:'forged'}};
+  const actor={id:'writer'};
+  for(const permissions of [{modules:{contracts:'create'}},{edit:true}]){
+    const incoming={...previous,contracts:[submitted]};
+    const merged=mergeSharedProjectPayload(previous,structuredClone(incoming),permissions,actor);
+    stampContractCreation(merged,previous,actor.id,'',10);
+    const saved=merged.contracts[0];
+    assert.equal(saved.approvalStatus,'pending');
+    assert.deepEqual(saved.approvalContactIds,['reviewer','other']);
+    assert.deepEqual(saved.approvedContactIds,[]);
+    assert.equal(saved.submittedBy.id,'writer');
+    assert.deepEqual(saved.approvalHistory.map(event=>event.action),['complete','submit']);
+    const stale=mergeSharedProjectPayload(merged,structuredClone(incoming),permissions,actor);
+    stampContractCreation(stale,merged,actor.id,'',20);
+    assert.deepEqual(stale.contracts[0],saved);
+  }
+});

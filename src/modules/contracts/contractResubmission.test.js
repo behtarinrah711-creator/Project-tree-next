@@ -17,7 +17,7 @@ test('unchanged reopen, metadata updates and row IDs cannot unlock resubmission'
  assert.equal(canSubmitContract({...c,title:'قرارداد اصلاح‌شده'}),true);
 });
 
-test('contract list removes the return action, shows a red reason and gates the resubmit button',()=>{
+test('contract list removes the return action, shows a red reason and leaves resubmission to the edit form',()=>{
  const previous=[globalThis.document,globalThis.window,projectRepository.getActiveProject,contractApi.listPage];
  const make=()=>({children:[],dataset:{},setAttribute(){},addEventListener(){},append(...nodes){for(const node of nodes){node.parent=this;this.children.push(node);}},appendChild(node){this.append(node);},replaceChildren(...nodes){this.children=[];this.append(...nodes);},remove(){if(this.parent)this.parent.children=this.parent.children.filter(x=>x!==this);}});
  const body=make();
@@ -37,7 +37,6 @@ test('contract list removes the return action, shows a red reason and gates the 
   assert.ok(!nodes.some(n=>['ارسال برای تأیید','ارسال مجدد برای تأیید'].includes(n.textContent)));
   assert.ok(nodes.some(n=>n.className==='contract-rejection-reason' && n.textContent.includes('مبلغ باید اصلاح شود')));
   c={...c,title:'قرارداد اصلاح‌شده'};nodes=render();
-  assert.ok(nodes.some(n=>n.textContent==='ارسال مجدد برای تأیید'));
-  assert.ok(!nodes.some(n=>n.textContent==='ارسال برای تأیید'));
+  assert.ok(!nodes.some(n=>['ارسال برای تأیید','ارسال مجدد برای تأیید'].includes(n.textContent)));
  }finally{[globalThis.document,globalThis.window,projectRepository.getActiveProject,contractApi.listPage]=previous;}
 });

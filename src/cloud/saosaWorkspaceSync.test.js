@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createAppDataStore, APP_DATA_STORAGE_KEY} from '../data/appDataStore.js';
-import {activateAcceptedProject, prepareSaosaWorkspace, refreshSaosaWorkspace, SAOSA_SESSION_KEY, clearSaosaWorkspaceSession} from './saosaWorkspaceSync.js';
+import {activateAcceptedProject, confirmSaosaWorkspaceSave, prepareSaosaWorkspace, refreshSaosaWorkspace, SAOSA_SESSION_KEY, clearSaosaWorkspaceSession} from './saosaWorkspaceSync.js';
 
 function storage(initial = {}){
   const values = new Map(Object.entries(initial));
@@ -168,4 +168,29 @@ test('Saosa API startup and refresh include the contracting template without rev
   assert.equal(retained.length,1);
   assert.equal(retained[0].trashed,true);
   assert.equal(retained[0].title,'عنوان ویرایش‌شده');
+});
+
+test('explicit save confirmation sends the latest queued snapshot and waits for the server',async()=>{
+  const local=storage({[SAOSA_SESSION_KEY]:session});
+  const initial={schemaVersion:8,projects:[{id:'p'}],activeTab:'p',viewMode:'simple',starredOrder:[]};
+  let finish;
+  let uploaded;
+  const win=windowWith({localStorage:local,fetch:async(_url,options={})=>{
+    if(options.method!=='PUT')return response(200,{accountId:'a',snapshot:initial});
+    uploaded=JSON.parse(options.body).snapshot;
+    return new Promise(resolve=>{finish=()=>resolve(response(200,{accountId:'a',snapshot:uploaded}));});
+  }});
+  win.CustomEvent=class {};
+  win.dispatchEvent=()=>{};
+  const store=createAppDataStore({storage:local});
+  const prepared=await prepareSaosaWorkspace({windowRef:win,store});
+  const detach=prepared.attach();
+  try{
+    store.getProjects()[0].contracts=[{id:'c',status:'final',completionDeclarationId:'d'}];
+    store.persistLocal();
+    const confirmation=confirmSaosaWorkspaceSave(win);
+    assert.equal(uploaded.projects[0].contracts[0].completionDeclarationId,'d');
+    finish();
+    assert.equal((await confirmation).projects[0].contracts[0].id,'c');
+  }finally{detach();}
 });

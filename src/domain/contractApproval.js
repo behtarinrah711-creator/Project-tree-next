@@ -42,6 +42,20 @@ export function canSubmitContract(contract){
 export function contractApproverIds(contract){
   return [...new Set((Array.isArray(contract.approvalContactIds) ? contract.approvalContactIds : [contract.approvalContactId]).filter(Boolean).map(String))];
 }
+export function configuredContractReviewers(contract,linkedTask){
+  const ids=linkedTask
+    ? linkedTask.contractApproverContactIds || []
+    : contract.contractApproverContactIds ?? contractApproverIds(contract);
+  return [...new Set((Array.isArray(ids)?ids:[]).filter(Boolean).map(String))];
+}
+
+export function routeCompletedContract(contract,actor,approverIds,at){
+  if(!canSubmitContract(contract))return {ok:false,message:'ابتدا اطلاعات قرارداد را اصلاح کنید'};
+  if(approverIds.length)return transitionContractApproval(contract,'submit',actor,{approverIds,at});
+  return {ok:true,contract:{...contract,approvalStatus:'approved',approvalContactIds:[],
+    approvalContactId:'',approvedContactIds:[],submittedAt:null,submittedBy:null,approvalRejectionReason:'',revisionBaseline:null}};
+}
+
 export function approvedContractContactIds(contract){
   if(Array.isArray(contract.approvedContactIds))return contract.approvedContactIds.map(String);
   return contractApprovalState(contract)==='approved' ? contractApproverIds(contract) : [];

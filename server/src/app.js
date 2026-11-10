@@ -1,3 +1,5 @@
+import {findInTree} from '../../src/domain/wbs/normalize.js';
+import {configuredContractReviewers, contractRevisionContent, routeCompletedContract} from '../../src/domain/contractApproval.js';
 import {createContractHandoffHandler} from './contractHandoff.js';
 import {preserveContractHandoff} from '../../src/domain/contractHandoff.js';
 import {assignContractNumbers} from './contractNumbering.js';
@@ -179,8 +181,9 @@ function mergeMemberContracts(current,incoming,tasks,permissions,actor=null){
       else delete record[key];
     }
     if(previous?.approvalStatus==='unapproved' && previous.revisionBaseline==null && typeof candidate.revisionBaseline==='string')record.revisionBaseline=candidate.revisionBaseline;
-    record.contractApproverContactIds=task?.contractApproverContactIds || previous?.contractApproverContactIds || [];
-    if(task && record.status==='final' && !record.isDraft && !record.contractApproverContactIds.length){
+    record.contractApproverContactIds=configuredContractReviewers(previous || {},task);
+    const declaresCompletion=record.completionDeclarationId && record.completionDeclarationId!==previous?.completionDeclarationId;
+    if(!declaresCompletion && task && record.status==='final' && !record.isDraft && !record.contractApproverContactIds.length){
       record.approvalStatus='approved';
       record.approvalContactIds=[];
       record.approvalContactId='';
@@ -486,6 +489,7 @@ async function readWorkspace(pool, accountId){
 }
 
 export function stampContractCreation(project,previous,accountId,phone='',now=Date.now()){
+  preserveContractHandoff(project,previous);
   const existing=new Map((previous?.contracts || []).map(c=>[String(c.id),c]));
   const member=(project.projectMembers || []).find(m=>String(m.mobile)===String(phone));
   const contact=(project.contacts || []).find(c=>!c.trashed && (
@@ -498,12 +502,24 @@ export function stampContractCreation(project,previous,accountId,phone='',now=Da
   for(const contract of project.contracts || []){
     const old=existing.get(String(contract.id));
     if(contract.completionCancellation?.at!==old?.completionCancellation?.at && contract.approvalHistory?.at(-1)?.action===contract.completionCancellation?.action)contract.approvalHistory.at(-1).actor=completionActor;
-    if(contract.status==='final' && contract.completedAt && contract.completionDeclarationId!==old?.completionDeclarationId){
-      const declaredAt=contract.completedAt;
+    if(!contract.trashed && !contract.isDraft && contract.status==='final' && contract.completedAt && contract.completionDeclarationId && contract.completionDeclarationId!==old?.completionDeclarationId && !old?.signedAt && !['pending','approved'].includes(old?.approvalStatus)){
       contract.completedAt=now;contract.completedBy=completionActor;
       const allowed=['contractDate','employerId','startDate','endDate','retentionDuration'];
       contract.manualCompletionFields=(contract.manualCompletionFields||[]).filter(key=>allowed.includes(key) && !String(contract[key]??'').trim());
-      contract.approvalHistory=[...(contract.approvalHistory||old?.approvalHistory||[]).filter(event=>event.action!=='complete' || (event.declarationId?event.declarationId!==contract.completionDeclarationId:event.at!==declaredAt)),{action:'complete',declarationId:contract.completionDeclarationId,at:now,actor:completionActor,manualFields:contract.manualCompletionFields}];
+      const history=old?.approvalHistory || [];
+      contract.approvalHistory=[...history,{action:'complete',declarationId:contract.completionDeclarationId,at:now,actor:completionActor,manualFields:contract.manualCompletionFields}];
+      // Only the server assigns the authenticated submitter and opens a review round.
+      contract.approvalStatus=old?.approvalStatus;
+      if(old?.approvalStatus==='unapproved')contract.revisionBaseline=old.revisionBaseline ?? contractRevisionContent(old);
+      const work=contract.workTaskId && findInTree(project.tasks,contract.projectItemId)?.item;
+      const task=!work?.trashed && work?.workTasks?.find(task=>!task.trashed && String(task.id)===String(contract.workTaskId));
+      const reviewers=configuredContractReviewers(old || {},task);
+      contract.contractApproverContactIds=reviewers;
+      const validReviewers=reviewers.every(id=>(project.contacts||[]).some(contact=>!contact.trashed && String(contact.id)===id));
+      if(validReviewers){
+        const routed=routeCompletedContract(contract,completionActor,reviewers,now);
+        if(routed.ok)Object.assign(contract,routed.contract,{handoffVersion:Number(old?.handoffVersion || 0)+1});
+      }
     }
 
     if(old && contract.status==='final' && contract.completionDeclarationId===old.completionDeclarationId){
@@ -521,7 +537,6 @@ export function stampContractCreation(project,previous,accountId,phone='',now=Da
       contract.creationEvent={action:'create',at:now,actor};
     }
   }
-  preserveContractHandoff(project,previous);
   project.contractAddenda=previous?.contractAddenda || [];
   return project;
 }
