@@ -1,6 +1,6 @@
 import { canWriteProjectModule, projectPermissionState } from '../roleManagement/permissionState.js';
 import { todayApi, COMMENT_MIN_LENGTH, REJECTION_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
-import { canRecordStartDelay, contractorForItem, executionStatus, itemsForMode, remainingLabel, statusLabel, START_DELAY_REASONS, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
+import { canRecordStartDelay, contractorForItem, executionStatus, itemsForMode, remainingLabel, statusLabel, START_DELAY_REASONS, TODAY_MODES, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
 import { fieldRow, openWbsSheet } from './wbsSheet.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { currentExecutionActor, isExecutionApprover, isExecutionAssignee } from './executionActor.js';
@@ -8,8 +8,7 @@ import { appendReportPhotos, openDailyExecutionReport, progressCircle, todayRepo
 import { executionWorkKey } from '../reports/dailyExecutionReportsView.js';
 
 export const TODAY_ICON = 'M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v255l-80 80v-175H200v400h248l80 80H200Zm0-560h560v-80H200v80Zm0 0v-80 80ZM662-60 520-202l56-56 85 85 170-170 56 57L662-60Z';
-const ICONS = Object.freeze({ overdue:'./src/assets/wbs/pending-actions.svg', today:'./src/assets/wbs/today.svg', future:'./src/assets/wbs/next-week.svg', pending:'./src/assets/wbs/pending-approval.svg', unscheduled:'./src/assets/wbs/event-busy.svg', filter:'./src/assets/wbs/filter-alt.svg' });
-const LABELS = Object.freeze({ overdue:'کارهای عقب‌افتاده', today:'کارهای امروز', future:'کارهای آینده', pending:'منتظر تأیید', unscheduled:'زمان‌بندی‌نشده' });
+const LABELS = Object.freeze({ overdue:'گذشته', today:'امروز', future:'آینده', pending:'تکمیل', unscheduled:'بی زمان' });
 const TYPE_CLASSES = new Map([['اجرا','type-1'],['خرید','type-2'],['نیروی کار','type-3'],['پیمانکار','type-4'],['کرایه','type-5'],['خدمات','type-6'],['پیگیری','type-7']]);
 let activeMode = 'today'; let activeProjectId = null; let activeProject = null;
 
@@ -219,8 +218,43 @@ export function renderTodayCard(documentRef,project,item,today,onChanged,approva
 }
 export function renderTodayView(project,documentRef=document,onChanged){
   activeProject=project;
-  if(activeProjectId!==String(project?.id||'')){activeProjectId=String(project?.id||'');activeMode='today';} const today=tehranTodayJalali(); const modes=['overdue','today','future','pending','unscheduled']; const byMode=Object.fromEntries(modes.map(mode=>[mode,itemsForMode(project,mode,today)])); const available=byMode.unscheduled.length?modes:modes.filter(mode=>mode!=='unscheduled'); if(!available.includes(activeMode))activeMode='today';
-  const frame=documentRef.createElement('section'); frame.className='wbs-view-frame wbs-today-frame is-today-view'; frame.dataset.view='today'; frame.dataset.mode=activeMode; const header=documentRef.createElement('div'); header.className='wbs-view-header'; const title=documentRef.createElement('div'); title.className='wbs-view-title'; title.textContent=LABELS[activeMode]; const actions=documentRef.createElement('div'); actions.className='wbs-view-actions today-mode-tabs'; actions.setAttribute('role','tablist');
-  available.forEach(mode=>{const button=documentRef.createElement('button');button.type='button';button.className='wbs-tree-mode-tab today-mode-tab'+(mode===activeMode?' active':'');button.dataset.mode=mode;button.setAttribute('role','tab');button.setAttribute('aria-selected',mode===activeMode?'true':'false');button.setAttribute('aria-label',LABELS[mode]);button.title=LABELS[mode];button.innerHTML=`<img src="${ICONS[mode]}" alt="">`;button.addEventListener('click',()=>{activeMode=mode;onChanged?.();});actions.appendChild(button);}); const divider=documentRef.createElement('span');divider.className='wbs-view-action-separator';actions.appendChild(divider);const filter=documentRef.createElement('button');filter.type='button';filter.className='wbs-tree-mode-tab today-filter';filter.setAttribute('aria-label','فیلتر');filter.title='فیلتر';filter.innerHTML=`<img src="${ICONS.filter}" alt="">`;actions.appendChild(filter);
-  const body=documentRef.createElement('div');body.className='wbs-view-body wbs-today-body';if(!byMode[activeMode].length)body.innerHTML='<div class="empty-state">موردی در این بخش وجود ندارد.</div>';else byMode[activeMode].forEach(item=>body.appendChild(renderTodayCard(documentRef,project,item,today,onChanged)));header.append(title,actions);frame.append(header,body);return frame;
+  if(activeProjectId!==String(project?.id||'')){
+    activeProjectId=String(project?.id||'');
+    activeMode='today';
+  }
+  const today=tehranTodayJalali();
+  const items=itemsForMode(project,activeMode,today);
+  const frame=documentRef.createElement('section');
+  frame.className='wbs-view-frame wbs-today-frame is-today-view';
+  frame.dataset.view='today';
+  frame.dataset.mode=activeMode;
+  const header=documentRef.createElement('div');
+  header.className='wbs-view-header today-task-toolbar';
+  const tabs=documentRef.createElement('div');
+  tabs.className='today-task-tabs';
+  tabs.setAttribute('role','tablist');
+  tabs.setAttribute('aria-label','دسته‌های لیست کارها');
+  for(const mode of TODAY_MODES){
+    const button=documentRef.createElement('button');
+    button.type='button';
+    button.className='wbs-tree-mode-tab'+(mode===activeMode?' active':'');
+    button.dataset.mode=mode;
+    button.textContent=LABELS[mode];
+    button.setAttribute('role','tab');
+    button.setAttribute('aria-selected',String(mode===activeMode));
+    if(mode==='pending')button.title='کارهای تکمیل‌شدهٔ در انتظار تأیید';
+    button.addEventListener('click',()=>{activeMode=mode;onChanged?.();});
+    tabs.appendChild(button);
+  }
+  const filter=documentRef.createElement('button');
+  filter.type='button';
+  filter.className='wbs-tree-mode-tab today-task-filter';
+  filter.innerHTML='<img src="./src/assets/wbs/filter-alt.svg" alt="">فیلتر';
+  header.append(tabs,filter);
+  const body=documentRef.createElement('div');
+  body.className='wbs-view-body wbs-today-body';
+  if(!items.length)body.innerHTML='<div class="empty-state">موردی در این بخش وجود ندارد.</div>';
+  else items.forEach(item=>body.appendChild(renderTodayCard(documentRef,project,item,today,onChanged)));
+  frame.append(header,body);
+  return frame;
 }
