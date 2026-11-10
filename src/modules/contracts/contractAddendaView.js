@@ -12,7 +12,7 @@ import { currentExecutionActor } from '../wbs/executionActor.js';
 import { openStaticChoicePicker } from './contractPickers.js';
 import { contactApi } from '../../domain/contactApi.js';
 import { activityApi } from '../../domain/activityApi.js';
-import { contractProjectPath, normalizeContractSearch, renderContractCardHeading, renderContractStatusRow } from './contractsModule.js';
+import { contractProjectPath, normalizeContractSearch, renderContractCardHeading, renderContractReviewRow, renderContractStatusRow } from './contractsModule.js';
 import { ftAmountSummary, ftNumberRow, ftSelectRow, renderContractSavebar } from './realContractFormModule.js';
 import { makeQuantityRow, renderQuantityRows, rowAmount, syncContractAmount } from './contractPricing.js';
 import { addendumDocumentMarkup } from './contractDocument.js';
@@ -201,13 +201,18 @@ function openAddendumForm(project,parent,record,onChanged){
   sheet.classList.add('contract-addendum-form');
 }
 
-function addendumCard(project,addendum,onChanged,finance){
+export function renderAddendumCard(project,addendum,onChanged,finance=false,approval){
   const documentAddendum=finance ? addendum.accountingPackage.contract : addendum;
   const frozenParent=addendum.accountingPackage?.contract?.parentDocument;
   const parent=finance?frozenParent:parentContractOf(project,addendum)||frozenParent;
   const documentParent=()=>parent && !finance && parent!==frozenParent
     ? syncContractPartyData({...parent},project) : parent;
   const row=document.createElement('article');row.className='contract-row';
+  const preview=trigger=>openContractPreview(project,documentAddendum,{
+    trigger,addendum:{parent:documentParent()},
+    signedFiles:finance?addendum.accountingPackage.signedFiles:null,
+  });
+  const headerContract={...parent,contractNo:addendum.contractNo,createdAt:addendum.createdAt};
   const actor=currentExecutionActor(project);
   let busy=false;
   const review=async(action,reason)=>{
@@ -216,9 +221,7 @@ function addendumCard(project,addendum,onChanged,finance){
     try{await saveContractHandoff(project.id,addendum,action,{reason});onChanged();return true;}
     catch(error){toast(error.message);return false;}finally{busy=false;}
   };
-  const heading=renderContractCardHeading(project,{
-    ...parent,contractNo:addendum.contractNo,createdAt:addendum.createdAt,
-  },{
+  const heading=renderContractCardHeading(project,headerContract,approval?null:{
     onEdit:!finance && parent && canEditAddendumRecord(addendum) && writable(project)
       ? ()=>openAddendumForm(project,parent,addendum,onChanged) : undefined,
     onDelete:!finance && canDeleteAddendumRecord(addendum) && canDeleteContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id])
@@ -229,12 +232,13 @@ function addendumCard(project,addendum,onChanged,finance){
     }),
   },{
     titlePrefix:'الحاقیه',
-    onPreview:trigger=>openContractPreview(project,documentAddendum,{
-      trigger,addendum:{parent:documentParent()},
-      signedFiles:finance?addendum.accountingPackage.signedFiles:null,
-    }),
+    onPreview:preview,
   });
   row.append(heading);
+  if(approval){
+    row.append(renderContractReviewRow(addendum,{...approval,preview}),renderContractProgress(document,addendum,project));
+    return row;
+  }
   const toolbar=renderContractStatusRow(addendum,{showBadge:!finance || addendum.accountingStatus==='rejected'});
   const actions=finance?toolbar:renderContractStatusRow(addendum,{showBadge:false});
   if(!finance)toolbar.className='contract-addendum-toolbar';
@@ -326,6 +330,6 @@ export function renderContractAddenda(body,projectId,{finance=false,onChanged}={
     const empty=document.createElement('p');empty.className='contract-empty';empty.textContent='هنوز الحاقیه‌ای ثبت نشده است.';
     section.append(empty);
   }
-  for(const record of [...records].sort((a,b)=>b.createdAt-a.createdAt))section.append(addendumCard(project,record,refresh,finance));
+  for(const record of [...records].sort((a,b)=>b.createdAt-a.createdAt))section.append(renderAddendumCard(project,record,refresh,finance));
   body.append(section);
 }

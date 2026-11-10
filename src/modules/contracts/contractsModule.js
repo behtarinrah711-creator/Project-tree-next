@@ -98,7 +98,7 @@ export function renderContractCardHeading(project, contract, menu, {titlePrefix=
     main.appendChild(pathRow);
   }
   const actions=document.createElement('div'); actions.className='contract-actions';
-  actions.appendChild(contractActionsMenu(menu));
+  if(menu!==null)actions.appendChild(contractActionsMenu(menu));
   if(onPreview){
     heading.onclick=()=>onPreview(main);
     actions.onclick=event=>event.stopPropagation();
@@ -139,7 +139,19 @@ export function renderContractStatusRow(c,{showBadge=true}={}){
   return statusRow;
 }
 
-export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
+export function renderContractReviewRow(contract,{action,preview}){
+  const row=renderContractStatusRow(contract);
+  if(contract.parentContractId)row.className='contract-addendum-toolbar';
+  const view=document.createElement('button');
+  view.type='button';view.className='contract-review-action';view.textContent='مشاهده سند';
+  view.onclick=event=>{event.stopPropagation();preview(view);};
+  row.appendChild(view);
+  if(action)row.appendChild(action);
+  return row;
+}
+
+export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval}={}){
+  const preview=trigger=>openContractPreview(p,c,{trigger});
   const id=p.id,actor=currentExecutionActor(p);
   const writable=!finance && canWriteProjectModule(id,'contracts');
       const {title,meta,created}=contractRowData(id,c);
@@ -147,7 +159,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
       const row=document.createElement('article'); row.className='contract-row';
       row.dataset.searchText=normalizeContractSearch(title+' '+meta+' '+path+' '+(created ? `${created.date} ${created.time}` : ''));
       row.dataset.approvalState=contractApprovalState(c);row.dataset.reviewMine=String(canReviewContract(c,actor));
-      const heading=renderContractCardHeading(p,c,{
+      const heading=renderContractCardHeading(p,c,approval?null:{
         onEdit:!writable?undefined:()=>{if(c.status==='final' && contractApprovalState(c)==='ready'){window.KarhaLegacy?.showToast?.('برای ویرایش ابتدا اعلام تکمیل را لغو کنید');return;}if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
         onExport:trigger=>openContractExport(p,finance?c.accountingPackage.contract:c,{trigger,frozen:finance}),
         onDelete:!writable?undefined:()=>openConfirm('آیا از حذف این قرارداد اطمینان دارید؟',()=>{
@@ -159,8 +171,12 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false}={}){
           }
           onChanged();
         },'حذف'),
-      });
+      },{onPreview:approval?preview:undefined});
       row.appendChild(heading);
+      if(approval){
+        row.append(renderContractReviewRow(c,{...approval,preview}),renderContractProgress(document,c,p));
+        return row;
+      }
       if(!finance){
       const statusRow=renderContractStatusRow(c);
       const run=(action,options={})=>{

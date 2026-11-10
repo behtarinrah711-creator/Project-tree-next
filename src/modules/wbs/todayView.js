@@ -90,11 +90,11 @@ function openStartDelay(item,onChanged){
 }
 
 function openReject(item,onChanged){ openWbsSheet({ title:'رد تأیید', saveLabel:'ثبت رد', body(root){ root.appendChild(fieldRow('علت رد',textArea(document,'','rejectionReason'))); }, onSave(root){ const result=todayApi.reject(activeProjectId,refOf(item),root.querySelector('[name="rejectionReason"]').value,actor()); if(!result.ok){ window.KarhaUI?.showToast?.(`علت رد حداقل ${toPersianDigits(REJECTION_MIN_LENGTH)} حرف باشد`); return false; } activeMode=timeState(result.entity, tehranTodayJalali()); onChanged?.(); return true; } }); }
-function renderReports(documentRef, projectId, item){
+function renderReports(documentRef, projectId, item, forApproval=false){
   const host=documentRef.createElement('div');
   host.className='today-reports';
   const reports=reportsOf(item.entity);
-  const canBrowse=projectPermissionState(projectId,['reports:reports']).visible;
+  const canBrowse=!forApproval && projectPermissionState(projectId,['reports:reports']).visible;
   const visibleReports=canBrowse ? reports.slice(0,1) : reports;
   for(const report of visibleReports){
     const row=documentRef.createElement('article');
@@ -123,14 +123,14 @@ function renderComments(documentRef,item,onChanged){
 }
 function historyLabel(type){ return ({started:'شروع شد',start_delayed:'دلیل شروع نشدن ثبت شد',start_cancelled:'شروع لغو شد',report_created:'گزارش ثبت شد',report_edited:'گزارش ویرایش شد',comment_added:'نظر ثبت شد',marked_complete:'انجام‌شده اعلام شد',completed_without_approval:'بدون نیاز به تأیید تکمیل شد',sent_for_approval:'برای تأیید ارسال شد',approval_rejected:'تأیید رد شد',approval_cancelled:'تأیید نهایی لغو شد',returned_to_active:'به فهرست فعال برگشت',completion_withdrawn:'تیک انجام‌شدن برداشته شد',returned_to_previous:'به تب قبلی برگشت',approved:'تأیید نهایی شد'})[type]||type; }
 function renderHistory(documentRef,entity){ const history=(entity.executionHistory||[]).slice().sort((a,b)=>Number(b.at)-Number(a.at)); const details=documentRef.createElement('details'); details.className='today-history'; details.innerHTML='<summary>تاریخچه</summary>'; history.forEach(entry=>{ const row=documentRef.createElement('div'); row.textContent=`${historyLabel(entry.type)} · ${entry.actor?.name||'کاربر'} · ${formatMoment(entry.at)}${entry.type==='start_delayed' ? [entry.reason,entry.description].filter(Boolean).map(value=>` · ${value}`).join('') : ''}`; details.appendChild(row); }); return details; }
-function renderCard(documentRef,project,item,today,onChanged){
+export function renderTodayCard(documentRef,project,item,today,onChanged,approval){
   const entity=item.entity,status=executionStatus(entity),assignee=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.assigneeContactId||'')),contractor=contractorForItem(project,item).contact;
   const card=documentRef.createElement('article'); card.className='today-task-card wbs-costline-work'; card.dataset.entityId=item.id; card.dataset.entityKind=item.kind;
   const dateText=entity.scheduleStart ? (entity.scheduleStart===entity.scheduleEnd?formatDate(entity.scheduleStart):`${formatDate(entity.scheduleStart)} > ${formatDate(entity.scheduleEnd)}`) : '';
   const type=entity.type||item.work.type||'کار';
   const pending = item.mode==='pending';
-  const currentActor=actor();
-  const writable=canWriteProjectModule(project.id,'execution:today');
+  const currentActor=currentExecutionActor(project);
+  const writable=!approval && canWriteProjectModule(project.id,'execution:today');
   const assigned=writable && isExecutionAssignee(entity,currentActor);
   const heading=documentRef.createElement('div'); heading.className='wbs-costline-work-heading today-card-heading';
   const openReport=()=>openDailyExecutionReport({
@@ -170,6 +170,15 @@ function renderCard(documentRef,project,item,today,onChanged){
     statusValue.appendChild(linkButton(documentRef, 'today-start today-status-action wbs-costline-manual', 'شروع کار', 'شروع کار'));
   }
   const statusRow=detailRow(documentRef,statusText,statusValue); statusRow.classList.add(entity.actualStart?'is-in-progress':'is-not-started'); card.appendChild(statusRow);
+  if(approval){
+    if(approval.action){
+      const actions=documentRef.createElement('div');actions.className='today-task-actions';
+      actions.appendChild(approval.action);
+      card.appendChild(detailRow(documentRef,'تأیید',actions));
+    }
+    card.appendChild(renderReports(documentRef,project.id,item,true));
+    return card;
+  }
   if(status==='not_started'){
     const latestDelay=(entity.executionHistory || []).findLast(entry=>entry?.type==='start_delayed');
     if(latestDelay) card.appendChild(detailRow(documentRef,'دلیل شروع نشدن',`${latestDelay.reason} · ${formatMoment(latestDelay.at)}`));
@@ -213,5 +222,5 @@ export function renderTodayView(project,documentRef=document,onChanged){
   if(activeProjectId!==String(project?.id||'')){activeProjectId=String(project?.id||'');activeMode='today';} const today=tehranTodayJalali(); const modes=['overdue','today','future','pending','unscheduled']; const byMode=Object.fromEntries(modes.map(mode=>[mode,itemsForMode(project,mode,today)])); const available=byMode.unscheduled.length?modes:modes.filter(mode=>mode!=='unscheduled'); if(!available.includes(activeMode))activeMode='today';
   const frame=documentRef.createElement('section'); frame.className='wbs-view-frame wbs-today-frame is-today-view'; frame.dataset.view='today'; frame.dataset.mode=activeMode; const header=documentRef.createElement('div'); header.className='wbs-view-header'; const title=documentRef.createElement('div'); title.className='wbs-view-title'; title.textContent=LABELS[activeMode]; const actions=documentRef.createElement('div'); actions.className='wbs-view-actions today-mode-tabs'; actions.setAttribute('role','tablist');
   available.forEach(mode=>{const button=documentRef.createElement('button');button.type='button';button.className='wbs-tree-mode-tab today-mode-tab'+(mode===activeMode?' active':'');button.dataset.mode=mode;button.setAttribute('role','tab');button.setAttribute('aria-selected',mode===activeMode?'true':'false');button.setAttribute('aria-label',LABELS[mode]);button.title=LABELS[mode];button.innerHTML=`<img src="${ICONS[mode]}" alt="">`;button.addEventListener('click',()=>{activeMode=mode;onChanged?.();});actions.appendChild(button);}); const divider=documentRef.createElement('span');divider.className='wbs-view-action-separator';actions.appendChild(divider);const filter=documentRef.createElement('button');filter.type='button';filter.className='wbs-tree-mode-tab today-filter';filter.setAttribute('aria-label','فیلتر');filter.title='فیلتر';filter.innerHTML=`<img src="${ICONS.filter}" alt="">`;actions.appendChild(filter);
-  const body=documentRef.createElement('div');body.className='wbs-view-body wbs-today-body';if(!byMode[activeMode].length)body.innerHTML='<div class="empty-state">موردی در این بخش وجود ندارد.</div>';else byMode[activeMode].forEach(item=>body.appendChild(renderCard(documentRef,project,item,today,onChanged)));header.append(title,actions);frame.append(header,body);return frame;
+  const body=documentRef.createElement('div');body.className='wbs-view-body wbs-today-body';if(!byMode[activeMode].length)body.innerHTML='<div class="empty-state">موردی در این بخش وجود ندارد.</div>';else byMode[activeMode].forEach(item=>body.appendChild(renderTodayCard(documentRef,project,item,today,onChanged)));header.append(title,actions);frame.append(header,body);return frame;
 }

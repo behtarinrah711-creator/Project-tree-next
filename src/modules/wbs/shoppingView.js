@@ -34,13 +34,13 @@ function renderComments(documentRef,item,onChanged,writable){
   const form=documentRef.createElement('form');form.className='today-comment-form';form.innerHTML=`<input class="wbs-input" name="comment" minlength="${COMMENT_MIN_LENGTH}" placeholder="افزودن نظر"><button type="submit">ثبت</button>`;form.addEventListener('submit',event=>{event.preventDefault();const result=todayApi.addComment(activeProjectId,refOf(item),form.elements.comment.value,actor());if(!result.ok){window.KarhaUI?.showToast?.(`نظر حداقل ${toPersianDigits(COMMENT_MIN_LENGTH)} حرف باشد`);return;}onChanged?.();});host.appendChild(form);return host;
 }
 
-function renderCard(documentRef,project,item,today,onChanged){
+export function renderShoppingCard(documentRef,project,item,today,onChanged,approval){
   const entity=item.entity;const assignee=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.assigneeContactId||''));const contractor=contractorForItem(project,item).contact;const priority=PRIORITIES[entity.priority]||PRIORITIES.normal;
   const dateText=entity.scheduleStart&&entity.scheduleEnd?(entity.scheduleStart===entity.scheduleEnd?formatDate(entity.scheduleStart):`${formatDate(entity.scheduleStart)} ← ${formatDate(entity.scheduleEnd)}`):'بدون تاریخ';
   const card=documentRef.createElement('article');card.className='today-task-card shopping-item-card';card.dataset.entityId=item.id;card.dataset.entityKind=item.kind;
   const pending=item.mode==='pending';
-  const writable=canWriteProjectModule(project.id,'execution:shopping');
-  const currentActor=actor();const assigned=writable && isExecutionAssignee(entity,currentActor);
+  const writable=!approval && canWriteProjectModule(project.id,'execution:shopping');
+  const currentActor=currentExecutionActor(project);const assigned=writable && isExecutionAssignee(entity,currentActor);
   const statusText=pending || !assigned
     ? `<span class="today-status-slot">وضعیت: ${esc(shoppingStatusLabel(entity))}</span>`
     : (entity.actualStart
@@ -58,6 +58,14 @@ function renderCard(documentRef,project,item,today,onChanged){
   }});
   card.querySelector('.today-task-primary').appendChild(complete);
   const actions=documentRef.createElement('div');actions.className='today-task-actions';
+  if(approval){
+    if(approval.action){
+      actions.appendChild(approval.action);
+      card.appendChild(actions);
+    }
+    card.appendChild(renderReports(documentRef,entity));
+    return card;
+  }
   const mayApprove=writable && isExecutionApprover(entity,currentActor);
   if(pending){
     if(mayApprove){const approve=documentRef.createElement('button');approve.type='button';approve.textContent='تأیید خرید';approve.addEventListener('click',()=>{todayApi.approve(activeProjectId,refOf(item),actor());onChanged?.();});const reject=documentRef.createElement('button');reject.type='button';reject.className='is-danger';reject.textContent='رد';reject.addEventListener('click',()=>openReject(item,onChanged));actions.append(approve,reject);}
@@ -79,5 +87,5 @@ export function renderShoppingView(project,documentRef=document,onChanged){
   const header=documentRef.createElement('div');header.className='wbs-view-header';const title=documentRef.createElement('div');title.className='wbs-view-title';title.textContent=LABELS[activeMode];const actions=documentRef.createElement('div');actions.className='wbs-view-actions today-mode-tabs';actions.setAttribute('role','tablist');
   available.forEach(mode=>{const button=documentRef.createElement('button');button.type='button';button.className='wbs-tree-mode-tab today-mode-tab'+(mode===activeMode?' active':'');button.dataset.mode=mode;button.setAttribute('role','tab');button.setAttribute('aria-selected',mode===activeMode?'true':'false');button.setAttribute('aria-label',LABELS[mode]);button.title=LABELS[mode];button.innerHTML=`<img src="${ICONS[mode]}" alt="">`;button.addEventListener('click',()=>{activeMode=mode;onChanged?.();});actions.appendChild(button);});
   const divider=documentRef.createElement('span');divider.className='wbs-view-action-separator';actions.appendChild(divider);const filter=documentRef.createElement('button');filter.type='button';filter.className='wbs-tree-mode-tab today-filter';filter.setAttribute('aria-label','فیلتر');filter.title='فیلتر';filter.innerHTML=`<img src="${ICONS.filter}" alt="">`;actions.appendChild(filter);
-  const body=documentRef.createElement('div');body.className='wbs-view-body wbs-shopping-body';if(!byMode[activeMode].length)body.innerHTML='<div class="empty-state">خریدی در این بخش وجود ندارد.</div>';else byMode[activeMode].forEach(item=>body.appendChild(renderCard(documentRef,project,item,today,onChanged)));header.append(title,actions);frame.append(header,body);return frame;
+  const body=documentRef.createElement('div');body.className='wbs-view-body wbs-shopping-body';if(!byMode[activeMode].length)body.innerHTML='<div class="empty-state">خریدی در این بخش وجود ندارد.</div>';else byMode[activeMode].forEach(item=>body.appendChild(renderShoppingCard(documentRef,project,item,today,onChanged)));header.append(title,actions);frame.append(header,body);return frame;
 }
