@@ -46,7 +46,7 @@ test('Today toolbar shows five ordered tabs and a separate filter',async({page})
 });
 
 test('Today shows Tasks instead of their Work, formats one-day dates once, and expands comments newest-first',async({page})=>{
-  const card=page.locator('.today-task-card[data-entity-id="today-task"]');
+  const card=page.locator('.wbs-today-frame[data-view="today"] .today-task-card[data-entity-id="today-task"]');
   await expect(card).toContainText('قالب‌بندی');
   await expect(page.locator('.today-task-card',{hasText:'فونداسیون'})).toHaveCount(1);
   await expect(card.locator('.today-card-activity')).toHaveText('غیرفعال');
@@ -72,7 +72,7 @@ test('Today shows Tasks instead of their Work, formats one-day dates once, and e
 });
 
 test('report is edited in place with edit time and a photo uploader',async({page})=>{
-  const card=page.locator('.today-task-card[data-entity-id="today-task"]');
+  const card=page.locator('.wbs-today-frame[data-view="today"] .today-task-card[data-entity-id="today-task"]');
   const sheet=await openTaskDetails(page,card);
   await sheet.locator('.today-progress-circle').click();
   await expect(sheet.locator('.sheet-caption')).toHaveText('ثبت گزارش: قالب‌بندی');
