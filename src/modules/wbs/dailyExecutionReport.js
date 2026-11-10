@@ -103,18 +103,18 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
 
 export function progressCircle(documentRef, entity, { pending=false, disabled=false, onClick, summary } = {}){
   const progress=Math.min(100,Math.max(0,Number(entity?.progress)||0));
-  const button=documentRef.createElement(summary?'div':'button');
+  const button=documentRef.createElement(summary?'span':'button');
   button.className='today-progress-circle';
   if(!summary){button.type='button';button.disabled=disabled;}
   const ring=`<svg class="today-progress-ring" viewBox="0 0 42 42" aria-hidden="true"><circle class="today-progress-track" cx="21" cy="21" r="18" pathLength="100"/><circle class="today-progress-value" cx="21" cy="21" r="18" pathLength="100" stroke-dasharray="${progress} 100"/></svg>`;
   if(summary){
     button.innerHTML=ring;
     const value=documentRef.createElement('span');
-    value.textContent=summary.value;
+    value.textContent=summary.value ?? (toPersianDigits(progress)+'٪');
     button.appendChild(value);
     button.setAttribute('role','img');
-    button.setAttribute('aria-label',summary.label);
-    button.title=summary.label;
+    button.setAttribute('aria-label',summary.label ?? ('پیشرفت '+value.textContent));
+    if(summary.label)button.title=summary.label;
   }else if(pending){
     button.classList.add('is-pending'); button.innerHTML=`${ring}<span class="today-progress-symbol">◷</span>`;
     button.setAttribute('aria-label','در انتظار تأیید');

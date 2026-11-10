@@ -62,6 +62,16 @@
 .wbs-today-frame .today-history summary{min-height:40px;display:flex;align-items:center;justify-content:center;color:#033E8A;font-size:11px;font-weight:600;text-align:center}
 .wbs-today-frame .today-history div{padding:4px 0 8px}
 
+.wbs-today-frame .today-card-summary{box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) 62px 42px;gap:8px;direction:rtl;width:calc(100% + 24px);min-height:64px;border:0;border-radius:var(--wbs-frame-radius,5px);text-align:right;font:inherit;cursor:pointer;}
+.wbs-today-frame .today-card-summary .today-card-titles{align-items:flex-start;padding:0;overflow-wrap:anywhere;}
+.wbs-today-frame .today-card-summary .today-card-titles>*{text-align:right;}
+.wbs-today-frame .today-card-summary .today-card-activity{justify-self:center;padding:3px 7px;border-radius:6px;background:#666;color:#fff;font-size:11px;white-space:nowrap;}
+.wbs-today-frame .today-card-summary .today-card-activity.is-active{background:#19713a;}
+.wbs-today-frame .today-card-summary .today-progress-circle{position:relative;inset:auto;cursor:inherit;}
+.today-detail-overlay > .wbs-sheet{height:100%;max-height:none;border-radius:0;}
+.today-detail-overlay .sheet-body{flex:1;min-height:0;overscroll-behavior:contain;}
+.today-detail-overlay .today-task-card.wbs-costline-work{margin:0;padding:0;border:0;}
+
 .today-report-link{display:block;margin:6px 0;text-align:center;font-size:11px;font-weight:600}
 .daily-execution-reports{padding:12px;box-sizing:border-box}
 .daily-execution-filters,.daily-execution-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
