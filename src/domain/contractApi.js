@@ -1,6 +1,6 @@
 import { canWriteProjectModule } from '../modules/roleManagement/permissionState.js';
 import { workTaskRepository } from '../data/workTaskRepository.js';
-import { transitionContractApproval, contractApprovalState, contractRevisionContent } from './contractApproval.js';
+import { transitionContractApproval, contractApprovalState, contractRevisionContent, configuredContractReviewers, routeCompletedContract } from './contractApproval.js';
 import { contractRepository } from '../data/contractRepository.js';
 import { projectRepository } from '../data/projectRepository.js';
 import { getSession } from '../core/session.js';
@@ -76,7 +76,7 @@ function saveContractRecord(projectId, draft, {status = null,declareCompletion=f
   const id = draft.id || makeId();
   const current = draft.id ? contractRepository.get(projectId, draft.id) : null;
   if(current && ['pending','approved'].includes(current.approvalStatus)) return deny('locked','قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');
-  const record = { ...(current || {}), ...draft, id, trashed:false };
+  let record = { ...(current || {}), ...draft, id, trashed:false };
   for(const key of ['contractApproverContactIds','approvalStatus','approvalContactId','approvalContactIds','approvedContactIds','approvalHistory','approvalRejectionReason','submittedAt','submittedBy','reviewedAt','reviewedBy','revisionBaseline','completedAt','completedBy','manualCompletionFields','completionCancellation','completionDeclarationId']) record[key]=current?.[key];
   if(current && contractApprovalState(current)==='unapproved'){
     record.approvalStatus='unapproved';
@@ -93,7 +93,7 @@ function saveContractRecord(projectId, draft, {status = null,declareCompletion=f
   const linkedTask=record.workTaskId && workTaskRepository.get(projectId,record.projectItemId,record.workTaskId);
   if(linkedTask){
     record.contractApproverContactIds=[...(linkedTask.contractApproverContactIds || [])];
-    if(record.status==='final' && !record.isDraft && !record.contractApproverContactIds.length){
+    if(!declareCompletion && record.status==='final' && !record.isDraft && !record.contractApproverContactIds.length){
       record.approvalStatus='approved';
       record.approvalContactIds=[];
       record.approvalContactId='';
@@ -103,8 +103,16 @@ function saveContractRecord(projectId, draft, {status = null,declareCompletion=f
   }
   if(declareCompletion){
     if(!actor?.id || actor.id==='guest')return deny('forbidden','ابتدا وارد حساب کاربری شوید');
-    record.completionDeclarationId=makeId();record.completedAt=Date.now();record.completedBy={...actor};record.manualCompletionFields=[...manualFields];
-    record.approvalHistory=[...(record.approvalHistory||[]),{action:'complete',declarationId:record.completionDeclarationId,at:record.completedAt,actor:{...actor},manualFields:[...manualFields]}];
+    const reviewers=configuredContractReviewers(record,linkedTask);
+    if(reviewers.some(id=>!(project.contacts||[]).some(contact=>!contact.trashed && String(contact.id)===id))){
+      return deny('invalid','مسئولان تأیید قرارداد را در درخت پروژه بررسی کنید');
+    }
+    const at=Date.now();
+    record.completionDeclarationId=makeId();record.completedAt=at;record.completedBy={...actor};record.manualCompletionFields=[...manualFields];
+    record.approvalHistory=[...(record.approvalHistory||[]),{action:'complete',declarationId:record.completionDeclarationId,at,actor:{...actor},manualFields:[...manualFields]}];
+    const routed=routeCompletedContract(record,actor,reviewers,at);
+    if(!routed.ok)return routed;
+    record=routed.contract;
   }
   if(!current) record.createdAt = record.createdAt || Date.now();
   record.updatedAt = Date.now();

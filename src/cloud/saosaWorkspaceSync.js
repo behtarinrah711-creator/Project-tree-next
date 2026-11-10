@@ -92,44 +92,62 @@ export async function activateAcceptedProject({windowRef = window, store, projec
   return !!selected;
 }
 
+const workspaceSavers = new WeakMap();
+
+export function confirmSaosaWorkspaceSave(windowRef = window){
+  return workspaceSavers.get(windowRef)?.() ?? Promise.resolve(null);
+}
+
 let persistBusy = false;
 export function isSaosaPersistBusy(){ return persistBusy; }
 
 function createPersistAttach(windowRef, session, store, initialSnapshot = null){
   let timer = null;
   let queuedSnapshot = initialSnapshot;
-  let saving = false;
+  let inFlight;
+  let acknowledgedSnapshot;
   let applyingRemote = false;
-  const flush = async () => {
-    if(saving || !queuedSnapshot) return;
-    saving = true;
+  const flush = () => {
+    if(inFlight || !queuedSnapshot) return inFlight;
+    (windowRef.clearTimeout || clearTimeout)(timer);
     persistBusy = true;
     const next = queuedSnapshot;
     queuedSnapshot = null;
-    try{
-      const saved = await workspaceRequest(windowRef, session, {
-        method:'PUT',
-        body:JSON.stringify({snapshot:next}),
-      });
+    inFlight = workspaceRequest(windowRef, session, {
+      method:'PUT',
+      body:JSON.stringify({snapshot:next}),
+    }).then(saved=>{
       windowRef.KarhaSaosaWorkspaceAccess = saved.access || windowRef.KarhaSaosaWorkspaceAccess || {};
       if(saved.snapshot){
-        applyingRemote = true;
-        applySnapshotInPlace(store, saved.snapshot);
-        store?.persistLocal?.();
-        applyingRemote = false;
-        windowRef.KarhaLegacy?.renderDrawerProjectList?.();
-        windowRef.dispatchEvent(new windowRef.CustomEvent('karha:projects-recovered'));
+        acknowledgedSnapshot = saved.snapshot;
+        // Keep any edits made while this snapshot was being saved.
+        if(!queuedSnapshot){
+          applyingRemote = true;
+          applySnapshotInPlace(store, saved.snapshot);
+          store?.persistLocal?.();
+          applyingRemote = false;
+          windowRef.KarhaLegacy?.renderDrawerProjectList?.();
+          windowRef.dispatchEvent(new windowRef.CustomEvent('karha:projects-recovered'));
+        }
       }
-    }catch(error){
-      // Never replace a newer edit with the older failed request.
+      return saved.snapshot;
+    }).catch(()=>{
       if(!queuedSnapshot) queuedSnapshot = next;
-    }finally{
-      saving = false;
+      return null;
+    }).finally(()=>{
+      inFlight = null;
       persistBusy = false;
       if(queuedSnapshot) timer = (windowRef.setTimeout || setTimeout)(flush, 500);
-    }
+    });
+    return inFlight;
+  };
+  const confirm = async () => {
+    const saving = inFlight;
+    if(saving && !await saving)return null;
+    return queuedSnapshot ? await flush() : acknowledgedSnapshot;
   };
   return () => {
+    workspaceSavers.set(windowRef,confirm);
     const unsubscribe = store?.subscribePersist?.(next => {
       if(applyingRemote) return;
       queuedSnapshot = JSON.parse(JSON.stringify(next));
@@ -137,7 +155,10 @@ function createPersistAttach(windowRef, session, store, initialSnapshot = null){
       timer = (windowRef.setTimeout || setTimeout)(flush, 250);
     });
     if(queuedSnapshot) timer = (windowRef.setTimeout || setTimeout)(flush, 250);
-    return unsubscribe;
+    return () => {
+      unsubscribe?.();
+      if(workspaceSavers.get(windowRef)===confirm)workspaceSavers.delete(windowRef);
+    };
   };
 }
 

@@ -4,10 +4,9 @@ import {renderContractFinanceReview} from './contractFinanceReviewView.js';
 import {renderContractSignedSection} from './contractSignedView.js';
 import { renderContractProgress } from './contractProgressView.js';
 import { renderContractHistory } from './contractHistoryView.js';
-import { approvalLabels, contractApprovalState, canReviewContract, canRevokeContractApproval, canSubmitContract, canCancelContractCompletion, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
+import { approvalLabels, contractApprovalState, canReviewContract, canRevokeContractApproval, canCancelContractCompletion, REJECTION_MIN_LENGTH } from '../../domain/contractApproval.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
 import { fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
-import { openStaticChoicePicker } from './contractPickers.js';
 const contractListViews=new Map();
 let closeContractFilter=null;
 export const normalizeContractSearch=value=>String(value||'').toLocaleLowerCase('fa').replace(/ي/g,'ی').replace(/ك/g,'ک').replace(/[\u200c\s\-٬,]/g,'').replace(/[۰-۹]/g,c=>String('۰۱۲۳۴۵۶۷۸۹'.indexOf(c))).replace(/[٠-٩]/g,c=>String('٠١٢٣٤٥٦٧٨٩'.indexOf(c)));
@@ -160,7 +159,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval}
       row.dataset.searchText=normalizeContractSearch(title+' '+meta+' '+path+' '+(created ? `${created.date} ${created.time}` : ''));
       row.dataset.approvalState=contractApprovalState(c);row.dataset.reviewMine=String(canReviewContract(c,actor));
       const heading=renderContractCardHeading(p,c,approval?null:{
-        onEdit:!writable?undefined:()=>{if(c.status==='final' && contractApprovalState(c)==='ready'){window.KarhaLegacy?.showToast?.('برای ویرایش ابتدا اعلام تکمیل را لغو کنید');return;}if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
+        onEdit:!writable?undefined:()=>{if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
         onExport:trigger=>openContractExport(p,finance?c.accountingPackage.contract:c,{trigger,frozen:finance}),
         onDelete:!writable?undefined:()=>openConfirm('آیا از حذف این قرارداد اطمینان دارید؟',()=>{
           const result=contractApi.trash(id,c.id);
@@ -188,11 +187,6 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval}
         const el=document.createElement('button');el.type='button';el.className='contract-review-action'+(danger?' danger':'');el.textContent=label;
         el.onclick=event=>{event.stopPropagation();handler();};statusRow.appendChild(el);
       };
-      if(writable && canSubmitContract(c)){
-        const submitLabel=contractApprovalState(c)==='unapproved'?'ارسال مجدد برای تأیید':'ارسال برای تأیید';
-        if(c.workTaskId || c.contractApproverContactIds?.length)button(submitLabel,()=>run('submit'));
-        else button(submitLabel,()=>openStaticChoicePicker('انتخاب مسئول تأیید','مخاطبین',(p.contacts||[]).filter(x=>!x.trashed).map(x=>({value:x.id,label:[x.firstName,x.lastName].filter(Boolean).join(' ')||x.name||'مخاطب'})),c.approvalContactId,value=>run('submit',{approverId:value})));
-      }
       if(writable && (canCancelContractCompletion(c) || (contractApprovalState(c)==='pending' && c.submittedBy?.id===actor.id))){
         const action=contractApprovalState(c)==='pending'?'withdraw_submission':'cancel_completion';
         button(action==='withdraw_submission'?'پس‌گرفتن از تأیید':'لغو اعلام تکمیل',()=>openWbsSheet({

@@ -1,6 +1,7 @@
+import { confirmSaosaWorkspaceSave, isSaosaHost } from '../../cloud/saosaWorkspaceSync.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
-import { fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
+import { closeWbsSheet, fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
 import { ensureOperationRows, renderQuantityRows, syncContractAmount } from './contractPricing.js';
 import { contractDocumentMarkup } from './contractDocument.js';
 import {mountContractDocumentPreview} from './contractDocumentAttachments.js';
@@ -22,6 +23,8 @@ let dirty = false;
 let editingId = null;
 let inlineAddState = null;
 let activeProjectId = null;
+let pendingCompletion = null;
+let confirmingCompletion = false;
 // True only while the current browser entry is owned by this mounted form.
 // A popstate consumes that entry before requestClose runs, so this is ownership
 // of the real stack entry rather than merely a record that open once pushed.
@@ -701,7 +704,9 @@ export const realContractFormModule = {
     const project = activeProject(projectId || activeProjectId);
     if (!project || !state) return false;
 
-    const result = saveRealContract(project.id, state, {
+    const saosa = !!globalThis.window && isSaosaHost(window);
+    if(saosa && confirmingCompletion)return false;
+    const result = (saosa && pendingCompletion) || saveRealContract(project.id, state, {
       showToast: text => helper('showToast',text),
       declareCompletion,manualFields,actor:currentExecutionActor(project),
       todayJalaliStr: () => helper('todayJalaliStr'),
@@ -715,11 +720,32 @@ export const realContractFormModule = {
       helper('showToast',result.message || 'قرارداد ذخیره نشد');
       return false;
     }
-    state = result.contract;
-    dirty = false;
-    this.close(false);
-    if (!silent) helper('showToast', 'قرارداد ذخیره شد');
-    return true;
+    const finish=contract=>{
+      state=contract;
+      dirty=false;
+      this.close(false);
+      if(!silent)helper('showToast',contract.approvalStatus==='pending'?'قرارداد برای تأیید ارسال شد':'قرارداد ذخیره شد');
+    };
+    if(!saosa){finish(result.contract);return true;}
+    pendingCompletion=result;
+    confirmingCompletion=true;
+    const formState=state;
+    const manualSheet=manualFields.length ? document.getElementById('wbsSheetOverlay') : null;
+    void confirmSaosaWorkspaceSave().then(snapshot=>{
+      confirmingCompletion=false;
+      if(state!==formState)return;
+      const saved=snapshot?.projects?.find(row=>String(row.id)===String(project.id))?.contracts?.find(row=>
+        String(row.id)===String(result.contract.id));
+      if(saved?.completionDeclarationId!==result.contract.completionDeclarationId
+        || !['pending','approved'].includes(saved?.approvalStatus)){
+        if(snapshot)pendingCompletion=null;
+        helper('showToast','ثبت تکمیل در سرور تأیید نشد؛ دوباره تلاش کنید');
+        return;
+      }
+      finish(saved);
+      if(manualSheet && document.getElementById('wbsSheetOverlay')===manualSheet)closeWbsSheet();
+    });
+    return false;
   },
 
   requestClose(fromPopState = false, transition = null) {
@@ -756,6 +782,7 @@ export const realContractFormModule = {
 
   close(fromPopState = false) {
     disposeDocumentPreview?.();disposeDocumentPreview=null;
+    pendingCompletion=null;
     state = null;
     dirty = false;
     editingId = null;
