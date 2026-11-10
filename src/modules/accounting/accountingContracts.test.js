@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 globalThis.window={location:{hash:'',search:''}};
 const {renderAccountingContracts}=await import('./accountingContracts.js');
-const {renderContractCard}=await import('../contracts/contractsModule.js');
+const {contractCreatedParts,renderContractCard}=await import('../contracts/contractsModule.js');
 const {projectRepository}=await import('../../data/projectRepository.js');
 const {contactApi}=await import('../../domain/contactApi.js');
 const {activityApi}=await import('../../domain/activityApi.js');
@@ -23,8 +23,15 @@ test('finance contracts use the report card header with only financial decision 
     const finance=body.children[0].children[0];
     assert.equal(finance.className,report.className);
     const heading=report.children.find(n=>n.className==='contract-card-heading');
-    const main=heading.children.find(n=>n.className==='contract-main');
-    assert.equal(main.children[2].textContent,'سوله موجود ← اجرای ستون‌ها ← بستن میلگرد ستون');
+    const [main,progress,details,menu]=heading.children;
+    assert.equal(main.className,'contract-main');
+    assert.deepEqual(main.children.map(n=>n.textContent),['قرارداد پیمانکاری جواد قریشی','CTR-1']);
+    assert.equal(progress.className,'today-progress-circle');
+    assert.equal(details.className,'contract-heading-details');
+    assert.equal(details.children[0].textContent,'سوله موجود ← اجرای ستون‌ها ← بستن میلگرد ستون');
+    const {time,date}=contractCreatedParts(c.createdAt);
+    assert.equal(details.children[1].textContent,time+' | '+date);
+    assert.equal(menu.className,'contract-actions');
     assert.ok(report.dataset.searchText.includes('بستنمیلگردستون'));
     for(const name of ['contract-card-heading']){
       assert.deepEqual(shape(finance.children.find(n=>n.className===name)),shape(report.children.find(n=>n.className===name)));

@@ -28,8 +28,7 @@ test('shared list filters assigned pending requests, clears filter, and searches
   assert.ok(list.children.every(row=>row.children.at(-2).className==='contract-addenda-row'));
   assert.ok(list.children.every(row=>!row.children.some(child=>child.className==='contract-progress')));
   for(const row of list.children){
-    const actions=row.children[0].children.find(node=>node.className==='contract-actions');
-    const ring=actions.children.find(node=>node.className==='today-progress-circle');
+    const ring=row.children[0].children.find(node=>node.className==='today-progress-circle');
     const total=row.dataset.approvalState==='pending'?6:5;
     assert.equal(ring.children[0].textContent,total===6?'۲ از ۶':'۲ از ۵');
     assert.match(ring.innerHTML,new RegExp('stroke-dasharray="'+(2/total*100)+' 100"'));

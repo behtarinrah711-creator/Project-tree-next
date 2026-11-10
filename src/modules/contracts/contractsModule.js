@@ -92,13 +92,12 @@ export function renderContractCardHeading(project, contract, menu, {titlePrefix=
   const t=document.createElement('div'); t.className='contract-title'; t.textContent=titlePrefix ? titlePrefix+' '+title : title;
   const numberRow=document.createElement('div');numberRow.className='contract-meta contract-number';numberRow.dir='ltr';numberRow.textContent=number;
   main.append(t,numberRow);
-  if(path){
-    const pathRow=document.createElement('div');pathRow.className='contract-meta contract-project-path';pathRow.dir='rtl';pathRow.textContent=path;
-    main.appendChild(pathRow);
+  const pathRow=path ? document.createElement('div') : null;
+  if(pathRow){
+    pathRow.className='contract-meta contract-project-path';pathRow.dir='rtl';pathRow.textContent=path;
   }
   const actions=document.createElement('div'); actions.className='contract-actions';
   if(menu!==null)actions.appendChild(contractActionsMenu(menu));
-  if(progress)actions.appendChild(progress);
   if(onPreview){
     heading.onclick=()=>onPreview(main);
     actions.onclick=event=>event.stopPropagation();
@@ -110,6 +109,18 @@ export function renderContractCardHeading(project, contract, menu, {titlePrefix=
       onPreview(main);
     };
   }
+  if(progress){
+    const details=document.createElement('div');details.className='contract-heading-details';
+    if(pathRow)details.appendChild(pathRow);
+    if(created){
+      const stamp=document.createElement('div');stamp.className='contract-meta contract-heading-stamp';
+      stamp.dir='ltr';stamp.textContent=created.time+' | '+created.date;
+      details.appendChild(stamp);
+    }
+    heading.append(main,progress,details,actions);
+    return heading;
+  }
+  if(pathRow)main.appendChild(pathRow);
   if(created){
     const createdBox=document.createElement('div'); createdBox.className='contract-created';
     const date=document.createElement('div'); date.className='contract-created-date'; date.textContent=created.date;
