@@ -19,7 +19,7 @@ export function contractActionsMenu({onEdit,onExport,onDelete}){
     closeActive?.();closeActive=shut;
     toggle.innerHTML=close;toggle.setAttribute('aria-expanded','true');
     dismiss=document.createElement('button');dismiss.type='button';dismiss.className='nb-menu-dismiss';
-    dismiss.setAttribute('aria-label','بستن منو');dismiss.onclick=shut;
+    dismiss.setAttribute('aria-label','بستن منو');dismiss.onclick=event=>{event.stopPropagation();shut();};
     menu=document.createElement('div');menu.className='nb-project-menu';menu.setAttribute('role','menu');
     for(const [title,icon,handler,danger] of [
       ['ویرایش',notebookIcons.edit,onEdit],['خروجی',notebookIcons.export,onExport?()=>onExport(toggle):null],['حذف',notebookIcons.trash,onDelete,true],

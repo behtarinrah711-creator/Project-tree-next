@@ -118,6 +118,8 @@ test('contract editor can replace returned printed files in draft without approv
 
 test('an addendum requires inherited review, keeps its own signed file, and freezes the parent for finance',async()=>{
   const f=fixture();
+  Object.assign(f.payload.contracts[0],{signedAt:1,signedFiles:[file],sentToAccountingAt:2,
+    accountingStatus:'accepted',accountingPackage:{contract:{id:'c'},signedFiles:[file]}});
   const parent=f.payload.contracts[0];
   Object.assign(parent,{contractNo:'CTR-1',amount:1000,contractApproverContactIds:['reviewer']});
   f.payload.contacts=[{id:'reviewer',name:'مسئول تأیید',phones:['0912']}];
@@ -161,6 +163,8 @@ test('an addendum requires inherited review, keeps its own signed file, and free
 
 test('completing an addendum without reviewers skips reviewer approval',async()=>{
   const f=fixture();
+  Object.assign(f.payload.contracts[0],{signedAt:1,signedFiles:[file],sentToAccountingAt:2,
+    accountingStatus:'accepted',accountingPackage:{contract:{id:'c'},signedFiles:[file]}});
   f.payload.contracts[0].contractNo='CTR-1';
   const result=await f.call({action:'save_addendum',version:0,updatedAt:0,complete:true,parentContractId:'c',
     type:'other',contractDate:'1405/08/01',note:'تغییر شرح کار'},'/api/v1/projects/p/addenda/addendum-00000000-0000-4000-8000-000000000000/handoff');
@@ -172,6 +176,8 @@ test('completing an addendum without reviewers skips reviewer approval',async()=
 
 test('addendum editor keeps incomplete draft rows and submits only after completing both pricing modes',async()=>{
   const f=fixture();
+  Object.assign(f.payload.contracts[0],{signedAt:1,signedFiles:[file],sentToAccountingAt:2,
+    accountingStatus:'accepted',accountingPackage:{contract:{id:'c'},signedFiles:[file]}});
   Object.assign(f.payload.contracts[0],{contractNo:'CTR-1',contractApproverContactIds:['reviewer']});
   const path='/api/v1/projects/p/addenda/addendum-00000000-0000-4000-8000-000000000000/handoff';
   const draft={action:'save_addendum',parentContractId:'c',type:'extra',contractDate:'1405/08/01',deferSubmission:true};
@@ -285,6 +291,8 @@ test('finance can read a rejected addendum snapshot and reports can resend it af
 
 test('the addendum submitter can withdraw a pending review only with a reason',async()=>{
   const f=fixture(),id='addendum-00000000-0000-4000-8000-000000000003';
+  Object.assign(f.payload.contracts[0],{signedAt:1,signedFiles:[file],sentToAccountingAt:2,
+    accountingStatus:'accepted',accountingPackage:{contract:{id:'c'},signedFiles:[file]}});
   const path='/api/v1/projects/p/addenda/'+id+'/handoff';
   Object.assign(f.payload.contracts[0],{contractNo:'CTR-1',contractApproverContactIds:['reviewer']});
   const draft={action:'save_addendum',parentContractId:'c',type:'other',contractDate:'1405/08/01',note:'شرح اولیه',complete:true};
@@ -318,6 +326,8 @@ test('the addendum submitter can withdraw a pending review only with a reason',a
 
 test('a completed legacy addendum can be edited and completed again from its form',async()=>{
   const f=fixture(),id='addendum-00000000-0000-4000-8000-000000000004';
+  Object.assign(f.payload.contracts[0],{signedAt:1,signedFiles:[file],sentToAccountingAt:2,
+    accountingStatus:'accepted',accountingPackage:{contract:{id:'c'},signedFiles:[file]}});
   const path='/api/v1/projects/p/addenda/'+id+'/handoff';
   Object.assign(f.payload.contracts[0],{contractNo:'CTR-1',contractApproverContactIds:['reviewer']});
   const draft={action:'save_addendum',parentContractId:'c',type:'other',contractDate:'1405/08/01',note:'شرح اولیه'};
@@ -342,6 +352,8 @@ test('a completed legacy addendum can be edited and completed again from its for
 
 test('an addendum waits for every reviewer recorded on the original contract',async()=>{
   const f=fixture(),id='addendum-00000000-0000-4000-8000-000000000005';
+  Object.assign(f.payload.contracts[0],{signedAt:1,signedFiles:[file],sentToAccountingAt:2,
+    accountingStatus:'accepted',accountingPackage:{contract:{id:'c'},signedFiles:[file]}});
   const path='/api/v1/projects/p/addenda/'+id+'/handoff';
   Object.assign(f.payload.contracts[0],{contractNo:'CTR-1',workTaskId:'task',
     contractApproverContactIds:['task-reviewer'],approvalContactIds:['first','second']});
@@ -370,6 +382,8 @@ test('an addendum waits for every reviewer recorded on the original contract',as
 
 test('deleting an addendum requires full contract access and retains its number',async()=>{
   const f=fixture(),id='addendum-00000000-0000-4000-8000-000000000006';
+  Object.assign(f.payload.contracts[0],{signedAt:1,signedFiles:[file],sentToAccountingAt:2,
+    accountingStatus:'accepted',accountingPackage:{contract:{id:'c'},signedFiles:[file]}});
   const path='/api/v1/projects/p/addenda/'+id+'/handoff';
   Object.assign(f.payload.contracts[0],{contractNo:'CTR-1',contractApproverContactIds:['reviewer']});
   const draft={action:'save_addendum',parentContractId:'c',type:'other',contractDate:'1405/08/01',note:'شرح الحاقیه',version:0,updatedAt:0};

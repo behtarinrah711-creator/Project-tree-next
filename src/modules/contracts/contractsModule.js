@@ -212,7 +212,7 @@ export function renderContractReviewRow(contract,{action,preview}){
   return row;
 }
 
-export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval}={}){
+export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,openStatusSheet=openWbsSheet}={}){
   const preview=trigger=>openContractPreview(p,c,{trigger});
   const id=p.id,actor=currentExecutionActor(p);
   const writable=!finance && canWriteProjectModule(id,'contracts');
@@ -221,6 +221,13 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval}
       const row=document.createElement('article'); row.className='contract-row';
       row.dataset.searchText=normalizeContractSearch(title+' '+meta+' '+path+' '+(created ? `${created.date} ${created.time}` : ''));
       row.dataset.approvalState=contractApprovalState(c);
+      const openPreview=()=>openContractPreview(p,finance?c.accountingPackage.contract:c,{trigger:heading.querySelector('.contract-main'),frozen:finance,signedFiles:finance?c.accountingPackage.signedFiles:null});
+      let statusSheetBody;
+      const openStatus=event=>{
+        event.stopPropagation();
+        openStatusSheet({title:'وضعیت قرارداد',showSave:false,historyKey:'contract-status:'+c.id,
+          body(root){root.classList.add('contract-status-sheet');statusSheetBody(root);}});
+      };
       const heading=renderContractCardHeading(p,c,approval?null:{
         onEdit:!writable?undefined:()=>{if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
         onExport:trigger=>openContractExport(p,finance?c.accountingPackage.contract:c,{trigger,frozen:finance}),
@@ -233,7 +240,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval}
           }
           onChanged();
         },'حذف'),
-      },{onPreview:approval?preview:undefined,progress:approval?null:renderContractProgressCircle(document,c,p)});
+      },{onPreview:approval?preview:openPreview,progress:approval?null:renderContractProgressCircle(document,c,p,openStatus)});
       row.appendChild(heading);
       if(approval){
         row.append(renderContractReviewRow(c,{...approval,preview}),renderContractProgress(document,c,p));
@@ -262,16 +269,15 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval}
         const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='علت لغو تأیید: '+c.approvalRejectionReason;statusRow.appendChild(reason);
       }
       if(c.financeRejection?.reason && c.accountingStatus==='rejected'){const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='دلیل رد توسط بخش مالی: '+c.financeRejection.reason;statusRow.appendChild(reason);}
-      row.appendChild(statusRow);
+      statusSheetBody=root=>{
+        root.append(statusRow,renderContractProgress(document,c,p));
+        const signedSection=renderContractSignedSection(p,c,{onChanged});
+        if(signedSection)root.appendChild(signedSection);
+      };
       const addendaRow=renderContractAddendaRow(p,c);
       if(addendaRow)row.appendChild(addendaRow);
-      }else row.appendChild(renderContractFinanceReview(p,c,{onChanged}));
+      }else statusSheetBody=root=>root.append(renderContractFinanceReview(p,c,{onChanged}),renderContractProgress(document,c,p));
       row.appendChild(renderContractHistory(document,c,{finance}));
-      if(!finance){
-        const signedSection=renderContractSignedSection(p,c,{onChanged});
-        if(signedSection)row.appendChild(signedSection);
-      }
-      row.onclick=()=>openContractPreview(p,finance?c.accountingPackage.contract:c,{trigger:heading.querySelector('.contract-main'),frozen:finance,signedFiles:finance?c.accountingPackage.signedFiles:null});
       return row;
 }
 

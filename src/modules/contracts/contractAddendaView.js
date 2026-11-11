@@ -308,7 +308,7 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
 export function renderContractAddendaRow(project,contract){
   const records=source=>(source.contractAddenda||[]).filter(addendum=>!addendum.trashed
     && String(addendum.parentContractId)===String(contract.id));
-  const canCreate=canCreateAddendumFromContract(contract) && writable(project);
+  const canCreate=canCreateAddendumFromContract(contract,project) && writable(project);
   if(!canCreate && !records(project).length)return null;
 
   const row=document.createElement('section');row.className='contract-addenda-row';
@@ -344,8 +344,8 @@ export function openAddendumForContract(projectId,contractId,onChanged=()=>{}){
   const project=projectRepository.find(projectId);
   if(!project || !writable(project))return;
   const contract=parentContractOf(project,{parentContractId:contractId});
-  if(!canCreateAddendumFromContract(contract)){
-    toast('ابتدا قرارداد را تکمیل کنید');
+  if(!canCreateAddendumFromContract(contract,project)){
+    toast('ابتدا همهٔ مراحل تأیید قرارداد را کامل کنید');
     return;
   }
   openAddendumForm(project,contract,null,onChanged);
