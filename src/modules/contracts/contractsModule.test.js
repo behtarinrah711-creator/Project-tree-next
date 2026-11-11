@@ -106,7 +106,7 @@ test('only contract writers see the addendum shortcut on completed report cards'
     ];
     const card=renderContractCard(project,contract);
     assert.deepEqual(card.children.map(node=>node.className),
-      ['contract-card-heading','contract-addenda-row','contract-history']);
+      ['contract-card-heading','contract-addenda-row']);
     const [toolbar,list]=addendaRow(card).children;
     assert.deepEqual(toolbar.children.map(node=>node.textContent),['الحاقیه‌ها (۱)']);
     toolbar.children[0].onclick();

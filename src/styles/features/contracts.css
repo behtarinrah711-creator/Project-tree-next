@@ -1880,15 +1880,15 @@ textarea.contract-project-item-input{
 :is(#contractsPageBody,#accountingPageBody) .contract-mine-reset{border:1px solid var(--divider);border-radius:8px;padding:8px;background:var(--surface);color:#1565c0;font:inherit;cursor:pointer;}
 
 #reportsPageBody .contract-addenda-list .contract-history,
-:is(#contractsPageBody,#accountingPageBody) .contract-history{min-width:0;margin:0;padding:0;border-top:1px solid var(--divider,#e4ddd3);color:var(--text-dim,#77706a);font-size:11px}
+:is(#contractsPageBody,#accountingPageBody,.contract-status-sheet) .contract-history{min-width:0;margin:0;padding:0;border-top:1px solid var(--divider,#e4ddd3);color:var(--text-dim,#77706a);font-size:11px}
 #reportsPageBody .contract-addenda-list .contract-history summary,
-:is(#contractsPageBody,#accountingPageBody) .contract-history summary{min-height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#000;font:inherit;font-weight:600}
+:is(#contractsPageBody,#accountingPageBody,.contract-status-sheet) .contract-history summary{min-height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#000;font:inherit;font-weight:600}
 #reportsPageBody .contract-addenda-list .contract-history-entry,
-:is(#contractsPageBody,#accountingPageBody) .contract-history-entry{padding:8px 0;line-height:1.9;overflow-wrap:anywhere}
+:is(#contractsPageBody,#accountingPageBody,.contract-status-sheet) .contract-history-entry{padding:8px 0;line-height:1.9;overflow-wrap:anywhere}
 #reportsPageBody .contract-addenda-list .contract-history-entry p,
-:is(#contractsPageBody,#accountingPageBody) .contract-history-entry p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
+:is(#contractsPageBody,#accountingPageBody,.contract-status-sheet) .contract-history-entry p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
 #reportsPageBody .contract-addenda-list .contract-history-empty,
-:is(#contractsPageBody,#accountingPageBody) .contract-history-empty{padding:8px 0 14px;text-align:center}
+:is(#contractsPageBody,#accountingPageBody,.contract-status-sheet) .contract-history-empty{padding:8px 0 14px;text-align:center}
 
 .contract-form-body .contract-quantity-list > .contract-quantity-add{color:#1565c0;}
 

@@ -226,7 +226,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       const openStatus=event=>{
         event.stopPropagation();
         openStatusSheet({title:'وضعیت قرارداد',showSave:false,historyKey:'contract-status:'+c.id,
-          body(root){root.classList.add('contract-status-sheet');statusSheetBody(root);}});
+          body(root){root.classList.add('contract-status-sheet');statusSheetBody(root);root.appendChild(renderContractHistory(document,c,{finance}));}});
       };
       const heading=renderContractCardHeading(p,c,approval?null:{
         onEdit:!writable?undefined:()=>{if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
@@ -277,7 +277,6 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       const addendaRow=renderContractAddendaRow(p,c);
       if(addendaRow)row.appendChild(addendaRow);
       }else statusSheetBody=root=>root.append(renderContractFinanceReview(p,c,{onChanged}),renderContractProgress(document,c,p));
-      row.appendChild(renderContractHistory(document,c,{finance}));
       return row;
 }
 
