@@ -7,14 +7,26 @@ const {contractApi}=await import('../../domain/contractApi.js');
 const {transitionContractApproval,canSubmitContract,contractRevisionContent}=await import('../../domain/contractApproval.js');
 const {makeRealContractDraft}=await import('./realContractDomain.js');
 
-test('unchanged reopen, metadata updates and row IDs cannot unlock resubmission',()=>{
+test('completed returned contracts can start a new review without editing their content',()=>{
  const state={status:'final',title:'قرارداد',contractDate:'1405/08/11',amount:100,retentionBasis:'تحویل موقت',items:[{text:'بند',children:[]}]};
  const c={...state,approvalStatus:'unapproved',revisionBaseline:contractRevisionContent(state)};
- assert.equal(canSubmitContract(makeRealContractDraft(c)),false);
- assert.equal(canSubmitContract({...c,updatedAt:999,isDraft:false,approvedContactIds:['forged']}),false);
- assert.equal(canSubmitContract({...c,items:[{id:'new',number:'1',text:'بند',included:true,children:[]}]}),false);
+ assert.equal(canSubmitContract(makeRealContractDraft(c)),true);
+ assert.equal(canSubmitContract({...c,updatedAt:999,isDraft:false,approvedContactIds:['forged']}),true);
+ assert.equal(canSubmitContract({...c,items:[{id:'new',number:'1',text:'بند',included:true,children:[]}]}),true);
  assert.equal(canSubmitContract({...c,items:[{text:'بند اصلاح‌شده'}]}),true);
  assert.equal(canSubmitContract({...c,title:'قرارداد اصلاح‌شده'}),true);
+ for(const changes of [{revisionBaseline:null},{revisionBaseline:undefined},{approvalStatus:'returned'}]){
+  assert.equal(canSubmitContract({...c,...changes}),true);
+ }
+ for(const changes of [{isDraft:true},{status:'draft'},{approvalStatus:'pending'},{approvalStatus:'approved'}]){
+  assert.equal(canSubmitContract({...c,...changes}),false);
+ }
+ const result=transitionContractApproval(c,'submit',{id:'writer'},{approverIds:['reviewer']});
+ assert.equal(result.ok,true);
+ assert.equal(result.contract.approvalStatus,'pending');
+ assert.deepEqual(result.contract.approvedContactIds,[]);
+ assert.equal(result.contract.revisionBaseline,null);
+ assert.equal(contractRevisionContent(result.contract),contractRevisionContent(c));
 });
 
 test('contract list removes the return action, shows a red reason and leaves resubmission to the edit form',()=>{

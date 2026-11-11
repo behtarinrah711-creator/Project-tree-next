@@ -48,9 +48,9 @@ test('project API saves workflow and prevents changing approved content',async()
   assert.equal(contractApi.review('p','c','reject',author,{reason:'دلیل رد طولانی'}).ok,false);
   assert.equal(contractApi.review('p','c','approve',manager).ok,true);
   assert.equal(contractApi.review('p','c','revoke',manager,{reason:'مبلغ اصلاح شود'}).ok,true);
-  assert.equal(contractApi.review('p','c','submit',author,{approverId:'reviewer'}).ok,false);
+  assert.equal(canSubmitContract(record),true);
   assert.equal(contractApi.save('p',{...record,updatedAt:999,revisionBaseline:'forged'}).ok,true);
-  assert.equal(canSubmitContract(record),false);
+  assert.equal(canSubmitContract(record),true);
   assert.equal(contractApi.save('p',{...record,amount:'200',approvalStatus:'approved'}).ok,true);
   assert.equal(record.approvalStatus,'unapproved');
   assert.equal(contractApi.review('p','c','submit',author,{approverId:'reviewer'}).ok,true);
@@ -80,7 +80,7 @@ test('all assigned contacts must approve once and revocation resets the next rou
  assert.equal(c.reviewedBy.contactId,'reviewer');
 });
 
-test('withdrawal clears all approvals and requires a saved revision before a new round',()=>{
+test('withdrawal clears all approvals and permits a new round with unchanged content',()=>{
  const employer={id:'employer',contactId:'employer'};
  let c=transitionContractApproval({status:'final'},'submit',author,{approverIds:['reviewer','employer']}).contract;
  c=transitionContractApproval(c,'approve',manager).contract;
@@ -91,9 +91,11 @@ test('withdrawal clears all approvals and requires a saved revision before a new
  assert.equal(c.approvalHistory.at(-1).action,'revoke');assert.equal(canReviewContract(c,manager),false);
  assert.equal(transitionContractApproval(c,'approve',manager).ok,false);
  assert.equal(transitionContractApproval(c,'revoke',manager,{reason:'نیاز به بازبینی مبلغ'}).ok,false);
- assert.equal(canSubmitContract(c),false);
- assert.equal(transitionContractApproval(c,'submit',author,{approverIds:['reviewer','employer']}).ok,false);
- c=transitionContractApproval({...c,title:'قرارداد اصلاح‌شده'},'submit',author,{approverIds:['reviewer','employer']}).contract;
+ assert.equal(canSubmitContract(c),true);
+ const previousTitle=c.title;
+ c=transitionContractApproval(c,'submit',author,{approverIds:['reviewer','employer']}).contract;
+ assert.equal(c.title,previousTitle);
+ assert.deepEqual(c.approvedContactIds,[]);
  c=transitionContractApproval(c,'approve',manager).contract;assert.equal(c.approvalStatus,'pending');
  c=transitionContractApproval(c,'approve',employer).contract;assert.equal(c.approvalStatus,'approved');
  assert.equal(transitionContractApproval(c,'revoke',author).ok,false);
