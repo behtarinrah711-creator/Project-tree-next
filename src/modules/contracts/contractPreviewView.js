@@ -40,12 +40,12 @@ export function createContractPreviewView({documentRef=globalThis.document,windo
     const activityName=frozen?(draft.documentActivityName||''):(activity?.name||activity?.title||'');
     const preview=documentRef.createElement('div');
     preview.className='ctf-preview contract-doc-preview contract-real-print-preview';
-    preview.innerHTML=addendum?addendumDocumentMarkup(draft,addendum.parent):contractDocumentMarkup(draft,activityName);
+    preview.innerHTML=addendum?addendumDocumentMarkup(draft,addendum.parent):contractDocumentMarkup(draft,activityName,{highlightValues:true});
     body.replaceChildren();
     page.classList.remove('hidden');
     const printBody=signedFiles?.length?documentRef.createElement('div'):body;
     if(printBody!==body)body.appendChild(printBody);
-    disposeDocuments=mountContractDocumentPreview(printBody,preview,draft,project.id,{mountPrintPage,activityName:activityName});
+    disposeDocuments=mountContractDocumentPreview(printBody,preview,draft,project.id,{mountPrintPage,activityName:activityName,highlightValues:true});
     if(signedFiles?.length){const attachments=documentRef.createElement('section');const title=documentRef.createElement('h3');title.textContent=addendum?'نسخه امضاشده الحاقیه':'نسخه امضاشده قرارداد';attachments.appendChild(title);body.appendChild(attachments);const uploader=mountFileUploader(attachments,{projectId:project.id,recordId:contract.id,category:'contracts',files:signedFiles,readOnly:true});disposeSigned=()=>uploader.destroy();}
     windowRef.KarhaChildHistory?.open?.('contract-preview');
     return true;

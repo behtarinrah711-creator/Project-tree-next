@@ -26,10 +26,10 @@ function quantityTable(rows=[],showTotal=false,state={}){
 }
 const agreedTable=rows=>'<table class="contract-document-quantities contract-document-agreed"><thead><tr><th>عملیات</th><th>شرح عملیات</th><th>بهای توافقی (تومان)</th></tr></thead><tbody>'+rows.map((row,i)=>'<tr><td>'+persian(i+1)+'</td><td>'+esc(row.description)+'</td><td>'+formatCost(row.agreedPrice)+'</td></tr>').join('')+totalRow(2,rows.reduce((sum,row)=>sum+Math.round(numericValue(row.agreedPrice)),0))+'</tbody></table>';
 
-function documentMeta(kind,number,date,{addendum=false}={}){
+function documentMeta(kind,number,date,{addendum=false,renderValue=blank}={}){
   return '<div class="doc-meta doc-contract-meta" data-contract-number="'+esc(number||'')+'"'+(addendum?' data-document-kind="addendum"':'')+'>'+
-    '<div>شماره '+kind+': <bdi>'+blank(number)+'</bdi></div>'+
-    '<div>تاریخ '+kind+': <bdi>'+blank(formatJalaliDisplay(date))+'</bdi></div></div>';
+    '<div>شماره '+kind+': <bdi>'+renderValue(number)+'</bdi></div>'+
+    '<div>تاریخ '+kind+': <bdi>'+renderValue(formatJalaliDisplay(date))+'</bdi></div></div>';
 }
 
 export function addendumDocumentMarkup(addendum,parent){
@@ -48,11 +48,13 @@ export function addendumDocumentMarkup(addendum,parent){
     (operations.length?'<div class="doc-pricing"><b>محاسبه مبلغ الحاقیه</b>'+quantityTable(operations,true)+'</div>':'');
 }
 
-export function contractDocumentMarkup(state,activityName=''){
+export function contractDocumentMarkup(state,activityName='',{highlightValues=false}={}){
   state={...state,...(Array.isArray(state.operationRows)?{operationRows:state.operationRows.map(row=>({...row}))}:{}),...(Array.isArray(state.amountRows)?{amountRows:state.amountRows.map(row=>({...row}))}:{})};
   syncContractAmount(state);
   const retentionAmount=(Number(state.amount)||0)*(Number(state.retentionPercent)||0)/100;
   const escape=esc;
+  const highlight=html=>highlightValues ? '<span style="color:#1565c0">'+html+'</span>' : html;
+  const blank=value=>esc(value).trim() ? highlight(esc(value).trim()) : '................................................';
 
   let clausesHtml = '';
   (state.items||[]).filter(item => item.included !== false).forEach((item, index) => {
@@ -78,8 +80,8 @@ export function contractDocumentMarkup(state,activityName=''){
   }
 
   const hasValue=value=>value!=null && String(value).trim()!=='';
-  const formattedAmount = hasValue(state.amount) ? formatCost(state.amount) : blank('');
-  const formattedRetention = hasValue(state.amount) && hasValue(state.retentionPercent) ? formatCost(retentionAmount) : blank('');
+  const formattedAmount = hasValue(state.amount) ? highlight(formatCost(state.amount)) : blank('');
+  const formattedRetention = hasValue(state.amount) && hasValue(state.retentionPercent) ? highlight(formatCost(retentionAmount)) : blank('');
   const amountText=state.remeasurement
     ? 'با نرخ‌های واحد توافق‌شده و مبلغ نهایی بر اساس مقدار کار تأییدشده'
     : 'به مبلغ کل '+formattedAmount+' تومان';
@@ -125,7 +127,7 @@ export function contractDocumentMarkup(state,activityName=''){
       '<div class="contract-document-annex-subject">موضوع / فعالیت: '+detail(activityName)+'</div></div></header>'+
       '<div class="contract-document-photo-grid">'+photos+'</div></section>');
   }
-  return documentMeta('قرارداد',state.contractNo,state.contractDate)+
+  return documentMeta('قرارداد',state.contractNo,state.contractDate,{renderValue:blank})+
     '<div class="doc-title">' + escape(state.title || 'قرارداد ' + activityName) + '</div>' +
     '<p class="doc-parties doc-introduction">این قرارداد در ' + blank(state.contractPlace) +
       ' فی‌مابین ' + blank(state.employerName) + ' به‌عنوان کارفرما و ' + blank(state.contractorName) +

@@ -33,6 +33,8 @@ test('manual completion accepts deliberate blank fields, records history and can
   assert.equal(stored.operationRows[0].agreedPrice,100);assert.equal(stored.approvalHistory.at(-1).action,'cancel_completion');
   assert.equal(saveRealContract('p',{...state,contractorId:''},{...helpers,manualFields:[...manualFields,'contractorId']}).ok,false);
   assert.equal(saveRealContract('p',{...state,startDate:'1405/09/01',endDate:'1405/08/01'},{...helpers,manualFields}).ok,false);
+  const incomplete={...state,contractorId:'',activityId:'',operationRows:[]};
+  assert.equal(saveRealContract('p',incomplete,{...helpers,manualFields,confirmedEmptyFields:true}).ok,true);
  }finally{[projectRepository.find,projectRepository.getActiveProject,contractRepository.get,contractRepository.save,workTaskRepository.get,workTaskRepository.update]=old;}
 });
 test('only submitter can withdraw; approved reviews require revocation and signed contracts stay locked',()=>{

@@ -31,12 +31,12 @@ export async function loadContractDocumentImages(draft,projectId,{signal,fetchIm
   return {...draft,contractorDocumentImages:images};
 }
 
-export function mountContractDocumentPreview(body,preview,draft,projectId,{mountPrintPage,activityName='',onError=()=>{}}){
+export function mountContractDocumentPreview(body,preview,draft,projectId,{mountPrintPage,activityName='',highlightValues=false,onError=()=>{}}){
   const controller=new AbortController();
   let viewport=mountPrintPage(body,preview,'contract-real-preview-viewport');
   const replace=loaded=>{
     if(controller.signal.aborted || !viewport?.isConnected)return;
-    viewport.remove();preview.innerHTML=contractDocumentMarkup(loaded,activityName);
+    viewport.remove();preview.innerHTML=contractDocumentMarkup(loaded,activityName,{highlightValues});
     viewport=mountPrintPage(body,preview,'contract-real-preview-viewport');
   };
   if(draft.contractorDocuments?.length)loadContractDocumentImages(draft,projectId,{signal:controller.signal})
