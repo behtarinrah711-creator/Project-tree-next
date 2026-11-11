@@ -6,7 +6,7 @@ import {ensurePaymentRows,syncPaymentStages} from './paymentStagesModule.js';
 test('payment editor has one automatic method and no method/count selector',()=>{
  const source=readFileSync(new URL('./realContractFormModule.js',import.meta.url),'utf8');
  assert.doesNotMatch(source,/ftSelectRow\([^\n]*'(نحوه پرداخت|تعداد مراحل پرداخت)'/);
- assert.match(source,/renderRows\(paymentForm,paymentRows,\{mixed:true\}\)/);
+ assert.match(source,/renderRows\(paymentForm,paymentRows,\{mixed:true,highlightMissing\}\)/);
  const state={paymentMethod:'',paymentRows:[],paymentStages:[]};
  assert.deepEqual(ensurePaymentRows(state),[]);
  assert.equal(state.paymentMethod,'quantity');

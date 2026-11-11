@@ -114,13 +114,13 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
     }
     const rateOnly=operations && isUnmeasuredRow(row);
     if(mixed && row.pricingMode!=='quantity'){
-      markMissing(numberRow(card,'بهای عملیات',row.agreedPrice,value=>{row.agreedPrice=value;},{suffix:'تومان'}),numericValue(row.agreedPrice)<=0);
+      markMissing(numberRow(card,'بهای عملیات',row.agreedPrice,value=>{row.agreedPrice=value;},{suffix:'تومان'}),!String(row.agreedPrice??'').trim());
     }else if(agreed){
       numberRow(card,'بهای توافقی',row.agreedPrice,value=>{row.agreedPrice=value;},{suffix:'تومان'});
     }else{
       markMissing(selectRow(card,'واحد',row.unit,()=>pick('انتخاب واحد','واحدها',quantityUnits,row.unit,value=>{row.unit=value;onChange();})),!row.unit);
-      if(!rateOnly)markMissing(numberRow(card,'مقدار',row.quantity,value=>{row.quantity=value;},{suffix:row.unit||'',allowDecimal:true}),numericValue(row.quantity)<=0);
-      markMissing(numberRow(card,'بهای واحد',row.unitPrice,value=>{row.unitPrice=value;},{suffix:'تومان'}),numericValue(row.unitPrice)<=0);
+      if(!rateOnly)markMissing(numberRow(card,'مقدار',row.quantity,value=>{row.quantity=value;},{suffix:row.unit||'',allowDecimal:true}),!String(row.quantity??'').trim());
+      markMissing(numberRow(card,'بهای واحد',row.unitPrice,value=>{row.unitPrice=value;},{suffix:'تومان'}),!String(row.unitPrice??'').trim());
       const total=document.createElement('div');total.className='ft-row';
       const totalLabel=document.createElement('div');totalLabel.className='ft-label';totalLabel.textContent=mixed?'بهای عملیات:':'بهای کل:';
       const totalValue=document.createElement('div');totalValue.className='ft-value';totalValue.textContent=rateOnly?'پس از متره مشخص می‌شود':money(rowAmount(row));

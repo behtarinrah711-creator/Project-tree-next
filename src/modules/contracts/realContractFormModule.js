@@ -470,6 +470,13 @@ function renderContractForm() {
   const activityName = activity?.name || activity?.title || '';
   const form = ftCreateRoot(body);
   const highlightMissing=Boolean(editingId && (state.isDraft || state.status==='draft'));
+  body.classList.toggle('contract-highlight-empty',highlightMissing);
+  const retentionOff=String(state.retentionPercent??'').trim()!=='' && Number(state.retentionPercent)===0;
+  const disableRetentionRow=row=>{
+    if(!retentionOff)return;
+    row.onclick=null;
+    row.setAttribute('aria-disabled','true');
+  };
   const missingFields=new Set(highlightMissing ? manualCompletionFields(state).map(([key])=>key) : []);
   const markMissing=(row,missing)=>{if(highlightMissing && missing)row.classList.add('contract-field-incomplete');};
 
@@ -496,7 +503,7 @@ function renderContractForm() {
     contractPickers.openContractTemplatePicker(project.id,state,pickerChanged);
   }, { placeholder: 'انتخاب' });
 
-  markMissing(ftDateRow(form, 'تاریخ تنظیم قرارداد', state.contractDate || helper('todayJalaliStr'), value => { state.contractDate = value; }, { maxToday: true }),missingFields.has('contractDate'));
+  markMissing(ftDateRow(form, 'تاریخ تنظیم قرارداد', state.contractDate || '', value => { state.contractDate = value; }, { maxToday: true }),missingFields.has('contractDate'));
 
   markMissing(ftSelectRow(form, 'کارفرما', state.employerId ? contactDisplayName(findContact(state.employerId)) : '', () => openContractPicker('employer'), { placeholder: 'انتخاب' }),missingFields.has('employerId'));
   markMissing(ftSelectRow(form, 'پیمانکار', state.contractorId ? contactDisplayName(findContact(state.contractorId)) : '', () => openContractPicker('contractor'), { placeholder: 'انتخاب' }),!state.contractorId);
@@ -539,9 +546,9 @@ function renderContractForm() {
     });
   }, { placeholder: 'انتخاب' });
 
-  markMissing(durationRow,missingFields.has('retentionDuration'));
+  disableRetentionRow(durationRow);
 
-  ftSelectRow(form, 'مبنای شروع مدت نگهداری حسن انجام کار', state.retentionBasis || '', () => {
+  const basisRow=ftSelectRow(form, 'مبنای شروع مدت نگهداری حسن انجام کار', state.retentionBasis || '', () => {
     openRetentionBasisPicker(activeProjectId, state.retentionBasis, value => {
       state.retentionBasis = value;
       dirty = true;
@@ -550,19 +557,21 @@ function renderContractForm() {
   }, { placeholder: 'انتخاب' });
 
 
+  disableRetentionRow(basisRow);
   const methods = paymentStagesModule.retentionMethods.filter(method=>!state.remeasurement || method.value==='all');
   if(state.remeasurement)state.retentionMethod='all';
-  ftSelectRow(form, 'نحوه کسر حسن انجام کار', methods.find(x=>x.value===(state.retentionMethod||'first')).label, () => {
+  const methodRow=ftSelectRow(form, 'نحوه کسر حسن انجام کار', methods.find(x=>x.value===(state.retentionMethod||'first')).label, () => {
     contractPickers.openStaticChoicePicker('نحوه کسر حسن انجام کار', 'روش‌ها', methods, state.retentionMethod||'first', value => {
       state.retentionMethod=value;
       pickerChanged();
     });
   });
+  disableRetentionRow(methodRow);
   const heading=document.createElement('div');heading.className='real-contract-section';heading.textContent='مراحل پرداخت (اختیاری)';
   body.appendChild(heading);
   const paymentForm=ftCreateRoot(body);
   const paymentRows=paymentStagesModule.ensurePaymentRows(state);
-  renderRows(paymentForm,paymentRows,{mixed:true});
+  renderRows(paymentForm,paymentRows,{mixed:true,highlightMissing});
   if(!state.remeasurement){
   const paymentSummary=paymentStagesModule.paymentBalanceSummary(state);
   ftAmountSummary(paymentForm,'مبلغ قرارداد پس از کسر حسن انجام کار',paymentSummary.netAmount);
