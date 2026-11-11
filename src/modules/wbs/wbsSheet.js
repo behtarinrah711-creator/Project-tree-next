@@ -2,6 +2,7 @@ import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 
 let releaseSheetViewport = null;
 let sheetHistoryKey = '';
+let reuseHistoryOnReplacement = false;
 
 export function fitPageAboveKeyboard(page){
   const documentRef = page?.ownerDocument;
@@ -22,6 +23,7 @@ export function fitPageAboveKeyboard(page){
 }
 
 export function closeWbsSheet(fromPopState = false){
+  reuseHistoryOnReplacement = false;
   releaseSheetViewport?.();
   releaseSheetViewport = null;
   document.getElementById('wbsSheetOverlay')?.remove();
@@ -32,8 +34,12 @@ export function closeWbsSheet(fromPopState = false){
   }
 }
 
-export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', presentation = '', autoFocus = true, readOnly = false, showSave = true, closeOnBackdrop = true, historyKey = '', header, footer, requestClose, hasUnsavedChanges } = {}){
+export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', presentation = '', autoFocus = true, readOnly = false, showSave = true, closeOnBackdrop = true, historyKey = '', header, footer, requestClose, hasUnsavedChanges, reuseHistoryOnReplace = false } = {}){
+  const replacementKey = reuseHistoryOnReplacement && historyKey && window.KarhaChildHistory?.isOpen(sheetHistoryKey)
+    ? sheetHistoryKey : '';
+  if(replacementKey) sheetHistoryKey = '';
   closeWbsSheet();
+  reuseHistoryOnReplacement = reuseHistoryOnReplace;
   const overlay = document.createElement('div');
   overlay.id = 'wbsSheetOverlay';
   overlay.className = 'overlay wbs-sheet-overlay';
@@ -89,13 +95,13 @@ export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', pr
   });
   document.body.appendChild(overlay);
   if(historyKey){
-    sheetHistoryKey = String(historyKey);
+    sheetHistoryKey = replacementKey || String(historyKey);
     const history=window.KarhaChildHistory;
     const onPop=()=>closeWbsSheet(true);
     if(hasUnsavedChanges && history?.registerGuardedForm){
       history.registerGuardedForm(sheetHistoryKey,{shouldIntercept:hasUnsavedChanges,requestExit:close,onPop});
     }else history?.register(sheetHistoryKey,{onPop});
-    window.KarhaChildHistory?.open(sheetHistoryKey);
+    if(!replacementKey) history?.open(sheetHistoryKey);
   }
   if(autoFocus && !readOnly) bodyEl.querySelector('input,textarea,select')?.focus();
   else overlay.querySelector('.close-btn')?.focus?.();

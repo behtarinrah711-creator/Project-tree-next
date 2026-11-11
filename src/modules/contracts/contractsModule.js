@@ -225,7 +225,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       let statusSheetBody;
       const openStatus=event=>{
         event.stopPropagation();
-        openStatusSheet({title:'وضعیت قرارداد',showSave:false,historyKey:'contract-status:'+c.id,
+        openStatusSheet({title:'وضعیت قرارداد',showSave:false,reuseHistoryOnReplace:true,historyKey:'contract-status:'+c.id,
           body(root){root.classList.add('contract-status-sheet');statusSheetBody(root);root.appendChild(renderContractHistory(document,c,{finance}));}});
       };
       const heading=renderContractCardHeading(p,c,approval?null:{
