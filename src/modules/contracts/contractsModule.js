@@ -298,8 +298,8 @@ export const contractsModule={
     const listWrap=document.createElement('div'); listWrap.className='contract-list';
     const head=document.createElement('div'); head.className='contract-list-head';
     const contracts=[];let cursor=0;
-    do{const page=contractApi.listPage(id,{cursor,limit:200});contracts.push(...page.items.filter(contract=>contractApprovalState(contract)!=='pending'));cursor=page.cursor;}while(cursor!=null);
-    const statusOptions=Object.entries(approvalLabels).filter(([value])=>value!=='pending');
+    do{const page=contractApi.listPage(id,{cursor,limit:200});contracts.push(...page.items);cursor=page.cursor;}while(cursor!=null);
+    const statusOptions=Object.entries(approvalLabels);
     const view=contractListViews.get(id)||{query:'',statuses:statusOptions.map(([value])=>value)};contractListViews.set(id,view);
     head.innerHTML=`<span class="title">قراردادهای واقعی پیمانکاران</span><span class="mgmt-count">${new Intl.NumberFormat('fa-IR').format(contracts.length)}</span>`;body.append(head);
     const renderedRows=[];
