@@ -139,7 +139,7 @@ test('completion enters pending approval, rejection returns Today with typed new
   await status.selectOption('rejected');
   await expect(approvalCard).toContainText('نیاز به اصلاح قالب‌بندی دارد');
   await returnToExecution();
-  await list.locator('.today-mode-tab[data-mode="today"]').click();
+  await list.getByRole('button',{name:'امروز',exact:true}).click();
   await openTaskDetails(page,card);
   await expect(sheet.locator('.today-comment').first()).toContainText('نیاز به اصلاح');
   await sheet.locator('.today-progress-circle').click();
