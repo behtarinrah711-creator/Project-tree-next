@@ -1,10 +1,9 @@
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
-import { todayApi, COMMENT_MIN_LENGTH, REJECTION_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
+import { todayApi, COMMENT_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
 import { contractorForItem, remainingLabel, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
 import { SHOPPING_MODES, shoppingItemsForMode, shoppingStatusLabel } from '../../domain/wbs/shoppingDomain.js';
-import { fieldRow, openWbsSheet } from './wbsSheet.js';
 import { toPersianDigits } from '../../ui/digits.js';
-import { currentExecutionActor, isExecutionApprover, isExecutionAssignee } from './executionActor.js';
+import { currentExecutionActor, isExecutionAssignee } from './executionActor.js';
 import { appendReportPhotos, openDailyExecutionReport, progressCircle } from './dailyExecutionReport.js';
 
 export const SHOPPING_ICON = 'M221-120q-27 0-48-16.5T144-179L42-549q-5-19 6.5-35T80-600h190l176-262q5-8 14-13t19-5q10 0 19 5t14 13l176 262h192q20 0 31.5 16t6.5 35L816-179q-8 26-29 42.5T739-120H221Zm-1-80h520l88-320H132l88 320Zm316.5-103.5Q560-327 560-360t-23.5-56.5Q513-440 480-440t-56.5 23.5Q400-393 400-360t23.5 56.5Q447-280 480-280t56.5-23.5ZM367-600h225L479-768 367-600Zm113 240Z';
@@ -23,8 +22,6 @@ function formatMoment(value){return value?new Intl.DateTimeFormat('fa-IR-u-ca-pe
 function formatMoney(value){return`${new Intl.NumberFormat('fa-IR').format(Math.max(0,Number(value)||0))} تومان`;}
 function reportsOf(entity){return(entity.executionReports||[]).filter(report=>report&&!report.trashed).slice().reverse();}
 function commentsOf(entity){return(entity.executionComments||[]).filter(comment=>comment&&!comment.trashed).slice().sort((a,b)=>Number(b.createdAt)-Number(a.createdAt));}
-function textArea(documentRef,value,name){const field=documentRef.createElement('textarea');field.className='wbs-input today-textarea';field.name=name;field.value=value||'';return field;}
-function openReject(item,onChanged){openWbsSheet({title:'رد تأیید خرید',saveLabel:'ثبت رد',body(root){root.appendChild(fieldRow('علت رد',textArea(document,'','rejectionReason')));},onSave(root){const result=todayApi.reject(activeProjectId,refOf(item),root.querySelector('[name="rejectionReason"]').value,actor());if(!result.ok){window.KarhaUI?.showToast?.(`علت رد حداقل ${toPersianDigits(REJECTION_MIN_LENGTH)} حرف باشد`);return false;}activeMode=timeState(result.entity, tehranTodayJalali());onChanged?.();return true;}});}
 function renderReports(documentRef,entity){const host=documentRef.createElement('div');host.className='today-reports';reportsOf(entity).forEach(report=>{const row=documentRef.createElement('article');row.className='today-report';row.innerHTML=`<p>${esc(report.description)}</p><div>${esc(report.createdBy?.name||'کاربر')} · ${esc(formatMoment(report.createdAt))}${report.updatedAt?` · <b>ویرایش‌شده ${esc(formatMoment(report.updatedAt))}</b>`:''}</div>`;appendReportPhotos(row,report.photos);host.appendChild(row);});return host;}
 function renderComments(documentRef,item,onChanged,writable){
   const host=documentRef.createElement('div');host.className='today-comments';const comments=commentsOf(item.entity);let expanded=false;const list=documentRef.createElement('div');
@@ -66,10 +63,7 @@ export function renderShoppingCard(documentRef,project,item,today,onChanged,appr
     card.appendChild(renderReports(documentRef,entity));
     return card;
   }
-  const mayApprove=writable && isExecutionApprover(entity,currentActor);
-  if(pending){
-    if(mayApprove){const approve=documentRef.createElement('button');approve.type='button';approve.textContent='تأیید خرید';approve.addEventListener('click',()=>{todayApi.approve(activeProjectId,refOf(item),actor());onChanged?.();});const reject=documentRef.createElement('button');reject.type='button';reject.className='is-danger';reject.textContent='رد';reject.addEventListener('click',()=>openReject(item,onChanged));actions.append(approve,reject);}
-  } else {
+  if(!pending){
     card.querySelector('.today-start')?.addEventListener('click',()=>{todayApi.start(activeProjectId,refOf(item),actor());onChanged?.();});
     card.querySelector('.today-cancel-start')?.addEventListener('click',()=>{todayApi.cancelStart(activeProjectId,refOf(item),actor());onChanged?.();});
   }

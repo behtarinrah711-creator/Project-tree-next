@@ -1,7 +1,7 @@
-import {applyExecutionApproval,approveExecutionEntity,executionApprovalItem} from '../../src/domain/wbs/executionApproval.js';
+import {applyExecutionApproval,approveExecutionEntity,executionApprovalItem,rejectExecutionEntity} from '../../src/domain/wbs/executionApproval.js';
 import {saveAddendumDraft} from './contractAddendum.js';
 import {canDeleteAddendumRecord,canDeleteContractAddenda,parentContractOf} from '../../src/domain/contractAddenda.js';
-import {transitionContractApproval} from '../../src/domain/contractApproval.js';
+import {REJECTION_MIN_LENGTH,transitionContractApproval} from '../../src/domain/contractApproval.js';
 import {syncContractPartyData} from '../../src/domain/contractPartyData.js';
 import {authenticate} from './auth.js';
 import {readJson,sendJson} from './http.js';
@@ -33,7 +33,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       const actor={id:String(accountId),contactId:String(person?.id || memberContact || ''),name:[person?.firstName,person?.lastName].filter(Boolean).join(' ')||person?.name||row.phone||'کاربر'};
       if(kind==='execution-approvals'){
         const scope=body.scope;
-        if(body.action!=='approve_execution' || !['execution:today','execution:shopping'].includes(scope)){
+        if(!['approve_execution','reject_execution'].includes(body.action) || !['execution:today','execution:shopping'].includes(scope)){
           sendJson(response,400,{message:'عملیات نامعتبر است'});return true;
         }
         if(!canAccessFiles(row,accountId,true,scope)){
@@ -47,14 +47,19 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         if(scope!==actualScope || !actor.contactId || String(item.entity.approvalContactId)!==actor.contactId){
           sendJson(response,403,{message:'این مورد در انتظار تأیید شما نیست'});return true;
         }
-        const entity={...approveExecutionEntity(item.entity,item.kind,actor,Date.now()),progress:100};
+        const reason=String(body.reason||'').trim();
+        const reject=body.action==='reject_execution';
+        if(reject && reason.length<REJECTION_MIN_LENGTH){sendJson(response,400,{message:'علت رد حداقل '+REJECTION_MIN_LENGTH.toLocaleString('fa-IR')+' حرف باشد'});return true;}
+        const at=Date.now();
+        const entity=reject ? rejectExecutionEntity(item.entity,item.kind,actor,at,reason)
+          : {...approveExecutionEntity(item.entity,item.kind,actor,at),progress:100};
         const project=applyExecutionApproval(row.payload,item,entity);
         await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[projectId,JSON.stringify(project)]);
         await client.query('COMMIT');committed=true;sendJson(response,200,{entity});
         return true;
       }
       const financeAction=['approve_finance','reject_finance','revoke_finance'].includes(body.action);
-      const reviewAction=addendum ? ['approve_addendum','revoke_addendum'].includes(body.action) : body.action==='approve_contract';
+      const reviewAction=addendum ? ['approve_addendum','reject_addendum','revoke_addendum'].includes(body.action) : ['approve_contract','reject_contract'].includes(body.action);
       const permissions=row.permissions||{};
       const financeModule=Object.hasOwn(permissions.modules||permissions,'accounting-contracts')?'accounting-contracts':'accounting';
       const deleteAddendum=addendum && body.action==='delete_addendum';
@@ -92,8 +97,8 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         transition={ok:true,contract:{...contract,trashed:true,deletedAt:at,deletedBy:actor.id,updatedAt:at}};
       }else if(saveDraft) transition=saveAddendumDraft(row.payload,contract,body,actor,contractId,Date.now());
       else if(reviewAction){
-        transition=transitionContractApproval(contract,body.action==='revoke_addendum'?'revoke':'approve',actor,{reason:body.reason});
-        if(transition.ok && body.action==='revoke_addendum')Object.assign(transition.contract,{isDraft:true,status:'draft'});
+        transition=transitionContractApproval(contract,body.action.split('_')[0],actor,{reason:body.reason});
+        if(transition.ok && ['revoke_addendum','reject_addendum'].includes(body.action))Object.assign(transition.contract,{isDraft:true,status:'draft'});
       }else if(addendum && body.action==='submit_addendum'){
         transition=transitionContractApproval(contract,'submit',actor,{approverIds:contract.contractApproverContactIds});
       }else if(addendum && ['cancel_completion','withdraw_submission'].includes(body.action)){

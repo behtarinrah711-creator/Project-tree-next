@@ -1,4 +1,4 @@
-import {approveExecutionEntity} from './executionApproval.js';
+import {approveExecutionEntity,rejectExecutionEntity} from './executionApproval.js';
 import { canWriteProjectModule } from '../../modules/roleManagement/permissionState.js';
 import { uid } from '../../data/projectFactories.js';
 import { todayRepository } from '../../data/todayRepository.js';
@@ -235,15 +235,7 @@ export const todayApi = {
   reject(projectId, ref, reason, actor, clock = Date.now){
     const text = String(reason || '').trim();
     if(text.length < REJECTION_MIN_LENGTH) return { ok:false, code:'rejection_too_short' };
-    const at = clock(); const by = actorValue(actor); const commentId = uid();
-    return mutate(projectId, ref, entity => ({
-      ...entity, completed:false, done:false, completionState:'incomplete', workflowStatus:'in_progress', completedAt:null,
-      completionSubmittedAt:null, actualFinishDay:null, approvedAt:null,
-      returnedToTodayOn:tehranTodayJalali(new Date(at)),
-      ...(ref.kind === 'work' ? { progress:Number(entity.progressBeforeApproval) || 0, status:'in_progress' } : {}),
-      executionComments:[...(entity.executionComments || []), { id:commentId, text, createdBy:by, createdAt:at, type:'approval_rejected' }],
-      executionHistory:[...(entity.executionHistory || []), event('approval_rejected', by, at, { commentId }), event('returned_to_active', by, at)],
-      updatedAt:at,
-    }), { completion:false });
+    const at = clock(); const by = actorValue(actor);
+    return mutate(projectId, ref, entity => rejectExecutionEntity(entity, ref.kind, by, at, text), { completion:false });
   },
 };

@@ -1,5 +1,5 @@
 import {uid} from '../../data/projectFactories.js';
-import {collectTodayItems} from './todayDomain.js';
+import {collectTodayItems,tehranTodayJalali} from './todayDomain.js';
 import {collectShoppingItems} from './shoppingDomain.js';
 import {workTaskProgress} from './workTaskModel.js';
 
@@ -32,4 +32,17 @@ export function applyExecutionApproval(project,item,approved){
     return node.subtasks?.length?{...node,subtasks:update(node.subtasks)}:node;
   });
   return {...project,tasks:update(project.tasks)};
+}
+
+export function rejectExecutionEntity(entity,kind,by,at,text){
+  const commentId=uid();
+  return {
+    ...entity, completed:false, done:false, completionState:'incomplete', workflowStatus:'in_progress', completedAt:null,
+    completionSubmittedAt:null, actualFinishDay:null, approvedAt:null,
+    returnedToTodayOn:tehranTodayJalali(new Date(at)),
+    ...(kind === 'work' ? { progress:Number(entity.progressBeforeApproval) || 0, status:'in_progress' } : {}),
+    executionComments:[...(entity.executionComments || []), { id:commentId, text, createdBy:by, createdAt:at, type:'approval_rejected' }],
+    executionHistory:[...(entity.executionHistory || []), {id:uid(),type:'approval_rejected',actor:by,at,commentId}, {id:uid(),type:'returned_to_active',actor:by,at}],
+    updatedAt:at,
+  };
 }

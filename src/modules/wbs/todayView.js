@@ -1,10 +1,10 @@
 import { todayRepository } from '../../data/todayRepository.js';
 import { canWriteProjectModule, projectPermissionState } from '../roleManagement/permissionState.js';
-import { todayApi, COMMENT_MIN_LENGTH, REJECTION_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
+import { todayApi, COMMENT_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
 import { canRecordStartDelay, contractorForItem, executionStatus, itemsForMode, remainingLabel, statusLabel, START_DELAY_REASONS, TODAY_MODES, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
 import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
 import { toPersianDigits } from '../../ui/digits.js';
-import { currentExecutionActor, isExecutionApprover, isExecutionAssignee } from './executionActor.js';
+import { currentExecutionActor, isExecutionAssignee } from './executionActor.js';
 import { appendReportPhotos, openDailyExecutionReport, progressCircle, todayReportOf } from './dailyExecutionReport.js';
 import { executionWorkKey } from '../reports/dailyExecutionReportsView.js';
 
@@ -89,7 +89,6 @@ function openStartDelay(item,onChanged){
   });
 }
 
-function openReject(item,onChanged){ openWbsSheet({ title:'رد تأیید', saveLabel:'ثبت رد', body(root){ root.appendChild(fieldRow('علت رد',textArea(document,'','rejectionReason'))); }, onSave(root){ const result=todayApi.reject(activeProjectId,refOf(item),root.querySelector('[name="rejectionReason"]').value,actor()); if(!result.ok){ window.KarhaUI?.showToast?.(`علت رد حداقل ${toPersianDigits(REJECTION_MIN_LENGTH)} حرف باشد`); return false; } activeMode=timeState(result.entity, tehranTodayJalali()); onChanged?.(); return true; } }); }
 function renderReports(documentRef, projectId, item, forApproval=false){
   const host=documentRef.createElement('div');
   host.className='today-reports';
@@ -197,20 +196,11 @@ export function renderTodayCard(documentRef,project,item,today,onChanged,approva
       card.appendChild(detailRow(documentRef,'',delay));
     }
   }
-  const actions=documentRef.createElement('div'); actions.className='today-task-actions';
-  const mayApprove=writable && isExecutionApprover(entity,currentActor);
-  if(pending){
-    if(mayApprove){
-      const approve=linkButton(documentRef, 'wbs-costline-manual', 'تأیید'); approve.addEventListener('click',()=>{todayApi.approve(activeProjectId,refOf(item),actor());onChanged?.();});
-      const reject=linkButton(documentRef, 'wbs-costline-manual is-danger', 'رد'); reject.addEventListener('click',()=>afterClose(()=>openReject(item,onChanged)));
-      actions.append(approve,reject);
-    }
-  } else {
+  if(!pending){
     const startButton=card.querySelector('.today-start'); if(startButton) startButton.disabled=!assigned;
     card.querySelector('.today-start')?.addEventListener('click',()=>{todayApi.start(activeProjectId,refOf(item),actor());onChanged?.();});
     card.querySelector('.today-cancel-start')?.addEventListener('click',()=>{todayApi.cancelStart(activeProjectId,refOf(item),actor());onChanged?.();});
   }
-  if(actions.childElementCount) card.appendChild(detailRow(documentRef, 'تأیید', actions));
   if(assigned && status==='in_progress' && !todayReportOf(entity,today)){
     const report=linkButton(documentRef,'wbs-costline-manual today-section-action','ثبت گزارش');
     report.addEventListener('click',openReport);
