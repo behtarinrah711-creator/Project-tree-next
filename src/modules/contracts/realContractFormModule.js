@@ -773,7 +773,7 @@ export const realContractFormModule = {
     if(saosa && confirmingCompletion)return false;
     const result = (saosa && pendingCompletion) || saveRealContract(project.id, state, {
       showToast: report,
-      declareCompletion,manualFields,actor:currentExecutionActor(project),
+      declareCompletion,manualFields,confirmedEmptyFields:!!manualConfirmation,actor:currentExecutionActor(project),
       todayJalaliStr: () => helper('todayJalaliStr'),
       findActivityTemplate: (id, current) => helper('findActivityTemplate', id, current),
       syncContractPartyData: (draft, current) => realContractDomain.syncContractPartyData(draft, current),
