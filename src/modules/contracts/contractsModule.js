@@ -202,7 +202,7 @@ function renderContractWorkflowRow(contract){
     const next=document.createElement('span');
     next.className='contract-next-step';
     next.textContent='گام بعد: '+nextStep;
-    row.appendChild(next);
+    badge.append(' | ',next);
   }
   return row;
 }

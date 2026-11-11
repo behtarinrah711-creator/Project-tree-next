@@ -1864,7 +1864,7 @@ textarea.contract-project-item-input{
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts)) .contract-workflow-row{flex:1 0 100%;box-sizing:border-box;display:flex;align-items:center;gap:10px;flex-wrap:wrap;border-top:1px solid var(--divider);padding:12px 0;margin:0;min-width:0;font-size:12px;}
 #contractsPageBody .contract-workflow-row[data-contract-workflow]{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));direction:rtl;}
 #contractsPageBody .contract-workflow-row[data-contract-workflow] > .contract-status-badge{grid-area:1/1/2/-1;margin:0;justify-self:start;text-align:right;overflow-wrap:anywhere;}
-#contractsPageBody .contract-workflow-row[data-contract-workflow] > .contract-next-step{grid-area:2/1;min-width:0;justify-self:start;text-align:right;overflow-wrap:anywhere;}
+#contractsPageBody .contract-workflow-row[data-contract-workflow] > .contract-status-badge:has(.contract-next-step){background:#e5e7eb;color:#374151;}
 #contractsPageBody .contract-workflow-row[data-contract-workflow] > .contract-review-action{grid-area:2/2;justify-self:end;}
 .contract-workflow-row--signed-addendum{justify-content:space-between;}
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts)) .contract-workflow-row>span{flex:1;min-width:120px;}
