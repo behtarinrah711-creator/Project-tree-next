@@ -706,6 +706,7 @@ export const realContractFormModule = {
   declareComplete(){
     if(!state)return false;
     const manualFields=manualCompletionFields(state);
+    const retentionEmpty=!String(state.retentionPercent??'').trim();
     const form=document.getElementById('contractFormBody');
     const labels=form?.classList.contains('contract-highlight-empty')
       ? Array.from(form.querySelectorAll('.contract-field-incomplete, .ft-row:not([aria-disabled="true"]):has(> .ft-placeholder, > .ft-input:not([readonly]):placeholder-shown)'),row=>{
@@ -714,8 +715,13 @@ export const realContractFormModule = {
           return section ? section.textContent+' — '+label : label;
         })
       : manualFields.map(([,label])=>label);
+    if(!state.operationRows?.length)labels.push('ردیف عملیات');
+    if(retentionEmpty){
+      for(const label of ['درصد حسن انجام کار','مدت نگهداری حسن انجام کار','مبنای شروع مدت نگهداری حسن انجام کار','نحوه کسر حسن انجام کار']){
+        if(!labels.includes(label))labels.push(label);
+      }
+    }
     const checks=[];
-    if(!state.projectItemId || !state.contractorId || !state.activityId){helper('showToast','آیتم پروژه، پیمانکار و فعالیت را انتخاب کنید');return false;}
     if(!labels.length)return this.save(activeProjectId,false,true,[]);
     const feedback=document.createElement('p');
     feedback.className='wbs-note';

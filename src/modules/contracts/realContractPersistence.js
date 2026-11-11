@@ -1,4 +1,4 @@
-import { syncContractAmount, numericValue, ensureAgreedRows, hasPaymentRowData, isUnmeasuredRow } from './contractPricing.js';
+import { syncContractAmount, hasPaymentRowData } from './contractPricing.js';
 import { syncPaymentStages } from './paymentStagesModule.js';
 import { contractApi } from '../../domain/contractApi.js';
 import * as realContractDomain from './realContractDomain.js';
@@ -21,55 +21,18 @@ export function saveRealContract(projectId, draft, helpers={}){
 
   if(!draft.contractDate && !deferred('contractDate')){toast('تاریخ تنظیم قرارداد را انتخاب کنید');return {ok:false,incomplete:true};}
   if(draft.contractDate>todayJalali()){toast('تاریخ تنظیم قرارداد نمی‌تواند بعد از امروز باشد');return {ok:false,incomplete:true};}
-  if(!draft.projectItemId){toast('ابتدا آیتم پروژه را انتخاب کنید');return {ok:false,incomplete:true};}
   if(!draft.employerId && !deferred('employerId')){toast('ابتدا کارفرما را انتخاب کنید');return {ok:false,incomplete:true};}
-  if(!draft.contractorId){toast('ابتدا پیمانکار را انتخاب کنید');return {ok:false,incomplete:true};}
-  if(String(draft.employerId)===String(draft.contractorId)){
+  if(draft.employerId && draft.contractorId && String(draft.employerId)===String(draft.contractorId)){
     toast('کارفرما و پیمانکار نمی‌توانند یک مخاطب باشند');return {ok:false,incomplete:true};
   }
-  if(!draft.activityId){toast('ابتدا فعالیت پیمانکار را انتخاب کنید');return {ok:false,incomplete:true};}
-  draft.activityIds=[draft.activityId];
+  draft.activityIds=draft.activityId?[draft.activityId]:[];
   if(!draft.startDate && !deferred('startDate')){toast('تاریخ شروع قرارداد را انتخاب کنید');return {ok:false,incomplete:true};}
   if(!draft.endDate && !deferred('endDate')){toast('تاریخ پایان قرارداد را انتخاب کنید');return {ok:false,incomplete:true};}
   if(draft.endDate && draft.startDate && draft.endDate<draft.startDate){
     toast('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد');return {ok:false,incomplete:true};
   }
   syncContractAmount(draft);
-  if(Array.isArray(draft.operationRows)){
-    if(!draft.operationRows.length || draft.operationRows.some(row=>
-      !String(row.description||'').trim() ||
-      (row.pricingMode==='quantity'
-        ? !row.unit || (!isUnmeasuredRow(row,draft) && numericValue(row.quantity)<=0) || numericValue(row.unitPrice)<=0
-        : row.pricingMode!=='agreed' || numericValue(row.agreedPrice)<=0))){
-      toast('شرح و بهای عملیات‌ها و در حالت مقداری، واحد و مقدار را کامل کنید');return {ok:false,incomplete:true};
-    }
-  }
-  if(!Array.isArray(draft.operationRows) && draft.amountMethod==='agreed'){
-    const rows=ensureAgreedRows(draft);
-    if(!rows.length || rows.some(row=>!String(row.description||'').trim() || numericValue(row.agreedPrice)<=0)){
-      toast('شرح عملیات و بهای توافقی عملیات‌ها را کامل کنید');return {ok:false,incomplete:true};
-    }
-  }
-  syncContractAmount(draft);
   if(Array.isArray(draft.paymentRows))draft.paymentRows=draft.paymentRows.filter(hasPaymentRowData);
-  if(draft.paymentMethod==='quantity' && draft.paymentRows?.length){
-    const rows=draft.paymentRows;
-    if(!Array.isArray(rows) || !rows.length || rows.some(row=>
-      !String(row.description||'').trim() || (row.pricingMode==='agreed'
-        ? numericValue(row.agreedPrice)<=0
-        : !row.unit || numericValue(row.quantity)<=0 || numericValue(row.unitPrice)<=0))){
-      toast('شرح و بهای مراحل پرداخت و در حالت مقداری، واحد و مقدار را کامل کنید');return {ok:false,incomplete:true};
-    }
-  }
-  for(const rows of [!Array.isArray(draft.operationRows) && draft.amountMethod==='quantity'?draft.amountRows:null].filter(rows=>rows!==null)){
-    if(!Array.isArray(rows) || !rows.length){toast('حداقل یک ردیف وارد کنید');return {ok:false,incomplete:true};}
-    if(rows.some(row=>!String(row.description||'').trim() || !row.unit || (!isUnmeasuredRow(row,draft) && numericValue(row.quantity)<=0) || numericValue(row.unitPrice)<=0)){
-      toast('شرح عملیات، واحد، مقدار و بهای واحد ردیف‌ها را کامل کنید');return {ok:false,incomplete:true};
-    }
-  }
-  if(!draft.remeasurement && (!String(draft.amount||'').trim()||Number(draft.amount)<=0)){
-    toast('مبلغ کل قرارداد را وارد کنید');return {ok:false,incomplete:true};
-  }
   if(Number(draft.retentionPercent)<0||Number(draft.retentionPercent)>100){
     toast('درصد حسن انجام کار باید بین صفر تا صد باشد');return {ok:false,incomplete:true};
   }
