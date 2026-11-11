@@ -1,7 +1,7 @@
 import { confirmSaosaWorkspaceSave, isSaosaHost } from '../../cloud/saosaWorkspaceSync.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
-import { closeWbsSheet, fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
+import { closeWbsSheet, openWbsSheet } from '../wbs/wbsSheet.js';
 import { ensureOperationRows, renderQuantityRows, syncContractAmount } from './contractPricing.js';
 import { contractDocumentMarkup } from './contractDocument.js';
 import {mountContractDocumentPreview} from './contractDocumentAttachments.js';
@@ -705,9 +705,18 @@ export const realContractFormModule = {
 
   declareComplete(){
     if(!state)return false;
-    const fields=manualCompletionFields(state);
+    const manualFields=manualCompletionFields(state);
+    const form=document.getElementById('contractFormBody');
+    const labels=form?.classList.contains('contract-highlight-empty')
+      ? Array.from(form.querySelectorAll('.contract-field-incomplete, .ft-row:not([aria-disabled="true"]):has(> .ft-placeholder, > .ft-input:not([readonly]):placeholder-shown)'),row=>{
+          const label=row.querySelector(':scope > .ft-label, :scope > span').textContent.trim().replace(/:$/,'');
+          const section=row.closest('.contract-quantity-row')?.querySelector('.contract-quantity-heading > span');
+          return section ? section.textContent+' — '+label : label;
+        })
+      : manualFields.map(([,label])=>label);
+    const checks=[];
     if(!state.projectItemId || !state.contractorId || !state.activityId){helper('showToast','آیتم پروژه، پیمانکار و فعالیت را انتخاب کنید');return false;}
-    if(!fields.length)return this.save(activeProjectId,false,true,[]);
+    if(!labels.length)return this.save(activeProjectId,false,true,[]);
     const feedback=document.createElement('p');
     feedback.className='wbs-note';
     feedback.setAttribute('role','status');
@@ -719,16 +728,30 @@ export const realContractFormModule = {
     const sheet=openWbsSheet({title:'تکمیل دستی پس از چاپ',saveLabel:'اعلام تکمیل',historyKey:'contract-manual-completion',
       body(root){
         const note=document.createElement('p');note.textContent='برای هر مورد خالی تأیید کنید که پس از چاپ دستی تکمیل می‌شود؛ یا انصراف بزنید و آن را در فرم وارد کنید.';root.appendChild(note);
-        fields.forEach(([key,label])=>{const check=document.createElement('input');check.type='checkbox';check.name=key;root.appendChild(fieldRow(label,check));});
+        const grid=document.createElement('div');
+        grid.className='contract-manual-completion-grid';
+        labels.forEach(label=>{
+          const item=document.createElement('label');
+          const title=document.createElement('span');
+          title.textContent=label;
+          const check=document.createElement('input');
+          check.type='checkbox';
+          const field=manualFields.find(([,name])=>label===name || label===name+' قرارداد');
+          if(field)check.name=field[0];
+          checks.push(check);
+          item.append(title,check);
+          grid.appendChild(item);
+        });
+        root.appendChild(grid);
         root.appendChild(feedback);
       },
-      onSave:root=>{
+      onSave:()=>{
         report('');
-        if(fields.some(([key])=>!root.querySelector('[name="'+key+'"]').checked)){
+        if(checks.some(check=>!check.checked)){
           report('تکمیل دستی تمام موارد را تأیید کنید یا به فرم برگردید');
           return false;
         }
-        return this.save(activeProjectId,false,true,fields.map(([key])=>key),{sheet,report});
+        return this.save(activeProjectId,false,true,manualFields.map(([key])=>key),{sheet,report});
       }
     });
     return false;
