@@ -1998,10 +1998,10 @@ textarea.contract-project-item-input{
 .finance-rejection-count.is-valid{color:#166534;}
 .wbs-sheet-centered-header .wbs-sheet-save:disabled{opacity:.45;cursor:default;}
 
-#contractFormBody .contract-field-incomplete{background:#fee2e2;}
+#contractFormBody .contract-field-incomplete{background:#fee2e2 !important;}
 
-#contractFormBody.contract-highlight-empty .ft-row:not([aria-disabled="true"]):has(> .ft-placeholder, > .ft-input:not([readonly]):placeholder-shown){background:#fee2e2;}
-#contractFormBody .ft-row[aria-disabled="true"]{background:#f1f2f4;opacity:.65;cursor:default;}
+#contractFormBody.contract-highlight-empty .ft-row:not([aria-disabled="true"]):has(> .ft-placeholder, > .ft-input:not([readonly]):placeholder-shown){background:#fee2e2 !important;}
+#contractFormBody .ft-row[aria-disabled="true"]{background:#f1f2f4 !important;opacity:.65;cursor:default;}
 
 .contract-manual-completion-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 12px;direction:rtl;}
 .contract-manual-completion-grid > label{display:flex;align-items:center;justify-content:space-between;gap:8px;min-width:0;padding:8px 0;overflow-wrap:anywhere;}
