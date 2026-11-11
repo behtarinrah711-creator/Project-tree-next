@@ -1,4 +1,4 @@
-import { ADDENDUM_TYPES, addendumAmount, addendumReviewers, canEditAddendumRecord, parentContractOf } from '../../src/domain/contractAddenda.js';
+import { ADDENDUM_TYPES, addendumAmount, addendumReviewers, canCreateAddendumFromContract, canEditAddendumRecord, parentContractOf } from '../../src/domain/contractAddenda.js';
 import { transitionContractApproval } from '../../src/domain/contractApproval.js';
 import { jalaliMonthLength } from '../../src/ui/jalali.js';
 
@@ -13,6 +13,7 @@ const validDate=value=>{
 export function saveAddendumDraft(project,current,body,actor,id,at){
   const parent=parentContractOf(project,current||body);
   if(!parent?.contractNo)return fail('ابتدا یک قرارداد شماره‌دار انتخاب کنید');
+  if(!current && !canCreateAddendumFromContract(parent,project))return fail('ایجاد الحاقیه پس از تکمیل همهٔ مراحل تأیید قرارداد ممکن است');
   if(current && !canEditAddendumRecord(current))return fail('الحاقیه در حال ویرایش نیست');
   const type=body.type, note=text(body.note,4000), contractDate=text(body.contractDate,10), endDate=text(body.endDate,10);
   if(!Object.hasOwn(ADDENDUM_TYPES,type)||!validDate(contractDate))return fail('نوع و تاریخ الحاقیه را مشخص کنید');

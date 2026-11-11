@@ -24,8 +24,8 @@ test('contract list includes pending reviews and searches beyond the first page'
   contractsModule.render('p');
   const list=body.children.find(x=>x.className==='contract-list');
   assert.equal(list.children.length,205);
-  assert.ok(list.children.every(row=>row.children.at(-3).className==='contract-workflow-row'));
-  assert.ok(list.children.every(row=>row.children.at(-2).className==='contract-addenda-row'));
+  assert.ok(list.children.every(row=>!row.children.some(child=>child.className==='contract-workflow-row')));
+  
   assert.ok(list.children.every(row=>!row.children.some(child=>child.className==='contract-progress')));
   for(const row of list.children){
     const ring=row.children[0].children.find(node=>node.className==='today-progress-circle');

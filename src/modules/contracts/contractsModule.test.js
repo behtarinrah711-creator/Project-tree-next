@@ -65,16 +65,23 @@ test('template search removes unmatched rows, normalizes Persian letters and res
 });
 
 
+function readStatusSheet(render,make){
+  const root=make();root.classList={add(){}};
+  const card=render(options=>options.body(root));
+  card.children[0].children.find(node=>node.className==='today-progress-circle').click({stopPropagation(){}});
+  return root.children[0];
+}
+
 test('only contract writers see the addendum shortcut on completed report cards',async()=>{
   const {renderContractCard}=await import('./contractsModule.js');
   const previousWindow=globalThis.window,previousDocument=globalThis.document;
   const make=()=>({children:[],dataset:{},append(...nodes){this.children.push(...nodes);},
-    appendChild(node){this.children.push(node);},replaceChildren(...nodes){this.children=nodes;},setAttribute(){}});
+    appendChild(node){this.children.push(node);},replaceChildren(...nodes){this.children=nodes;},setAttribute(){},addEventListener(type,handler){this[type]=handler;}});
   globalThis.window={location:{hash:''}};
   globalThis.document={createElement:make};
   const project={id:'p',tasks:[]};
   window.KarhaAppData={getProjects:()=>[project]};
-  const contract={id:'c',contractNo:'CTR-1',status:'final',isDraft:false,approvalStatus:'approved',contractApproverContactIds:[]};
+  const contract={id:'c',contractNo:'CTR-1',status:'final',isDraft:false,approvalStatus:'approved',contractApproverContactIds:[],signedAt:1,signedFiles:[{id:'signed'}],sentToAccountingAt:2,accountingStatus:'accepted',accountingPackage:{contract:{id:'c'},signedFiles:[{id:'signed'}]}};
   const addendaRow=card=>card.children.find(node=>node.className==='contract-addenda-row');
   const shortcut=record=>addendaRow(renderContractCard(project,record))?.children[0].children
     .find(node=>node.textContent==='ایجاد الحاقیه');
@@ -84,9 +91,10 @@ test('only contract writers see the addendum shortcut on completed report cards'
     assert.equal(shortcut({...contract,contractNo:''}),undefined);
     window.firebase={auth:()=>({currentUser:{uid:'reviewer',phoneNumber:'0912'}})};
     project.contacts=[{id:'me',phone:'0912'}];
-    const pending={...contract,approvalStatus:'pending',approvalContactIds:['me','other'],
+    const pending={...contract,accountingStatus:null,sentToAccountingAt:null,accountingPackage:null,signedAt:null,signedFiles:[],approvalStatus:'pending',approvalContactIds:['me','other'],
       approvedContactIds:['me'],submittedBy:{id:'reviewer'}};
-    const status=renderContractCard(project,pending).children[1];
+    assert.equal(shortcut({...contract,accountingStatus:'sent'}),undefined);
+    const status=readStatusSheet(openStatusSheet=>renderContractCard(project,pending,{openStatusSheet}),make);
     assert.deepEqual(status.children.map(node=>node.textContent),
       ['وضعیت: تکمیل و برای مسئول تایید ارسال شد | گام بعد: صبور باشید','پس‌گرفتن از تأیید']);
     window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'view',accounting:'full'}}}};
@@ -98,7 +106,7 @@ test('only contract writers see the addendum shortcut on completed report cards'
     ];
     const card=renderContractCard(project,contract);
     assert.deepEqual(card.children.map(node=>node.className),
-      ['contract-card-heading','contract-workflow-row','contract-addenda-row','contract-history']);
+      ['contract-card-heading','contract-addenda-row','contract-history']);
     const [toolbar,list]=addendaRow(card).children;
     assert.deepEqual(toolbar.children.map(node=>node.textContent),['الحاقیه‌ها (۱)']);
     toolbar.children[0].onclick();
@@ -112,7 +120,7 @@ test('contract card explains each normal workflow stage and removes the next ste
   const {renderContractCard}=await import('./contractsModule.js');
   const previousWindow=globalThis.window,previousDocument=globalThis.document;
   const make=()=>({children:[],dataset:{},append(...nodes){this.children.push(...nodes);},
-    appendChild(node){this.children.push(node);},setAttribute(){}});
+    appendChild(node){this.children.push(node);},setAttribute(){},addEventListener(type,handler){this[type]=handler;}});
   globalThis.document={createElement:make};
   globalThis.window={location:{hash:''}};
   const project={id:'p',tasks:[]};
@@ -120,7 +128,7 @@ test('contract card explains each normal workflow stage and removes the next ste
   const file={id:'f',name:'signed.jpg',mime:'image/jpeg'};
   const signed={signedAt:1,signedFiles:[file]};
   const sent={...signed,accountingStatus:'sent',sentToAccountingAt:2,accountingPackage:{contract:base,signedFiles:[file]}};
-  const texts=contract=>renderContractCard(project,{...base,...contract}).children[1].children
+  const texts=contract=>readStatusSheet(openStatusSheet=>renderContractCard(project,{...base,...contract},{openStatusSheet}),make).children
     .filter(node=>node.className?.includes('contract-status-badge'))
     .map(node=>node.textContent);
   try{

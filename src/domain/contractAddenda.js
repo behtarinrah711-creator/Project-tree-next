@@ -1,3 +1,4 @@
+import {contractProgressSteps} from './contractProgress.js';
 import {contractApproverIds} from './contractApproval.js';
 
 export const ADDENDUM_TYPES=Object.freeze({
@@ -54,8 +55,8 @@ export function canDeleteAddendumRecord(addendum){
     && !['pending','approved'].includes(addendum.approvalStatus);
 }
 
-export function canCreateAddendumFromContract(contract){
-  return !!contract?.contractNo && !contract.trashed && contract.status==='final' && !contract.isDraft;
+export function canCreateAddendumFromContract(contract,project){
+  return !!contract?.contractNo && !contract.trashed && contractProgressSteps(contract,project).every(step=>step.done);
 }
 
 export function addendumAmount(rows){
