@@ -33,7 +33,8 @@ test('button and exit confirmation use project save lifecycle rather than local 
 });
 
 test('Save only stores a draft while explicit completion validates and preserves failures',()=>{
- const start=source.indexOf('  save(projectId = null, silent = false, declareCompletion=false, manualFields=[]) {');
+ const start=source.search(/^  save\(projectId\b/m);
+ assert.ok(start>=0,'contract form save method exists');
  const method=source.slice(start,source.indexOf('\n  requestClose(',start));
  for(const outcome of ['complete','incomplete','failure']){
   let drafts=0,closed=0;

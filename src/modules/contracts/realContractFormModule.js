@@ -687,27 +687,42 @@ export const realContractFormModule = {
     const fields=[['contractDate','تاریخ تنظیم قرارداد'],['employerId','کارفرما'],['startDate','تاریخ شروع'],['endDate','تاریخ پایان'],...(Number(state.retentionPercent)>0?[['retentionDuration','مدت نگهداری حسن انجام کار']]:[])].filter(([key])=>!String(state[key]??'').trim());
     if(!state.projectItemId || !state.contractorId || !state.activityId){helper('showToast','آیتم پروژه، پیمانکار و فعالیت را انتخاب کنید');return false;}
     if(!fields.length)return this.save(activeProjectId,false,true,[]);
-    openWbsSheet({title:'تکمیل دستی پس از چاپ',saveLabel:'اعلام تکمیل',historyKey:'contract-manual-completion',
+    const feedback=document.createElement('p');
+    feedback.className='wbs-note';
+    feedback.setAttribute('role','status');
+    feedback.hidden=true;
+    const report=message=>{
+      feedback.textContent=message;
+      feedback.hidden=!message;
+    };
+    const sheet=openWbsSheet({title:'تکمیل دستی پس از چاپ',saveLabel:'اعلام تکمیل',historyKey:'contract-manual-completion',
       body(root){
         const note=document.createElement('p');note.textContent='برای هر مورد خالی تأیید کنید که پس از چاپ دستی تکمیل می‌شود؛ یا انصراف بزنید و آن را در فرم وارد کنید.';root.appendChild(note);
         fields.forEach(([key,label])=>{const check=document.createElement('input');check.type='checkbox';check.name=key;root.appendChild(fieldRow(label,check));});
+        root.appendChild(feedback);
       },
       onSave:root=>{
-        if(fields.some(([key])=>!root.querySelector('[name="'+key+'"]').checked)){helper('showToast','تکمیل دستی تمام موارد را تأیید کنید یا به فرم برگردید');return false;}
-        return this.save(activeProjectId,false,true,fields.map(([key])=>key));
+        report('');
+        if(fields.some(([key])=>!root.querySelector('[name="'+key+'"]').checked)){
+          report('تکمیل دستی تمام موارد را تأیید کنید یا به فرم برگردید');
+          return false;
+        }
+        return this.save(activeProjectId,false,true,fields.map(([key])=>key),{sheet,report});
       }
     });
     return false;
   },
-  save(projectId = null, silent = false, declareCompletion=false, manualFields=[]) {
+  save(projectId = null, silent = false, declareCompletion=false, manualFields=[], manualConfirmation=null) {
     if(!declareCompletion)return this.saveDraft();
     const project = activeProject(projectId || activeProjectId);
     if (!project || !state) return false;
 
+    const report=manualConfirmation?.report || (message=>helper('showToast',message));
+    const saveButton=manualConfirmation?.sheet.querySelector('.wbs-sheet-save');
     const saosa = !!globalThis.window && isSaosaHost(window);
     if(saosa && confirmingCompletion)return false;
     const result = (saosa && pendingCompletion) || saveRealContract(project.id, state, {
-      showToast: text => helper('showToast',text),
+      showToast: report,
       declareCompletion,manualFields,actor:currentExecutionActor(project),
       todayJalaliStr: () => helper('todayJalaliStr'),
       findActivityTemplate: (id, current) => helper('findActivityTemplate', id, current),
@@ -717,7 +732,7 @@ export const realContractFormModule = {
 
     if (!result.ok) {
       if(result.incomplete) return false;
-      helper('showToast',result.message || 'قرارداد ذخیره نشد');
+      report(result.message || 'قرارداد ذخیره نشد');
       return false;
     }
     const finish=contract=>{
@@ -726,24 +741,39 @@ export const realContractFormModule = {
       this.close(false);
       if(!silent)helper('showToast',contract.approvalStatus==='pending'?'قرارداد برای تأیید ارسال شد':'قرارداد ذخیره شد');
     };
-    if(!saosa){finish(result.contract);return true;}
+    const formState=state;
+    const finishAfterSheet=contract=>{
+      if(!manualConfirmation?.sheet.isConnected){finish(contract);return;}
+      const closeForm=()=>{if(state===formState)finish(contract);};
+      const history=window.KarhaChildHistory;
+      if(history?.isOpen('contract-manual-completion')){
+        history.afterNextPop(closeForm);
+        closeWbsSheet();
+      }else{
+        closeWbsSheet();
+        closeForm();
+      }
+    };
+    if(!saosa){finishAfterSheet(result.contract);return !manualConfirmation;}
     pendingCompletion=result;
     confirmingCompletion=true;
-    const formState=state;
-    const manualSheet=manualFields.length ? document.getElementById('wbsSheetOverlay') : null;
+    if(saveButton){
+      saveButton.disabled=true;
+      report('در حال ثبت تکمیل قرارداد…');
+    }
     void confirmSaosaWorkspaceSave().then(snapshot=>{
       confirmingCompletion=false;
+      if(saveButton)saveButton.disabled=false;
       if(state!==formState)return;
       const saved=snapshot?.projects?.find(row=>String(row.id)===String(project.id))?.contracts?.find(row=>
         String(row.id)===String(result.contract.id));
       if(saved?.completionDeclarationId!==result.contract.completionDeclarationId
         || !['pending','approved'].includes(saved?.approvalStatus)){
         if(snapshot)pendingCompletion=null;
-        helper('showToast','ثبت تکمیل در سرور تأیید نشد؛ دوباره تلاش کنید');
+        report('ثبت تکمیل در سرور تأیید نشد. دوباره تلاش کنید.');
         return;
       }
-      finish(saved);
-      if(manualSheet && document.getElementById('wbsSheetOverlay')===manualSheet)closeWbsSheet();
+      finishAfterSheet(saved);
     });
     return false;
   },
