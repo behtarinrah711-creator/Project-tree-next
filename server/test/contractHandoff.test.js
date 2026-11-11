@@ -443,3 +443,32 @@ test('the inbox approves contracts with an authenticated assigned reviewer',asyn
   assert.deepEqual(response.result.contract.approvedContactIds,['reviewer']);
   assert.equal(response.result.contract.handoffVersion,1);
 });
+
+test('a recompleted contract can return to finance without modifying or saving the signed copy again',async()=>{
+  const f=fixture();
+  Object.assign(f.payload.contracts[0],{title:'قرارداد قبلی',contractNo:'CTR-1',paymentStages:[{progress:'100',paymentPercent:'100'}]});
+  let c=(await f.call({action:'save_signed',version:0,updatedAt:1,files:[file]})).result.contract;
+  const act=(action,extra={})=>f.call({action,version:c.handoffVersion,updatedAt:c.updatedAt,...extra});
+  c=(await act('send_finance')).result.contract;
+  const signedAt=c.signedAt;
+  f.setPermissions({modules:{accounting:'create'}});
+  c=(await act('reject_finance',{reason:'مدرک نیاز به بررسی دارد'})).result.contract;
+  f.setPermissions({modules:{contracts:'create'}});
+  assert.equal((await act('send_finance')).status,400);
+  Object.assign(f.payload.contracts[0],{status:'final',isDraft:false,approvalStatus:'approved'});
+  f.payload.contracts[0].paymentStages[0].paymentPercent='50';
+  assert.equal((await act('send_finance')).status,400);
+  f.payload.contracts[0].paymentStages[0].paymentPercent='100';
+  f.setPermissions({modules:{contracts:'view',accounting:'full'}});
+  assert.equal((await act('send_finance')).status,403);
+  f.setPermissions({modules:{contracts:'create'}});
+  const result=await act('send_finance');
+  assert.equal(result.status,200);
+  c=result.result.contract;
+  assert.equal(c.accountingStatus,'sent');
+  assert.equal(c.signedAt,signedAt);
+  assert.deepEqual(c.accountingPackage.signedFiles,[file]);
+  assert.deepEqual(c.financeHistory.map(event=>event.action),['send_finance','reject_finance','send_finance']);
+  f.setPermissions({modules:{accounting:'create'}});
+  assert.equal((await act('approve_finance')).result.contract.accountingStatus,'accepted');
+});

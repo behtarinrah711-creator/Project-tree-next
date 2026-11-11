@@ -1,5 +1,5 @@
 import {canWriteProjectModule} from '../roleManagement/permissionState.js';
-import {canAttachSignedContract,canReuseReturnedAddendumSignature,canReviseReturnedSignedContract,signedContractFiles,isContractInFinance,isContractSigned} from '../../domain/contractHandoff.js';
+import {canAttachSignedContract,canReuseReturnedSignature,canReviseReturnedSignedContract,signedContractFiles,isContractInFinance,isContractSigned} from '../../domain/contractHandoff.js';
 import {mountFileUploader} from '../files/fileUploader.js';
 import {openWbsSheet,closeWbsSheet} from '../wbs/wbsSheet.js';
 import {openContractReasonSheet} from './contractReasonSheet.js';
@@ -63,6 +63,6 @@ export function renderContractSignedSection(project,contract,{onChanged=()=>{},f
     trigger.className+=' contract-signed-trigger';
     if(attachmentActions)attachmentActions.prepend(trigger);
   }
-  if(!sent && writable && ready && (isContractSigned(contract) || canReuseReturnedAddendumSignature(contract)))button('ارسال به واحد مالی',()=>openConfirm((contract.parentContractId?label:'قرارداد تنظیم‌شده')+' به همراه نسخه امضاشده به واحد مالی ارسال شود؟',()=>run('send_finance'),'ارسال'));
+  if(!sent && writable && ready && (isContractSigned(contract) || canReuseReturnedSignature(contract)))button('ارسال به واحد مالی',()=>openConfirm((contract.parentContractId?label:'قرارداد تنظیم‌شده')+' به همراه نسخه امضاشده به واحد مالی ارسال شود؟',()=>run('send_finance'),'ارسال'));
   return section.children.length ? section : null;
 }
