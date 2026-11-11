@@ -88,7 +88,7 @@ test('only contract writers see the addendum shortcut on completed report cards'
       approvedContactIds:['me'],submittedBy:{id:'reviewer'}};
     const status=renderContractCard(project,pending).children[1];
     assert.deepEqual(status.children.map(node=>node.textContent),
-      ['وضعیت: تکمیل و برای مسئول تایید ارسال شد','گام بعد: صبور باشید','پس‌گرفتن از تأیید']);
+      ['وضعیت: تکمیل و برای مسئول تایید ارسال شد | گام بعد: صبور باشید','پس‌گرفتن از تأیید']);
     window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'view',accounting:'full'}}}};
     assert.equal(shortcut(contract),undefined);
     project.contractAddenda=[
@@ -121,13 +121,13 @@ test('contract card explains each normal workflow stage and removes the next ste
   const signed={signedAt:1,signedFiles:[file]};
   const sent={...signed,accountingStatus:'sent',sentToAccountingAt:2,accountingPackage:{contract:base,signedFiles:[file]}};
   const texts=contract=>renderContractCard(project,{...base,...contract}).children[1].children
-    .filter(node=>node.className?.includes('contract-status-badge') || node.className==='contract-next-step')
+    .filter(node=>node.className?.includes('contract-status-badge'))
     .map(node=>node.textContent);
   try{
     for(const reviewed of [false,true]){
       const approvalContactIds=reviewed?['reviewer']:[];
       const check=(contract,label,step)=>assert.deepEqual(texts({...contract,approvalContactIds}),
-        ['وضعیت: '+label,...(step?['گام بعد: '+step]:[])]);
+        ['وضعیت: '+label+(step?' | گام بعد: '+step:'')]);
       check({status:'draft',isDraft:true},'ناقص','قرارداد را ویرایش و تکمیل کنید');
       if(reviewed)check({approvalStatus:'pending'},'تکمیل و برای مسئول تایید ارسال شد','صبور باشید');
       check({},reviewed?'تکمیل و تایید شد':'تکمیل شد','نسخه امضا شده قرارداد را بارگذاری کنید');

@@ -195,15 +195,9 @@ function renderContractWorkflowRow(contract){
   const row=renderContractStatusRow(contract,{showBadge:false});
   row.dataset.contractWorkflow='';
   const badge=document.createElement('span');
-  badge.className='contract-status-badge '+tone;
-  badge.textContent='وضعیت: '+label;
+  badge.className='contract-status-badge '+(nextStep?'is-incomplete':tone);
+  badge.textContent='وضعیت: '+label+(nextStep?' | گام بعد: '+nextStep:'');
   row.appendChild(badge);
-  if(nextStep){
-    const next=document.createElement('span');
-    next.className='contract-next-step';
-    next.textContent='گام بعد: '+nextStep;
-    badge.append(' | ',next);
-  }
   return row;
 }
 
