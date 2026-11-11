@@ -116,7 +116,8 @@ test('completion enters pending approval, rejection returns Today with typed new
 
   const notifications=page.locator('#notificationsPageBody');
   const openExecutionApprovals=async()=>{
-    await page.locator('#notificationsTrigger').click();
+    // The local fixture seeds the project actor but does not sign into the shell.
+    await page.evaluate(()=>{window.location.hash='#/notifications';});
     await notifications.getByRole('button',{name:/در انتظار تأیید من/}).click();
     await notifications.getByRole('button',{name:/اجرا/}).click();
     return notifications.locator('.today-task-card[data-entity-id="today-task"]');
