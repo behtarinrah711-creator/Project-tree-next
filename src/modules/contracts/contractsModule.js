@@ -115,7 +115,13 @@ export function renderContractCardHeading(project, contract, menu, {titlePrefix=
     if(pathRow)details.appendChild(pathRow);
     if(created){
       const stamp=document.createElement('div');stamp.className='contract-meta contract-heading-stamp';
-      stamp.dir='ltr';stamp.textContent=created.time+' | '+created.date;
+      stamp.dir='rtl';
+      for(const value of [created.time,'|',created.date]){
+        const part=document.createElement('bdi');
+        part.dir='ltr';
+        part.textContent=value;
+        stamp.appendChild(part);
+      }
       details.appendChild(stamp);
     }
     heading.append(main,progress,details,actions);
