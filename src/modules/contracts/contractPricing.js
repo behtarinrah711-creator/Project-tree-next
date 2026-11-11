@@ -58,7 +58,7 @@ export function makeQuantityRow(){
 }
 
 // Same row editor for pricing and payment quantities; arrays remain independent.
-export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,onDirty,operations=false,agreed=false,mixed=false,allowRemeasurement=true,newPricingMode='quantity'}){
+export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,onDirty,operations=false,agreed=false,mixed=false,allowRemeasurement=true,highlightMissing=false,newPricingMode='quantity'}){
   const money=value=>new Intl.NumberFormat('fa-IR').format(value)+' تومان';
   const list=document.createElement('div');
   list.className='contract-quantity-list';
@@ -84,7 +84,12 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
     // Mirror wraps in normal document flow, so all text stays visible without timers.
     const wrap=document.createElement('div');wrap.className='contract-growing-text';
     wrap.dataset.value=description.value+' ';
-    description.oninput=()=>{row.description=description.value;wrap.dataset.value=description.value+' ';onDirty();};
+    const markMissing=(element,missing)=>{
+      if(highlightMissing)element.classList.toggle('contract-field-incomplete',missing);
+    };
+    const updateDescription=()=>markMissing(descLabel,!String(row.description||'').trim());
+    updateDescription();
+    description.oninput=()=>{row.description=description.value;wrap.dataset.value=description.value+' ';updateDescription();onDirty();};
     wrap.appendChild(description);descLabel.append(title,wrap);card.appendChild(descLabel);
     if(mixed){
       const choices=document.createElement('div');
@@ -109,13 +114,13 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
     }
     const rateOnly=operations && isUnmeasuredRow(row);
     if(mixed && row.pricingMode!=='quantity'){
-      numberRow(card,'بهای عملیات',row.agreedPrice,value=>{row.agreedPrice=value;},{suffix:'تومان'});
+      markMissing(numberRow(card,'بهای عملیات',row.agreedPrice,value=>{row.agreedPrice=value;},{suffix:'تومان'}),numericValue(row.agreedPrice)<=0);
     }else if(agreed){
       numberRow(card,'بهای توافقی',row.agreedPrice,value=>{row.agreedPrice=value;},{suffix:'تومان'});
     }else{
-      selectRow(card,'واحد',row.unit,()=>pick('انتخاب واحد','واحدها',quantityUnits,row.unit,value=>{row.unit=value;onChange();}));
-      if(!rateOnly)numberRow(card,'مقدار',row.quantity,value=>{row.quantity=value;},{suffix:row.unit||'',allowDecimal:true});
-      numberRow(card,'بهای واحد',row.unitPrice,value=>{row.unitPrice=value;},{suffix:'تومان'});
+      markMissing(selectRow(card,'واحد',row.unit,()=>pick('انتخاب واحد','واحدها',quantityUnits,row.unit,value=>{row.unit=value;onChange();})),!row.unit);
+      if(!rateOnly)markMissing(numberRow(card,'مقدار',row.quantity,value=>{row.quantity=value;},{suffix:row.unit||'',allowDecimal:true}),numericValue(row.quantity)<=0);
+      markMissing(numberRow(card,'بهای واحد',row.unitPrice,value=>{row.unitPrice=value;},{suffix:'تومان'}),numericValue(row.unitPrice)<=0);
       const total=document.createElement('div');total.className='ft-row';
       const totalLabel=document.createElement('div');totalLabel.className='ft-label';totalLabel.textContent=mixed?'بهای عملیات:':'بهای کل:';
       const totalValue=document.createElement('div');totalValue.className='ft-value';totalValue.textContent=rateOnly?'پس از متره مشخص می‌شود':money(rowAmount(row));

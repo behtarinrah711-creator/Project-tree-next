@@ -1997,3 +1997,5 @@ textarea.contract-project-item-input{
 .finance-rejection-count{color:var(--text-dim,#6b7280);font-size:12px;}
 .finance-rejection-count.is-valid{color:#166534;}
 .wbs-sheet-centered-header .wbs-sheet-save:disabled{opacity:.45;cursor:default;}
+
+#contractFormBody .contract-field-incomplete{background:#fee2e2;}
