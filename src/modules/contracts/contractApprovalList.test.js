@@ -34,7 +34,7 @@ test('contract list includes pending reviews and searches beyond the first page'
     assert.match(ring.innerHTML,new RegExp('stroke-dasharray="'+(2/total*100)+' 100"'));
   }
   assert.ok(list.children.every(row=>!row.children.some(child=>child.className==='contract-signed-section')));
-  assert.ok(list.children.every(row=>row.children.at(-1).className==='contract-history'));
+  assert.ok(list.children.every(row=>!row.children.some(node=>node.className==='contract-history')));
   assert.equal(body.children.some(node=>node.className==='contract-review-banner'),false);
   assert.equal(list.children.filter(row=>row.dataset.approvalState==='pending').length,2);
   const filterWrap=body.children.find(x=>x.className==='contract-filter-wrap');
