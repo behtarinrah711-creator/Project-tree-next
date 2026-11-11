@@ -30,7 +30,8 @@ test('finance contracts use the report card header with only financial decision 
     assert.equal(details.className,'contract-heading-details');
     assert.equal(details.children[0].textContent,'سوله موجود ← اجرای ستون‌ها ← بستن میلگرد ستون');
     const {time,date}=contractCreatedParts(c.createdAt);
-    assert.equal(details.children[1].textContent,time+' | '+date);
+    assert.equal(details.children[1].dir,'rtl');
+    assert.deepEqual(details.children[1].children.map(part=>part.textContent),[time,'|',date]);
     assert.equal(menu.className,'contract-actions');
     assert.ok(report.dataset.searchText.includes('بستنمیلگردستون'));
     for(const name of ['contract-card-heading']){
