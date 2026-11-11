@@ -6,7 +6,7 @@ const {projectRepository}=await import('../../data/projectRepository.js');
 const {contractApi}=await import('../../domain/contractApi.js');
 const {contactApi}=await import('../../domain/contactApi.js');
 const {activityApi}=await import('../../domain/activityApi.js');
-test('shared list filters assigned pending requests, clears filter, and searches beyond first page',()=>{
+test('contract list includes pending reviews and searches beyond the first page',()=>{
  const make=tag=>({tag,children:[],dataset:{},hidden:false,listeners:{},className:'',
  append(...xs){xs.forEach(x=>this.appendChild(x));},appendChild(x){x.remove();x.parent=this;this.children.push(x);},
  replaceChildren(...xs){this.children.forEach(x=>{x.parent=null;});this.children=[];this.append(...xs);},remove(){if(this.parent)this.parent.children=this.parent.children.filter(x=>x!==this);this.parent=null;},
@@ -35,12 +35,9 @@ test('shared list filters assigned pending requests, clears filter, and searches
   }
   assert.ok(list.children.every(row=>!row.children.some(child=>child.className==='contract-signed-section')));
   assert.ok(list.children.every(row=>row.children.at(-1).className==='contract-history'));
-  const banner=body.children.find(x=>x.className==='contract-review-banner');
-  assert.match(banner.textContent,/۱ قرارداد/);banner.onclick();
-  assert.equal(list.children.length,1);
+  assert.equal(body.children.some(node=>node.className==='contract-review-banner'),false);
+  assert.equal(list.children.filter(row=>row.dataset.approvalState==='pending').length,2);
   const filterWrap=body.children.find(x=>x.className==='contract-filter-wrap');
-  filterWrap.children.find(x=>x.className==='contract-mine-reset').onclick();
-  assert.equal(list.children.length,205);
   const search=body.children.find(x=>x.className==='workspace-search').children[0];
   search.value='CTR-۲۰۴';search.listeners.input();
   assert.equal(list.children.length,1);
@@ -50,13 +47,16 @@ test('shared list filters assigned pending requests, clears filter, and searches
   filter.onclick();
   let menu=filterWrap.children.find(x=>x.id==='contractStatusMenu');
   const checks=menu.children.slice(1).map(label=>label.children[0]);
-  assert.equal(checks.length,5);assert.ok(checks.every(check=>check.checked));
+  assert.equal(checks.length,5);assert.ok(checks.some(check=>check.value==='pending'));assert.ok(checks.every(check=>check.checked));
   for(const check of checks){if(check.value!=='pending'){check.checked=false;check.onchange();}}
   assert.equal(list.children.length,0);
   assert.equal(body.children.filter(x=>x.className==='contract-empty').length,1);
   search.value='';search.listeners.input();
   assert.equal(list.children.length,2);
-  assert.equal(body.children.filter(x=>x.className==='contract-empty').length,0);
+  search.value='CTR-۰';search.listeners.input();
+  assert.equal(list.children.length,1);
+  assert.equal(list.children[0].dataset.approvalState,'pending');
+  search.value='';search.listeners.input();
   for(const check of checks){check.checked=true;check.onchange();}
   assert.equal(list.children.length,205);
   for(const check of checks){check.checked=false;check.onchange();}

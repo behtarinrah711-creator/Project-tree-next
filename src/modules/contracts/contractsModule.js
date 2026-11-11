@@ -4,7 +4,7 @@ import {renderContractFinanceReview} from './contractFinanceReviewView.js';
 import {renderContractSignedSection} from './contractSignedView.js';
 import { renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
 import { renderContractHistory } from './contractHistoryView.js';
-import { approvalLabels, contractApprovalState, contractApproverIds, canReviewContract, canCancelContractCompletion } from '../../domain/contractApproval.js';
+import { approvalLabels, contractApprovalState, contractApproverIds, canCancelContractCompletion } from '../../domain/contractApproval.js';
 import { isContractSigned } from '../../domain/contractHandoff.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
 import { fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
@@ -226,7 +226,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval}
       const path=contractProjectPath(p,c);
       const row=document.createElement('article'); row.className='contract-row';
       row.dataset.searchText=normalizeContractSearch(title+' '+meta+' '+path+' '+(created ? `${created.date} ${created.time}` : ''));
-      row.dataset.approvalState=contractApprovalState(c);row.dataset.reviewMine=String(canReviewContract(c,actor));
+      row.dataset.approvalState=contractApprovalState(c);
       const heading=renderContractCardHeading(p,c,approval?null:{
         onEdit:!writable?undefined:()=>{if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
         onExport:trigger=>openContractExport(p,finance?c.accountingPackage.contract:c,{trigger,frozen:finance}),
@@ -299,15 +299,15 @@ export const contractsModule={
     const head=document.createElement('div'); head.className='contract-list-head';
     const contracts=[];let cursor=0;
     do{const page=contractApi.listPage(id,{cursor,limit:200});contracts.push(...page.items);cursor=page.cursor;}while(cursor!=null);
-    const actor=currentExecutionActor(p);
-    const view=contractListViews.get(id)||{query:'',statuses:Object.keys(approvalLabels),mine:false};contractListViews.set(id,view);
+    const statusOptions=Object.entries(approvalLabels);
+    const view=contractListViews.get(id)||{query:'',statuses:statusOptions.map(([value])=>value)};contractListViews.set(id,view);
     head.innerHTML=`<span class="title">قراردادهای واقعی پیمانکاران</span><span class="mgmt-count">${new Intl.NumberFormat('fa-IR').format(contracts.length)}</span>`;body.append(head);
     const renderedRows=[];
     const empty=document.createElement('div');empty.className='contract-empty';empty.textContent='قراردادی با این جست‌وجو و وضعیت یافت نشد.';
     const applyFilters=()=>{
       const matching=renderedRows.filter(row=>
         row.dataset.searchText.includes(normalizeContractSearch(view.query)) &&
-        (view.statuses.includes(row.dataset.approvalState) && (!view.mine || row.dataset.reviewMine==='true')));
+        view.statuses.includes(row.dataset.approvalState));
       listWrap.replaceChildren(...matching);
       empty.remove();
       if(!matching.length && contracts.length)body.appendChild(empty);
@@ -317,7 +317,6 @@ export const contractsModule={
     const filterWrap=document.createElement('div');filterWrap.className='contract-filter-wrap';
     const filter=document.createElement('button');filter.type='button';filter.className='contract-status-filter';
     filter.setAttribute('aria-expanded','false');filter.setAttribute('aria-controls','contractStatusMenu');
-    const reset=document.createElement('button');reset.type='button';reset.className='contract-mine-reset';reset.textContent='منتظر تأیید من ×';
     let menu=null,dismiss=null;
     const closeFilter=(fromPop=false)=>{
       if(!menu)return;
@@ -326,27 +325,19 @@ export const contractsModule={
     };
     closeContractFilter=closeFilter;
     const filterLabel=()=>{
-      filter.textContent='وضعیت: '+(view.statuses.length===Object.keys(approvalLabels).length?'همه':view.statuses.length?new Intl.NumberFormat('fa-IR').format(view.statuses.length)+' انتخاب':'هیچ‌کدام');
-      reset.remove();if(view.mine)filterWrap.appendChild(reset);
+      filter.textContent='وضعیت: '+(view.statuses.length===statusOptions.length?'همه':view.statuses.length?new Intl.NumberFormat('fa-IR').format(view.statuses.length)+' انتخاب':'هیچ‌کدام');
     };
-    reset.onclick=()=>{view.mine=false;view.statuses=Object.keys(approvalLabels);closeFilter();filterLabel();applyFilters();};
-    const mine=canWriteProjectModule(id,'contracts') ? contracts.filter(c=>canReviewContract(c,actor)).length : 0;
-    if(mine){
-      const banner=document.createElement('button');banner.type='button';banner.className='contract-review-banner';banner.textContent=new Intl.NumberFormat('fa-IR').format(mine)+' قرارداد منتظر تأیید شما ‹';
-      banner.onclick=()=>{view.mine=true;view.statuses=['pending'];closeFilter();filterLabel();applyFilters();};body.appendChild(banner);
-    }
     filter.onclick=()=>{
       if(menu){closeFilter();return;}
       dismiss=document.createElement('button');dismiss.type='button';dismiss.className='contract-filter-dismiss';dismiss.setAttribute('aria-label','بستن فیلتر وضعیت');dismiss.onclick=()=>closeFilter();
       menu=document.createElement('div');menu.id='contractStatusMenu';menu.className='wbs-gantt-header-menu is-open contract-status-menu';
       menu.setAttribute('role','group');menu.setAttribute('aria-label','نمایش وضعیت قرارداد');
       const title=document.createElement('div');title.className='wbs-gantt-menu-title';title.textContent='نمایش وضعیت قرارداد';menu.appendChild(title);
-      Object.entries(approvalLabels).forEach(([value,text])=>{
+      statusOptions.forEach(([value,text])=>{
         const label=document.createElement('label');label.className='wbs-gantt-menu-row';
         const check=document.createElement('input');check.type='checkbox';check.value=value;check.checked=view.statuses.includes(value);
         const name=document.createElement('span');name.textContent=text;
         check.onchange=()=>{
-          view.mine=false;
           view.statuses=check.checked?[...new Set([...view.statuses,value])]:view.statuses.filter(x=>x!==value);
           filterLabel();applyFilters();
         };
@@ -358,7 +349,7 @@ export const contractsModule={
     };
     filterWrap.onkeydown=event=>{if(event.key==='Escape'){closeFilter();filter.focus?.();}};
     filterWrap.appendChild(filter);filterLabel();body.append(filterWrap,listWrap);
-    if(!contracts.length){const e=document.createElement('div');e.className='contract-empty';e.innerHTML='هنوز قرارداد واقعی ثبت نشده است.<br>از علامت + یک قرارداد ایجاد کنید.';body.appendChild(e);return;}
+    if(!contracts.length){const e=document.createElement('div');e.className='contract-empty';e.innerHTML='قراردادی برای نمایش در این فهرست وجود ندارد.<br>از علامت + یک قرارداد ایجاد کنید.';body.appendChild(e);return;}
     const appendContract=c=>renderedRows.push(renderContractCard(p,c,{onChanged:()=>this.render(id)}));
     contracts.forEach(appendContract);
     applyFilters();
