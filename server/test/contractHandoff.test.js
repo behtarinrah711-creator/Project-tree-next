@@ -122,6 +122,7 @@ test('an addendum requires inherited review, keeps its own signed file, and free
     accountingStatus:'accepted',accountingPackage:{contract:{id:'c'},signedFiles:[file]}});
   const parent=f.payload.contracts[0];
   Object.assign(parent,{contractNo:'CTR-1',amount:1000,contractApproverContactIds:['reviewer']});
+  parent.accountingPackage.contract={id:'c',contractNo:'CTR-1',amount:1000};
   f.payload.contacts=[{id:'reviewer',name:'مسئول تأیید',phones:['0912']}];
   const id='addendum-00000000-0000-4000-8000-000000000000';
   const path='/api/v1/projects/p/addenda/'+id+'/handoff';
@@ -224,7 +225,8 @@ test('finance can read a rejected addendum snapshot and reports can resend it af
   const signed={...file,recordId:id,uploadedBy:'reports'};
   const other={...signed,id:'replacement'};
   f.storage.metadata=async key=>key.endsWith('/replacement')?other:signed;
-  Object.assign(f.payload.contracts[0],{contractNo:'CTR-1',amount:1000});
+  Object.assign(f.payload.contracts[0],{contractNo:'CTR-1',amount:1000,signedAt:1,signedFiles:[file],sentToAccountingAt:2,
+    accountingStatus:'accepted',accountingPackage:{contract:{id:'c',contractNo:'CTR-1',amount:1000},signedFiles:[file]}});
   const draft={parentContractId:'c',type:'other',contractDate:'1405/08/01',note:'شرح اولیه',complete:true};
   let current;
   const act=async(action,options={})=>{
