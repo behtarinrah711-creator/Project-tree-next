@@ -110,10 +110,35 @@ test('completion enters pending approval, rejection returns Today with typed new
   await expect(list).toHaveAttribute('data-mode','pending');
   await openTaskDetails(page,card);
   await expect(sheet).toContainText('در انتظار تأیید');
-  await sheet.getByRole('button',{name:'رد',exact:true}).click();
-  await page.locator('[name="rejectionReason"]').fill('نیاز به اصلاح قالب‌بندی دارد');
+  await expect(sheet.getByRole('button',{name:'رد',exact:true})).toHaveCount(0);
+  await expect(sheet.getByRole('button',{name:'تأیید',exact:true})).toHaveCount(0);
+  await sheet.locator('.close-btn').click();
+
+  const notifications=page.locator('#notificationsPageBody');
+  const openExecutionApprovals=async()=>{
+    await page.locator('#notificationsTrigger').click();
+    await notifications.getByRole('button',{name:/در انتظار تأیید من/}).click();
+    await notifications.getByRole('button',{name:/اجرا/}).click();
+    return notifications.locator('.today-task-card[data-entity-id="today-task"]');
+  };
+  const returnToExecution=async()=>{
+    for(const section of ['approvals-execution','approvals','']){
+      if(section)await expect(page).toHaveURL(new RegExp('section='+section+'$'));
+      await page.goBack();
+    }
+    await expect(list).toBeVisible();
+  };
+  let approvalCard=await openExecutionApprovals();
+  await approvalCard.getByRole('button',{name:'رد',exact:true}).click();
+  await page.getByRole('textbox',{name:'علت رد'}).fill('نیاز به اصلاح قالب‌بندی دارد');
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
-  await expect(list).toHaveAttribute('data-mode','today');
+  await expect(sheet).toHaveCount(0);
+  await expect(approvalCard).toHaveCount(0);
+  const status=notifications.getByRole('combobox',{name:'فیلتر وضعیت تأیید'});
+  await status.selectOption('rejected');
+  await expect(approvalCard).toContainText('نیاز به اصلاح قالب‌بندی دارد');
+  await returnToExecution();
+  await list.locator('.today-mode-tab[data-mode="today"]').click();
   await openTaskDetails(page,card);
   await expect(sheet.locator('.today-comment').first()).toContainText('نیاز به اصلاح');
   await sheet.locator('.today-progress-circle').click();
@@ -121,9 +146,14 @@ test('completion enters pending approval, rejection returns Today with typed new
   for(const digit of '100') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
   await page.locator('#numpadDoneBtn').click();
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
-  await openTaskDetails(page,card);
-  await sheet.getByRole('button',{name:'تأیید',exact:true}).click();
-  await expect(sheet).toHaveCount(0);
+  await expect(list).toHaveAttribute('data-mode','pending');
+  approvalCard=await openExecutionApprovals();
+  await approvalCard.getByRole('button',{name:'تأیید',exact:true}).click();
+  await page.locator('#confirmOkBtn').click();
+  await expect(approvalCard).toHaveCount(0);
+  await status.selectOption('approved');
+  await expect(approvalCard).toContainText('تأییدشده توسط شما');
+  await returnToExecution();
   await expect(card).toHaveCount(0);
   await expect.poll(()=>page.evaluate(()=>window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0].workTasks[0].completionState)).toBe('approved');
 });
