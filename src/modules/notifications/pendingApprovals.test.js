@@ -10,10 +10,12 @@ const record={status:'final',approvalStatus:'pending',approvalContactIds:['me','
 const project={
   id:'p',contacts:[{id:'me',phones:['0912']}],
   contracts:[{...record,id:'contract'},{...record,id:'already',approvedContactIds:['me']}],
-  contractAddenda:[{...record,id:'addendum',parentContractId:'contract'}],
+  contractAddenda:[{...record,id:'rejected',approvalStatus:'unapproved',reviewedBy:{contactId:'me'},approvalHistory:[{action:'reject'}]},{...record,id:'addendum',parentContractId:'contract'}],
   tasks:[{id:'work',kind:'work',workTasks:[
     {id:'buy',type:'خرید',approvalContactId:'me',completionState:'pending_approval'},
     {id:'exec',type:'اجرا',approvalContactId:'me',completionState:'pending_approval'},
+    {id:'rejected-exec',type:'اجرا',approvalContactId:'me',completionState:'incomplete',executionHistory:[{type:'approval_rejected',actor:{contactId:'me'}}]},
+    {id:'approved-exec',type:'اجرا',approvalContactId:'me',completionState:'approved',approvedBy:{contactId:'me'}},
     {id:'other',type:'اجرا',approvalContactId:'other',completionState:'pending_approval'},
   ]}],
 };
@@ -26,6 +28,10 @@ test('the inbox counts only the current reviewer’s pending items in each separ
   assert.deepEqual(groups.map(group=>[group.id,group.writable,group.items.map(item=>item.id)]),[
     ['addenda',false,['contract','addendum']],['shopping',true,['buy']],['execution',true,['exec']],
   ]);
+  assert.deepEqual(groups[0].approved.map(item=>item.id),['already']);
+  assert.deepEqual(groups[0].rejected.map(item=>item.id),['rejected']);
+  assert.deepEqual(groups[2].approved.map(item=>item.id),['approved-exec']);
+  assert.deepEqual(groups[2].rejected.map(item=>item.id),['rejected-exec']);
   const restricted=pendingApprovals(project,windowFor({contracts:'none','execution:today':'full'}));
   assert.deepEqual(restricted.groups.map(group=>group.items.length),[0,0,1]);
   assert.equal(pendingApprovals(project,windowFor({})).assigned,false);
@@ -57,7 +63,7 @@ test('the approval inbox renders the original cards with only review controls',(
     appendChild(child){this.append(child);}
     replaceChildren(...children){this.children=children;}
     setAttribute(){}
-    addEventListener(){}
+    addEventListener(type,fn){this[type]=fn;}
     querySelector(selector){
       if(selector==='.today-task-primary' && this.innerHTML?.includes('today-task-primary')){
         const primary=new Element('div');
@@ -78,13 +84,13 @@ test('the approval inbox renders the original cards with only review controls',(
   const body=documentRef.createElement('div');
   try{
     renderPendingApprovals(body,'p','approvals-addenda',()=>{});
-    const contracts=body.children[1].children;
+    const contracts=body.children[2].children;
     assert.equal(contracts.length,2);
     for(const card of contracts){
       assert.equal(card.className,'contract-row');
       assert.ok(card.nodes().some(node=>node.className==='contract-card-heading'));
       assert.ok(card.nodes().some(node=>node.className==='contract-progress'));
-      assert.deepEqual(card.nodes().filter(node=>node.tag==='button').map(node=>node.textContent),['مشاهده سند','تأیید']);
+      assert.deepEqual(card.nodes().filter(node=>node.tag==='button').map(node=>node.textContent),['مشاهده سند','تأیید','رد']);
     }
     assert.match(contracts[1].nodes().find(node=>node.className==='contract-title').textContent,/^الحاقیه /);
     for(const [group,css,label] of [
@@ -92,15 +98,22 @@ test('the approval inbox renders the original cards with only review controls',(
       ['shopping','shopping-item-card','تأیید خرید'],
     ]){
       renderPendingApprovals(body,'p','approvals-'+group,()=>{});
-      const card=body.children[1].children[0];
+      const card=body.children[2].children[0];
       assert.ok(card.className.split(' ').includes(css));
       const buttons=card.nodes().filter(node=>node.tag==='button');
-      assert.deepEqual(buttons.map(node=>node.textContent),[undefined,label]);
+      assert.deepEqual(buttons.map(node=>node.textContent),[undefined,label,'رد']);
       assert.equal(buttons[0].disabled,true);
     }
+    renderPendingApprovals(body,'p','approvals-addenda',()=>{});
+    const [search,status]=body.children[1].children;
+    status.value='approved';status.change();
+    assert.equal(body.children[2].children.length,1);
+    assert.ok(body.children[2].nodes().some(node=>node.textContent==='تأییدشده توسط شما'));
+    search.value='نام ناموجود';search.input();
+    assert.equal(body.children[2].children[0].className,'mgmt-empty');
     window.KarhaSaosaWorkspaceAccess.p.permissions.modules.contracts='view';
     renderPendingApprovals(body,'p','approvals-addenda',()=>{});
-    assert.deepEqual(body.children[1].nodes().filter(node=>node.tag==='button').map(node=>node.textContent),
+    assert.deepEqual(body.children[2].nodes().filter(node=>node.tag==='button').map(node=>node.textContent),
       ['مشاهده سند','مشاهده سند']);
   }finally{
     [globalThis.window,globalThis.document,globalThis.Node,projectRepository.find]=old;

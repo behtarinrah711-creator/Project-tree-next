@@ -122,7 +122,12 @@ test('withdrawal requires an explanation and records trimmed reason, actor and t
  assert.deepEqual(next.approvalHistory.at(-1),{action:'revoke',at:7,actor:manager,approverId:undefined,reason:'بازبینی مبلغ لازم است'});
 });
 
-test('the removed reject action is rejected by the domain, including pending reviews',()=>{
+test('only the assigned reviewer can reject a pending review with a reason',()=>{
  const c=transitionContractApproval({status:'final'},'submit',author,{approverId:'reviewer'}).contract;
- assert.equal(transitionContractApproval(c,'reject',manager,{reason:'اصلاح لازم است'}).ok,false);
+ assert.equal(transitionContractApproval(c,'reject',author,{reason:'اصلاح لازم است'}).ok,false);
+ assert.equal(transitionContractApproval(c,'reject',manager,{reason:'کم'}).ok,false);
+ const result=transitionContractApproval(c,'reject',manager,{reason:'اصلاح لازم است'});
+ assert.equal(result.ok,true);
+ assert.equal(result.contract.approvalStatus,'unapproved');
+ assert.equal(result.contract.approvalHistory.at(-1).reason,'اصلاح لازم است');
 });
