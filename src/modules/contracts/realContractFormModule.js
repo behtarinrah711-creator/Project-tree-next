@@ -445,6 +445,12 @@ function renderRealContractItem(item, list, index, isChild = false) {
   return group;
 }
 
+const manualCompletionFields = draft => [
+  ['contractDate','تاریخ تنظیم قرارداد'], ['employerId','کارفرما'],
+  ['startDate','تاریخ شروع'], ['endDate','تاریخ پایان'],
+  ...(Number(draft.retentionPercent)>0 ? [['retentionDuration','مدت نگهداری حسن انجام کار']] : []),
+].filter(([key])=>!String(draft[key]??'').trim());
+
 function renderContractForm() {
   disposeDocumentPreview?.();
   const body = document.getElementById('contractFormBody');
@@ -463,6 +469,9 @@ function renderContractForm() {
   const activity = helper('findActivityTemplate', state.activityId, project);
   const activityName = activity?.name || activity?.title || '';
   const form = ftCreateRoot(body);
+  const highlightMissing=Boolean(editingId && (state.isDraft || state.status==='draft'));
+  const missingFields=new Set(highlightMissing ? manualCompletionFields(state).map(([key])=>key) : []);
+  const markMissing=(row,missing)=>{if(highlightMissing && missing)row.classList.add('contract-field-incomplete');};
 
   const numberRow=ftTextRow(form, 'شماره قرارداد', state.contractNo || '', null, {
     dirty: false,
@@ -474,8 +483,9 @@ function renderContractForm() {
   numberInput.id='contractNumberDisplay';
   numberInput.dir='ltr';
 
-  if(state.workTaskId) ftTextRow(form,'آیتم پروژه',state.projectItemPath || '',()=>{}, {inline:true,readonly:true,placeholder:'توسط سیستم انتخاب شده'});
-  else ftSelectRow(form, 'آیتم پروژه', state.projectItemPath || '', () => openContractPicker('projectItem'), { placeholder: 'انتخاب' });
+  const projectItemRow=state.workTaskId ? ftTextRow(form,'آیتم پروژه',state.projectItemPath || '',()=>{}, {inline:true,readonly:true,placeholder:'توسط سیستم انتخاب شده'})
+    : ftSelectRow(form, 'آیتم پروژه', state.projectItemPath || '', () => openContractPicker('projectItem'), { placeholder: 'انتخاب' });
+  markMissing(projectItemRow,!state.projectItemId);
 
   const projectPlace = realContractDomain.projectContractPlace(project);
   if (!state.contractPlace) state.contractPlace = projectPlace;
@@ -486,14 +496,14 @@ function renderContractForm() {
     contractPickers.openContractTemplatePicker(project.id,state,pickerChanged);
   }, { placeholder: 'انتخاب' });
 
-  ftDateRow(form, 'تاریخ تنظیم قرارداد', state.contractDate || helper('todayJalaliStr'), value => { state.contractDate = value; }, { maxToday: true });
+  markMissing(ftDateRow(form, 'تاریخ تنظیم قرارداد', state.contractDate || helper('todayJalaliStr'), value => { state.contractDate = value; }, { maxToday: true }),missingFields.has('contractDate'));
 
-  ftSelectRow(form, 'کارفرما', state.employerId ? contactDisplayName(findContact(state.employerId)) : '', () => openContractPicker('employer'), { placeholder: 'انتخاب' });
-  ftSelectRow(form, 'پیمانکار', state.contractorId ? contactDisplayName(findContact(state.contractorId)) : '', () => openContractPicker('contractor'), { placeholder: 'انتخاب' });
-  ftSelectRow(form, 'فعالیت', activityName, () => openContractPicker('activity'), { placeholder: 'انتخاب' });
+  markMissing(ftSelectRow(form, 'کارفرما', state.employerId ? contactDisplayName(findContact(state.employerId)) : '', () => openContractPicker('employer'), { placeholder: 'انتخاب' }),missingFields.has('employerId'));
+  markMissing(ftSelectRow(form, 'پیمانکار', state.contractorId ? contactDisplayName(findContact(state.contractorId)) : '', () => openContractPicker('contractor'), { placeholder: 'انتخاب' }),!state.contractorId);
+  markMissing(ftSelectRow(form, 'فعالیت', activityName, () => openContractPicker('activity'), { placeholder: 'انتخاب' }),!state.activityId);
 
-  ftDateRow(form, 'تاریخ شروع قرارداد', state.startDate || '', value => { state.startDate = value; });
-  ftDateRow(form, 'تاریخ پایان قرارداد', state.endDate || '', value => { state.endDate = value; });
+  markMissing(ftDateRow(form, 'تاریخ شروع قرارداد', state.startDate || '', value => { state.startDate = value; }),missingFields.has('startDate'));
+  markMissing(ftDateRow(form, 'تاریخ پایان قرارداد', state.endDate || '', value => { state.endDate = value; }),missingFields.has('endDate'));
   const pickFixed=(title,listTitle,options,current,onPick)=>contractPickers.openStaticChoicePicker(
     title,listTitle,options,current,onPick,null,{preserveOrder:true});
   const renderRows=(root,rows,options={})=>renderQuantityRows(root,rows,{
@@ -503,7 +513,7 @@ function renderContractForm() {
   });
   const operationRows=ensureOperationRows(state);
   syncContractAmount(state);
-  renderRows(form,operationRows,{operations:true,mixed:true});
+  renderRows(form,operationRows,{operations:true,mixed:true,highlightMissing});
   if(state.remeasurement)ftAmountSummary(form,'جمع ردیف‌های با مبلغ مشخص',state.knownAmount);
   if(state.remeasurement)ftTextRow(form,'مبلغ کل قرارداد','پس از متره مشخص می‌شود',null,{readonly:true});
   else ftAmountSummary(form,'مبلغ کل قرارداد',state.amount);
@@ -521,13 +531,15 @@ function renderContractForm() {
 
   const durationOptions = ['یک هفته', 'دو هفته', 'سه هفته', 'چهار هفته', 'یک ماه', 'یک ماه و نیم', 'دو ماه', 'دو ماه و نیم', 'سه ماه', 'چهار ماه', 'پنج ماه', 'شش ماه']
     .map(value => ({ value, label: value }));
-  ftSelectRow(form, 'مدت نگهداری حسن انجام کار', state.retentionDuration || '', () => {
+  const durationRow=ftSelectRow(form, 'مدت نگهداری حسن انجام کار', state.retentionDuration || '', () => {
     contractPickers.openStaticChoicePicker('مدت نگهداری', 'مدت‌ها', durationOptions, state.retentionDuration, value => {
       state.retentionDuration = value;
       dirty = true;
       renderContractForm();
     });
   }, { placeholder: 'انتخاب' });
+
+  markMissing(durationRow,missingFields.has('retentionDuration'));
 
   ftSelectRow(form, 'مبنای شروع مدت نگهداری حسن انجام کار', state.retentionBasis || '', () => {
     openRetentionBasisPicker(activeProjectId, state.retentionBasis, value => {
@@ -684,7 +696,7 @@ export const realContractFormModule = {
 
   declareComplete(){
     if(!state)return false;
-    const fields=[['contractDate','تاریخ تنظیم قرارداد'],['employerId','کارفرما'],['startDate','تاریخ شروع'],['endDate','تاریخ پایان'],...(Number(state.retentionPercent)>0?[['retentionDuration','مدت نگهداری حسن انجام کار']]:[])].filter(([key])=>!String(state[key]??'').trim());
+    const fields=manualCompletionFields(state);
     if(!state.projectItemId || !state.contractorId || !state.activityId){helper('showToast','آیتم پروژه، پیمانکار و فعالیت را انتخاب کنید');return false;}
     if(!fields.length)return this.save(activeProjectId,false,true,[]);
     const feedback=document.createElement('p');
