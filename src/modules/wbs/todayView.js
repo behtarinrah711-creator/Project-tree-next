@@ -201,8 +201,9 @@ export function renderTodayCard(documentRef,project,item,today,onChanged,approva
   const mayApprove=writable && isExecutionApprover(entity,currentActor);
   if(pending){
     if(mayApprove){
+      const approve=linkButton(documentRef, 'wbs-costline-manual', 'تأیید'); approve.addEventListener('click',()=>{todayApi.approve(activeProjectId,refOf(item),actor());onChanged?.();});
       const reject=linkButton(documentRef, 'wbs-costline-manual is-danger', 'رد'); reject.addEventListener('click',()=>afterClose(()=>openReject(item,onChanged)));
-      actions.append(reject);
+      actions.append(approve,reject);
     }
   } else {
     const startButton=card.querySelector('.today-start'); if(startButton) startButton.disabled=!assigned;
