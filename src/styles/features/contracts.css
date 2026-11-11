@@ -1999,3 +1999,6 @@ textarea.contract-project-item-input{
 .wbs-sheet-centered-header .wbs-sheet-save:disabled{opacity:.45;cursor:default;}
 
 #contractFormBody .contract-field-incomplete{background:#fee2e2;}
+
+#contractFormBody.contract-highlight-empty .ft-row:not([aria-disabled="true"]):has(> .ft-placeholder, > .ft-input:not([readonly]):placeholder-shown){background:#fee2e2;}
+#contractFormBody .ft-row[aria-disabled="true"]{background:#f1f2f4;opacity:.65;cursor:default;}
