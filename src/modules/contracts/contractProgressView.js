@@ -9,7 +9,7 @@ export function renderContractProgressCircle(documentRef,contract,project,onClic
   const value=count.format(completed)+' از '+count.format(steps.length);
   const next=steps.find(step=>!step.done);
   const circle=progressCircle(documentRef,{progress:completed/steps.length*100},{
-    onClick,summary:{value:next?value:'✓',label:'پیشرفت '+(contract.parentContractId?'الحاقیه':'قرارداد')+': '+value+' مرحله'+(next?'؛ مرحله بعد: '+next.label:'؛ تکمیل شده')},
+    onClick,summary:{value:next?value:'✓',label:'پیشرفت '+(contract.statementType?'صورت‌وضعیت':contract.parentContractId?'الحاقیه':'قرارداد')+': '+value+' مرحله'+(next?'؛ مرحله بعد: '+next.label:'؛ تکمیل شده')},
   });
   if(!next)circle.className+=' contract-progress-circle--complete';
   return circle;
@@ -18,7 +18,7 @@ export function renderContractProgressCircle(documentRef,contract,project,onClic
 export function renderContractProgress(documentRef,contract,project){
   const steps=contractProgressSteps(contract,project);
   const list=documentRef.createElement('ol');list.className='contract-progress';list.dir='rtl';
-  list.setAttribute('aria-label',contract.parentContractId?'مراحل الحاقیه':'مراحل قرارداد');
+  list.setAttribute('aria-label',contract.statementType?'مراحل صورت‌وضعیت':contract.parentContractId?'مراحل الحاقیه':'مراحل قرارداد');
   const current=steps.findIndex(step=>!step.done);
   steps.forEach((step,index)=>{
     const item=documentRef.createElement('li');

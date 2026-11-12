@@ -61,17 +61,18 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       const permissions=row.permissions||{};
       const financeModule=Object.hasOwn(permissions.modules||permissions,'accounting-contracts')?'accounting-contracts':'accounting';
       const deleteAddendum=addendum && body.action==='delete_addendum';
+      const deleteStatement=statement && body.action==='delete_statement';
       const statementModule=Object.hasOwn(permissions.modules||permissions,'accounting-statements')?'accounting-statements':'accounting';
       const allowed=canAccessFiles(row,accountId,true,financeAction?(statement?statementModule:financeModule):'contracts');
       if(!allowed){sendJson(response,403,{message:'اجازه تغییر قرارداد را ندارید'});return true;}
       const owner=String(row.owner_account_id)===String(accountId);
-      if(deleteAddendum && !canDeleteContractAddenda({role:owner?'owner':'member',permissions})){
-        sendJson(response,403,{message:'برای حذف الحاقیه دسترسی کامل قراردادها لازم است'});return true;
+      if((deleteAddendum || deleteStatement) && !canDeleteContractAddenda({role:owner?'owner':'member',permissions})){
+        sendJson(response,403,{message:'برای حذف سند دسترسی کامل قراردادها لازم است'});return true;
       }
       const contract=(row.payload[collection]||[]).find(c=>String(c.id)===contractId && (addendum || !c.trashed));
       const saveDraft=(addendum && body.action==='save_addendum') || (statement && body.action==='save_statement');
       const statementParent=statement && (row.payload.contracts||[]).find(record=>!record.trashed && String(record.id)===String(contract?.contractId ?? body.contractId));
-      if(statement && (!statementParent || (contract && !contract.statementType) || !['save_statement','approve_statement','save_signed','send_finance','approve_finance','reject_finance','withdraw_finance','record_payment'].includes(body.action))){sendJson(response,400,{message:'قرارداد یا عملیات صورت‌وضعیت نامعتبر است'});return true;}
+      if(statement && (!statementParent || (contract && !contract.statementType) || !['save_statement','delete_statement','approve_statement','save_signed','send_finance','approve_finance','reject_finance','withdraw_finance','record_payment'].includes(body.action))){sendJson(response,400,{message:'قرارداد یا عملیات صورت‌وضعیت نامعتبر است'});return true;}
       if(!statement && body.action==='record_payment'){sendJson(response,400,{message:'عملیات نامعتبر است'});return true;}
       if(contract?.trashed || (!contract && !saveDraft)){sendJson(response,404,{message:'قرارداد پیدا نشد'});return true;}
       if(Number(body.version)!==Number(contract?.handoffVersion||0) || Number(body.updatedAt)!==Number(contract?.updatedAt||0)){
@@ -92,7 +93,13 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       const activity=(row.payload.activityTemplates||[]).find(a=>String(a.id)===String(contract?.activityId));
       let transition;
       if(statement && body.action==='withdraw_finance' && contract.accountingStatus!=='sent'){sendJson(response,409,{message:'صورت‌وضعیت تأییدشده قابل پس گرفتن نیست'});return true;}
-      if(deleteAddendum){
+      if(deleteStatement){
+        if(contract.signedAt || ['sent','accepted'].includes(contract.accountingStatus)){
+          sendJson(response,409,{message:'صورت‌وضعیت در وضعیت فعلی قابل حذف نیست'});return true;
+        }
+        const at=Date.now();
+        transition={ok:true,contract:{...contract,trashed:true,deletedAt:at,deletedBy:actor.id,updatedAt:at}};
+      }else if(deleteAddendum){
         if(!canDeleteAddendumRecord(contract)){
           sendJson(response,409,{message:'این الحاقیه در وضعیت فعلی قابل حذف نیست'});return true;
         }
