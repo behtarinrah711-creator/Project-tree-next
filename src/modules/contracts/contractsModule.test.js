@@ -68,7 +68,7 @@ test('template search removes unmatched rows, normalizes Persian letters and res
 function readStatusSheet(render,make){
   const root=make();root.classList={add(){}};
   const card=render(options=>options.body(root));
-  card.children[0].children.find(node=>node.className==='today-progress-circle').click({stopPropagation(){}});
+  card.children[0].children.find(node=>node.className.split(' ').includes('today-progress-circle')).click({stopPropagation(){}});
   return root.children[0];
 }
 

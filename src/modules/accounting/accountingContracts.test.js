@@ -20,7 +20,7 @@ test('finance contracts use the report card header with only financial decision 
   const statusSheet=(record,finance=false)=>{
     const root=make('div');root.classList={add(){}};
     const card=renderContractCard(p,record,{finance,openStatusSheet:options=>options.body(root)});
-    card.children[0].children.find(node=>node.className==='today-progress-circle').click({stopPropagation(){}});
+    card.children[0].children.find(node=>node.className.split(' ').includes('today-progress-circle')).click({stopPropagation(){}});
     return root;
   };
   try{
@@ -32,7 +32,7 @@ test('finance contracts use the report card header with only financial decision 
     const [main,progress,details,menu]=heading.children;
     assert.equal(main.className,'contract-main');
     assert.deepEqual(main.children.map(n=>n.textContent),['قرارداد پیمانکاری جواد قریشی','CTR-1']);
-    assert.equal(progress.className,'today-progress-circle');
+    assert.ok(progress.className.split(' ').includes('today-progress-circle'));
     assert.equal(details.className,'contract-heading-details');
     assert.equal(details.children[0].textContent,'سوله موجود ← اجرای ستون‌ها ← بستن میلگرد ستون');
     const {time,date}=contractCreatedParts(c.createdAt);
