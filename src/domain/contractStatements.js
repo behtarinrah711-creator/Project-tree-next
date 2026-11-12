@@ -27,3 +27,22 @@ export function statementAmounts(totals,contract,gross,type){
   const retentionAmount=target-totals.retained-(totals.released||0);
   return {stageAmount:gross,cumulativeAmount:nextGross,retentionAmount,netAmount:gross-retentionAmount};
 }
+
+
+export function finalStatementSummary(project,contract){
+  const totals=contractStatementTotals(project,contract);
+  const interim=statementsFor(project,contract.id).filter(record=>
+    (!record.statementType || record.statementType==='interim') && approvedStatement(record));
+  const gross=interim.reduce((sum,record)=>sum+amount(record.approvedAmount ?? record.stageAmount),0);
+  const retention=interim.reduce((sum,record)=>sum+amount(record.retentionAmount),0);
+  const net=gross-retention;
+  const operations=interim.flatMap(record=>{
+    const rows=record.operations?.length?record.operations:[
+      {description:'کارکرد ثبت‌شده',pricingMode:'agreed',agreedPrice:amount(record.approvedAmount ?? record.stageAmount)},
+    ];
+    return rows.map(row=>({...row,sourceStatementId:record.id,sourceSequence:record.sequence,sourceDate:record.date}));
+  });
+  const target=totals.total===null?null:totals.total-totals.estimatedRetention;
+  const ready=interim.length>0 && totals.total!==null && gross===totals.total && net===target;
+  return {operations,gross,retention,net,target,ready};
+}
