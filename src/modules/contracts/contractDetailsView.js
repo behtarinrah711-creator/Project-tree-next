@@ -1,8 +1,8 @@
 import {projectRepository} from '../../data/projectRepository.js';
-import {renderContractAddendaRow} from './contractAddendaView.js';
+import {renderContractDocuments} from './contractDocumentsView.js';
 import {openContractPreview} from './contractPreviewView.js';
 import {renderContractSignedSection} from './contractSignedView.js';
-import {renderContractFinancialSummary,renderContractStatementsRow} from './contractStatementsView.js';
+import {renderContractFinancialSummary} from './contractStatementsView.js';
 
 export function openContractDetails(project,contract,trigger){
   const page=document.createElement('section');
@@ -20,7 +20,7 @@ export function openContractDetails(project,contract,trigger){
   const spacer=document.createElement('span');spacer.className='inner-section-spacer';
   header.append(back,heading,spacer);
   const body=document.createElement('div');body.className='page-body contract-details-body';
-  const paint=()=>{
+  const paint=(documents=null)=>{
     const source=projectRepository.find(project.id)||project;
     const current=(source.contracts||[]).find(item=>!item.trashed && String(item.id)===String(contract.id))||contract;
     const title=document.createElement('h3');title.textContent=current.title||'قرارداد اصلی';
@@ -33,9 +33,8 @@ export function openContractDetails(project,contract,trigger){
     const signed=renderContractSignedSection(source,current,{onChanged:paint});
     if(signed)body.append(signed);
     body.append(summary,renderContractFinancialSummary(source,current));
-    const addenda=renderContractAddendaRow(source,current,{approvedOnly:true,onChanged:paint});
-    if(addenda)body.append(addenda);
-    body.append(renderContractStatementsRow(source,current,{approvedOnly:true,onChanged:paint}));
+    const section=documents||renderContractDocuments(source,current,{onChanged:()=>paint(section)});
+    body.append(section);
   };
   page.append(header,body);
   document.body.append(page);
