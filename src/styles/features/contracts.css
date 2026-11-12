@@ -1975,7 +1975,9 @@ textarea.contract-project-item-input{
 #contractsPageBody .contract-addenda-row-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:4px 0;}
 #contractsPageBody .contract-addenda-toggle::after{content:"▾";display:inline-block;margin-inline-start:5px;}
 #contractsPageBody .contract-addenda-toggle[aria-expanded="true"]::after{transform:rotate(180deg);}
-#contractsPageBody .contract-addenda-row-toolbar > .contract-addendum-create{margin-inline-start:auto;padding:7px 12px;border-radius:8px;background:#1565c0;color:#fff;white-space:nowrap;}
+#contractsPageBody .contract-addenda-row-toolbar > :is(.contract-addenda-toggle,.contract-addendum-create){font-size:calc(1em - 2px);}
+#contractsPageBody .contract-addenda-row-toolbar > .contract-addendum-create{margin-inline-start:auto;white-space:nowrap;}
+#contractsPageBody .contract-addendum-create::before{content:"+";margin-inline-end:5px;}
 
 
 .contract-addendum-toolbar{display:flex;gap:4px;align-items:stretch;padding:12px 0;border-top:1px solid var(--divider);}
