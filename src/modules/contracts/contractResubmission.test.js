@@ -46,6 +46,8 @@ test('contract list removes the return action, shows a red reason and leaves res
   c=transitionContractApproval(c,'approve',{id:'r',contactId:'reviewer'}).contract;
   c=transitionContractApproval(c,'revoke',{id:'r',contactId:'reviewer'},{reason:'مبلغ باید اصلاح شود'}).contract;
   let nodes=render();
+  assert.equal(nodes.filter(n=>n.textContent==='اسناد (۰)').length,1);
+  assert.ok(!nodes.some(n=>['الحاقیه‌ها (۰)','صورت‌وضعیت‌ها (۰)'].includes(n.textContent)));
   assert.ok(!nodes.some(n=>['ارسال برای تأیید','ارسال مجدد برای تأیید'].includes(n.textContent)));
   assert.ok(!nodes.some(n=>n.className==='contract-rejection-reason'));
   c={...c,title:'قرارداد اصلاح‌شده'};nodes=render();
