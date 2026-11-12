@@ -80,11 +80,12 @@ test('the approval inbox renders the original cards with only review controls',(
     renderPendingApprovals(body,'p','approvals-addenda',()=>{});
     const contracts=body.children[1].children;
     assert.equal(contracts.length,2);
-    for(const card of contracts){
+    for(const [index,card] of contracts.entries()){
       assert.equal(card.className,'contract-row');
       assert.ok(card.nodes().some(node=>node.className==='contract-card-heading'));
-      assert.ok(card.nodes().some(node=>node.className==='contract-progress'));
-      assert.deepEqual(card.nodes().filter(node=>node.tag==='button').map(node=>node.textContent),['مشاهده سند','تأیید']);
+      assert.equal(card.nodes().some(node=>node.className==='contract-progress'),index===1);
+      assert.equal(card.nodes().some(node=>node.className==='today-progress-circle'),index===0);
+      assert.deepEqual(card.nodes().filter(node=>node.tag==='button').map(node=>node.textContent),(index===0?[undefined]:['مشاهده سند','تأیید']));
     }
     assert.match(contracts[1].nodes().find(node=>node.className==='contract-title').textContent,/^الحاقیه /);
     for(const [group,css,label] of [
@@ -101,7 +102,7 @@ test('the approval inbox renders the original cards with only review controls',(
     window.KarhaSaosaWorkspaceAccess.p.permissions.modules.contracts='view';
     renderPendingApprovals(body,'p','approvals-addenda',()=>{});
     assert.deepEqual(body.children[1].nodes().filter(node=>node.tag==='button').map(node=>node.textContent),
-      ['مشاهده سند','مشاهده سند']);
+      [undefined,'مشاهده سند']);
   }finally{
     [globalThis.window,globalThis.document,globalThis.Node,projectRepository.find]=old;
   }

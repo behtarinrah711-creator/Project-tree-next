@@ -240,10 +240,10 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
           }
           onChanged();
         },'حذف'),
-      },{onPreview:approval?preview:openPreview,progress:approval?null:renderContractProgressCircle(document,c,p,openStatus)});
+      },{onPreview:approval?preview:openPreview,progress:renderContractProgressCircle(document,c,p,openStatus)});
       row.appendChild(heading);
       if(approval){
-        row.append(renderContractReviewRow(c,{...approval,preview}),renderContractProgress(document,c,p));
+        statusSheetBody=root=>root.append(renderContractReviewRow(c,{...approval,preview}),renderContractProgress(document,c,p));
         return row;
       }
       if(!finance){
