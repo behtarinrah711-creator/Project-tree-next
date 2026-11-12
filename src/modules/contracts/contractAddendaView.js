@@ -221,12 +221,12 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
     try{await saveContractHandoff(project.id,addendum,action,{reason});onChanged();return true;}
     catch(error){toast(error.message);return false;}finally{busy=false;}
   };
-  const openProgress=event=>{
+   const openProgress=event=>{
     event.stopPropagation();
-    openWbsSheet({title:'وضعیت الحاقیه',showSave:false,historyKey:'addendum-status:'+addendum.id,
+    openWbsSheet({title:'وضعیت الحاقیه',showSave:false,reuseHistoryOnReplace:true,historyKey:'addendum-status:'+addendum.id,
       body(root){
         root.classList.add('contract-status-sheet');
-        root.append(renderContractProgress(document,addendum,project));
+        renderDetails(root);
       },
     });
   };
@@ -250,69 +250,72 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
     row.append(renderContractReviewRow(addendum,{...approval,preview}),renderContractProgress(document,addendum,project));
     return row;
   }
-  const toolbar=renderContractStatusRow(addendum,{showBadge:!finance || ['accepted','rejected'].includes(addendum.accountingStatus)});
-  const actions=finance?toolbar:renderContractStatusRow(addendum,{showBadge:false});
-  if(!finance)toolbar.className='contract-addendum-toolbar';
-  if(finance){
-    actions.className+=' contract-workflow-row--signed-addendum';
-    renderContractSignedSection(project,addendum,{finance,inlineActions:actions});
-  }
-  if(parent)toolbar.append(button('مشاهده قرارداد اصلی',trigger=>openContractPreview(project,parent,{trigger,frozen:finance || parent===frozenParent})));
-  const returnForEdit=(label,action)=>openWbsSheet({title:label,historyKey:'addendum-return:'+addendum.id,
-    body(root){const reason=document.createElement('textarea');reason.name='reason';reason.className='wbs-input today-textarea';root.append(fieldRow('علت برگشت',reason));},
-    onSave(root){
-      const sheet=root.closest('.overlay');
-      review(action,root.querySelector('[name="reason"]').value).then(ok=>{if(ok&&sheet?.isConnected)closeWbsSheet();});
-      return false;
-    },
-  });
-  const signed=finance?null:renderContractSignedSection(project,addendum,{onChanged,attachmentActions:toolbar});
-  if(!finance){
-    if(writable(project) && canRevokeContractApproval(addendum,actor))actions.append(button('لغو تأیید من',()=>returnForEdit('لغو تأیید الحاقیه','revoke_addendum')));
-    if(writable(project) && canCancelContractCompletion(addendum))toolbar.append(button('لغو اعلام تکمیل',()=>returnForEdit('لغو تکمیل الحاقیه','cancel_completion'),'contract-review-action danger'));
-    if(writable(project) && addendum.approvalStatus==='pending' && addendum.submittedBy?.id===actor.id){
-      toolbar.append(button('× پس گرفتن از مسئول تأیید',()=>openContractReasonSheet({
-        title:'پس گرفتن الحاقیه از مسئول تأیید',
-        historyKey:'withdraw-addendum-review:'+addendum.id,
-        fieldLabel:'دلیل پس گرفتن از مسئول تأیید (الزامی)',
-        minLength:REJECTION_MIN_LENGTH,
-        submit:reason=>review('withdraw_submission',reason),
-      }),'contract-review-action danger'));
+  function renderDetails(root){
+    const toolbar=renderContractStatusRow(addendum,{showBadge:!finance || ['accepted','rejected'].includes(addendum.accountingStatus)});
+    const actions=finance?toolbar:renderContractStatusRow(addendum,{showBadge:false});
+    if(!finance && !nested)toolbar.className='contract-addendum-toolbar';
+    if(finance){
+      actions.className+=' contract-workflow-row--signed-addendum';
+      renderContractSignedSection(project,addendum,{finance,inlineActions:actions});
     }
-    const reason=addendum.accountingStatus==='rejected'?addendum.financeRejection?.reason:addendum.approvalRejectionReason;
-    if(reason && addendum.isDraft){
-      const message=document.createElement('p');message.className='contract-rejection-reason';message.textContent=reason;
-      actions.append(message);
-    }
-  }
-  row.append(toolbar);
-  if(!finance){
-    if(actions.children.length)row.append(actions);
-    row.append(renderContractProgress(document,addendum,project));
-    const reviewers=contractApproverIds(addendum);
-    if(reviewers.length && ['pending','approved'].includes(contractApprovalState(addendum))){
-      const approved=new Set(approvedContractContactIds(addendum));
-      const list=document.createElement('ul');list.className='contract-meta contract-addendum-reviewers';
-      list.setAttribute('aria-label','وضعیت تأیید مسئولان الحاقیه');
-      for(const id of reviewers){
-        const item=document.createElement('li');
-        item.textContent=reviewerName(project,id)+' · '+(approved.has(id)?'تأیید کرد':'در انتظار تأیید');
-        list.append(item);
+    if(parent)toolbar.append(button('مشاهده قرارداد اصلی',trigger=>openContractPreview(project,parent,{trigger,frozen:finance || parent===frozenParent})));
+    const returnForEdit=(label,action)=>openWbsSheet({title:label,historyKey:'addendum-return:'+addendum.id,
+      body(root){const reason=document.createElement('textarea');reason.name='reason';reason.className='wbs-input today-textarea';root.append(fieldRow('علت برگشت',reason));},
+      onSave(root){
+        const sheet=root.closest('.overlay');
+        review(action,root.querySelector('[name="reason"]').value).then(ok=>{if(ok&&sheet?.isConnected)closeWbsSheet();});
+        return false;
+      },
+    });
+    const signed=finance?null:renderContractSignedSection(project,addendum,{onChanged,attachmentActions:toolbar});
+    if(!finance){
+      if(writable(project) && canRevokeContractApproval(addendum,actor))actions.append(button('لغو تأیید من',()=>returnForEdit('لغو تأیید الحاقیه','revoke_addendum')));
+      if(writable(project) && canCancelContractCompletion(addendum))toolbar.append(button('لغو اعلام تکمیل',()=>returnForEdit('لغو تکمیل الحاقیه','cancel_completion'),'contract-review-action danger'));
+      if(writable(project) && addendum.approvalStatus==='pending' && addendum.submittedBy?.id===actor.id){
+        toolbar.append(button('× پس گرفتن از مسئول تأیید',()=>openContractReasonSheet({
+          title:'پس گرفتن الحاقیه از مسئول تأیید',
+          historyKey:'withdraw-addendum-review:'+addendum.id,
+          fieldLabel:'دلیل پس گرفتن از مسئول تأیید (الزامی)',
+          minLength:REJECTION_MIN_LENGTH,
+          submit:reason=>review('withdraw_submission',reason),
+        }),'contract-review-action danger'));
       }
-      row.append(list);
+      const reason=addendum.accountingStatus==='rejected'?addendum.financeRejection?.reason:addendum.approvalRejectionReason;
+      if(reason && addendum.isDraft){
+        const message=document.createElement('p');message.className='contract-rejection-reason';message.textContent=reason;
+        actions.append(message);
+      }
     }
-    if(signed)row.append(signed);
+    root.append(toolbar);
+    if(!finance){
+      if(actions.children.length)root.append(actions);
+      root.append(renderContractProgress(document,addendum,project));
+      const reviewers=contractApproverIds(addendum);
+      if(reviewers.length && ['pending','approved'].includes(contractApprovalState(addendum))){
+        const approved=new Set(approvedContractContactIds(addendum));
+        const list=document.createElement('ul');list.className='contract-meta contract-addendum-reviewers';
+        list.setAttribute('aria-label','وضعیت تأیید مسئولان الحاقیه');
+        for(const id of reviewers){
+          const item=document.createElement('li');
+          item.textContent=reviewerName(project,id)+' · '+(approved.has(id)?'تأیید کرد':'در انتظار تأیید');
+          list.append(item);
+        }
+        root.append(list);
+      }
+      if(signed)root.append(signed);
+    }
+    if(finance){
+      const original=parent && syncContractAmount(structuredClone(parent));
+      const adjustments=(project.contractAddenda||[]).filter(record=>record.parentContractId===addendum.parentContractId
+        && isAddendumVisibleInFinance(record) && record.accountingStatus==='accepted').reduce((sum,record)=>sum+record.amount,0);
+      const summary=document.createElement('div');summary.className='contract-meta';
+      summary.textContent='اثر مالی این الحاقیه: '+money(documentAddendum.amount ?? addendum.amount)+' | جمع الحاقیه‌های تأییدشده: '+money(adjustments);
+      if(original!=null && original!=='')summary.textContent+=' | مبلغ اصلی: '+money(Number(original))+' | مبلغ به‌روز: '+money(Number(original)+adjustments);
+      root.append(summary,renderContractFinanceReview(project,addendum,{onChanged}));
+    }
+    root.append(renderContractHistory(document,addendum,{finance}));
   }
-  if(finance){
-    const original=parent && syncContractAmount(structuredClone(parent));
-    const adjustments=(project.contractAddenda||[]).filter(record=>record.parentContractId===addendum.parentContractId
-      && isAddendumVisibleInFinance(record) && record.accountingStatus==='accepted').reduce((sum,record)=>sum+record.amount,0);
-    const summary=document.createElement('div');summary.className='contract-meta';
-    summary.textContent='اثر مالی این الحاقیه: '+money(documentAddendum.amount ?? addendum.amount)+' | جمع الحاقیه‌های تأییدشده: '+money(adjustments);
-    if(original!=null && original!=='')summary.textContent+=' | مبلغ اصلی: '+money(Number(original))+' | مبلغ به‌روز: '+money(Number(original)+adjustments);
-    row.append(summary,renderContractFinanceReview(project,addendum,{onChanged}));
-  }
-  row.append(renderContractHistory(document,addendum,{finance}));
+  if(!nested)renderDetails(row);
   return row;
 }
 
