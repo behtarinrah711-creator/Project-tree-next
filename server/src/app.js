@@ -478,7 +478,18 @@ async function readWorkspace(pool, accountId){
     accountId,
     snapshot:{
       schemaVersion:Number(prefs.schemaVersion) || 8,
-      projects:projects.rows.map(row => row.payload),
+      projects:projects.rows.map(row => {
+        const access=workspaceAccess(row.role_key,row.permissions);
+        const modules=modulePermissions(row.permissions);
+        const canRead=key=>access.role==='owner' || (modules
+          ? ['view','create','edit','full'].includes(modules[key])
+          : row.permissions?.view===true || row.permissions?.edit===true);
+        if(canRead('contracts'))return row.payload;
+        const financeKey=Object.hasOwn(modules||{},'accounting-statements')?'accounting-statements':'accounting';
+        const financial=canRead(financeKey);
+        return {...row.payload,contractStatusReports:(row.payload.contractStatusReports||[])
+          .filter(record=>!record.statementType || (financial && ['sent','accepted'].includes(record.accountingStatus)))};
+      }),
       viewMode:prefs.viewMode || 'simple',
       activeTab:prefs.activeTab ?? null,
       starredOrder:Array.isArray(prefs.starredOrder) ? prefs.starredOrder : [],
@@ -538,6 +549,7 @@ export function stampContractCreation(project,previous,accountId,phone='',now=Da
     }
   }
   project.contractAddenda=previous?.contractAddenda || [];
+  project.contractStatusReports=previous?.contractStatusReports || (previous?[]:(project.contractStatusReports||[]).filter(record=>!record.statementType));
   return project;
 }
 
@@ -595,7 +607,7 @@ async function saveWorkspace(pool, accountId, snapshot){
         // The browser persists one account-wide snapshot. Projects that were
         // only read must not require write permission or roll back a write to
         // another project in the same transaction.
-        if(!projectPayloadChanged(currentPayload,project)){
+        if(!projectPayloadChanged(currentPayload,{...project,contractStatusReports:currentPayload.contractStatusReports})){
           if((currentPayload.contracts||[]).some(c=>!c.contractUid)){
             await assignContractNumbers(client,currentPayload,existing.rows[0].owner_account_id);
             await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[projectId,JSON.stringify(currentPayload)]);

@@ -340,11 +340,11 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
   return row;
 }
 
-export function renderContractAddendaRow(project,contract){
+export function renderContractAddendaRow(project,contract,{approvedOnly=false,onChanged=()=>{}}={}){
   const records=source=>(source.contractAddenda||[]).filter(addendum=>!addendum.trashed
     && String(addendum.parentContractId)===String(contract.id));
   const canCreate=canCreateAddendumFromContract(contract,project) && writable(project);
-  if(!canCreate && !records(project).length)return null;
+  if(!approvedOnly && !canCreate && !records(project).length)return null;
 
   const row=document.createElement('section');row.className='contract-addenda-row';
   row.onclick=event=>event.stopPropagation();
@@ -352,7 +352,9 @@ export function renderContractAddendaRow(project,contract){
   const toggle=document.createElement('button');toggle.type='button';toggle.className='contract-review-action contract-addenda-toggle';
   const list=document.createElement('div');list.className='contract-addenda-children';list.hidden=true;
   const refresh=(source=projectRepository.find(project.id) || project)=>{
-    const addenda=records(source);
+    const all=records(source);
+    const addenda=approvedOnly?all.filter(item=>item.accountingStatus==='accepted'):all;
+    if(pending){const count=all.length-addenda.length;pending.hidden=!count;pending.textContent=number(count)+' الحاقیه در جریان';}
     toggle.textContent='الحاقیه‌ها ('+number(addenda.length)+')';
     toggle.setAttribute('aria-expanded',String(!list.hidden));
     if(list.hidden)return;
@@ -363,14 +365,25 @@ export function renderContractAddendaRow(project,contract){
       list.appendChild(empty);
     }
   };
+  const pending=approvedOnly && writable(project)?button('',()=>{
+    const source=projectRepository.find(project.id)||project;
+    openWbsSheet({title:'الحاقیه‌های در جریان',showSave:false,reuseHistoryOnReplace:true,historyKey:'addenda-pending:'+contract.id,
+      body(root){
+        root.id='contractPendingAddenda';
+        root.append(...records(source).filter(item=>item.accountingStatus!=='accepted')
+          .map(item=>renderAddendumCard(source,item,onChanged,false,undefined,{nested:true})));
+      },
+    });
+  }):null;
   toggle.onclick=()=>{list.hidden=!list.hidden;refresh();};
   toolbar.appendChild(toggle);
   if(canCreate){
     toolbar.appendChild(button('ایجاد الحاقیه',()=>openAddendumForContract(project.id,contract.id,()=>{
-      if(row.isConnected){list.hidden=false;refresh();}
+      if(row.isConnected){list.hidden=false;refresh();onChanged();}
     }),'contract-review-action contract-addendum-create'));
   }
   row.append(toolbar,list);
+  if(pending)row.append(pending);
   refresh(project);
   return row;
 }

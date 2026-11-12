@@ -1,3 +1,4 @@
+import {saveStatement,recordStatementPayment} from './contractStatement.js';
 import {applyExecutionApproval,approveExecutionEntity,executionApprovalItem} from '../../src/domain/wbs/executionApproval.js';
 import {saveAddendumDraft} from './contractAddendum.js';
 import {canDeleteAddendumRecord,canDeleteContractAddenda,parentContractOf} from '../../src/domain/contractAddenda.js';
@@ -10,13 +11,15 @@ import {canReuseReturnedSignature,isContractSigned,transitionContractHandoff} fr
 
 export function createContractHandoffHandler({pool,sessionSecret,storage}){
   return async(request,response,url)=>{
-    const match=/^\/api\/v1\/projects\/([^/]+)\/(contracts|addenda|execution-approvals)\/([^/]+)\/handoff$/.exec(url.pathname);
+    const match=/^\/api\/v1\/projects\/([^/]+)\/(contracts|addenda|statements|execution-approvals)\/([^/]+)\/handoff$/.exec(url.pathname);
     if(!match)return false;
     if(request.method!=='POST'){sendJson(response,405,{error:'method_not_allowed'});return true;}
     const accountId=await authenticate(request,pool,sessionSecret);
     if(!accountId){sendJson(response,401,{error:'unauthorized'});return true;}
     const body=await readJson(request,128*1024),[projectId,kind,contractId]=match.slice(1).map(decodeURIComponent);
-    const addendum=kind==='addenda', collection=addendum?'contractAddenda':'contracts';
+    const addendum=kind==='addenda', statement=kind==='statements';
+    const collection=statement?'contractStatusReports':addendum?'contractAddenda':'contracts';
+    if(statement && !/^statement-[0-9a-f-]{36}$/i.test(contractId)){sendJson(response,400,{message:'شناسه صورت‌وضعیت نامعتبر است'});return true;}
     if(addendum && !/^addendum-[0-9a-f-]{36}$/i.test(contractId)){sendJson(response,400,{message:'شناسه الحاقیه نامعتبر است'});return true;}
     const client=await pool.connect();let committed=false;
     try{
@@ -53,19 +56,23 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         await client.query('COMMIT');committed=true;sendJson(response,200,{entity});
         return true;
       }
-      const financeAction=['approve_finance','reject_finance','revoke_finance'].includes(body.action);
-      const reviewAction=addendum ? ['approve_addendum','revoke_addendum'].includes(body.action) : body.action==='approve_contract';
+      const financeAction=['approve_finance','reject_finance','revoke_finance','record_payment'].includes(body.action);
+      const reviewAction=statement?body.action==='approve_statement':addendum ? ['approve_addendum','revoke_addendum'].includes(body.action) : body.action==='approve_contract';
       const permissions=row.permissions||{};
       const financeModule=Object.hasOwn(permissions.modules||permissions,'accounting-contracts')?'accounting-contracts':'accounting';
       const deleteAddendum=addendum && body.action==='delete_addendum';
-      const allowed=canAccessFiles(row,accountId,true,financeAction?financeModule:'contracts');
+      const statementModule=Object.hasOwn(permissions.modules||permissions,'accounting-statements')?'accounting-statements':'accounting';
+      const allowed=canAccessFiles(row,accountId,true,financeAction?(statement?statementModule:financeModule):'contracts');
       if(!allowed){sendJson(response,403,{message:'اجازه تغییر قرارداد را ندارید'});return true;}
       const owner=String(row.owner_account_id)===String(accountId);
       if(deleteAddendum && !canDeleteContractAddenda({role:owner?'owner':'member',permissions})){
         sendJson(response,403,{message:'برای حذف الحاقیه دسترسی کامل قراردادها لازم است'});return true;
       }
       const contract=(row.payload[collection]||[]).find(c=>String(c.id)===contractId && (addendum || !c.trashed));
-      const saveDraft=addendum && body.action==='save_addendum';
+      const saveDraft=(addendum && body.action==='save_addendum') || (statement && body.action==='save_statement');
+      const statementParent=statement && (row.payload.contracts||[]).find(record=>!record.trashed && String(record.id)===String(contract?.contractId ?? body.contractId));
+      if(statement && (!statementParent || (contract && !contract.statementType) || !['save_statement','approve_statement','save_signed','send_finance','approve_finance','reject_finance','withdraw_finance','record_payment'].includes(body.action))){sendJson(response,400,{message:'قرارداد یا عملیات صورت‌وضعیت نامعتبر است'});return true;}
+      if(!statement && body.action==='record_payment'){sendJson(response,400,{message:'عملیات نامعتبر است'});return true;}
       if(contract?.trashed || (!contract && !saveDraft)){sendJson(response,404,{message:'قرارداد پیدا نشد'});return true;}
       if(Number(body.version)!==Number(contract?.handoffVersion||0) || Number(body.updatedAt)!==Number(contract?.updatedAt||0)){
         sendJson(response,409,{message:'قرارداد تغییر کرده است؛ صفحه را به‌روز کنید'});return true;
@@ -84,13 +91,16 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       }
       const activity=(row.payload.activityTemplates||[]).find(a=>String(a.id)===String(contract?.activityId));
       let transition;
+      if(statement && body.action==='withdraw_finance' && contract.accountingStatus!=='sent'){sendJson(response,409,{message:'صورت‌وضعیت تأییدشده قابل پس گرفتن نیست'});return true;}
       if(deleteAddendum){
         if(!canDeleteAddendumRecord(contract)){
           sendJson(response,409,{message:'این الحاقیه در وضعیت فعلی قابل حذف نیست'});return true;
         }
         const at=Date.now();
         transition={ok:true,contract:{...contract,trashed:true,deletedAt:at,deletedBy:actor.id,updatedAt:at}};
-      }else if(saveDraft) transition=saveAddendumDraft(row.payload,contract,body,actor,contractId,Date.now());
+      }else if(statement && saveDraft) transition=saveStatement(row.payload,statementParent,contract,contractId,body,actor,Date.now());
+      else if(statement && body.action==='record_payment') transition=recordStatementPayment(contract,body.amount,actor,Date.now());
+      else if(saveDraft) transition=saveAddendumDraft(row.payload,contract,body,actor,contractId,Date.now());
       else if(reviewAction){
         transition=transitionContractApproval(contract,body.action==='revoke_addendum'?'revoke':'approve',actor,{reason:body.reason});
         if(transition.ok && body.action==='revoke_addendum')Object.assign(transition.contract,{isDraft:true,status:'draft'});
@@ -110,12 +120,12 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
             const {accountingPackage,approvalHistory,financeHistory,...frozen}=parentDocument;
             const parentActivity=(row.payload.activityTemplates||[]).find(a=>String(a.id)===String(parent.activityId));
             source={...contract,parentDocument:{...frozen,documentActivityName:frozen.documentActivityName || parentActivity?.name || ''}};
-          }else source=syncContractPartyData({...contract},row.payload);
+          }else if(!statement) source=syncContractPartyData({...contract},row.payload);
         }
         transition=transitionContractHandoff(source,body.action,actor,{files,reason:body.reason,projectName:row.payload.name||row.payload.title||'',activityName:activity?.name||activity?.title||''});
       }
       if(!transition.ok){sendJson(response,400,{message:transition.message});return true;}
-      if(addendum || reviewAction) transition.contract.handoffVersion=Number(contract?.handoffVersion||0)+1;
+      if(addendum || statement || reviewAction) transition.contract.handoffVersion=Number(contract?.handoffVersion||0)+1;
       row.payload[collection]=contract ? row.payload[collection].map(c=>String(c.id)===contractId?transition.contract:c)
         : [...(row.payload[collection]||[]),transition.contract];
       await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[projectId,JSON.stringify(row.payload)]);

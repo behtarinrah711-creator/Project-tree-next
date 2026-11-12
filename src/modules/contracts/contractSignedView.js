@@ -6,8 +6,7 @@ import {openContractReasonSheet} from './contractReasonSheet.js';
 import {openConfirm} from '../../ui/confirm.js';
 import {saveContractHandoff} from './contractHandoffApi.js';
 const toast=message=>window.KarhaLegacy?.showToast?.(message);
-export function renderContractSignedSection(project,contract,{onChanged=()=>{},finance=false,inlineActions=null,attachmentActions=null,onReturn=null}={}){
-  const label=contract.parentContractId?'الحاقیه':'قرارداد';
+export function renderContractSignedSection(project,contract,{onChanged=()=>{},finance=false,inlineActions=null,attachmentActions=null,onReturn=null,label=contract.parentContractId?'الحاقیه':'قرارداد'}={}){
   const existing=finance && inlineActions ? contract.accountingPackage?.signedFiles || [] : signedContractFiles(contract);
   const ready=canAttachSignedContract(contract),returned=canReviseReturnedSignedContract(contract);
   const sent=isContractInFinance(contract),writable=canWriteProjectModule(project.id,'contracts');
