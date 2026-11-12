@@ -232,10 +232,17 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
     });
   };
   const heading=renderContractCardHeading(project,headerContract,approval?null:{
-    onEdit:!finance && parent && canEditAddendumRecord(addendum) && writable(project)
-      ? ()=>openAddendumForm(project,parent,addendum,onChanged) : undefined,
-    onDelete:!finance && canDeleteAddendumRecord(addendum) && canDeleteContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id])
-      ? ()=>openConfirm('الحاقیه '+addendum.contractNo+' حذف شود؟',()=>review('delete_addendum'),'حذف') : undefined,
+    onEdit:!finance && parent && writable(project) && (nested || canEditAddendumRecord(addendum))
+      ? ()=>{
+        const record=latestAddendum();
+        if(!canEditAddendumRecord(record))return toast('الحاقیه در وضعیت فعلی قابل ویرایش نیست');
+        openAddendumForm(project,parent,record,onChanged);
+      } : undefined,
+    onDelete:!finance && (nested || canDeleteAddendumRecord(addendum)) && canDeleteContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id])
+      ? ()=>{
+        if(!canDeleteAddendumRecord(latestAddendum()))return toast('الحاقیه در وضعیت فعلی قابل حذف نیست');
+        openConfirm('الحاقیه '+addendum.contractNo+' حذف شود؟',()=>review('delete_addendum'),'حذف');
+      } : undefined,
     onExport:trigger=>openContractExport(project,documentAddendum,{
       trigger,markup:'<section class="contract-export-document" dir="rtl">'+
         addendumDocumentMarkup(documentAddendum,documentParent())+'</section>',
@@ -253,7 +260,10 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
     main.children[1].dir='rtl';
     main.children[1].textContent=addendum.rows?.find(item=>item.description?.trim())?.description || ADDENDUM_TYPES[addendum.type] || 'الحاقیه قرارداد';
     const date=document.createElement('div');date.className='contract-meta';
-    date.textContent=formatJalaliDisplay(addendum.contractDate) || contractCreatedParts(addendum.createdAt)?.date || '';
+    date.dir='rtl';
+    date.setAttribute('style','text-align:right');
+    const contractDate=formatJalaliDisplay(addendum.contractDate) || contractCreatedParts(addendum.createdAt)?.date;
+    date.textContent=[money(addendum.amount ?? addendumAmount(addendum.rows)),contractDate].filter(Boolean).join(' | ');
     main.append(date);
     heading.children[2].hidden=true;
   }
