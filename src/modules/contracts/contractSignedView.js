@@ -6,7 +6,7 @@ import {openContractReasonSheet} from './contractReasonSheet.js';
 import {openConfirm} from '../../ui/confirm.js';
 import {saveContractHandoff} from './contractHandoffApi.js';
 const toast=message=>window.KarhaLegacy?.showToast?.(message);
-export function renderContractSignedSection(project,contract,{onChanged=()=>{},finance=false,inlineActions=null,attachmentActions=null}={}){
+export function renderContractSignedSection(project,contract,{onChanged=()=>{},finance=false,inlineActions=null,attachmentActions=null,onReturn=null}={}){
   const label=contract.parentContractId?'الحاقیه':'قرارداد';
   const existing=finance && inlineActions ? contract.accountingPackage?.signedFiles || [] : signedContractFiles(contract);
   const ready=canAttachSignedContract(contract),returned=canReviseReturnedSignedContract(contract);
@@ -27,14 +27,19 @@ export function renderContractSignedSection(project,contract,{onChanged=()=>{},f
   };
   const openAttachments=()=>{
     const files=JSON.parse(JSON.stringify(existing));let uploader,saving=false;
-    const sheet=openWbsSheet({title:'نسخه امضاشده '+label,saveLabel:'ذخیره',autoFocus:false,showSave:editable,historyKey:'contract-signed:'+contract.id,
-      body(root){uploader=mountFileUploader(root,{projectId:project.id,recordId:contract.id,category:'contracts',files,readOnly:!editable,label:'افزودن عکس یا PDF '+label,buttonLabel:true,onError:toast,
+    const sheet=openWbsSheet({title:'نسخه امضاشده '+label,saveLabel:'ذخیره',autoFocus:false,showSave:editable,reuseHistoryOnReplace:!!onReturn,historyKey:'contract-signed:'+contract.id,
+      body(root){
+        if(onReturn){
+          const back=button('بازگشت به وضعیت '+label,()=>{if(!saving)onReturn();},root);
+          back.className+=' contract-signed-trigger';
+        }
+        uploader=mountFileUploader(root,{projectId:project.id,recordId:contract.id,category:'contracts',files,readOnly:!editable,label:'افزودن عکس یا PDF '+label,buttonLabel:true,onError:toast,
         confirmRemove:remove=>{if(!saving)openConfirm('این فایل حذف شود؟',()=>{if(!saving)remove();},'حذف');}});},
       onSave(){
         if(saving)return false;
         if(uploader.isBusy()){toast('ابتدا بارگذاری فایل‌ها را کامل کنید');return false;}
         saving=true;
-        run('save_signed',{files}).then(ok=>{saving=false;if(ok && sheet.isConnected)closeWbsSheet();});
+        run('save_signed',{files}).then(ok=>{saving=false;if(ok && sheet.isConnected){if(onReturn)onReturn();else closeWbsSheet();}});
         return false;
       }
     });
