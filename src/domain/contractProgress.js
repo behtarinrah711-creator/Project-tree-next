@@ -18,13 +18,14 @@ export function contractProgressSteps(contract,project){
   const reviewers=task ? task.contractApproverContactIds || [] :
     Array.isArray(contract.contractApproverContactIds)?contract.contractApproverContactIds:contractApproverIds(contract);
   const complete=contract.status==='final' && !contract.isDraft;
+  const label=contract.statementType?'صورت‌وضعیت':contract.parentContractId?'الحاقیه':'قرارداد';
   const steps=[
-    {id:'created',label:contract.parentContractId?'ایجاد الحاقیه':'ایجاد قرارداد',done:!!contract.id},
-    {id:'completed',label:contract.parentContractId?'تکمیل الحاقیه':'تکمیل قرارداد',done:complete},
+    {id:'created',label:'ایجاد '+label,done:!!contract.id},
+    {id:'completed',label:'تکمیل '+label,done:complete},
   ];
-  if(reviewers.filter(Boolean).length)steps.push({id:'approved',label:contract.parentContractId?'تأیید الحاقیه':'تأیید قرارداد',done:complete && contractApprovalState(contract)==='approved'});
-  steps.push({id:'signed',label:contract.parentContractId?'امضای الحاقیه':'امضای قرارداد',done:complete && contract.approvalStatus==='approved' && (isContractSigned(contract) || canReuseReturnedSignature(contract))},{id:'finance',label:'ارسال به مالی',done:isContractInFinance(contract)});
-  const rejected=!!contract.parentContractId && contract.accountingStatus==='rejected';
+  if(reviewers.filter(Boolean).length)steps.push({id:'approved',label:'تأیید '+label,done:complete && contractApprovalState(contract)==='approved'});
+  steps.push({id:'signed',label:'امضای '+label,done:complete && contract.approvalStatus==='approved' && (isContractSigned(contract) || canReuseReturnedSignature(contract))},{id:'finance',label:'ارسال به مالی',done:isContractInFinance(contract)});
+  const rejected=!!(contract.parentContractId || contract.statementType) && contract.accountingStatus==='rejected';
   steps.push({id:'finance-approved',label:rejected?'توسط مالی رد شد':'تأیید بخش مالی',rejected,done:isContractInFinance(contract) && contract.accountingStatus==='accepted'});
   return steps;
 }

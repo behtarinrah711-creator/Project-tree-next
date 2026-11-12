@@ -2021,3 +2021,5 @@ textarea.contract-project-item-input{
 
 #contractPreviewPage.page-overlay{z-index:56;}
 :is(.contract-details-body,#contractPendingAddenda) .contract-card-heading{display:grid;align-items:center;gap:8px;}
+
+.contract-addenda-children > h3.contract-project-path{text-align:right;}
