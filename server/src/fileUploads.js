@@ -125,10 +125,14 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
       LEFT JOIN project_memberships m ON m.project_id=p.id AND m.account_id=a.id
       LEFT JOIN project_roles r ON r.id=m.role_id AND r.project_id=p.id WHERE p.id=$1`,[projectId,accountId]);
     const row=result.rows[0];
-    const contract=category==='contracts'?[...(row?.payload?.contracts||[]),...(row?.payload?.contractAddenda||[])].find(c=>!c.trashed && String(c.id)===recordId):null;
+    const contract=category==='contracts'?[...(row?.payload?.contracts||[]),...(row?.payload?.contractAddenda||[]),...(row?.payload?.contractStatusReports||[])].find(c=>!c.trashed && String(c.id)===recordId):null;
     const financeFile=contract?.accountingStatus==='rejected'
       ? isAddendumVisibleInFinance(contract) && contract.accountingPackage.signedFiles?.some(file=>file.id===id)
       : isContractInFinance(contract);
+    const statementScope=Object.hasOwn(row?.permissions?.modules||row?.permissions||{},'accounting-statements')?'accounting-statements':'accounting';
+    const canReadFinanceFile=contract?.statementType
+      ? canAccessFiles(row,accountId,false,statementScope) && contract.accountingPackage?.signedFiles?.some(file=>file.id===id)
+      : canAccessFiles(row,accountId,false,'accounting') || canAccessFiles(row,accountId,false,'accounting-contracts');
     const work=category==='reports'?reportWork(row?.payload?.tasks,recordId):null;
     const scope=work?.type==='خرید'?'execution:shopping':'execution:today';
     const canUploadReport=work && !work.completed && !['approved','pending_approval'].includes(work.completionState)
@@ -139,7 +143,7 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
       || (scope==='execution:today' && canAccessFiles(row,accountId,false,'reports:reports')));
     const allowed=category==='reports' ? canUploadReport || canReadReport : category==='contacts'
       ? canAccessFiles(row,accountId,write) || (!write && canReadContractDocument(row,accountId,url.searchParams.get('contractId'),recordId,id))
-      : !!contract && (canAccessFiles(row,accountId,write,'contracts') || (!write && financeFile && (canAccessFiles(row,accountId,false,'accounting') || canAccessFiles(row,accountId,false,'accounting-contracts'))));
+      : !!contract && (canAccessFiles(row,accountId,write,'contracts') || (!write && financeFile && canReadFinanceFile));
     if(!allowed){sendJson(response,403,{error:'forbidden_project_files'});return true;}
     if(category==='contracts' && write && (!(canAttachSignedContract(contract) || canReviseReturnedSignedContract(contract)) || isContractInFinance(contract))){sendJson(response,409,{error:'contract_files_locked'});return true;}
     if(!storage){sendJson(response,503,{error:'file_storage_unavailable'});return true;}

@@ -1,3 +1,5 @@
+import {openContractDetails} from './contractDetailsView.js';
+import {renderContractStatementsRow} from './contractStatementsView.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { renderContractAddendaRow } from './contractAddendaView.js';
 import {renderContractFinanceReview} from './contractFinanceReviewView.js';
@@ -212,7 +214,7 @@ export function renderContractReviewRow(contract,{action,preview}){
   return row;
 }
 
-export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,openStatusSheet=openWbsSheet}={}){
+export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,openStatusSheet=openWbsSheet,showDetails=false}={}){
   const preview=trigger=>openContractPreview(p,c,{trigger});
   const id=p.id,actor=currentExecutionActor(p);
   const writable=!finance && canWriteProjectModule(id,'contracts');
@@ -240,7 +242,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
           }
           onChanged();
         },'حذف'),
-      },{onPreview:approval?preview:openPreview,progress:renderContractProgressCircle(document,c,p,openStatus)});
+      },{onPreview:showDetails && !finance && !approval ? trigger=>openContractDetails(p,c,trigger) : approval?preview:openPreview,progress:renderContractProgressCircle(document,c,p,openStatus)});
       row.appendChild(heading);
       if(approval){
         statusSheetBody=root=>root.append(renderContractReviewRow(c,{...approval,preview}),renderContractProgress(document,c,p));
@@ -276,6 +278,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       };
       const addendaRow=renderContractAddendaRow(p,c);
       if(addendaRow)row.appendChild(addendaRow);
+      if(showDetails)row.appendChild(renderContractStatementsRow(p,c));
       }else statusSheetBody=root=>root.append(renderContractFinanceReview(p,c,{onChanged}),renderContractProgress(document,c,p));
       return row;
 }
@@ -349,7 +352,7 @@ export const contractsModule={
     filterWrap.onkeydown=event=>{if(event.key==='Escape'){closeFilter();filter.focus?.();}};
     filterWrap.appendChild(filter);filterLabel();body.append(filterWrap,listWrap);
     if(!contracts.length){const e=document.createElement('div');e.className='contract-empty';e.innerHTML='قراردادی برای نمایش در این فهرست وجود ندارد.<br>از علامت + یک قرارداد ایجاد کنید.';body.appendChild(e);return;}
-    const appendContract=c=>renderedRows.push(renderContractCard(p,c,{onChanged:()=>this.render(id)}));
+    const appendContract=c=>renderedRows.push(renderContractCard(p,c,{showDetails:true,onChanged:()=>this.render(id)}));
     contracts.forEach(appendContract);
     applyFilters();
   },

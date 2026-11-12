@@ -87,6 +87,7 @@ export const accountingSectionModules = ACCOUNTING_SECTIONS.map(section => ({
   mount({ projectId } = {}){
     activeSection=section.id;
     renderEmptyAccountingSection();
+    if(section.id==='accounting-statements'){const body=accountingBody();import('../contracts/contractStatementsView.js').then(({renderAccountingStatements})=>{if(activeSection==='accounting-statements' && body?.isConnected)renderAccountingStatements(body,projectId);});}
     if(section.id==='accounting-contracts'){const body=accountingBody();import('./accountingContracts.js').then(({renderAccountingContracts})=>{if(activeSection==='accounting-contracts' && body?.isConnected)renderAccountingContracts(body,projectId);});}
     return { projectId: projectId || null, moduleId: section.id };
   },
