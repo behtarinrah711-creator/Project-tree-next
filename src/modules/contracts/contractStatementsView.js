@@ -9,6 +9,12 @@ import { makeQuantityRow, numericValue, renderQuantityRows, rowAmount } from './
 import { ftAmountSummary, ftNumberRow, ftSelectRow } from './realContractFormModule.js';
 import { openStaticChoicePicker } from './contractPickers.js';
 import { saveContractHandoff } from './contractHandoffApi.js';
+import { renderContractCardHeading } from './contractsModule.js';
+import { renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
+import { renderContractHistory } from './contractHistoryView.js';
+import { openContractExport } from './contractExportView.js';
+import { openConfirm } from '../../ui/confirm.js';
+import { canDeleteContractAddenda } from '../../domain/contractAddenda.js';
 import { renderContractSignedSection } from './contractSignedView.js';
 
 const format=new Intl.NumberFormat('fa-IR');
@@ -31,7 +37,7 @@ const financeScope=projectId=>{
   return Object.hasOwn(permissions.modules||permissions,'accounting-statements')?'accounting-statements':'accounting';
 };
 const currentProject=project=>projectRepository.find(project.id)||project;
-const statementTypes=[['interim','موقت'],['final','قطعی'],['retention-release','آزاد کردن حسن انجام کار']];
+export const statementTypes=[['interim','موقت'],['final','قطعی'],['retention-release','آزاد کردن حسن انجام کار']];
 const statementTitle=record=>record.statementType==='retention-release'?'آزاد کردن حسن انجام کار':record.statementType==='final'?'صورت‌وضعیت قطعی':'صورت‌وضعیت موقت شماره '+format.format(record.sequence||1);
 
 function table(rows){
@@ -78,12 +84,12 @@ function operationSummary(rows){
   }));
 }
 
-function openStatementForm(project,contract,onChanged,record=null){
+export function openStatementForm(project,contract,onChanged,record=null,type='interim'){
   const source=currentProject(project);
   const totals=contractStatementTotals(source,contract);
   const final=finalStatementSummary(source,contract);
   let saving=false;
-  const documentRecord=record||{id:'statement-'+crypto.randomUUID(),statementType:'interim'};
+  const documentRecord=record||{id:'statement-'+crypto.randomUUID(),statementType:type};
   const operations=record?.operations?.length
     ? record.operations.map(row=>({...makeQuantityRow(),...row}))
     : [{...makeQuantityRow(),pricingMode:'quantity'}];
@@ -188,6 +194,7 @@ function openStatement(project,contract,record,onChanged,{finance=false}={}){
         const previous=statementsFor(project,contract.id).filter(item=>item.id!==record.id && (!item.statementType || item.statementType==='interim') && approvedStatement(item));
         if(previous.length)root.append(element('h3','','صورت‌وضعیت‌های موقت تأییدشده'),table(previous.map(item=>[statementTitle(item),money(item.approvedAmount??item.stageAmount??0)])));
       }
+      if(record.statementType)root.append(renderContractProgress(document,record,project),renderContractHistory(document,record,{finance}));
       if(record.note)root.append(element('p','',record.note));
       if(record.financeRejection?.reason)root.append(element('p','contract-rejection-reason',record.financeRejection.reason));
       if(!finance && record.statementType && canWriteProjectModule(project.id,'contracts')){
@@ -214,38 +221,37 @@ function openStatement(project,contract,record,onChanged,{finance=false}={}){
   });
 }
 
-export function renderContractStatementsRow(project,contract,{approvedOnly=false,onChanged=()=>{}}={}){
-  const row=element('section','contract-addenda-row');
-  const toolbar=element('div','contract-addenda-row-toolbar');
-  const content=element('div','contract-addenda-children');
-  content.hidden=true;
-  const toggle=button('',()=>{content.hidden=!content.hidden;refresh();},'contract-review-action contract-addenda-toggle');
-  const refresh=(source=currentProject(project))=>{
-    const records=statementsFor(source,contract.id);
-    const visible=approvedOnly?records.filter(approvedStatement):records;
-    toggle.textContent='صورت‌وضعیت‌ها ('+format.format(visible.length)+')';
-    toggle.setAttribute('aria-expanded',String(!content.hidden));
-    if(!content.hidden){
-      content.replaceChildren(...visible.map(record=>button(statementTitle(record)+' · '+money(record.statementAmount??record.stageAmount??0),()=>openStatement(source,contract,record,()=>refresh()))));
-      if(!visible.length)content.append(element('p','contract-meta','صورت‌وضعیتی ثبت نشده است.'));
-    }
-    if(inProgress){
-      const count=records.filter(record=>!approvedStatement(record)).length;
-      inProgress.hidden=!count;
-      inProgress.textContent=format.format(count)+' صورت‌وضعیت در جریان';
-    }
-  };
-  const canWrite=canWriteProjectModule(project.id,'contracts');
-  const inProgress=approvedOnly && canWrite ? button('',()=>{
-    const source=currentProject(project);
-    openWbsSheet({title:'صورت‌وضعیت‌های در جریان',showSave:false,historyKey:'statement-pending:'+contract.id,reuseHistoryOnReplace:true,
-      body(root){root.append(...statementsFor(source,contract.id).filter(record=>!approvedStatement(record)).map(record=>button(statementTitle(record),()=>openStatement(source,contract,record,()=>refresh()))));}});
-  }):null;
-  toolbar.append(toggle);
-  if(contract.accountingStatus==='accepted' && canWrite)toolbar.append(button('ایجاد صورت‌وضعیت',()=>openStatementForm(currentProject(project),contract,()=>{content.hidden=false;refresh();onChanged();}),'contract-review-action contract-addendum-create'));
-  row.append(toolbar,content);
-  if(inProgress)row.append(inProgress);
-  refresh(project);
+export function renderStatementCard(project,contract,record,onChanged){
+  const row=element('article','contract-row');
+  const title=statementTitle(record);
+  const open=()=>openStatement(project,contract,record,onChanged);
+  const progress=renderContractProgressCircle(document,record,project,event=>{event.stopPropagation();open();});
+  const writable=record.statementType && canWriteProjectModule(project.id,'contracts');
+  const deletable=writable && canDeleteContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id]);
+  const editable=record.status==='draft';
+  const heading=renderContractCardHeading(project,contract,{
+    onEdit:writable?()=>editable?openStatementForm(project,contract,onChanged,record):toast('صورت‌وضعیت در وضعیت فعلی قابل ویرایش نیست'):undefined,
+    onExport:trigger=>{
+      const documentNode=element('section','contract-export-document');
+      documentNode.dir='rtl';
+      documentNode.append(element('h2','',title),element('p','',contract.contractNo||''),element('p','',formatJalaliDisplay(record.date)||''),
+        operationSummary(record.operations||[]),table([['مبلغ سند',money(record.statementAmount??record.stageAmount??0)]]));
+      openContractExport(project,{title,contractNo:contract.contractNo||''},{trigger,markup:documentNode.outerHTML});
+    },
+    onDelete:deletable?()=>{
+      if(record.signedAt || ['sent','accepted'].includes(record.accountingStatus)){toast('صورت‌وضعیت در وضعیت فعلی قابل حذف نیست');return;}
+      openConfirm('صورت‌وضعیت حذف شود؟',()=>saveContractHandoff(project.id,record,'delete_statement')
+        .then(onChanged).catch(error=>toast(error.message)),'حذف');
+    }:undefined,
+  },{onPreview:open,progress});
+  heading.className+=' contract-card-heading--nested-addendum';
+  const main=heading.children[0];
+  main.children[0].textContent=title;
+  main.children[1].dir='rtl';
+  main.children[1].textContent=[record.statementAmount??record.stageAmount,formatJalaliDisplay(record.date)]
+    .map((value,index)=>index===0?(Number(value)?money(value):''):value).filter(Boolean).join(' | ');
+  heading.children[2].hidden=true;
+  row.append(heading);
   return row;
 }
 
