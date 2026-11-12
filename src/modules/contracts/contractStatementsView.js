@@ -182,13 +182,13 @@ export function renderContractStatementsRow(project,contract,{approvedOnly=false
   const content=element('div','contract-addenda-children');
   content.hidden=true;
   const toggle=button('',()=>{content.hidden=!content.hidden;refresh();},'contract-review-action contract-addenda-toggle');
-  const refresh=()=>{
-    const source=currentProject(project),records=statementsFor(source,contract.id);
+  const refresh=(source=currentProject(project))=>{
+    const records=statementsFor(source,contract.id);
     const visible=approvedOnly?records.filter(approvedStatement):records;
     toggle.textContent='صورت‌وضعیت‌ها ('+format.format(visible.length)+')';
     toggle.setAttribute('aria-expanded',String(!content.hidden));
     if(!content.hidden){
-      content.replaceChildren(...visible.map(record=>button(statementTitle(record)+' · '+money(record.stageAmount||0),()=>openStatement(source,contract,record,refresh))));
+      content.replaceChildren(...visible.map(record=>button(statementTitle(record)+' · '+money(record.stageAmount||0),()=>openStatement(source,contract,record,()=>refresh()))));
       if(!visible.length)content.append(element('p','contract-meta','صورت‌وضعیتی ثبت نشده است.'));
     }
     if(inProgress){
@@ -201,13 +201,13 @@ export function renderContractStatementsRow(project,contract,{approvedOnly=false
   const inProgress=approvedOnly && canWrite ? button('',()=>{
     const source=currentProject(project);
     openWbsSheet({title:'صورت‌وضعیت‌های در جریان',showSave:false,historyKey:'statement-pending:'+contract.id,reuseHistoryOnReplace:true,
-      body(root){root.append(...statementsFor(source,contract.id).filter(record=>!approvedStatement(record)).map(record=>button(statementTitle(record),()=>openStatement(source,contract,record,refresh))));}});
+      body(root){root.append(...statementsFor(source,contract.id).filter(record=>!approvedStatement(record)).map(record=>button(statementTitle(record),()=>openStatement(source,contract,record,()=>refresh()))));}});
   }):null;
   toolbar.append(toggle);
   if(contract.accountingStatus==='accepted' && canWrite)toolbar.append(button('ایجاد صورت‌وضعیت',()=>openStatementForm(currentProject(project),contract,()=>{content.hidden=false;refresh();onChanged();}),'contract-review-action contract-addendum-create'));
   row.append(toolbar,content);
   if(inProgress)row.append(inProgress);
-  refresh();
+  refresh(project);
   return row;
 }
 
