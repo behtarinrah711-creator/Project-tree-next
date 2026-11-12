@@ -1,5 +1,5 @@
 import {openContractDetails} from './contractDetailsView.js';
-import {renderContractStatementsRow} from './contractStatementsView.js';
+import {renderContractDocuments} from './contractDocumentsView.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { renderContractAddendaRow } from './contractAddendaView.js';
 import {renderContractFinanceReview} from './contractFinanceReviewView.js';
@@ -276,9 +276,8 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
         const signedSection=renderContractSignedSection(p,c,{onChanged});
         if(signedSection)root.appendChild(signedSection);
       };
-      const addendaRow=renderContractAddendaRow(p,c);
-      if(addendaRow)row.appendChild(addendaRow);
-      if(showDetails)row.appendChild(renderContractStatementsRow(p,c));
+      const documents=showDetails?renderContractDocuments(p,c):renderContractAddendaRow(p,c);
+      if(documents)row.appendChild(documents);
       }else statusSheetBody=root=>root.append(renderContractFinanceReview(p,c,{onChanged}),renderContractProgress(document,c,p));
       return row;
 }
