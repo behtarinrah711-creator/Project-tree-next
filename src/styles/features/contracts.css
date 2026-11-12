@@ -2007,5 +2007,6 @@ textarea.contract-project-item-input{
 .contract-status-sheet .contract-status-badge{display:inline-block;padding:5px 10px;border-radius:6px;background:#e5e7eb;color:#374151;}
 :is(#contractsPageBody,#accountingPageBody,#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading > button.today-progress-circle{cursor:pointer;}
 
-:is(#contractsPageBody,#reportsPageBody :where(.contract-addenda-list)) .contract-card-heading.contract-card-heading--nested-addendum{background:#c9ccd0;}
+:is(#contractsPageBody,#reportsPageBody :where(.contract-addenda-list)) .contract-card-heading.contract-card-heading--nested-addendum{background:#fff;}
+.contract-card-heading--nested-addendum .contract-heading-details[hidden]{display:none;}
 .contract-card-heading > .contract-progress-circle--complete > span{font-size:18px;line-height:1;}

@@ -111,7 +111,8 @@ test('only contract writers see the addendum shortcut on completed report cards'
     assert.deepEqual(toolbar.children.map(node=>node.textContent),['الحاقیه‌ها (۱)']);
     toolbar.children[0].onclick();
     assert.equal(list.children.length,1);
-    assert.equal(list.children[0].children[0].children[0].children[1].textContent,'CTR-1-A01');
+    assert.equal(list.children[0].children.length,1);
+    assert.equal(list.children[0].children[0].children[0].children[0].textContent,'الحاقیه شماره ۱');
   }finally{globalThis.window=previousWindow;globalThis.document=previousDocument;}
 });
 
