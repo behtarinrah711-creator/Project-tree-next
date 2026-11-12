@@ -259,9 +259,8 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
     main.children[0].textContent=serial?'الحاقیه شماره '+number(Number(serial[1])):'الحاقیه';
     main.children[1].dir='rtl';
     main.children[1].textContent=addendum.rows?.find(item=>item.description?.trim())?.description || ADDENDUM_TYPES[addendum.type] || 'الحاقیه قرارداد';
-    const date=document.createElement('div');date.className='contract-meta';
+    const date=document.createElement('div');date.className='contract-meta contract-number';
     date.dir='rtl';
-    date.setAttribute('style','text-align:right');
     const contractDate=formatJalaliDisplay(addendum.contractDate) || contractCreatedParts(addendum.createdAt)?.date;
     date.textContent=[money(addendum.amount ?? addendumAmount(addendum.rows)),contractDate].filter(Boolean).join(' | ');
     main.append(date);
