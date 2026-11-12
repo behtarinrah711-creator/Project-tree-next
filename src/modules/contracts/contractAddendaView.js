@@ -12,7 +12,7 @@ import { currentExecutionActor } from '../wbs/executionActor.js';
 import { openStaticChoicePicker } from './contractPickers.js';
 import { contactApi } from '../../domain/contactApi.js';
 import { activityApi } from '../../domain/activityApi.js';
-import { contractProjectPath, normalizeContractSearch, renderContractCardHeading, renderContractReviewRow, renderContractStatusRow } from './contractsModule.js';
+import { contractCreatedParts, contractProjectPath, normalizeContractSearch, renderContractCardHeading, renderContractReviewRow, renderContractStatusRow } from './contractsModule.js';
 import { ftAmountSummary, ftNumberRow, ftSelectRow, renderContractSavebar } from './realContractFormModule.js';
 import { makeQuantityRow, renderQuantityRows, rowAmount, syncContractAmount } from './contractPricing.js';
 import { addendumDocumentMarkup } from './contractDocument.js';
@@ -218,15 +218,16 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
   const review=async(action,reason)=>{
     if(busy)return false;
     busy=true;
-    try{await saveContractHandoff(project.id,addendum,action,{reason});onChanged();return true;}
+    try{await saveContractHandoff(project.id,latestAddendum(),action,{reason});onChanged();return true;}
     catch(error){toast(error.message);return false;}finally{busy=false;}
   };
-   const openProgress=event=>{
-    event.stopPropagation();
+  const latestAddendum=()=>projectRepository.find(project.id)?.contractAddenda?.find(record=>record.id===addendum.id) || addendum;
+  const openProgress=event=>{
+    event?.stopPropagation();
     openWbsSheet({title:'وضعیت الحاقیه',showSave:false,reuseHistoryOnReplace:true,historyKey:'addendum-status:'+addendum.id,
       body(root){
         root.classList.add('contract-status-sheet');
-        renderDetails(root);
+        renderDetails(root,latestAddendum());
       },
     });
   };
@@ -244,13 +245,24 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
     onPreview:preview,
     progress:nested?renderContractProgressCircle(document,addendum,project,openProgress):null,
   });
-  if(nested)heading.className+=' contract-card-heading--nested-addendum';
+  if(nested){
+    heading.className+=' contract-card-heading--nested-addendum';
+    const main=heading.children[0];
+    const serial=/[-]A(\d+)$/i.exec(addendum.contractNo || '');
+    main.children[0].textContent=serial?'الحاقیه شماره '+number(Number(serial[1])):'الحاقیه';
+    main.children[1].dir='rtl';
+    main.children[1].textContent=addendum.rows?.find(item=>item.description?.trim())?.description || ADDENDUM_TYPES[addendum.type] || 'الحاقیه قرارداد';
+    const date=document.createElement('div');date.className='contract-meta';
+    date.textContent=formatJalaliDisplay(addendum.contractDate) || contractCreatedParts(addendum.createdAt)?.date || '';
+    main.append(date);
+    heading.children[2].hidden=true;
+  }
   row.append(heading);
   if(approval){
     row.append(renderContractReviewRow(addendum,{...approval,preview}),renderContractProgress(document,addendum,project));
     return row;
   }
-  function renderDetails(root){
+  function renderDetails(root,addendum){
     const toolbar=renderContractStatusRow(addendum,{showBadge:!finance || ['accepted','rejected'].includes(addendum.accountingStatus)});
     const actions=finance?toolbar:renderContractStatusRow(addendum,{showBadge:false});
     if(!finance && !nested)toolbar.className='contract-addendum-toolbar';
@@ -267,7 +279,7 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
         return false;
       },
     });
-    const signed=finance?null:renderContractSignedSection(project,addendum,{onChanged,attachmentActions:toolbar});
+    const signed=finance?null:renderContractSignedSection(project,addendum,{onChanged,attachmentActions:toolbar,onReturn:nested?openProgress:null});
     if(!finance){
       if(writable(project) && canRevokeContractApproval(addendum,actor))actions.append(button('لغو تأیید من',()=>returnForEdit('لغو تأیید الحاقیه','revoke_addendum')));
       if(writable(project) && canCancelContractCompletion(addendum))toolbar.append(button('لغو اعلام تکمیل',()=>returnForEdit('لغو تکمیل الحاقیه','cancel_completion'),'contract-review-action danger'));
@@ -315,7 +327,7 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
     }
     root.append(renderContractHistory(document,addendum,{finance}));
   }
-  if(!nested)renderDetails(row);
+  if(!nested)renderDetails(row,addendum);
   return row;
 }
 
