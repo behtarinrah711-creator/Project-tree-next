@@ -1964,13 +1964,13 @@ textarea.contract-project-item-input{
   width:30px;height:30px;min-width:0;min-height:0;padding:0;font-size:18px;line-height:1;
 }
 
-:is(#contractsPageBody,#accountingPageBody,#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading:has(> .today-progress-circle){direction:rtl;grid-template-columns:minmax(0,1fr) 42px 34px;}
-:is(#contractsPageBody,#accountingPageBody,#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading:has(> .today-progress-circle) > .contract-main{grid-area:1/1;text-align:right;}
-:is(#contractsPageBody,#accountingPageBody,#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading > .today-progress-circle{grid-area:1/2;--today-ring:#008746;color:#008746;cursor:default;font-size:9px;}
-:is(#contractsPageBody,#accountingPageBody,#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading > .contract-heading-details{grid-area:2/1/3/-1;min-width:0;text-align:right;}
-:is(#contractsPageBody,#accountingPageBody,#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading:has(> .today-progress-circle) :is(.contract-title,.contract-number,.contract-project-path){text-align:right;}
-:is(#contractsPageBody,#accountingPageBody) .contract-heading-stamp{display:flex;justify-content:flex-start;gap:4px;text-align:right;}
-:is(#contractsPageBody,#accountingPageBody,#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading:has(> .today-progress-circle) > .contract-actions{grid-area:1/3;justify-content:center;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading:has(> .today-progress-circle){direction:rtl;grid-template-columns:minmax(0,1fr) 42px 34px;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading:has(> .today-progress-circle) > .contract-main{grid-area:1/1;text-align:right;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading > .today-progress-circle{grid-area:1/2;--today-ring:#008746;color:#008746;cursor:default;font-size:9px;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading > .contract-heading-details{grid-area:2/1/3/-1;min-width:0;text-align:right;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading:has(> .today-progress-circle) :is(.contract-title,.contract-number,.contract-project-path){text-align:right;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts)) .contract-heading-stamp{display:flex;justify-content:flex-start;gap:4px;text-align:right;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading:has(> .today-progress-circle) > .contract-actions{grid-area:1/3;justify-content:center;}
 #contractsPageBody .contract-addenda-row{border-top:1px solid var(--divider);}
 #contractsPageBody .contract-addenda-row-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:4px 0;}
 #contractsPageBody .contract-addenda-toggle::after{content:"▾";display:inline-block;margin-inline-start:5px;}
@@ -2006,3 +2006,6 @@ textarea.contract-project-item-input{
 
 .contract-status-sheet .contract-status-badge{display:inline-block;padding:5px 10px;border-radius:6px;background:#e5e7eb;color:#374151;}
 :is(#contractsPageBody,#accountingPageBody,#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading > button.today-progress-circle{cursor:pointer;}
+
+:is(#contractsPageBody,#reportsPageBody :where(.contract-addenda-list)) .contract-card-heading.contract-card-heading--nested-addendum{background:#c9ccd0;}
+.contract-card-heading > .contract-progress-circle--complete > span{font-size:18px;line-height:1;}

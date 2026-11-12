@@ -21,7 +21,7 @@ import { openContractExport } from './contractExportView.js';
 import { renderContractFinanceReview } from './contractFinanceReviewView.js';
 import { canCreateAddendumFromContract } from '../../domain/contractAddenda.js';
 import { renderContractHistory } from './contractHistoryView.js';
-import { renderContractProgress } from './contractProgressView.js';
+import { renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
 import { renderContractSignedSection } from './contractSignedView.js';
 import { openContractReasonSheet } from './contractReasonSheet.js';
 import { saveContractHandoff } from './contractHandoffApi.js';
@@ -201,7 +201,7 @@ function openAddendumForm(project,parent,record,onChanged){
   sheet.classList.add('contract-addendum-form');
 }
 
-export function renderAddendumCard(project,addendum,onChanged,finance=false,approval){
+export function renderAddendumCard(project,addendum,onChanged,finance=false,approval,{nested=false}={}){
   const documentAddendum=finance ? addendum.accountingPackage.contract : addendum;
   const frozenParent=addendum.accountingPackage?.contract?.parentDocument;
   const parent=finance?frozenParent:parentContractOf(project,addendum)||frozenParent;
@@ -221,6 +221,15 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
     try{await saveContractHandoff(project.id,addendum,action,{reason});onChanged();return true;}
     catch(error){toast(error.message);return false;}finally{busy=false;}
   };
+  const openProgress=event=>{
+    event.stopPropagation();
+    openWbsSheet({title:'وضعیت الحاقیه',showSave:false,historyKey:'addendum-status:'+addendum.id,
+      body(root){
+        root.classList.add('contract-status-sheet');
+        root.append(renderContractProgress(document,addendum,project));
+      },
+    });
+  };
   const heading=renderContractCardHeading(project,headerContract,approval?null:{
     onEdit:!finance && parent && canEditAddendumRecord(addendum) && writable(project)
       ? ()=>openAddendumForm(project,parent,addendum,onChanged) : undefined,
@@ -233,7 +242,9 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
   },{
     titlePrefix:'الحاقیه',
     onPreview:preview,
+    progress:nested?renderContractProgressCircle(document,addendum,project,openProgress):null,
   });
+  if(nested)heading.className+=' contract-card-heading--nested-addendum';
   row.append(heading);
   if(approval){
     row.append(renderContractReviewRow(addendum,{...approval,preview}),renderContractProgress(document,addendum,project));
@@ -322,7 +333,7 @@ export function renderContractAddendaRow(project,contract){
     toggle.setAttribute('aria-expanded',String(!list.hidden));
     if(list.hidden)return;
     list.replaceChildren(...addenda.sort((a,b)=>b.createdAt-a.createdAt)
-      .map(addendum=>renderAddendumCard(source,addendum,()=>refresh())));
+      .map(addendum=>renderAddendumCard(source,addendum,()=>refresh(),false,undefined,{nested:true})));
     if(!addenda.length){
       const empty=document.createElement('p');empty.className='contract-meta';empty.textContent='هنوز الحاقیه‌ای ثبت نشده است.';
       list.appendChild(empty);

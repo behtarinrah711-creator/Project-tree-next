@@ -8,9 +8,11 @@ export function renderContractProgressCircle(documentRef,contract,project,onClic
   const count=new Intl.NumberFormat('fa-IR');
   const value=count.format(completed)+' از '+count.format(steps.length);
   const next=steps.find(step=>!step.done);
-  return progressCircle(documentRef,{progress:completed/steps.length*100},{
-    onClick,summary:{value,label:'پیشرفت قرارداد: '+value+' مرحله'+(next?'؛ مرحله بعد: '+next.label:'')},
+  const circle=progressCircle(documentRef,{progress:completed/steps.length*100},{
+    onClick,summary:{value:next?value:'✓',label:'پیشرفت '+(contract.parentContractId?'الحاقیه':'قرارداد')+': '+value+' مرحله'+(next?'؛ مرحله بعد: '+next.label:'؛ تکمیل شده')},
   });
+  if(!next)circle.className+=' contract-progress-circle--complete';
+  return circle;
 }
 
 export function renderContractProgress(documentRef,contract,project){
