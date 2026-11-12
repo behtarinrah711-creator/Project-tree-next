@@ -41,3 +41,27 @@ test('first-payment retention covers the contract and approved addenda without e
   assert.equal(second.retentionAmount,4);
   assert.equal(second.netAmount,4);
 });
+
+test('operation totals are calculated by the server and an approved release does not add work or get deducted again',()=>{
+  const parent={id:'c',amount:1000,retentionPercent:10,retentionMethod:'all',accountingStatus:'accepted'};
+  const project={contractStatusReports:[]};
+  const actor={id:'member'};
+  const agreed=value=>({description:'عملیات',pricingMode:'agreed',agreedPrice:value});
+  const save=(type,operations)=>saveStatement(project,parent,null,'s'+project.contractStatusReports.length,
+    {statementType:type,date:'1405/08/26',operations,amount:999},actor,1);
+  const interim=save('interim',[agreed(200),{description:'نصب',pricingMode:'quantity',unit:'عدد',quantity:2,unitPrice:100}]);
+  assert.equal(interim.contract.statementAmount,400);
+  assert.equal(interim.contract.retentionAmount,40);
+  project.contractStatusReports.push({...interim.contract,accountingStatus:'accepted'});
+  assert.equal(save('retention-release',[agreed(41)]).ok,false);
+  const release=save('retention-release',[agreed(30)]).contract;
+  assert.equal(release.stageAmount,0);
+  assert.equal(release.netAmount,30);
+  project.contractStatusReports.push({...release,accountingStatus:'accepted'});
+  assert.equal(contractStatementTotals(project,parent).retained,10);
+  assert.equal(contractStatementTotals(project,parent).gross,400);
+  assert.equal(save('interim',[agreed(100)]).contract.retentionAmount,10);
+  const final=save('final',[agreed(500)]).contract;
+  project.contractStatusReports.push({...final,accountingStatus:'accepted'});
+  assert.equal(save('retention-release',[agreed(20)]).ok,true);
+});
