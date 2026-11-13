@@ -22,7 +22,7 @@ test('the inbox counts only the current reviewer’s pending items in each separ
   const {assigned,groups,count}=pendingApprovals(project,windowFor({contracts:'view','execution:shopping':'full','execution:today':'create'}));
   assert.equal(assigned,true);
   assert.equal(count,4);
-  assert.equal(groups[0].title,'قراردادها و الحاقیه‌ها');
+  assert.equal(groups[0].title,'قراردادها');
   assert.deepEqual(groups.map(group=>[group.id,group.writable,group.items.map(item=>item.id)]),[
     ['addenda',false,['contract','addendum']],['shopping',true,['buy']],['execution',true,['exec']],
   ]);
@@ -79,15 +79,13 @@ test('the approval inbox renders the original cards with only review controls',(
   try{
     renderPendingApprovals(body,'p','approvals-addenda',()=>{});
     const contracts=body.children[1].children;
-    assert.equal(contracts.length,2);
-    for(const [index,card] of contracts.entries()){
-      assert.equal(card.className,'contract-row');
-      assert.ok(card.nodes().some(node=>node.className==='contract-card-heading'));
-      assert.equal(card.nodes().some(node=>node.className==='contract-progress'),index===1);
-      assert.equal(card.nodes().some(node=>node.className==='today-progress-circle'),index===0);
-      assert.deepEqual(card.nodes().filter(node=>node.tag==='button').map(node=>node.textContent),(index===0?[undefined]:['مشاهده سند','تأیید']));
-    }
-    assert.match(contracts[1].nodes().find(node=>node.className==='contract-title').textContent,/^الحاقیه /);
+    assert.equal(contracts.length,1);
+    const card=contracts[0];
+    assert.equal(card.className,'contract-row');
+    assert.equal(card.nodes().find(node=>node.className==='contract-addenda-children').hidden,false);
+    assert.equal(card.nodes().filter(node=>node.className.split(' ').includes('today-progress-circle')).length,2);
+    assert.ok(card.nodes().some(node=>/^الحاقیه /.test(node.textContent)));
+    assert.ok(!card.nodes().some(node=>node.className==='contract-addendum-create'));
     for(const [group,css,label] of [
       ['execution','wbs-costline-work','تأیید'],
       ['shopping','shopping-item-card','تأیید خرید'],
@@ -101,8 +99,7 @@ test('the approval inbox renders the original cards with only review controls',(
     }
     window.KarhaSaosaWorkspaceAccess.p.permissions.modules.contracts='view';
     renderPendingApprovals(body,'p','approvals-addenda',()=>{});
-    assert.deepEqual(body.children[1].nodes().filter(node=>node.tag==='button').map(node=>node.textContent),
-      [undefined,'مشاهده سند']);
+    assert.ok(!body.children[1].nodes().some(node=>node.textContent==='تأیید'));
   }finally{
     [globalThis.window,globalThis.document,globalThis.Node,projectRepository.find]=old;
   }
