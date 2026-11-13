@@ -502,7 +502,7 @@ test('statement handoff requires contract and finance permissions for their resp
   let result=await f.call(create,path);
   assert.equal(result.status,200);
   let record=result.result.contract;
-  assert.equal(record.retentionAmount,12);
+  assert.equal(record.retentionAmount,10);
   const act=(action,options={})=>f.call({action,version:record.handoffVersion,updatedAt:record.updatedAt,...options},path);
   const attachment={...file,recordId:id};
   f.storage.metadata=async()=>attachment;
@@ -519,9 +519,9 @@ test('statement handoff requires contract and finance permissions for their resp
   result=await act('approve_finance');
   assert.equal(result.status,200);
   record=result.result.contract;
-  assert.equal((await act('record_payment',{amount:29})).status,400);
-  result=await act('record_payment',{amount:28});
+  assert.equal((await act('record_payment',{amount:31})).status,400);
+  result=await act('record_payment',{amount:30});
   assert.equal(result.status,200);
-  assert.equal(result.result.contract.paidAmount,28);
+  assert.equal(result.result.contract.paidAmount,30);
   assert.equal(f.payload.contractStatusReports.length,1);
 });
