@@ -308,7 +308,7 @@ test('Planning contains tree, timeline and estimate while Execution and Reports 
   const reportRows = page.locator('#reportsPageBody .workspace-option');
   await expect(reportRows).toHaveCount(4);
   await expect(reportRows.locator('.workspace-option-title')).toHaveText([
-    'قرارداد پیمانکاران', 'گزارش‌های روزانهٔ اجرا', 'لیست کارهای انجام‌شده', 'دیرکردها',
+    'قرارداد پیمانکاران', 'گزارش‌های روزانهٔ اجرا', 'کارهای انجام‌شده', 'دیرکردها',
   ]);
   await expect(reportRows.locator('.workspace-option-arrow svg')).toHaveCount(4);
   await expect(page.locator('.reports-workspace-tabs')).toHaveCount(0);

@@ -3,7 +3,7 @@ import { uid } from '../../data/projectFactories.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { workTaskRepository } from '../../data/workTaskRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
-import { FOLLOW_UP_WORK_TYPE, WORK_TYPES } from './normalize.js';
+import { FOLLOW_UP_WORK_TYPE, ODD_JOB_TYPES, WORK_TYPES } from './normalize.js';
 import { TASK_PRIORITIES, activeWorkTasks, normalizeWorkTask, workTaskProgress } from './workTaskModel.js';
 import { validatePredecessors } from './scheduling.js';
 import { projectRepository } from '../../data/projectRepository.js';
@@ -73,7 +73,7 @@ function predecessorIds(value){
 
 export function createStandaloneWork(projectId,draft,clock=Date.now){
   if(!canWriteProjectModule(projectId,'execution:today'))return {ok:false,code:'forbidden'};
-  if(!['خرید فوری','خدمات و تعمیر','حمل'].includes(draft.oddJobType) || !/^oddjob-[a-z0-9]+$/.test(draft.id)
+  if(!ODD_JOB_TYPES.includes(draft.oddJobType) || !/^oddjob-[a-z0-9]+$/.test(draft.id)
     || !Number.isFinite(draft.amount) || draft.amount<0)return {ok:false,code:'invalid'};
   if(draft.expenseApproverContactId && !contactRepository.get(projectId,draft.expenseApproverContactId))return {ok:false,code:'approver'};
   const checked=validate(projectId,null,{

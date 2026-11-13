@@ -214,7 +214,7 @@ function reportThumbnails(documentRef,photos){
     const image=documentRef.createElement('img');
     image.alt=photo?.name||'عکس گزارش';
     button.appendChild(image);
-    button.addEventListener('click',()=>openFileViewer(photo,{onError:message=>window.KarhaUI?.showToast?.(message),compactImageHeader:true}));
+    button.addEventListener('click',()=>openFileViewer(photo,{onError:message=>window.KarhaUI?.showToast?.(message),compactImageHeader:true,gallery:photos}));
     strip.appendChild(button);
     const controller=new AbortController();
     controllers.push(controller);
