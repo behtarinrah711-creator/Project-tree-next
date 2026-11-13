@@ -1,3 +1,4 @@
+import {acceptedMembership} from './acceptedMembership.js';
 import {contractStatementTotals} from '../../src/domain/contractStatements.js';
 import {saveStatement,recordStatementPayment} from './contractStatement.js';
 import {applyExecutionApproval,approveExecutionEntity,executionApprovalItem} from '../../src/domain/wbs/executionApproval.js';
@@ -28,9 +29,9 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       const result=await client.query('SELECT owner_account_id,payload FROM projects WHERE id=$1 FOR UPDATE',[projectId]);
       const row=result.rows[0];
       if(!row){sendJson(response,404,{message:'پروژه پیدا نشد'});return true;}
-      const member=await client.query(`SELECT a.phone,m.status AS membership_status,r.permissions FROM accounts a
+      const member=await client.query(`SELECT a.phone,CASE WHEN a.id=$3 OR ${acceptedMembership} THEN m.status END AS membership_status,r.permissions FROM accounts a
         LEFT JOIN project_memberships m ON m.account_id=a.id AND m.project_id=$1
-        LEFT JOIN project_roles r ON r.id=m.role_id AND r.project_id=$1 WHERE a.id=$2`,[projectId,accountId]);
+        LEFT JOIN project_roles r ON r.id=m.role_id AND r.project_id=$1 WHERE a.id=$2`,[projectId,accountId,row.owner_account_id]);
       Object.assign(row,member.rows[0]);
       const memberContact=(row.payload.projectMembers||[]).find(member=>member.mobile===row.phone && member.status==='active')?.contactId;
       const person=(row.payload.contacts||[]).find(c=>!c.trashed && (String(c.id)===String(memberContact||'') || (c.phones||[c.phone]).includes(row.phone)));

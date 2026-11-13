@@ -200,7 +200,7 @@ export async function prepareSaosaWorkspace({windowRef = window, store} = {}){
   let snapshot = remote.snapshot || createEmptySnapshot();
   const mayImportCache = snapshotHasProjects(cachedSnapshot)
     && !snapshotHasProjects(snapshot)
-    && (!cachedAccountId || cachedAccountId === remote.accountId);
+    && !cachedAccountId;
   if(mayImportCache){
     const saved = await workspaceRequest(windowRef, session, {
       method: 'PUT',

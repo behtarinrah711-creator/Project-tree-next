@@ -1,3 +1,4 @@
+import {acceptedMembership} from './acceptedMembership.js';
 import { isWork } from '../../src/domain/wbs/normalize.js';
 import {canAttachSignedContract,canReviseReturnedSignedContract,isAddendumVisibleInFinance,isContractInFinance} from '../../src/domain/contractHandoff.js';
 import {randomUUID, createHash} from 'node:crypto';
@@ -120,7 +121,7 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
     if(!write && !(request.method==='GET' && id)){sendJson(response,405,{error:'method_not_allowed'});return true;}
     const accountId=await authenticate(request,pool,sessionSecret);
     if(!accountId){sendJson(response,401,{error:'unauthorized'});return true;}
-    const result=await pool.query(`SELECT p.owner_account_id,p.payload,m.status AS membership_status,r.permissions,a.phone
+    const result=await pool.query(`SELECT p.owner_account_id,p.payload,CASE WHEN p.owner_account_id=a.id OR ${acceptedMembership} THEN m.status END AS membership_status,r.permissions,a.phone
       FROM projects p JOIN accounts a ON a.id=$2
       LEFT JOIN project_memberships m ON m.project_id=p.id AND m.account_id=a.id
       LEFT JOIN project_roles r ON r.id=m.role_id AND r.project_id=p.id WHERE p.id=$1`,[projectId,accountId]);
