@@ -1,3 +1,12 @@
+✔ report rows open independent destinations using the financial row design (139.440006ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 377.7057
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { renderDelayView } from '../wbs/delayView.js';
@@ -8,7 +17,6 @@ import { openProjectFinishSheet } from '../wbs/homeView.js';
 
 export const REPORT_SECTIONS = Object.freeze([
   { id:'contracts', title:'قرارداد پیمانکاران', meta:'ایجاد و مدیریت قراردادهای واقعی پیمانکاران' },
-  { id:'contract-addenda', title:'الحاقیه‌ها', meta:'ثبت و پیگیری الحاقیه‌های قرارداد' },
   { id:'daily-execution-reports', title:'گزارش‌های روزانهٔ اجرا', meta:'آمار روزانه و سوابق گزارش هر کار' },
   { id:'done-works', title:'کارهای انجام‌شده', meta:'مشاهده گزارش کارهای تکمیل‌شده پروژه' },
   { id:'work-delays', title:'دیرکردها', meta:'مشاهده کارهای عقب‌افتاده پروژه' },
@@ -84,7 +92,6 @@ export const reportsModule = {
     wrap.className = 'workspace-option-list';
 
     REPORT_SECTIONS.forEach(section => {
-      if(section.id==='contract-addenda') return;
       if(section.id==='daily-execution-reports' && !canViewDailyReports) return;
       const row = document.createElement('button');
       row.type = 'button';
@@ -108,7 +115,7 @@ export const reportsModule = {
   },
 };
 
-export const reportSectionModules = REPORT_SECTIONS.filter(section => section.id !== 'contracts').map(section => ({
+export const reportSectionModules = [{ id:'contract-addenda', title:'الحاقیه‌ها' }, ...REPORT_SECTIONS.filter(section => section.id !== 'contracts')].map(section => ({
   id: section.id,
   title: section.title,
   route: section.id,
