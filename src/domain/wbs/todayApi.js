@@ -4,7 +4,7 @@ import { uid } from '../../data/projectFactories.js';
 import { todayRepository } from '../../data/todayRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
 import { workTaskApi } from './workTaskApi.js';
-import { canRecordStartDelay, executionReportDay, START_DELAY_REASONS, tehranTodayJalali } from './todayDomain.js';
+import { canRecordStartDelay, dailyExecutionStatus, DAILY_EXECUTION_LABELS, INACTIVE_REASONS, executionReportDay, START_DELAY_REASONS, tehranTodayJalali } from './todayDomain.js';
 
 export const REPORT_MIN_LENGTH = 3;
 export const COMMENT_MIN_LENGTH = 2;
@@ -56,6 +56,26 @@ function completeExecution(entity,ref,by,at,day){
 }
 
 export const todayApi = {
+  setDailyStatus(projectId,ref,status,reasonId,note,actor,clock=Date.now){
+    const entity=todayRepository.get(projectId,ref);
+    const by=actorValue(actor);
+    if(!entity || entity.trashed || !by.contactId || String(entity.assigneeContactId)!==by.contactId)return {ok:false,code:'forbidden'};
+    if(entity.completed || ['approved','pending_approval'].includes(entity.completionState))return {ok:false,code:'locked'};
+    if(!Object.hasOwn(DAILY_EXECUTION_LABELS,status))return {ok:false,code:'invalid_status'};
+    const custom=String(reasonId||'').startsWith('custom:')?reasonId.slice(7).trim():'';
+    const reason=Object.hasOwn(INACTIVE_REASONS,reasonId)?INACTIVE_REASONS[reasonId]:custom;
+    if(status==='inactive' && !reason)return {ok:false,code:'invalid_reason'};
+    const at=clock(),day=tehranTodayJalali(new Date(at));
+    const previous=dailyExecutionStatus(entity,day);
+    const details=status==='inactive'?{reasonId,reason,description:String(note||'').trim()}:{};
+    if(previous.status===status && previous.reasonId===details.reasonId && previous.description===details.description)return {ok:true,entity};
+    return mutate(projectId,ref,current=>({
+      ...current,
+      executionHistory:[...(current.executionHistory||[]),event('daily_status',by,at,{day,status,...details})],
+      updatedAt:at,
+    }));
+  },
+
   saveReport(projectId, ref, description, actor, clock = Date.now, progress = null, {files, completeAt100=false}={}){
     const text = String(description || '').trim();
     if(text.length < REPORT_MIN_LENGTH) return { ok:false, code:'report_too_short' };

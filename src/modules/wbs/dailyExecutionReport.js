@@ -48,15 +48,15 @@ export function appendReportPhotos(root,photos){
   }
 }
 
-export function openDailyExecutionReport({ projectId, item, actor, onChanged, onSubmitted, subject='کار' }){
-  const current=todayReportOf(item.entity);
+export function openDailyExecutionReport({ projectId, item, actor, onChanged, onSubmitted, day=tehranTodayJalali(), subject='کار' }){
+  const current=todayReportOf(item.entity,day);
   const photos=[...(current?.photos||[])];
   const ref={kind:item.kind,id:item.id,workId:item.workId};
   let uploader;
   const sheet=openWbsSheet({
     title:`ثبت گزارش:\n${item.entity.title || item.entity.text || subject}`,
     saveLabel:'ذخیره', presentation:'stage-create', autoFocus:false,
-    historyKey:`execution-report:${projectId}:${item.id}:${tehranTodayJalali()}`,
+    historyKey:`execution-report:${projectId}:${item.id}:${day}`,
     body(root){
       const progress=fieldRow('وارد کردن درصد پیشرفت',progressInput(document,current?.progress ?? item.entity.progress));
       progress.classList.add('today-report-progress-row');
@@ -75,6 +75,7 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
       note.appendChild(placeholders);
     },
     onSave(root){
+      if(day!==tehranTodayJalali()){toast('روز تغییر کرده است. فرم گزارش امروز را دوباره باز کنید');return false;}
       if(uploader?.isBusy()){
         toast('ابتدا بارگذاری عکس‌ها را تمام کنید');
         return false;

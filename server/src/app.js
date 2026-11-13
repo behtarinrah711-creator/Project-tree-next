@@ -9,7 +9,7 @@ import {createHash, randomBytes, randomInt, randomUUID} from 'node:crypto';
 import {constantTimeEqual, hashToken} from './auth.js';
 import {normalizeAccountNotebook, readAccountNotebook, saveAccountNotebook} from './accountNotebook.js';
 import {createFileUploadHandler} from './fileUploads.js';
-import {START_DELAY_REASONS, tehranTodayJalali} from '../../src/domain/wbs/todayDomain.js';
+import {DAILY_EXECUTION_LABELS, INACTIVE_REASONS, START_DELAY_REASONS, tehranTodayJalali} from '../../src/domain/wbs/todayDomain.js';
 
 const SCOPE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/i;
 const IRAN_PHONE_PATTERN = /^09\d{9}$/;
@@ -305,17 +305,23 @@ function canWriteExecutionItem(permissions,item){
 
 export function hasDeniedExecutionChanges(current,incoming,permissions,phone){
   const contactIds=executionContactIds(current,phone);
-  const deniedStartDelay=(previous,item)=>{
+  const deniedDailyHistory=(previous,item)=>{
     const prior=new Map((previous?.executionHistory||[])
-      .filter(entry=>entry?.type==='start_delayed').map(entry=>[entry.id,entry]));
+      .filter(entry=>['start_delayed','daily_status'].includes(entry?.type)).map(entry=>[entry.id,entry]));
     return (item.executionHistory||[]).some(entry=>{
-      if(entry?.type!=='start_delayed' || JSON.stringify(prior.get(entry.id))===JSON.stringify(entry))return false;
+      if(!['start_delayed','daily_status'].includes(entry?.type) || JSON.stringify(prior.get(entry.id))===JSON.stringify(entry))return false;
       const at=new Date(entry.at);
-      return item.type==='خرید' || !previous?.assigneeContactId
-        || !contactIds.has(String(previous.assigneeContactId))
-        || !START_DELAY_REASONS.includes(entry.reason)
-        || (entry.reason==='سایر' && (typeof entry.description!=='string' || !entry.description.trim()))
-        || !Number.isFinite(at.getTime()) || entry.day!==tehranTodayJalali(at);
+      if(item.type==='خرید' || !previous?.assigneeContactId || !contactIds.has(String(previous.assigneeContactId))
+        || !Number.isFinite(at.getTime()) || entry.day!==tehranTodayJalali(at))return true;
+      if(entry.type==='daily_status'){
+        if(!Object.hasOwn(DAILY_EXECUTION_LABELS,entry.status))return true;
+        if(entry.status!=='inactive')return false;
+        const reason=Object.hasOwn(INACTIVE_REASONS,entry.reasonId)?INACTIVE_REASONS[entry.reasonId]
+          : typeof entry.reasonId==='string' && entry.reasonId.startsWith('custom:')?entry.reasonId.slice(7).trim():'';
+        return !reason || reason!==entry.reason;
+      }
+      return !START_DELAY_REASONS.includes(entry.reason)
+        || (entry.reason==='سایر' && (typeof entry.description!=='string' || !entry.description.trim()));
     });
   };
   const meaningful=value=>Array.isArray(value)?value.length>0:value!=null && value!=='';
@@ -333,7 +339,7 @@ export function hasDeniedExecutionChanges(current,incoming,permissions,phone){
       if(!item)return false;
       const previous=records.get(String(item.id));
       return (changed(previous,item) && (!canWriteExecutionItem(permissions,previous||item) || !canWriteExecutionItem(permissions,item)))
-        || deniedStartDelay(previous,item)
+        || deniedDailyHistory(previous,item)
         || check(previous?.subtasks||[],item.subtasks||[]) || check(previous?.workTasks||[],item.workTasks||[]);
     });
   };

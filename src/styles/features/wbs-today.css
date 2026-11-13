@@ -86,3 +86,14 @@
 .daily-execution-summary{cursor:pointer;overflow-wrap:anywhere}
 .daily-execution-summary small{margin:3px 0}
 .daily-execution-day .today-report p{margin-top:6px}
+
+.wbs-today-frame .today-card-summary{grid-template-columns:minmax(0,1fr) auto 42px;cursor:default;}
+.today-card-badges{display:grid;justify-items:center;gap:4px;}
+.wbs-today-frame .today-card-summary .today-card-activity{font-size:10px;}
+.wbs-today-frame .today-card-summary .today-card-activity.is-inactive{background:#9e3229;}
+.wbs-today-frame .today-card-summary button.today-progress-circle{cursor:pointer;}
+.today-task-tabs button[data-mode="overdue"]{white-space:normal;line-height:1.15;}
+.execution-calendar .jalali-days,.execution-calendar .jalali-week{direction:rtl;}
+.execution-calendar .jalali-days button{height:auto;min-height:42px;}
+.execution-calendar .jalali-days small{display:block;font-size:10px;}
+.execution-calendar .jalali-days button.is-holiday{text-decoration:underline dotted;}
