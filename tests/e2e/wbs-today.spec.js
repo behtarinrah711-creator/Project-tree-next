@@ -31,7 +31,9 @@ test.beforeEach(async({page})=>{
 async function openTaskDetails(page,card){
   await card.locator('.today-card-titles').click();
   const sheet=page.locator('#wbsSheetOverlay');
-  await expect(sheet.locator('.sheet-caption')).toHaveText('قالب‌بندی');
+  await expect(sheet).toHaveAttribute('aria-label','قالب‌بندی');
+  await expect(sheet.locator('.sheet-caption')).toHaveText('قالب‌بندیسازه · فونداسیون');
+  await expect(sheet.locator('.sheet-caption .today-detail-path')).toHaveText('سازه · فونداسیون');
   return sheet;
 }
 
@@ -65,7 +67,8 @@ test('Today shows Tasks instead of their Work, formats one-day dates once, and e
   await expect(details).toContainText(todayShort);
   await expect(details).not.toContainText(`${todayShort} ← ${todayShort}`);
   await expect(details).toContainText('امروز');
-  await expect(details).toContainText('پیمانکار: پیمانکار قرارداد');
+  const contractor=details.locator('.wbs-costline-detail-row').filter({has:details.getByText('پیمانکار',{exact:true})});
+  await expect(contractor.getByText('پیمانکار قرارداد',{exact:true})).toBeVisible();
   const visible=details.locator('.today-comment');
   await expect(visible).toHaveCount(2);
   await expect(visible.first()).toContainText('نظر سوم');
