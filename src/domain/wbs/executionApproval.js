@@ -5,11 +5,12 @@ import {workTaskProgress} from './workTaskModel.js';
 
 export function executionApprovalItem(project,ref){
   return [...collectStandaloneWorks(project),...collectTodayItems(project),...collectShoppingItems(project)].find(item=>
-    item.mode==='pending' && !item.entity.completed && item.kind===ref.kind && String(item.id)===String(ref.id)
+    (item.entity.expenseApprovalStatus==='pending' || (item.mode==='pending' && !item.entity.completed)) && item.kind===ref.kind && String(item.id)===String(ref.id)
     && (item.kind==='work' || String(item.workId)===String(ref.workId)));
 }
 
 export function approveExecutionEntity(entity,kind,actor,at){
+  if(kind==='standalone' && entity.oddJobType)return {...entity,expenseApprovalStatus:'approved',expenseApprovedAt:at,expenseApprovedBy:actor,updatedAt:at};
   return {
     ...entity,completed:true,done:true,completionState:'approved',workflowStatus:'approved',
     completedAt:entity.completionSubmittedAt || at,actualFinishDay:entity.completionSubmittedAt || at,

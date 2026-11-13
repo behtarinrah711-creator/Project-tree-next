@@ -8,7 +8,7 @@ export function hasActiveFileUploads(requestCount,items=[]){
 export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{},onError=()=>{},label='افزودن عکس یا فایل',category='contacts',readOnly=false,allowReplace=false,buttonLabel=false,confirmRemove=remove=>remove()}={}){
   root.classList.add('saosa-file-uploader');
   const input=document.createElement('input');input.type='file';input.multiple=true;
-  const imagesOnly=category==='reports';
+  const imagesOnly=['reports','oddjob-invoices'].includes(category);
   input.accept=imagesOnly?'image/jpeg,image/png,image/heic,image/heif,image/avif,image/webp,.heic,.heif':category==='contracts'?'image/jpeg,image/png,image/heic,image/heif,.heic,.heif,.pdf':'image/jpeg,image/png,image/heic,image/heif,image/avif,image/webp,.heic,.heif,.pdf,.docx,.xlsx,.pptx';
   input.setAttribute('aria-label',label);input.disabled=true;root.appendChild(input);
   const note=document.createElement('p');note.className='saosa-file-note';note.textContent=imagesOnly?'هر عکس ذخیره‌شده تا ۲ مگابایت':category==='contracts'?'عکس ذخیره‌شده تا ۲ مگابایت؛ PDF تا ۲۵ مگابایت':'عکس ذخیره‌شده تا ۲ مگابایت؛ PDF و فایل‌های اداری تا ۲۵ مگابایت';root.appendChild(note);

@@ -180,6 +180,8 @@ export const todayApi = {
 
   approve(projectId, ref, actor, clock = Date.now){
     const at = clock(); const by = actorValue(actor);
+    const entity=todayRepository.get(projectId,ref);
+    if(ref.kind==='standalone' && entity?.oddJobType && (entity.expenseApprovalStatus!=='pending' || !by.contactId || entity.expenseApproverContactId!==by.contactId))return {ok:false,code:'forbidden'};
     return mutate(projectId,ref,entity=>approveExecutionEntity(entity,ref.kind,by,at),{completion:true});
   },
 

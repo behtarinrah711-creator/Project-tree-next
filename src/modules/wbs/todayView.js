@@ -1,4 +1,4 @@
-import {openCreateWorkTaskSheet} from './workTaskView.js';
+import {openStandaloneWorkSheet} from './workTaskView.js';
 import {createStandaloneWork} from '../../domain/wbs/workTaskApi.js';
 import {openExecutionCalendar} from './executionCalendar.js';
 import {projectRepository} from '../../data/projectRepository.js';
@@ -129,6 +129,10 @@ export function renderTodayCard(documentRef,project,item,today,onChanged,approva
   card.appendChild(responsibilityRow);
   if(contractor) card.appendChild(detailRow(documentRef, 'پیمانکار: ', contactName(contractor)));
   if(approval){
+    if(entity.oddJobType){
+      card.appendChild(detailRow(documentRef,'مبلغ',toPersianDigits(Number(entity.amount||0).toLocaleString('en-US'))+' تومان'));
+      appendReportPhotos(card,entity.invoices);
+    }
     if(approval.action){
       const actions=documentRef.createElement('div');actions.className='today-task-actions';
       actions.appendChild(approval.action);
@@ -284,6 +288,19 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose){
   people.append(peopleSummary,peopleBody);
   summary.appendChild(people);
   root.append(schedule,summary);
+  if(item.kind==='standalone' && entity.oddJobType){
+    const expense=detailCard(documentRef);
+    if(entity.description)expense.append(detailRow(documentRef,'شرح کوتاه',entity.description));
+    expense.append(detailRow(documentRef,'مبلغ',toPersianDigits(Number(entity.amount||0).toLocaleString('en-US'))+' تومان'));
+    if(entity.expenseApproverContactId){
+      const reviewer=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.expenseApproverContactId));
+      expense.append(detailRow(documentRef,'مسئول تأیید خرج',reviewer?contactName(reviewer):'—'),
+        detailRow(documentRef,'تأیید خرج',entity.expenseApprovalStatus==='approved'?'تأیید شده':'در انتظار تأیید'));
+    }
+    appendReportPhotos(expense,entity.invoices);
+    root.appendChild(expense);
+  }
+
   if(executionStatus(entity)==='pending_approval'){
     const pending=detailCard(documentRef,'today-detail-pending');
     pending.textContent='در انتظار تأیید';
@@ -454,7 +471,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   heading.className='today-card-heading today-card-summary';
   const {entity}=item;
   const titles=linkButton(documentRef,'today-card-titles','');
-  titles.innerHTML=`<strong><small class="wbs-type-chip ${TYPE_CLASSES.get(entity.type)||'type-7'}">${esc(entity.type||item.work.type||'کار')}</small> ${esc(entity.title||entity.text||'')}</strong><span>${esc(item.path.join(' · '))}</span>`;
+  titles.innerHTML=`<strong><small class="wbs-type-chip ${TYPE_CLASSES.get(entity.type)||'type-7'}">${esc(entity.oddJobType||entity.type||item.work.type||'کار')}</small> ${esc(entity.title||entity.text||'')}</strong><span>${esc(item.path.join(' · '))}</span>`;
   const assignee=(project.contacts||[]).find(contact=>!contact.trashed && String(contact.id)===String(entity.assigneeContactId));
   const contractor=contractorForItem(project,item).contact;
   const people=documentRef.createElement('span');
@@ -528,7 +545,7 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
   if(standalone){
     if(canWriteProjectModule(project.id,'execution:today')){
       const add=linkButton(documentRef,'wbs-tree-mode-tab today-task-filter oddjobs-add','+','افزودن خرده‌کار');
-      add.onclick=()=>openCreateWorkTaskSheet({projectId:project.id,work:{id:'standalone'},onChanged,
+      add.onclick=()=>openStandaloneWorkSheet({projectId:project.id,onChanged,
         saveStandalone:draft=>{
           const result=createStandaloneWork(project.id,draft);
           if(result.ok)standaloneMode=timeState(result.task,tehranTodayJalali());

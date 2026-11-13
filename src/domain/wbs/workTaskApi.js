@@ -73,11 +73,21 @@ function predecessorIds(value){
 
 export function createStandaloneWork(projectId,draft,clock=Date.now){
   if(!canWriteProjectModule(projectId,'execution:today'))return {ok:false,code:'forbidden'};
-  const checked=validate(projectId,null,draft);
+  if(!['خرید فوری','خدمات و تعمیر','حمل'].includes(draft.oddJobType) || !/^oddjob-[a-z0-9]+$/.test(draft.id)
+    || !Number.isFinite(draft.amount) || draft.amount<0)return {ok:false,code:'invalid'};
+  if(draft.expenseApproverContactId && !contactRepository.get(projectId,draft.expenseApproverContactId))return {ok:false,code:'approver'};
+  const checked=validate(projectId,null,{
+    title:draft.title,type:'',weight:1,priority:draft.priority,assigneeContactId:draft.assigneeContactId,
+    scheduleStart:draft.dueDate,scheduleEnd:draft.dueDate,amount:draft.amount,
+  });
   if(!checked.ok)return checked;
   const now=clock();
-  const task=normalizeWorkTask({...checked.value,id:uid(),predecessorIds:[],dependencies:[],createdAt:now,updatedAt:now});
-  const saved=projectRepository.updateProject(projectId,project=>({...project,standaloneWorks:[...(project.standaloneWorks||[]),task]}));
+  const task=normalizeWorkTask({...checked.value,id:draft.id,description:String(draft.description||'').trim(),oddJobType:draft.oddJobType,dueDate:draft.dueDate,
+    expenseApproverContactId:draft.expenseApproverContactId,
+    expenseApprovalStatus:draft.expenseApproverContactId?'pending':null,
+    invoices:(draft.invoices||[]).filter(file=>file.category==='oddjob-invoices' && file.projectId===projectId && file.recordId===draft.id),
+    createdAt:now,updatedAt:now});
+  const saved=projectRepository.updateProject(projectId,project=>(project.standaloneWorks||[]).some(work=>work.id===task.id)?project:({...project,standaloneWorks:[...(project.standaloneWorks||[]),task]}));
   if(!saved)return {ok:false,code:'persist'};
   publish(projectId);
   return {ok:true,task};
