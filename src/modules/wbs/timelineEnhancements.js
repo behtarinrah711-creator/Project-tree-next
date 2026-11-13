@@ -249,6 +249,7 @@ function colorClass(item){
     'کرایه':'wbs-gantt-color-5',
     'خدمات':'wbs-gantt-color-6',
     'پیگیری':'wbs-gantt-color-7',
+    'سایر':'wbs-gantt-color-default',
   })[item.type] || 'wbs-gantt-color-default';
 }
 

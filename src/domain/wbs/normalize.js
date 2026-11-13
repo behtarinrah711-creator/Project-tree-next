@@ -3,7 +3,7 @@ export const KIND_WORK = 'work';
 
 export const FOLLOW_UP_WORK_TYPE = 'پیگیری';
 
-export const WORK_TYPES = ['پیمانکار', 'خرید', 'نیروی کار', 'حمل و نقل', 'خدمات', FOLLOW_UP_WORK_TYPE, 'ماشین آلات'];
+export const WORK_TYPES = ['پیمانکار', 'خرید', 'نیروی کار', 'حمل و نقل', 'خدمات', FOLLOW_UP_WORK_TYPE, 'ماشین آلات', 'کرایه', 'سایر'];
 export const UNITS = ['متر', 'مترمربع', 'مترمکعب', 'کیلوگرم', 'تن', 'عدد', 'دستگاه', 'ست', 'ساعت', 'روز', 'ماه'];
 
 export const WORK_TYPE_TOGGLES = Object.freeze({
@@ -14,6 +14,8 @@ export const WORK_TYPE_TOGGLES = Object.freeze({
   'خدمات': [{key:'hasContract', label:'قرارداد'}, {key:'hasInvoice', label:'فاکتور'}, {key:'hasProgressReport', label:'صورت وضعیت'}],
   [FOLLOW_UP_WORK_TYPE]: [],
   'ماشین آلات': [{key:'hasContract', label:'قرارداد'}, {key:'hasInvoice', label:'فاکتور'}, {key:'hasProgressReport', label:'صورت وضعیت'}, {key:'isRental', label:'اجاره ای'}],
+  'کرایه': [{key:'hasContract', label:'قرارداد'}, {key:'hasInvoice', label:'فاکتور'}, {key:'hasProgressReport', label:'صورت وضعیت'}],
+  'سایر': [],
 });
 
 export function itemKind(item){

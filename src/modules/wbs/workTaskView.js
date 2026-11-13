@@ -20,6 +20,7 @@ const PRIORITY_LABELS = Object.freeze({ low:'کم', normal:'عادی', high:'ز�
 const TYPE_CLASSES = new Map([
   ['پیمانکار','type-1'], ['خرید','type-2'], ['نیروی کار','type-3'], ['حمل و نقل','type-4'],
   ['خدمات','type-5'], ['پیگیری','type-6'], ['ماشین آلات','type-7'],
+  ['کرایه','type-8'], ['سایر','type-9'],
 ]);
 const COUNTERPARTY_LABELS = Object.freeze({
   'پیمانکار':'پیمانکار',
@@ -28,6 +29,7 @@ const COUNTERPARTY_LABELS = Object.freeze({
   'حمل و نقل':'راننده',
   'خدمات':'ارائه‌دهنده',
   'ماشین آلات':'شخص',
+  'کرایه':'اجاره‌دهنده',
 });
 
 function escapeHtml(value){

@@ -414,7 +414,7 @@ function renderTimeline(items){
 
 function timelineColor(item){
   if(item.kind !== 'workTask') return '#77706a';
-  return ({ اجرا:'#03045E', خرید:'#033E8A', 'نیروی کار':'#0078B7', پیمانکار:'#0096C8', کرایه:'#00B4D7', خدمات:'#48CAE4', پیگیری:'#6D8EA0' })[item.type] || '#91A4AF';
+  return ({ اجرا:'#03045E', خرید:'#033E8A', 'نیروی کار':'#0078B7', پیمانکار:'#0096C8', کرایه:'#00B4D7', خدمات:'#48CAE4', پیگیری:'#6D8EA0', سایر:'#5C6B73' })[item.type] || '#91A4AF';
 }
 
 function tNameRow(entry){

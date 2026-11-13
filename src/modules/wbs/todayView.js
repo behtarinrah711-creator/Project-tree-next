@@ -16,7 +16,7 @@ import { executionWorkKey } from '../reports/dailyExecutionReportsView.js';
 
 export const TODAY_ICON = 'M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v255l-80 80v-175H200v400h248l80 80H200Zm0-560h560v-80H200v80Zm0 0v-80 80ZM662-60 520-202l56-56 85 85 170-170 56 57L662-60Z';
 const LABELS = Object.freeze({ overdue:'عقب‌افتاده', today:'امروز', future:'آینده', pending:'تکمیل', unscheduled:'بی زمان' });
-const TYPE_CLASSES = new Map([['اجرا','type-1'],['خرید','type-2'],['نیروی کار','type-3'],['پیمانکار','type-4'],['کرایه','type-5'],['خدمات','type-6'],['پیگیری','type-7']]);
+const TYPE_CLASSES = new Map([['اجرا','type-1'],['خرید','type-2'],['نیروی کار','type-3'],['پیمانکار','type-4'],['کرایه','type-5'],['خدمات','type-6'],['پیگیری','type-7'],['سایر','type-9']]);
 let standaloneMode='today';
 let activeMode = 'today'; let activeProjectId = null; let activeProject = null;
 
