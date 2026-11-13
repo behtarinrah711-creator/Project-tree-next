@@ -235,66 +235,28 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose){
   const canEditDay=day===tehranTodayJalali() && assigned && status!=='approved' && status!=='pending_approval';
   let releasePhotos=()=>{};
 
-  const stats=detailCard(documentRef,'today-detail-stats');
-  const statusTile=documentRef.createElement(canEditDay?'button':'div');
-  statusTile.className='today-detail-stat';
+  const summary=detailCard(documentRef);
+  const statusRow=documentRef.createElement('div');
+  statusRow.className='today-detail-rowline';
+  const statusTile=documentRef.createElement(canEditDay?'button':'span');
+  statusTile.className='today-detail-status';
   if(canEditDay){
     statusTile.type='button';
     statusTile.setAttribute('aria-label','تغییر وضعیت');
   }
-  const statusName=documentRef.createElement('b');
-  statusName.textContent='وضعیت اجرا';
-  const statusChip=documentRef.createElement('span');
-  statusChip.className='today-detail-chip is-'+current.status;
+  const statusLabel=documentRef.createElement('span');
+  statusLabel.textContent='وضعیت اجرا ';
+  const statusChip=documentRef.createElement('b');
+  statusChip.className='today-detail-pill is-'+current.status;
   statusChip.textContent=DAILY_EXECUTION_LABELS[current.status]||'نامشخص';
-  const hint=documentRef.createElement('small');
-  hint.className='today-detail-hint';
-  hint.textContent=current.reason || (canEditDay?'برای تغییر لمس کنید':'');
-  statusTile.append(statusName,statusChip,hint);
-  const reportTile=documentRef.createElement(canEditDay?'button':'div');
-  reportTile.className='today-detail-stat';
-  if(canEditDay){
-    reportTile.type='button';
-    reportTile.setAttribute('aria-label',report?'ویرایش گزارش':'ثبت گزارش');
-    reportTile.addEventListener('click',()=>afterClose(()=>openDailyExecutionReport({
-      projectId:project.id,item,actor:currentActor,day,onChanged:()=>{refresh();},
-      onSubmitted(updated){activeMode=timeState(updated,tehranTodayJalali());},
-    })));
-  }
-  const reportName=documentRef.createElement('b');
-  reportName.textContent='گزارش';
-  const reportChip=documentRef.createElement('span');
-  reportChip.className='today-detail-chip '+(report?'is-saved':'is-empty');
-  reportChip.textContent=report?'ثبت شده':'بدون گزارش';
-  reportTile.append(reportName,reportChip);
-  stats.append(statusTile,reportTile);
-  root.appendChild(stats);
-
-  const schedule=detailCard(documentRef);
-  const kicker=documentRef.createElement('p');
-  kicker.className='today-detail-kicker';
-  kicker.textContent='زمان‌بندی';
-  const hero=documentRef.createElement('p');
-  hero.className='today-detail-hero';
-  hero.textContent=heroRemaining(entity,day)||'—';
-  schedule.append(kicker,hero);
-  const share=elapsedShare(entity,day);
-  if(share!==null){
-    const track=documentRef.createElementNS('http://www.w3.org/2000/svg','svg');
-    track.setAttribute('class','today-detail-track');
-    track.setAttribute('viewBox','0 0 100 6');
-    track.setAttribute('preserveAspectRatio','none');
-    track.setAttribute('aria-hidden','true');
-    const fill=documentRef.createElementNS('http://www.w3.org/2000/svg','rect');
-    fill.setAttribute('width',String(Math.round(share*100)));
-    fill.setAttribute('height','6');
-    fill.setAttribute('rx','3');
-    track.appendChild(fill);
-    schedule.appendChild(track);
-  }
+  statusTile.append(statusLabel,statusChip);
+  const remain=documentRef.createElement('strong');
+  remain.textContent=heroRemaining(entity,day)||'';
+  statusRow.append(statusTile,remain);
+  summary.appendChild(statusRow);
   if(entity.scheduleStart){
     const dates=documentRef.createElement('div');
-    dates.className='today-detail-dates';
+    dates.className='today-detail-rowline today-detail-meta';
     if(entity.scheduleStart===entity.scheduleEnd){
       dates.append(Object.assign(documentRef.createElement('span'),{textContent:formatDate(entity.scheduleStart)}));
     }else{
@@ -304,20 +266,36 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose){
       end.textContent='پایان '+formatDate(entity.scheduleEnd);
       dates.append(start,end);
     }
-    schedule.appendChild(dates);
+    summary.appendChild(dates);
   }
-  root.appendChild(schedule);
-
   const assignee=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.assigneeContactId||''));
   const approver=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.approvalContactId||''));
   const contractor=contractorForItem(project,item).contact;
-  const people=detailCard(documentRef,'today-detail-people');
-  people.append(
-    detailPerson(documentRef,'مسئول پیگیری',assignee?contactName(assignee):'—'),
-    detailPerson(documentRef,'مسئول تأیید',approver?contactName(approver):'—'),
-  );
-  if(contractor) people.appendChild(detailPerson(documentRef,'پیمانکار:', ' '+contactName(contractor)));
-  root.appendChild(people);
+  const people=documentRef.createElement('details');
+  people.className='today-detail-meta';
+  const peopleSummary=documentRef.createElement('summary');
+  peopleSummary.textContent='مسئولان کار';
+  const peopleBody=documentRef.createElement('div');
+  const followName=assignee?contactName(assignee):'—';
+  const approveName=approver?contactName(approver):'—';
+  const peopleLine=documentRef.createElement('p');
+  peopleLine.textContent=followName===approveName
+    ? 'پیگیری و تأیید · '+followName
+    : 'پیگیری · '+followName+' · تأیید · '+approveName;
+  peopleBody.appendChild(peopleLine);
+  if(contractor){
+    const contractorLine=documentRef.createElement('p');
+    contractorLine.textContent='پیمانکار: '+contactName(contractor);
+    peopleBody.appendChild(contractorLine);
+  }
+  if(current.reason){
+    const reasonLine=documentRef.createElement('p');
+    reasonLine.textContent=[current.reason,current.description].filter(Boolean).join(' · ');
+    peopleBody.appendChild(reasonLine);
+  }
+  people.append(peopleSummary,peopleBody);
+  summary.appendChild(people);
+  root.appendChild(summary);
 
   const actions=documentRef.createElement('div');
   actions.className='today-task-actions today-detail-actions';
@@ -399,17 +377,39 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose){
   }
 
   const reportCard=detailCard(documentRef,'today-detail-report');
+  const reportHead=documentRef.createElement('div');
+  reportHead.className='today-detail-rowline';
+  const reportTitle=documentRef.createElement('h2');
+  reportTitle.textContent='گزارش اجرا';
+  const reportTile=documentRef.createElement(canEditDay?'button':'span');
+  reportTile.className='today-detail-pill '+(report?'is-saved':'is-empty');
+  if(canEditDay){
+    reportTile.type='button';
+    reportTile.setAttribute('aria-label',report?'ویرایش گزارش':'ثبت گزارش');
+    reportTile.addEventListener('click',()=>afterClose(()=>openDailyExecutionReport({
+      projectId:project.id,item,actor:currentActor,day,onChanged:()=>{refresh();},
+      onSubmitted(updated){activeMode=timeState(updated,tehranTodayJalali());},
+    })));
+  }
+  reportTile.textContent=report?'ثبت شده':'بدون گزارش';
+  reportHead.append(reportTitle,reportTile);
+  reportCard.appendChild(reportHead);
   if(report){
-    const head=documentRef.createElement('div');
-    head.className='today-detail-report-head';
-    const title=documentRef.createElement('strong');
-    title.textContent=day===tehranTodayJalali()?'گزارش امروز':'گزارش '+formatDate(day);
-    const when=documentRef.createElement('span');
-    when.textContent=formatDate(report.reportDay||day);
-    head.append(title,when);
-    const body=documentRef.createElement('p');
-    body.textContent=report.description||'';
-    reportCard.append(head,body);
+    const meta=documentRef.createElement('div');
+    meta.className='today-detail-rowline today-detail-meta';
+    const who=documentRef.createElement('b');
+    who.textContent=report.createdBy?.name||'کاربر';
+    const when=documentRef.createElement('time');
+    when.textContent=formatMoment(report.createdAt);
+    meta.append(who,when);
+    const copy=documentRef.createElement('div');
+    copy.className='today-detail-copy';
+    for(const paragraph of String(report.description||'').split(/\n+/).filter(Boolean)){
+      const line=documentRef.createElement('p');
+      line.textContent=paragraph;
+      copy.appendChild(line);
+    }
+    reportCard.append(meta,copy);
     if(report.updatedAt){
       const edited=documentRef.createElement('div');
       edited.className='today-detail-edited';
@@ -422,22 +422,28 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose){
       reportCard.appendChild(photos.strip);
     }
   }
-  const commentsTitle=documentRef.createElement('h3');
-  commentsTitle.className='today-detail-comments-title';
+  root.appendChild(reportCard);
+
+  const commentsCard=detailCard(documentRef);
+  const commentsHead=documentRef.createElement('div');
+  commentsHead.className='today-detail-rowline';
+  const commentsTitle=documentRef.createElement('h2');
   commentsTitle.textContent='نظرات';
-  reportCard.appendChild(commentsTitle);
-  reportCard.appendChild(renderComments(documentRef,item,refresh));
+  const commentsCount=documentRef.createElement('small');
+  commentsCount.textContent=toPersianDigits(commentsOf(item.entity).length)+' نظر';
+  commentsHead.append(commentsTitle,commentsCount);
+  commentsCard.append(commentsHead,renderComments(documentRef,item,refresh));
   if(writable){
     const form=documentRef.createElement('form');
     form.className='today-detail-composer';
     const input=documentRef.createElement('input');
     input.name='commentText';
-    input.maxLength=240;
-    input.placeholder='نظر این روز';
-    input.setAttribute('aria-label','نظر این روز');
+    input.maxLength=500;
+    input.placeholder='نظر خود را بنویسید…';
+    input.setAttribute('aria-label','نظر شما');
     const submit=documentRef.createElement('button');
     submit.type='submit';
-    submit.textContent='ثبت';
+    submit.textContent='ارسال';
     form.append(input,submit);
     form.addEventListener('submit',event=>{
       event.preventDefault();
@@ -448,22 +454,16 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose){
       }
       refresh();
     });
-    reportCard.appendChild(form);
+    commentsCard.appendChild(form);
   }
-  root.appendChild(reportCard);
+  root.appendChild(commentsCard);
 
-  const menu=detailCard(documentRef,'today-detail-menu');
   const reports=reportsOf(entity);
   const canBrowse=projectPermissionState(project.id,['reports:reports']).visible;
   if(canBrowse && (reports.length || (entity.executionHistory||[]).some(entry=>entry?.type==='start_delayed'))){
     const link=documentRef.createElement('a');
-    link.className='today-detail-row today-report-link';
-    const label=documentRef.createElement('span');
-    label.textContent='همهٔ گزارش‌های این کار';
-    const count=documentRef.createElement('i');
-    count.className='today-detail-count';
-    count.textContent=toPersianDigits(reports.length);
-    link.append(label,count);
+    link.className='today-detail-card today-report-link';
+    link.textContent='همهٔ گزارش‌های این کار';
     const params=new URLSearchParams({work:executionWorkKey(refOf(item))});
     link.href=`#/projects/${encodeURIComponent(project.id)}/daily-execution-reports?${params}`;
     link.addEventListener('click',event=>{
@@ -471,10 +471,11 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose){
       event.preventDefault();
       afterClose(()=>{window.location.hash=new URL(link.href).hash;});
     });
-    menu.appendChild(link);
+    root.appendChild(link);
   }
-  menu.appendChild(renderHistory(documentRef,entity));
-  root.appendChild(menu);
+  const history=renderHistory(documentRef,entity);
+  history.classList.add('today-detail-card');
+  root.appendChild(history);
   return {root,release(){releasePhotos();}};
 }
 
@@ -506,7 +507,7 @@ function openTodayDetails(documentRef,project,item,today,onChanged,returnToCalen
   caption.textContent=item.entity.title || item.entity.text || 'جزئیات کار';
   const path=documentRef.createElement('span');
   path.className='today-detail-path';
-  titles.append(caption,path);
+  titles.append(path,caption);
   const ring=documentRef.createElement('div');
   ring.className='today-detail-ring';
   header.append(close,titles,ring);
