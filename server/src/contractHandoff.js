@@ -58,7 +58,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         return true;
       }
       const financeAction=['approve_finance','reject_finance','revoke_finance','record_payment'].includes(body.action);
-      const reviewAction=statement?body.action==='approve_statement':addendum ? ['approve_addendum','revoke_addendum'].includes(body.action) : body.action==='approve_contract';
+      const reviewAction=statement?['approve_statement','reject_statement'].includes(body.action):addendum ? ['approve_addendum','reject_addendum','revoke_addendum'].includes(body.action) : ['approve_contract','reject_contract'].includes(body.action);
       const permissions=row.permissions||{};
       const financeModule=Object.hasOwn(permissions.modules||permissions,'accounting-contracts')?'accounting-contracts':'accounting';
       const deleteAddendum=addendum && body.action==='delete_addendum';
@@ -73,7 +73,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       const contract=(row.payload[collection]||[]).find(c=>String(c.id)===contractId && (addendum || !c.trashed));
       const saveDraft=(addendum && body.action==='save_addendum') || (statement && body.action==='save_statement');
       const statementParent=statement && (row.payload.contracts||[]).find(record=>!record.trashed && String(record.id)===String(contract?.contractId ?? body.contractId));
-      if(statement && (!statementParent || (contract && !contract.statementType) || !['save_statement','delete_statement','approve_statement','save_signed','send_finance','approve_finance','reject_finance','withdraw_finance','record_payment'].includes(body.action))){sendJson(response,400,{message:'قرارداد یا عملیات صورت‌وضعیت نامعتبر است'});return true;}
+      if(statement && (!statementParent || (contract && !contract.statementType) || !['save_statement','delete_statement','approve_statement','reject_statement','save_signed','send_finance','approve_finance','reject_finance','withdraw_finance','record_payment'].includes(body.action))){sendJson(response,400,{message:'قرارداد یا عملیات صورت‌وضعیت نامعتبر است'});return true;}
       if(!statement && body.action==='record_payment'){sendJson(response,400,{message:'عملیات نامعتبر است'});return true;}
       if(contract?.trashed || (!contract && !saveDraft)){sendJson(response,404,{message:'قرارداد پیدا نشد'});return true;}
       if(Number(body.version)!==Number(contract?.handoffVersion||0) || Number(body.updatedAt)!==Number(contract?.updatedAt||0)){
@@ -116,7 +116,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       }
       else if(saveDraft) transition=saveAddendumDraft(row.payload,contract,body,actor,contractId,Date.now());
       else if(reviewAction){
-        transition=transitionContractApproval(contract,body.action==='revoke_addendum'?'revoke':'approve',actor,{reason:body.reason});
+        transition=transitionContractApproval(contract,body.action.split('_')[0],actor,{reason:body.reason});
         if(transition.ok && body.action==='revoke_addendum')Object.assign(transition.contract,{isDraft:true,status:'draft'});
       }else if(addendum && body.action==='submit_addendum'){
         transition=transitionContractApproval(contract,'submit',actor,{approverIds:contract.contractApproverContactIds});

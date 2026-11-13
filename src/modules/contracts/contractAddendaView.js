@@ -224,22 +224,25 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
   const latestAddendum=()=>projectRepository.find(project.id)?.contractAddenda?.find(record=>record.id===addendum.id) || addendum;
   const openProgress=event=>{
     event?.stopPropagation();
+    const record=latestAddendum();
     openWbsSheet({title:'وضعیت الحاقیه',showSave:false,reuseHistoryOnReplace:true,historyKey:'addendum-status:'+addendum.id,
       body(root){
         root.classList.add('contract-status-sheet');
-        if(approval)root.append(renderContractReviewRow(latestAddendum(),{...approval,preview}),renderContractProgress(document,latestAddendum(),project));
+        if(approval)root.append(renderContractReviewRow(record,{
+          ...(record.approvalStatus==='pending'?approval:{}),onRejected:()=>openProgress(),
+        }),renderContractProgress(document,record,project),renderContractHistory(document,record,{finance}));
         else renderDetails(root,latestAddendum());
       },
     });
   };
-  const heading=renderContractCardHeading(project,headerContract,approval?null:{
-    onEdit:!finance && parent && writable(project) && (nested || canEditAddendumRecord(addendum))
+  const heading=renderContractCardHeading(project,headerContract,{
+    onEdit:!approval && !finance && parent && writable(project) && (nested || canEditAddendumRecord(addendum))
       ? ()=>{
         const record=latestAddendum();
         if(!canEditAddendumRecord(record))return toast('الحاقیه در وضعیت فعلی قابل ویرایش نیست');
         openAddendumForm(project,parent,record,onChanged);
       } : undefined,
-    onDelete:!finance && (nested || canDeleteAddendumRecord(addendum)) && canDeleteContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id])
+    onDelete:!approval && !finance && (nested || canDeleteAddendumRecord(addendum)) && canDeleteContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id])
       ? ()=>{
         if(!canDeleteAddendumRecord(latestAddendum()))return toast('الحاقیه در وضعیت فعلی قابل حذف نیست');
         openConfirm('الحاقیه '+addendum.contractNo+' حذف شود؟',()=>review('delete_addendum'),'حذف');
@@ -270,7 +273,7 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
   }
   row.append(heading);
   if(approval){
-    if(!nested)row.append(renderContractReviewRow(addendum,{...approval,preview}),renderContractProgress(document,addendum,project));
+    if(!nested)row.append(renderContractReviewRow(addendum,approval),renderContractProgress(document,addendum,project));
     return row;
   }
   function renderDetails(root,addendum){

@@ -95,10 +95,11 @@ export function transitionContractApproval(contract,action,actor,{approverId='',
     if(!reviewers.length)return {ok:false,message:'مسئول تأیید را انتخاب کنید'};
   }else if(action==='revoke'){
     if(!canRevokeContractApproval(contract,actor))return {ok:false,message:'فقط می‌توانید تأیید خودتان را لغو کنید'};
-  }else if(action!=='approve' || !canReviewContract(contract,actor)){
+  }else if(!['approve','reject'].includes(action) || !canReviewContract(contract,actor)){
     return {ok:false,message:'این درخواست در انتظار تأیید شما نیست'};
   }
   const text=String(reason).trim();
+  if(action==='reject' && text.length<REJECTION_MIN_LENGTH)return {ok:false,message:'علت رد حداقل '+REJECTION_MIN_LENGTH+' حرف باشد'};
   if(action==='revoke' && text.length<REJECTION_MIN_LENGTH)return {ok:false,message:'علت لغو تأیید حداقل '+REJECTION_MIN_LENGTH+' حرف باشد'};
   const next={...contract,updatedAt:at,approvalStatus:action==='submit'?'pending':action==='approve'?'approved':'unapproved'};
   if(action==='submit'){next.approvalContactIds=reviewers;next.approvalContactId=reviewers[0];next.approvedContactIds=[];next.submittedAt=at;next.submittedBy={...actor};}
@@ -106,7 +107,8 @@ export function transitionContractApproval(contract,action,actor,{approverId='',
     next.approvedContactIds=[...new Set([...(contract.approvedContactIds || []),String(actor.contactId)])];
     next.approvalStatus=contractApproverIds(contract).every(id=>next.approvedContactIds.includes(id))?'approved':'pending';
   }
-  if(action==='revoke'){
+  if(action==='reject')Object.assign(next,{status:'draft',isDraft:true,completedAt:null,completedBy:null});
+  if(['revoke','reject'].includes(action)){
     next.approvedContactIds=[];
     next.approvalStatus='unapproved';
     next.approvalRejectionReason=text;
@@ -114,6 +116,6 @@ export function transitionContractApproval(contract,action,actor,{approverId='',
   }
   if(action!=='submit'){next.reviewedAt=at;next.reviewedBy={...actor};}
   if(action==='submit'){next.approvalRejectionReason='';next.revisionBaseline=null;}
-  next.approvalHistory=[...(contract.approvalHistory||[]),{action,at,actor:{...actor},approverId:next.approvalContactId,reason:action==='revoke'?text:''}];
+  next.approvalHistory=[...(contract.approvalHistory||[]),{action,at,actor:{...actor},approverId:next.approvalContactId,reason:['revoke','reject'].includes(action)?text:''}];
   return {ok:true,contract:next};
 }

@@ -128,6 +128,24 @@ function approvalOptions(documentRef,project,group,item,onChanged){
       }
     },'تأیید'),execution ? (shopping ? '' : 'wbs-costline-manual') : 'contract-review-action');
     approval.action=approve;
+    if(!execution)approval.reject=async reason=>{
+      const latest=projectRepository.find(project.id);
+      const queue=pendingApprovals(latest);
+      const currentGroup=queue.groups.find(candidate=>candidate.id===group.id);
+      const current=currentGroup?.items.find(candidate=>String(candidate.id)===String(item.id)
+        && Boolean(candidate.parentContractId)===Boolean(item.parentContractId) && candidate.statementType===item.statementType);
+      if(!current || !currentGroup.writable)throw new Error('این مورد دیگر در انتظار تأیید شما نیست.');
+      let updated;
+      if(action!=='approve_contract' || isSaosaHost()){
+        updated=await saveContractHandoff(project.id,current,action.replace('approve_','reject_'),{reason});
+      }else{
+        const result=contractApi.review(project.id,current.id,'reject',queue.actor,{reason});
+        if(!result.ok)throw new Error(result.message || 'ثبت رد انجام نشد.');
+        updated=result.contract;
+      }
+      onChanged();
+      return updated;
+    };
   }
   return approval;
 }
