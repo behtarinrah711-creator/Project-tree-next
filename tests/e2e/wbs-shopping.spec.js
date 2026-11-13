@@ -47,7 +47,7 @@ test('shopping is a native WBS view with its own modular surface', async ({ page
   await expect(page.locator('.wbs-home-root')).toHaveClass(/is-shopping-view/);
   await expect(page.locator('.wbs-shopping-frame')).toBeVisible();
   await expect(page.locator('.wbs-shopping-frame')).toHaveAttribute('data-view', 'shopping');
-  await expect(page.locator('.wbs-shopping-frame .wbs-view-title')).toHaveText('لیست خریدهای امروز');
+  await expect(page.locator('.wbs-shopping-frame .wbs-view-title')).toHaveText('خریدهای امروز');
   await expect(page.locator('.wbs-shopping-body')).toBeVisible();
   await expect(page.locator('.wbs-shopping-frame .today-mode-tab img')).toHaveCount(4);
   await expect(page.locator('.wbs-shopping-frame .today-filter')).toHaveCount(1);
