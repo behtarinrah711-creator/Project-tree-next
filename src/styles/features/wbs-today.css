@@ -65,6 +65,10 @@
 .wbs-today-frame .today-card-summary{box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) 62px 42px;gap:8px;direction:rtl;width:calc(100% + 24px);min-height:64px;border:0;border-radius:var(--wbs-frame-radius,5px);text-align:right;font:inherit;cursor:pointer;}
 .wbs-today-frame .today-card-summary .today-card-titles{align-items:flex-start;padding:0;overflow-wrap:anywhere;}
 .wbs-today-frame .today-card-summary .today-card-titles>*{text-align:right;}
+.today-card-people{display:inline;font-size:11px;color:#4d4741;}
+.today-card-person{display:inline-flex;align-items:center;gap:4px;vertical-align:middle;}
+.today-card-avatar{flex:0 0 auto;width:16px;height:16px;border-radius:50%;background:#d9d3cb;color:#6d675f;display:inline-grid;place-items:center;overflow:hidden;}
+.today-card-avatar svg{width:12px;height:12px;fill:currentColor;}
 .wbs-today-frame .today-card-summary .today-card-activity{justify-self:center;padding:3px 7px;border-radius:6px;background:#666;color:#fff;font-size:11px;white-space:nowrap;}
 .wbs-today-frame .today-card-summary .today-card-activity.is-active{background:#19713a;}
 .wbs-today-frame .today-card-summary .today-progress-circle{position:relative;inset:auto;cursor:inherit;}

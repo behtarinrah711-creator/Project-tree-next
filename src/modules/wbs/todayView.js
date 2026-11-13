@@ -457,9 +457,29 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   titles.innerHTML=`<strong><small class="wbs-type-chip ${TYPE_CLASSES.get(entity.type)||'type-7'}">${esc(entity.type||item.work.type||'کار')}</small> ${esc(entity.title||entity.text||'')}</strong><span>${esc(item.path.join(' · '))}</span>`;
   const assignee=(project.contacts||[]).find(contact=>!contact.trashed && String(contact.id)===String(entity.assigneeContactId));
   const contractor=contractorForItem(project,item).contact;
-  const people=documentRef.createElement('span');
-  people.textContent=[assignee?'مسئول '+contactName(assignee):'',contractor?'پیمانکار '+contactName(contractor):''].filter(Boolean).join(' | ');
-  if(people.textContent)titles.append(people);
+  if(assignee || contractor){
+    const people=documentRef.createElement('span');
+    people.className='today-card-people';
+    if(assignee){
+      const person=documentRef.createElement('span');
+      person.className='today-card-person';
+      const avatar=documentRef.createElement('span');
+      avatar.className='today-card-avatar';
+      avatar.setAttribute('aria-hidden','true');
+      avatar.innerHTML='<svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 18.5c1.2-2.8 3.4-4.2 6.5-4.2s5.3 1.4 6.5 4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+      const name=documentRef.createElement('span');
+      name.textContent='مسئول '+contactName(assignee);
+      person.append(avatar,name);
+      people.append(person);
+    }
+    if(contractor){
+      if(assignee) people.append(' | ');
+      const name=documentRef.createElement('span');
+      name.textContent='پیمانکار '+contactName(contractor);
+      people.append(name);
+    }
+    titles.append(people);
+  }
   const openDetails=()=>openTodayDetails(documentRef,project,item,today,onChanged,returnToCalendar);
   heading.onclick=openDetails;
   const current=dailyExecutionStatus(entity,today);
