@@ -330,7 +330,7 @@ test('Planning contains tree, timeline and estimate while Execution and Reports 
   await expect(page).toHaveURL(/\/reports$/);
   await expect(reportRows).toHaveCount(4);
   await expect(reportRows.getByText('الحاقیه‌ها',{exact:true})).toHaveCount(0);
-  await page.evaluate(()=>{window.location.hash=window.location.hash.replace(/reports$/, 'contract-addenda');});
+  await page.evaluate(()=>{window.KarhaApp.router.navigate('e2e-wbs-home','contract-addenda');});
   await expect(page).toHaveURL(/\/contract-addenda$/);
   const addendaBar=page.locator('#workspaceProjectContext');
   await expect(addendaBar.locator('#workspaceProjectName')).toHaveText('الحاقیه‌ها');
