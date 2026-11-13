@@ -1,7 +1,7 @@
 import {statementWorkRows,resolveStatementWork} from '../../src/domain/statementWork.js';
 import {rowAmount,numericValue} from '../../src/modules/contracts/contractPricing.js';
 import {contractApproverIds} from '../../src/domain/contractApproval.js';
-import {contractStatementTotals,statementsFor,approvedStatement,statementAmounts,finalStatementSummary} from '../../src/domain/contractStatements.js';
+import {contractStatementTotals,accountStatements,statementsFor,statementAccount,statementAddenda,approvedStatement,statementAmounts,finalStatementSummary} from '../../src/domain/contractStatements.js';
 
 const fail=message=>({ok:false,message});
 
@@ -10,13 +10,17 @@ export function saveStatement(project,parent,current,id,body,actor,at){
   if(current && (!current.statementType || current.status!=='draft'))return fail('فقط صورت‌وضعیت برگشتی قابل اصلاح است');
   const {statementType,date,note}=body;
   if(!['interim','final','retention-release'].includes(statementType) || typeof date!=='string' || !/^\d{4}\/(?:0?[1-9]|1[0-2])\/(?:0?[1-9]|[12]\d|3[01])$/.test(date))return fail('نوع و تاریخ صورت‌وضعیت را وارد کنید');
-  const records=statementsFor(project,parent.id).filter(record=>record.id!==id);
+  const addendumId=current?current.addendumId:body.addendumId;
+  const addendum=addendumId && statementAddenda(project,parent).find(item=>item.id===addendumId);
+  if(addendumId && !addendum)return fail('الحاقیه تأییدشده این قرارداد را انتخاب کنید');
+  const account=statementAccount(parent,addendum);
+  const records=accountStatements(project,account).filter(record=>record.id!==id);
   if(statementType!=='retention-release' && records.some(record=>record.statementType==='final' && approvedStatement(record)))return fail('صورت‌وضعیت قطعی قبلاً تأیید شده است');
   if(records.some(record=>record.statementType && !approvedStatement(record) && record.status!=='draft' && record.approvalStatus!=='rejected'))return fail('ابتدا صورت‌وضعیت در جریان را تعیین تکلیف کنید');
-  const totals=contractStatementTotals(project,parent);
-  const final=statementType==='final'?finalStatementSummary(project,parent):null;
+  const totals=contractStatementTotals(project,account);
+  const final=statementType==='final'?finalStatementSummary(project,account):null;
   if(final && !final.ready)return fail('صدور صورت‌وضعیت قطعی پس از پوشش کامل مبلغ قرارداد در صورت‌وضعیت‌های موقت تأییدشده امکان‌پذیر است');
-  const workRows=statementType==='interim'?statementWorkRows(parent,records.filter(approvedStatement)):[];
+  const workRows=statementType==='interim'?statementWorkRows(account,records.filter(approvedStatement)):[];
   const linked=statementType==='interim' && (body.workEntries!==undefined || workRows.some(row=>row.description));
   const resolved=linked?resolveStatementWork(workRows,body.workEntries):null;
   if(linked && !resolved)return fail('کارکرد عملیات قرارداد را در محدوده مانده هر ردیف وارد کنید');
@@ -40,9 +44,9 @@ export function saveStatement(project,parent,current,id,body,actor,at){
   if(statementType==='retention-release' && (entered<=0 || entered>totals.retained))return fail('مبلغ آزادسازی از مانده حسن انجام کار بیشتر است');
   if(statementType!=='retention-release' && totals.remaining!==null && gross>totals.remaining)return fail('کارکرد از مبلغ به‌روز قرارداد بیشتر است');
   const approvers=contractApproverIds(parent);
-  const sequence=current?.sequence ?? Math.max(0,...records.map(record=>Number(record.sequence)||0),records.length)+1;
-  return {ok:true,contract:{...current,id,contractId:parent.id,statementType,sequence,date,note:String(note||'').trim().slice(0,2000),
-    operations,workEntries:linked?body.workEntries:undefined,statementAmount:entered,...(final?{stageAmount:0,cumulativeAmount:final.gross,retentionAmount:0,netAmount:0,finalTotals:{gross:final.gross,retention:final.retention,net:final.net}}:statementAmounts(totals,parent,gross,statementType)),status:'final',isDraft:false,approvalStatus:approvers.length?'pending':'approved',
+  const sequence=current?.sequence ?? Math.max(0,...statementsFor(project,parent.id).map(record=>Number(record.sequence)||0),statementsFor(project,parent.id).length)+1;
+  return {ok:true,contract:{...current,id,contractId:parent.id,addendumId:addendum?.id||null,addendumNo:addendum?.contractNo||null,statementType,sequence,date,note:String(note||'').trim().slice(0,2000),
+    operations,workEntries:linked?body.workEntries:undefined,statementAmount:entered,...(final?{stageAmount:0,cumulativeAmount:final.gross,retentionAmount:0,netAmount:0,finalTotals:{gross:final.gross,retention:final.retention,net:final.net}}:statementAmounts(totals,account,gross,statementType)),status:'final',isDraft:false,approvalStatus:approvers.length?'pending':'approved',
     approvalContactIds:approvers,approvedContactIds:[],submittedAt:at,submittedBy:actor,
     accountingStatus:null,signedAt:null,signedBy:null,signedFiles:[],signedFilesUpdatedAt:at,createdAt:current?.createdAt ?? at,updatedAt:at}};
 }
