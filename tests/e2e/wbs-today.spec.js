@@ -56,7 +56,8 @@ test('Today shows Tasks instead of their Work, formats one-day dates once, and e
   await expect(card).toContainText('قالب‌بندی');
   await expect(page.locator('.today-task-card',{hasText:'فونداسیون'})).toHaveCount(1);
   await expect(card.locator('.today-report-circle')).toHaveAttribute('aria-label','نامشخص، بدون گزارش');
-  await expect(card.locator('.today-comment, .wbs-type-chip')).toHaveCount(0);
+  await expect(card.locator('.today-comment')).toHaveCount(0);
+  await expect(card.locator('.today-card-titles strong > .wbs-type-chip')).toHaveText('اجرا');
   const details=await openTaskDetails(page,card);
   await expect(details).toHaveClass(/today-detail-overlay/);
   const bounds=await details.locator('.wbs-sheet').boundingBox();
