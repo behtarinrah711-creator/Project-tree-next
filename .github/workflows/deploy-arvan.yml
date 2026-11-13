@@ -102,14 +102,44 @@ jobs:
           rm -f /etc/nginx/sites-enabled/default
           nginx -t
           REMOTE
-          release="$(date -u +%Y%m%d%H%M%S)-${DEPLOY_SHA:0:8}"
-          ssh -i ~/.ssh/id_arvan -o BatchMode=yes root@37.32.30.98 "install -d -m 755 /srv/saosa/releases/$release"
-          tar -czf - --exclude=.git --exclude=.github --exclude=./node_modules \
-            --exclude=tests --exclude=playwright-report --exclude=test-results \
-            --exclude='*.test.js' . | \
-            ssh -i ~/.ssh/id_arvan -o BatchMode=yes root@37.32.30.98 \
-              "tar -xzf - -C /srv/saosa/releases/$release"
-          ssh -i ~/.ssh/id_arvan -o BatchMode=yes root@37.32.30.98 \
-            "umask 077; cat > /run/saosa-kavenegar-key" <<<"$KAVENEGAR_API_KEY"
-          ssh -i ~/.ssh/id_arvan -o BatchMode=yes root@37.32.30.98 \
-            "bash /srv/saosa/releases/$release/server/ops/activate-release.sh /srv/saosa/releases/$release"
+          ssh_arvan=(ssh -i ~/.ssh/id_arvan -o BatchMode=yes -o ConnectTimeout=10 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 root@37.32.30.98)
+          node_version="$(node -p 'process.version')"
+          lock_hash="$(sha256sum server/package-lock.json | cut -d ' ' -f 1)"
+          runtime="/srv/saosa/runtimes/linux-x64-$node_version-$lock_hash"
+          release="/srv/saosa/releases/$(date -u +%Y%m%d%H%M%S)-${DEPLOY_SHA:0:8}"
+          "${ssh_arvan[@]}" 'df -hP /srv/saosa; df -iP /srv/saosa'
+          if ! "${ssh_arvan[@]}" "test -x '$runtime/runtime/bin/node' && test -d '$runtime/node_modules'"; then
+            if "${ssh_arvan[@]}" bash -s -- "$runtime" "$node_version" "$lock_hash" <<'REMOTE'
+          set -euo pipefail
+          runtime="$1"
+          current="$(readlink -e /srv/saosa/current)/server"
+          test "$(sha256sum "$current/package-lock.json" | cut -d ' ' -f 1)" = "$3"
+          test "$("$current/runtime/bin/node" --version)" = "$2"
+          bash "$current/ops/check-runtime.sh" "$current"
+          install -d /srv/saosa/runtimes
+          stage="$(mktemp -d /srv/saosa/runtimes/.seed.XXXXXX)"
+          trap 'rm -rf -- "$stage"' EXIT
+          cp -a "$(readlink -f "$current/runtime")" "$stage/runtime"
+          cp -a "$(readlink -f "$current/node_modules")" "$stage/node_modules"
+          chmod 755 "$stage"
+          mv -T "$stage" "$runtime"
+          REMOTE
+            then
+              echo 'Reused the active release runtime.'
+            else
+              archive="$RUNNER_TEMP/saosa-runtime.tar.gz"
+              tar -C server -czf "$archive" runtime node_modules
+              echo "Uploading runtime: $(wc -c < "$archive") bytes"
+              time timeout 8m "${ssh_arvan[@]}" "set -e; install -d /srv/saosa/runtimes; stage=\$(mktemp -d /srv/saosa/runtimes/.upload.XXXXXX); trap 'rm -rf -- \"\$stage\"' EXIT; tar -xzf - -C \"\$stage\"; chmod 755 \"\$stage\"; mv -T \"\$stage\" '$runtime'" < "$archive"
+            fi
+          else
+            echo 'Using cached runtime on Arvan.'
+          fi
+          archive="$RUNNER_TEMP/saosa-release.tar.gz"
+          tar -czf "$archive" --exclude=.git --exclude=.github --exclude=./node_modules \
+            --exclude=./server/node_modules --exclude=./server/runtime \
+            --exclude=tests --exclude=playwright-report --exclude=test-results --exclude='*.test.js' .
+          echo "Uploading application: $(wc -c < "$archive") bytes"
+          time timeout 3m "${ssh_arvan[@]}" "set -e; install -d '$release'; tar -xzf - -C '$release'; ln -s '$runtime/runtime' '$release/server/runtime'; ln -s '$runtime/node_modules' '$release/server/node_modules'" < "$archive"
+          "${ssh_arvan[@]}" "umask 077; cat > /run/saosa-kavenegar-key" <<<"$KAVENEGAR_API_KEY"
+          "${ssh_arvan[@]}" "bash '$release/server/ops/activate-release.sh' '$release'"
