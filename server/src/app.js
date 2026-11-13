@@ -1,3 +1,4 @@
+import {acceptedMembership} from './acceptedMembership.js';
 import {findInTree} from '../../src/domain/wbs/normalize.js';
 import {configuredContractReviewers, contractRevisionContent, routeCompletedContract} from '../../src/domain/contractApproval.js';
 import {createContractHandoffHandler} from './contractHandoff.js';
@@ -466,10 +467,10 @@ async function readWorkspace(pool, accountId){
          JOIN accounts a ON a.id = m.account_id
          JOIN project_roles r ON r.id = m.role_id AND r.project_id = m.project_id
         WHERE m.account_id = $1 AND m.status = 'active'
-          AND (p.owner_account_id=m.account_id OR EXISTS (
+          AND (p.owner_account_id=m.account_id OR (${acceptedMembership} AND EXISTS (
             SELECT 1 FROM jsonb_array_elements(COALESCE(p.payload->'projectMembers','[]'::jsonb)) listed
              WHERE listed->>'mobile'=a.phone AND listed->>'status'='active'
-          ))
+          )))
         ORDER BY p.created_at, p.id`,
       [accountId],
     ),
@@ -598,10 +599,10 @@ async function saveWorkspace(pool, accountId, snapshot){
              JOIN projects p ON p.id=m.project_id
              JOIN accounts a ON a.id=m.account_id
             WHERE m.project_id = $1 AND m.account_id = $2 AND m.status = 'active'
-              AND (p.owner_account_id=m.account_id OR EXISTS (
+              AND (p.owner_account_id=m.account_id OR (${acceptedMembership} AND EXISTS (
                 SELECT 1 FROM jsonb_array_elements(COALESCE(p.payload->'projectMembers','[]'::jsonb)) listed
                  WHERE listed->>'mobile'=a.phone AND listed->>'status'='active'
-              ))`,
+              )))`,
           [projectId, accountId],
         );
         if(!membership.rowCount){
@@ -858,14 +859,15 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
           const email=normalizeEmail(body.email);if(email===null) return sendJson(response,400,{error:'invalid_email'});
           if(phone===owner.rows[0].phone) return sendJson(response,409,{error:'project_owner'});
           const member=await pool.query(
-            `SELECT m.status,m.account_id FROM project_memberships m JOIN accounts a ON a.id=m.account_id
+            `SELECT m.status,m.account_id, ${acceptedMembership} AS accepted FROM project_memberships m JOIN accounts a ON a.id=m.account_id
+              JOIN project_roles r ON r.id=m.role_id AND r.project_id=m.project_id
               WHERE m.project_id=$1 AND a.phone=$2 LIMIT 1`,[inviteRoute.projectId,phone],
           );
           if(member.rowCount){
             const projectMembers=owner.rows[0].payload?.projectMembers;
             const listed=Array.isArray(projectMembers) && projectMembers.some(item=>item?.mobile===phone && item?.status!=='deleted');
-            if(listed) return sendJson(response,409,{error:member.rows[0].status==='active'?'already_member':'inactive_member'});
-            await pool.query(
+            if(listed && member.rows[0].accepted) return sendJson(response,409,{error:member.rows[0].status==='active'?'already_member':'inactive_member'});
+            if(!listed) await pool.query(
               `DELETE FROM project_memberships WHERE project_id=$1 AND account_id=$2`,
               [inviteRoute.projectId,member.rows[0].account_id],
             );
@@ -993,7 +995,8 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
           );
           const membership=await client.query(
             `SELECT m.role_id,m.account_id FROM project_memberships m JOIN accounts a ON a.id=m.account_id
-              WHERE m.project_id=$1 AND a.phone=$2 FOR UPDATE`,
+              JOIN project_roles r ON r.id=m.role_id AND r.project_id=m.project_id
+              WHERE m.project_id=$1 AND a.phone=$2 AND ${acceptedMembership} FOR UPDATE OF m`,
             [memberEditRoute.projectId,phone],
           );
           if(membership.rowCount){
