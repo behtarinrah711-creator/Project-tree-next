@@ -8,7 +8,6 @@ import { openProjectFinishSheet } from '../wbs/homeView.js';
 
 export const REPORT_SECTIONS = Object.freeze([
   { id:'contracts', title:'قرارداد پیمانکاران', meta:'ایجاد و مدیریت قراردادهای واقعی پیمانکاران' },
-  { id:'contract-addenda', title:'الحاقیه‌ها', meta:'ثبت و پیگیری الحاقیه‌های قرارداد' },
   { id:'daily-execution-reports', title:'گزارش‌های روزانهٔ اجرا', meta:'آمار روزانه و سوابق گزارش هر کار' },
   { id:'done-works', title:'کارهای انجام‌شده', meta:'مشاهده گزارش کارهای تکمیل‌شده پروژه' },
   { id:'work-delays', title:'دیرکردها', meta:'مشاهده کارهای عقب‌افتاده پروژه' },
@@ -107,7 +106,7 @@ export const reportsModule = {
   },
 };
 
-export const reportSectionModules = REPORT_SECTIONS.filter(section => section.id !== 'contracts').map(section => ({
+export const reportSectionModules = [{ id:'contract-addenda', title:'الحاقیه‌ها' }, ...REPORT_SECTIONS.filter(section => section.id !== 'contracts')].map(section => ({
   id: section.id,
   title: section.title,
   route: section.id,
