@@ -55,33 +55,38 @@ function completeExecution(entity,ref,by,at,day){
   };
 }
 
+function dailyStatusChange(entity,status,reasonId,note,actor,at,day){
+  if(!Object.hasOwn(DAILY_EXECUTION_LABELS,status))return {ok:false,code:'invalid_status'};
+  const key=String(reasonId||'');
+  const reason=Object.hasOwn(INACTIVE_REASONS,key)?INACTIVE_REASONS[key]:key.startsWith('custom:')?key.slice(7).trim():'';
+  if(status==='inactive' && !reason)return {ok:false,code:'invalid_reason'};
+  const previous=dailyExecutionStatus(entity,day);
+  const details=status==='inactive'?{reasonId:key,reason,description:String(note||'').trim()}:{};
+  if(previous.status===status && previous.reasonId===details.reasonId && previous.description===details.description)return {ok:true};
+  return {ok:true,entry:event('daily_status',actor,at,{day,status,...details})};
+}
+
 export const todayApi = {
   setDailyStatus(projectId,ref,status,reasonId,note,actor,clock=Date.now){
     const entity=todayRepository.get(projectId,ref);
     const by=actorValue(actor);
     if(!entity || entity.trashed || !by.contactId || String(entity.assigneeContactId)!==by.contactId)return {ok:false,code:'forbidden'};
     if(entity.completed || ['approved','pending_approval'].includes(entity.completionState))return {ok:false,code:'locked'};
-    if(!Object.hasOwn(DAILY_EXECUTION_LABELS,status))return {ok:false,code:'invalid_status'};
-    const custom=String(reasonId||'').startsWith('custom:')?reasonId.slice(7).trim():'';
-    const reason=Object.hasOwn(INACTIVE_REASONS,reasonId)?INACTIVE_REASONS[reasonId]:custom;
-    if(status==='inactive' && !reason)return {ok:false,code:'invalid_reason'};
     const at=clock(),day=tehranTodayJalali(new Date(at));
-    const previous=dailyExecutionStatus(entity,day);
-    const details=status==='inactive'?{reasonId,reason,description:String(note||'').trim()}:{};
-    if(previous.status===status && previous.reasonId===details.reasonId && previous.description===details.description)return {ok:true,entity};
+    const change=dailyStatusChange(entity,status,reasonId,note,by,at,day);
+    if(!change.ok)return change;
+    if(!change.entry)return {ok:true,entity};
     return mutate(projectId,ref,current=>({
-      ...current,
-      executionHistory:[...(current.executionHistory||[]),event('daily_status',by,at,{day,status,...details})],
-      updatedAt:at,
+      ...current,executionHistory:[...(current.executionHistory||[]),change.entry],updatedAt:at,
     }));
   },
 
-  saveReport(projectId, ref, description, actor, clock = Date.now, progress = null, {files, completeAt100=false}={}){
+  saveReport(projectId, ref, description, actor, clock = Date.now, progress = null, {files, completeAt100=false, dailyStatus}={}){
     const text = String(description || '').trim();
     if(text.length < REPORT_MIN_LENGTH) return { ok:false, code:'report_too_short' };
     const at = clock(); const by = actorValue(actor); const reportDay = tehranTodayJalali(new Date(at));
-    if(completeAt100){
-      const entity = todayRepository.get(projectId, ref);
+    const entity = todayRepository.get(projectId, ref);
+    if(completeAt100 || dailyStatus){
       if(!entity || entity.trashed || !entity.assigneeContactId || String(entity.assigneeContactId)!==by.contactId){
         return {ok:false,code:'forbidden'};
       }
@@ -89,10 +94,13 @@ export const todayApi = {
         return {ok:false,code:'locked'};
       }
     }
+    const change=dailyStatus?dailyStatusChange(entity,dailyStatus.status,dailyStatus.reasonId,text,by,at,reportDay):{ok:true};
+    if(!change.ok)return change;
     const attachments = Array.isArray(files) ? { photos:[...files] } : {};
     return mutate(projectId, ref, entity => {
       const reports = [...(entity.executionReports || []).filter(report => report && !report.trashed)];
       const history = [...(entity.executionHistory || [])];
+      if(change.entry)history.push(change.entry);
       const reportIndex = reports.findLastIndex(report => (
         executionReportDay(report) === reportDay
       ));
