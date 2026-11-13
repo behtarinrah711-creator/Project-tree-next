@@ -1,3 +1,4 @@
+import {contractStatementTotals} from '../../src/domain/contractStatements.js';
 import {saveStatement,recordStatementPayment} from './contractStatement.js';
 import {applyExecutionApproval,approveExecutionEntity,executionApprovalItem} from '../../src/domain/wbs/executionApproval.js';
 import {saveAddendumDraft} from './contractAddendum.js';
@@ -106,7 +107,13 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         const at=Date.now();
         transition={ok:true,contract:{...contract,trashed:true,deletedAt:at,deletedBy:actor.id,updatedAt:at}};
       }else if(statement && saveDraft) transition=saveStatement(row.payload,statementParent,contract,contractId,body,actor,Date.now());
-      else if(statement && body.action==='record_payment') transition=recordStatementPayment(contract,body.amount,actor,Date.now());
+      else if(statement && body.action==='record_payment'){
+        const original=contractStatementTotals(row.payload,statementParent);
+        if(contract.addendumId && (original.payable!==0 || original.remaining>0)){
+          sendJson(response,409,{message:'ابتدا کارکرد و پرداخت قرارداد اصلی را تکمیل کنید'});return true;
+        }
+        transition=recordStatementPayment(contract,body.amount,actor,Date.now());
+      }
       else if(saveDraft) transition=saveAddendumDraft(row.payload,contract,body,actor,contractId,Date.now());
       else if(reviewAction){
         transition=transitionContractApproval(contract,body.action==='revoke_addendum'?'revoke':'approve',actor,{reason:body.reason});
