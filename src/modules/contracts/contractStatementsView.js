@@ -1,3 +1,4 @@
+import {openContractPreview} from './contractPreviewView.js';
 import {statementWorkRows,resolveStatementWork} from '../../domain/statementWork.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { canReviewContract } from '../../domain/contractApproval.js';
@@ -307,13 +308,17 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
   const writable=record.statementType && canWriteProjectModule(project.id,'contracts');
   const deletable=writable && canDeleteContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id]);
   const editable=record.status==='draft';
+  const buildDocument=()=>{
+    const documentNode=element('section','contract-export-document');
+    documentNode.dir='rtl';
+    documentNode.append(element('h2','',title),element('p','',contract.contractNo||''),element('p','',formatJalaliDisplay(record.date)||''),
+      operationSummary(record.operations||[]),table([['مبلغ سند',money(record.statementAmount??record.stageAmount??0)]]));
+    return documentNode;
+  };
   const heading=renderContractCardHeading(project,contract,approval?null:{
     onEdit:writable?()=>editable?openStatementForm(project,contract,onChanged,record):toast('صورت‌وضعیت در وضعیت فعلی قابل ویرایش نیست'):undefined,
     onExport:trigger=>{
-      const documentNode=element('section','contract-export-document');
-      documentNode.dir='rtl';
-      documentNode.append(element('h2','',title),element('p','',contract.contractNo||''),element('p','',formatJalaliDisplay(record.date)||''),
-        operationSummary(record.operations||[]),table([['مبلغ سند',money(record.statementAmount??record.stageAmount??0)]]));
+      const documentNode=buildDocument();
       openContractExport(project,{title,contractNo:contract.contractNo||''},{trigger,markup:documentNode.outerHTML});
     },
     onDelete:deletable?()=>{
@@ -321,7 +326,7 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
       openConfirm('صورت‌وضعیت حذف شود؟',()=>saveContractHandoff(project.id,record,'delete_statement')
         .then(onChanged).catch(error=>toast(error.message)),'حذف');
     }:undefined,
-  },{onPreview:open,progress});
+  },{onPreview:trigger=>openContractPreview(project,contract,{trigger,documentPreview:{title:'پیش‌نمایش '+title,content:buildDocument()}}),progress});
   heading.className+=' contract-card-heading--nested-addendum';
   const main=heading.children[0];
   main.children[0].textContent=title;

@@ -13,7 +13,7 @@ export function createContractPreviewView({documentRef=globalThis.document,windo
     windowRef.KarhaChildHistory?.consume?.('contract-preview',{fromPopState});
     returnFocus?.focus?.();
   };
-  function open(project,contract,{trigger=null,frozen=false,signedFiles=null,addendum=null}={}){
+  function open(project,contract,{trigger=null,frozen=false,signedFiles=null,addendum=null,documentPreview=null}={}){
     if(!project||!contract)return false;
     disposeDocuments?.();disposeSigned?.();
     if(!page){
@@ -32,6 +32,13 @@ export function createContractPreviewView({documentRef=globalThis.document,windo
       windowRef.KarhaChildHistory?.register?.('contract-preview',{onPop:()=>close(true)});
     }
     returnFocus=trigger;
+    if(documentPreview){
+      title.textContent=documentPreview.title;
+      body.replaceChildren(documentPreview.content);
+      page.classList.remove('hidden');
+      windowRef.KarhaChildHistory?.open?.('contract-preview');
+      return true;
+    }
     title.textContent=addendum?'پیش‌نمایش الحاقیه':'پیش‌نمایش قرارداد';
     const current=addendum?{project,draft:contract}:frozen?{project,draft:makeRealContractDraft(contract)}:resolveCurrentContractDocument(project,contract);
     project=current.project;
