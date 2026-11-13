@@ -306,11 +306,11 @@ test('Planning contains tree, timeline and estimate while Execution and Reports 
   expect(Math.max(...tabRects.map(rect => rect.width)) - Math.min(...tabRects.map(rect => rect.width))).toBeLessThan(2);
   await page.locator('#bottomReportsBtn').click();
   const reportRows = page.locator('#reportsPageBody .workspace-option');
-  await expect(reportRows).toHaveCount(5);
+  await expect(reportRows).toHaveCount(4);
   await expect(reportRows.locator('.workspace-option-title')).toHaveText([
-    'قرارداد پیمانکاران', 'الحاقیه‌ها', 'گزارش‌های روزانهٔ اجرا', 'کارهای انجام‌شده', 'دیرکردها',
+    'قرارداد پیمانکاران', 'گزارش‌های روزانهٔ اجرا', 'کارهای انجام‌شده', 'دیرکردها',
   ]);
-  await expect(reportRows.locator('.workspace-option-arrow svg')).toHaveCount(5);
+  await expect(reportRows.locator('.workspace-option-arrow svg')).toHaveCount(4);
   await expect(page.locator('.reports-workspace-tabs')).toHaveCount(0);
   await reportRows.getByText('گزارش‌های روزانهٔ اجرا', { exact:true }).click();
   await expect(page).toHaveURL(/\/daily-execution-reports$/);
@@ -328,8 +328,9 @@ test('Planning contains tree, timeline and estimate while Execution and Reports 
 
   await page.locator('#workspaceContextBack').click();
   await expect(page).toHaveURL(/\/reports$/);
-  await expect(reportRows).toHaveCount(5);
-  await reportRows.filter({ has:page.locator('.workspace-option-title', { hasText:'الحاقیه‌ها' }) }).click();
+  await expect(reportRows).toHaveCount(4);
+  await expect(reportRows.getByText('الحاقیه‌ها',{exact:true})).toHaveCount(0);
+  await page.evaluate(()=>{window.location.hash=window.location.hash.replace(/reports$/, 'contract-addenda');});
   await expect(page).toHaveURL(/\/contract-addenda$/);
   const addendaBar=page.locator('#workspaceProjectContext');
   await expect(addendaBar.locator('#workspaceProjectName')).toHaveText('الحاقیه‌ها');
