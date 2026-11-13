@@ -1,0 +1,49 @@
+name: Prune Arvan releases before PR 459
+on:
+  push:
+    branches: [ops/arvan-prune-before-459]
+permissions: {}
+concurrency:
+  group: saosa-arvan-deploy
+  cancel-in-progress: false
+jobs:
+  prune:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Verify rollback and prune old release directories
+        env:
+          SERVER_KEY: ${{ secrets.ARVAN_SSH_PRIVATE_KEY }}
+        run: |
+          set -eu
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SERVER_KEY" > ~/.ssh/id_arvan
+          chmod 600 ~/.ssh/id_arvan
+          ssh-keyscan -T 10 -H 37.32.30.98 > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_arvan -o BatchMode=yes -o ConnectTimeout=10 root@37.32.30.98 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /srv/saosa/releases
+          shopt -s nullglob
+          candidates=(??????????????-db31205e)
+          [[ ${#candidates[@]} == 1 ]]
+          keep="${candidates[0]}"
+          active="$(readlink -e /srv/saosa/current)"
+          api="$(systemctl show saosa-api --property=WorkingDirectory --value)"
+          [[ "$active" == "$PWD/"* && "$api" == "$PWD/"*/server ]]
+          [[ -f "$keep/index.html" && -f "$keep/server/ops/activate-release.sh" ]]
+          bash "$keep/server/ops/check-runtime.sh" "$PWD/$keep/server"
+          printf 'Rollback: %s\nActive: %s\nAPI: %s\n' "$keep" "$active" "$api"
+          paths=()
+          for dir in *; do
+            [[ "$dir" =~ ^[0-9]{14}-[0-9a-f]{8}$ && -d "$dir" && ! -L "$dir" ]] || continue
+            [[ "$dir" < "$keep" && "$PWD/$dir" != "$active" && "$PWD/$dir/server" != "$api" ]] || continue
+            paths+=("./$dir")
+          done
+          printf 'Eligible releases: %s\n' "${#paths[@]}"
+          df -B1 /
+          if (( ${#paths[@]} )); then
+            du -xscB1 -- "${paths[@]}" | tail -1
+            rm -rf --one-file-system -- "${paths[@]}"
+          fi
+          df -B1 /
+          REMOTE
