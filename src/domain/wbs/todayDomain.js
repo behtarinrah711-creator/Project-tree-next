@@ -126,7 +126,7 @@ export function statusLabel(status){
 export const DAILY_EXECUTION_LABELS=Object.freeze({unknown:'نامشخص',active:'فعال',inactive:'غیرفعال'});
 export const INACTIVE_REASONS=Object.freeze({
   funding:'عدم تأمین مالی', absence:'عدم حضور پیمانکار یا نیرو', materials:'نرسیدن مصالح',
-  prerequisite:'آماده نبودن پیش‌نیاز', weather:'شرایط جوی', holiday:'تعطیلی کارگاه',
+  prerequisite:'آماده نبودن پیش‌نیاز', weather:'شرایط جوی', holiday:'تعطیلی کارگاه', officialHoliday:'تعطیل رسمی',
 });
 
 export function dailyExecutionStatus(entity,day){

@@ -29,7 +29,7 @@ test.beforeEach(async({page})=>{
 });
 
 async function openTaskDetails(page,card){
-  await card.locator('.today-progress-circle').click();
+  await card.locator('.today-card-titles').click();
   const sheet=page.locator('#wbsSheetOverlay');
   await expect(sheet.locator('.sheet-caption')).toHaveText('قالب‌بندی');
   return sheet;
@@ -55,8 +55,9 @@ test('Today shows Tasks instead of their Work, formats one-day dates once, and e
   const card=page.locator('.wbs-today-frame[data-view="today"] .today-task-card[data-entity-id="today-task"]');
   await expect(card).toContainText('قالب‌بندی');
   await expect(page.locator('.today-task-card',{hasText:'فونداسیون'})).toHaveCount(1);
-  await expect(card.locator('.today-card-activity')).toHaveText(['نامشخص','بدون گزارش']);
-  await expect(card.locator('.today-comment, .wbs-type-chip')).toHaveCount(0);
+  await expect(card.locator('.today-report-circle')).toHaveAttribute('aria-label','نامشخص، بدون گزارش');
+  await expect(card.locator('.today-comment')).toHaveCount(0);
+  await expect(card.locator('.today-card-titles strong > .wbs-type-chip')).toHaveText('اجرا');
   const details=await openTaskDetails(page,card);
   await expect(details).toHaveClass(/today-detail-overlay/);
   const bounds=await details.locator('.wbs-sheet').boundingBox();
@@ -79,20 +80,22 @@ test('Today shows Tasks instead of their Work, formats one-day dates once, and e
 
 test('report is edited in place with edit time and a photo uploader',async({page})=>{
   const card=page.locator('.wbs-today-frame[data-view="today"] .today-task-card[data-entity-id="today-task"]');
-  const sheet=await openTaskDetails(page,card);
-  await sheet.getByRole('button',{name:/^(ثبت|ویرایش) گزارش$/}).click();
-  await expect(sheet.locator('.sheet-caption')).toHaveText('ثبت گزارش: قالب‌بندی');
+  await card.locator('.today-progress-circle').click();
+  const sheet=page.locator('#wbsSheetOverlay');
+  await expect(sheet).toHaveCount(0);
+  await card.locator('.today-report-circle').click();
+  await expect(sheet.getByRole('checkbox',{name:'هنوز نامشخص'})).toBeChecked();
+  await expect(sheet.locator('.sheet-caption')).toHaveText('ثبت گزارش قالب‌بندی');
   await expect(sheet.locator('.saosa-file-uploader')).toBeVisible();
   await expect(sheet.locator('.today-submit-approval')).toHaveCount(0);
   await expect(sheet.getByRole('button',{name:/ویدئو/})).toBeDisabled();
   await expect(sheet.getByRole('button',{name:/فایل/})).toBeDisabled();
   await sheet.locator('[name="reportDescription"]').fill('گزارش اجرای امروز');
   await sheet.locator('.wbs-sheet-save').click();
-  await openTaskDetails(page,card);
-  await sheet.getByRole('button',{name:/^(ثبت|ویرایش) گزارش$/}).click();
+  await card.locator('.today-report-circle').click();
   await sheet.locator('[name="reportDescription"]').fill('گزارش اصلاح‌شده امروز');
   await sheet.locator('.wbs-sheet-save').click();
-  await expect(card.locator('.today-card-activity')).toHaveText(['نامشخص','گزارش ثبت شده']);
+  await expect(card.locator('.today-report-circle')).toHaveAttribute('aria-label','نامشخص، گزارش ثبت شده');
   await openTaskDetails(page,card);
   await expect(sheet).toContainText('گزارش اصلاح‌شده امروز');
   await expect(sheet).toContainText('ویرایش‌شده');
@@ -102,11 +105,12 @@ test('report is edited in place with edit time and a photo uploader',async({page
 test('completion enters pending approval, rejection returns Today with typed newest comment, and approval is final',async({page})=>{
   const list=page.locator('.wbs-today-frame[data-view="today"]');
   const card=list.locator('.today-task-card[data-entity-id="today-task"]');
-  const sheet=await openTaskDetails(page,card);
-  await sheet.getByRole('button',{name:'تغییر وضعیت'}).click();
-  await page.locator('#searchTemplatePage .stpl-row[data-id="active"]').click();
-  await expect(card.locator('.today-card-activity')).toHaveText(['فعال','بدون گزارش']);
-  await sheet.getByRole('button',{name:/^(ثبت|ویرایش) گزارش$/}).click();
+  const sheet=page.locator('#wbsSheetOverlay');
+  await card.locator('.today-report-circle').click();
+  await sheet.getByRole('checkbox',{name:'فعال',exact:true}).check();
+  await sheet.locator('.wbs-sheet-save').click();
+  await expect(card.locator('.today-report-circle')).toHaveAttribute('aria-label','فعال، بدون گزارش');
+  await card.locator('.today-report-circle').click();
   await page.locator('[name="reportDescription"]').fill('گزارش تکمیل قالب‌بندی');
   await page.locator('[name="reportProgress"]').click();
   await expect(page.locator('#numpadDisplay')).toHaveText('وارد کنید…');
@@ -117,20 +121,29 @@ test('completion enters pending approval, rejection returns Today with typed new
   await expect(list).toHaveAttribute('data-mode','pending');
   await openTaskDetails(page,card);
   await expect(sheet).toContainText('در انتظار تأیید');
-  await sheet.getByRole('button',{name:'رد',exact:true}).click();
-  await page.locator('[name="rejectionReason"]').fill('نیاز به اصلاح قالب‌بندی دارد');
-  await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
-  await expect(list).toHaveAttribute('data-mode','today');
+  await expect(sheet.getByRole('button',{name:'رد',exact:true})).toHaveCount(0);
+  await expect(sheet.getByRole('button',{name:'تأیید',exact:true})).toHaveCount(0);
+  await sheet.getByRole('button',{name:'بستن'}).click();
+  await page.evaluate(async()=>{
+    const {todayApi}=await import('/src/domain/wbs/todayApi.js');
+    todayApi.reject('e2e-today',{kind:'task',id:'today-task',workId:'w1'},'نیاز به اصلاح قالب‌بندی دارد',{id:'e2e',contactId:'a'});
+  });
+  await list.getByRole('tab',{name:'امروز',exact:true}).click();
   await openTaskDetails(page,card);
   await expect(sheet.locator('.today-comment').first()).toContainText('نیاز به اصلاح');
-  await sheet.getByRole('button',{name:/^(ثبت|ویرایش) گزارش$/}).click();
+  await sheet.getByRole('button',{name:'بستن'}).click();
+  await card.locator('.today-report-circle').click();
   await page.locator('[name="reportProgress"]').click();
   for(const digit of '100') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
   await page.locator('#numpadDoneBtn').click();
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
   await openTaskDetails(page,card);
-  await sheet.getByRole('button',{name:'تأیید',exact:true}).click();
-  await expect(sheet).toHaveCount(0);
+  await sheet.getByRole('button',{name:'بستن'}).click();
+  await page.evaluate(async()=>{
+    const {todayApi}=await import('/src/domain/wbs/todayApi.js');
+    todayApi.approve('e2e-today',{kind:'task',id:'today-task',workId:'w1'},{id:'e2e',contactId:'a'});
+  });
+  await list.getByRole('tab',{name:'تکمیل',exact:true}).click();
   await expect(card).toHaveCount(0);
   await expect.poll(()=>page.evaluate(()=>window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0].workTasks[0].completionState)).toBe('approved');
 });
@@ -143,12 +156,12 @@ for(const [tab,id] of [['امروز','midnight-work'],['عقب‌افتاده','
     await page.locator('.wbs-tab[aria-label="لیست کارها"]').click();
     await page.getByRole('tab',{name:tab,exact:true}).click();
     const card=page.locator(`.today-task-card[data-entity-id="${id}"]`);
-    const badges=card.locator('.today-card-activity');
-    await expect(badges).toHaveText(['فعال','گزارش ثبت شده']);
+    const badges=card.locator('.today-report-circle');
+    await expect(badges).toHaveAttribute('aria-label','فعال، گزارش ثبت شده');
     await page.clock.setFixedTime(new Date('2026-11-09T20:30:01Z'));
-    await expect(badges).toHaveText(['نامشخص','بدون گزارش']);
+    await expect(badges).toHaveAttribute('aria-label','نامشخص، بدون گزارش');
     await expect(page.getByRole('tab',{name:tab,exact:true})).toHaveAttribute('aria-selected','true');
-    await card.locator('.today-progress-circle').click();
+    await card.locator('.today-card-titles').click();
     await page.locator('.today-history summary').click();
     await expect(page.locator('.today-history')).toContainText('فعال');
   });

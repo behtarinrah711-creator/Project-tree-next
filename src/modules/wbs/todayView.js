@@ -1,13 +1,12 @@
-import {openStaticChoicePicker} from '../contracts/contractPickers.js';
 import {openExecutionCalendar} from './executionCalendar.js';
 import {projectRepository} from '../../data/projectRepository.js';
 import { todayRepository } from '../../data/todayRepository.js';
 import { canWriteProjectModule, projectPermissionState } from '../roleManagement/permissionState.js';
-import { todayApi, COMMENT_MIN_LENGTH, REJECTION_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
-import { collectTodayItems, dailyExecutionStatus, DAILY_EXECUTION_LABELS, INACTIVE_REASONS, contractorForItem, executionStatus, itemsForMode, jalaliDayNumber, remainingLabel, TODAY_MODES, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
+import { todayApi, COMMENT_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
+import { dailyExecutionStatus, DAILY_EXECUTION_LABELS, contractorForItem, executionStatus, itemsForMode, jalaliDayNumber, remainingLabel, TODAY_MODES, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
 import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
 import { toPersianDigits } from '../../ui/digits.js';
-import { currentExecutionActor, isExecutionApprover, isExecutionAssignee } from './executionActor.js';
+import { currentExecutionActor, isExecutionAssignee } from './executionActor.js';
 import { appendReportPhotos, openDailyExecutionReport, progressCircle, todayReportOf } from './dailyExecutionReport.js';
 import { fetchFile } from '../files/fileApi.js';
 import { openFileViewer } from '../files/fileViewer.js';
@@ -63,7 +62,6 @@ function openComment(item,onChanged){
     root.appendChild(fieldRow('نظر',textArea(document,'','commentText')));
   },onSave(root){const result=todayApi.addComment(activeProjectId,refOf(item),root.querySelector('[name="commentText"]').value,actor());if(!result.ok){window.KarhaUI?.showToast?.(`نظر حداقل ${toPersianDigits(COMMENT_MIN_LENGTH)} حرف باشد`);return false;}onChanged?.();return true;}});
 }
-function openReject(item,onChanged){ openWbsSheet({ title:'رد تأیید', saveLabel:'ثبت رد', body(root){ root.appendChild(fieldRow('علت رد',textArea(document,'','rejectionReason'))); }, onSave(root){ const result=todayApi.reject(activeProjectId,refOf(item),root.querySelector('[name="rejectionReason"]').value,actor()); if(!result.ok){ window.KarhaUI?.showToast?.(`علت رد حداقل ${toPersianDigits(REJECTION_MIN_LENGTH)} حرف باشد`); return false; } activeMode=timeState(result.entity, tehranTodayJalali()); onChanged?.(); return true; } }); }
 function renderReports(documentRef, projectId, item, forApproval=false){
   const host=documentRef.createElement('div');
   host.className='today-reports';
@@ -230,43 +228,30 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose){
   const report=todayReportOf(entity,day);
   const currentActor=currentExecutionActor(project);
   const writable=canWriteProjectModule(project.id,'execution:today');
-  const assigned=writable && isExecutionAssignee(entity,currentActor);
-  const status=executionStatus(entity);
-  const canEditDay=day===tehranTodayJalali() && assigned && status!=='approved' && status!=='pending_approval';
   let releasePhotos=()=>{};
 
   const summary=detailCard(documentRef);
-  const statusRow=documentRef.createElement('div');
-  statusRow.className='today-detail-rowline';
-  const statusTile=documentRef.createElement(canEditDay?'button':'span');
+  const statusTile=documentRef.createElement('span');
   statusTile.className='today-detail-status';
-  if(canEditDay){
-    statusTile.type='button';
-    statusTile.setAttribute('aria-label','تغییر وضعیت');
-  }
   const statusLabel=documentRef.createElement('span');
   statusLabel.textContent='وضعیت اجرا ';
   const statusChip=documentRef.createElement('b');
   statusChip.className='today-detail-pill is-'+current.status;
   statusChip.textContent=DAILY_EXECUTION_LABELS[current.status]||'نامشخص';
   statusTile.append(statusLabel,statusChip);
+  summary.appendChild(statusTile);
+  const schedule=detailCard(documentRef,'today-detail-schedule');
+  const scheduleLabel=documentRef.createElement('span');
+  scheduleLabel.textContent='زمان‌بندی';
   const remain=documentRef.createElement('strong');
-  remain.textContent=heroRemaining(entity,day)||'';
-  statusRow.append(statusTile,remain);
-  summary.appendChild(statusRow);
-  if(entity.scheduleStart){
-    const dates=documentRef.createElement('div');
-    dates.className='today-detail-rowline today-detail-meta';
-    if(entity.scheduleStart===entity.scheduleEnd){
-      dates.append(Object.assign(documentRef.createElement('span'),{textContent:formatDate(entity.scheduleStart)}));
-    }else{
-      const start=documentRef.createElement('span');
-      start.textContent='شروع '+formatDate(entity.scheduleStart);
-      const end=documentRef.createElement('span');
-      end.textContent='پایان '+formatDate(entity.scheduleEnd);
-      dates.append(start,end);
-    }
-    summary.appendChild(dates);
+  remain.textContent=heroRemaining(entity,day)||'بی‌زمان';
+  schedule.append(scheduleLabel,remain);
+  const share=elapsedShare(entity,day);
+  if(share!==null){
+    const bar=documentRef.createElement('progress');
+    bar.max=1;bar.value=share;
+    bar.setAttribute('aria-label','زمان سپری‌شده');
+    schedule.append(bar,detailRow(documentRef,'شروع '+formatDate(entity.scheduleStart),'پایان '+formatDate(entity.scheduleEnd)));
   }
   const assignee=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.assigneeContactId||''));
   const approver=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.approvalContactId||''));
@@ -295,102 +280,19 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose){
   }
   people.append(peopleSummary,peopleBody);
   summary.appendChild(people);
-  root.appendChild(summary);
-
-  const actions=documentRef.createElement('div');
-  actions.className='today-task-actions today-detail-actions';
-  const add=(label,click)=>{
-    const control=linkButton(documentRef,'wbs-costline-manual',label);
-    control.onclick=click;
-    actions.append(control);
-  };
-  const apply=result=>{
-    if(result.ok) refresh();
-    else window.KarhaUI?.showToast?.('ذخیره تغییر انجام نشد');
-  };
-  if(status==='pending_approval'){
-    const pending=detailCard(documentRef);
-    pending.classList.add('today-detail-pending');
+  root.append(schedule,summary);
+  if(executionStatus(entity)==='pending_approval'){
+    const pending=detailCard(documentRef,'today-detail-pending');
     pending.textContent='در انتظار تأیید';
     root.appendChild(pending);
   }
-  if(day===tehranTodayJalali() && status==='pending_approval'){
-    if(assigned) add('پس گرفتن تکمیل',()=>apply(todayApi.withdrawCompletion(project.id,refOf(item),currentActor)));
-    if(writable && isExecutionApprover(entity,currentActor)){
-      add('تأیید',()=>apply(todayApi.approve(project.id,refOf(item),currentActor)));
-      add('رد',()=>afterClose(()=>openReject(item,refresh)));
-    }
-  }
-  if(actions.childElementCount) root.appendChild(actions);
-
-  if(canEditDay){
-    const save=(next,reason,note)=>apply(todayApi.setDailyStatus(project.id,refOf(item),next,reason,note,currentActor));
-    statusTile.addEventListener('click',()=>{
-      const choices=Object.entries(DAILY_EXECUTION_LABELS).map(([value,label])=>({value,label}));
-      openStaticChoicePicker('وضعیت اجرای روز','وضعیت‌ها',choices,current.status,next=>{
-        if(next!=='inactive'){save(next);return;}
-        const reasons=new Map(Object.entries(INACTIVE_REASONS));
-        for(const entry of collectTodayItems(projectRepository.find(project.id)||project,day,{includeApproved:true}).flatMap(({entity:work})=>work.executionHistory||[])){
-          if(entry.type==='daily_status' && entry.reasonId?.startsWith('custom:')) reasons.set(entry.reasonId,entry.reason);
-        }
-        let selected=current.reasonId||'';
-        const form=documentRef.createElement('div');
-        form.className='today-detail-reason';
-        const reasonButton=linkButton(documentRef,'wbs-input','انتخاب دلیل');
-        const note=textArea(documentRef,current.description,'inactive-note');
-        const selectReason=value=>{selected=value;reasonButton.textContent=reasons.get(value)||'انتخاب دلیل';};
-        if(reasons.has(selected)) selectReason(selected);
-        reasonButton.onclick=()=>openStaticChoicePicker('دلیل غیرفعال بودن','دلیل‌ها',
-          [...reasons].map(([value,label])=>({value,label})),selected,selectReason,()=>{
-            window.KarhaSearchTemplate?.close?.();
-            const input=documentRef.createElement('input');
-            input.className='wbs-input';
-            input.placeholder='عنوان دلیل جدید';
-            input.maxLength=120;
-            const field=fieldRow('دلیل جدید',input);
-            const confirm=linkButton(documentRef,'wbs-costline-manual','افزودن دلیل');
-            field.append(confirm);
-            form.append(field);
-            confirm.onclick=()=>{
-              const label=input.value.trim();
-              if(!label) return;
-              const id='custom:'+label;
-              reasons.set(id,label);
-              selectReason(id);
-              field.remove();
-            };
-            input.focus();
-          },{preserveOrder:true});
-        form.append(fieldRow('دلیل غیرفعال بودن',reasonButton),fieldRow('توضیحات اختیاری',note));
-        releasePhotos();
-        root.replaceChildren(form);
-        const buttons=documentRef.createElement('div');
-        buttons.className='today-task-actions';
-        const back=linkButton(documentRef,'wbs-costline-manual','بازگشت');
-        back.onclick=refresh;
-        const submit=linkButton(documentRef,'wbs-costline-manual','ذخیره');
-        submit.onclick=()=>save('inactive',selected,note.value);
-        buttons.append(back,submit);
-        root.append(buttons);
-      },undefined,{preserveOrder:true});
-    });
-  }
-
   const reportCard=detailCard(documentRef,'today-detail-report');
   const reportHead=documentRef.createElement('div');
   reportHead.className='today-detail-rowline';
   const reportTitle=documentRef.createElement('h2');
   reportTitle.textContent='گزارش اجرا';
-  const reportTile=documentRef.createElement(canEditDay?'button':'span');
+  const reportTile=documentRef.createElement('span');
   reportTile.className='today-detail-pill '+(report?'is-saved':'is-empty');
-  if(canEditDay){
-    reportTile.type='button';
-    reportTile.setAttribute('aria-label',report?'ویرایش گزارش':'ثبت گزارش');
-    reportTile.addEventListener('click',()=>afterClose(()=>openDailyExecutionReport({
-      projectId:project.id,item,actor:currentActor,day,onChanged:()=>{refresh();},
-      onSubmitted(updated){activeMode=timeState(updated,tehranTodayJalali());},
-    })));
-  }
   reportTile.textContent=report?'ثبت شده':'بدون گزارش';
   reportHead.append(reportTitle,reportTile);
   reportCard.appendChild(reportHead);
@@ -547,26 +449,35 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   card.dataset.entityKind=item.kind;
   const heading=documentRef.createElement('div');
   heading.className='today-card-heading today-card-summary';
-  const titles=documentRef.createElement('span');
-  titles.className='today-card-titles';
-  titles.innerHTML=`<strong>${esc(item.entity.title||item.entity.text||'')}</strong><span>${esc(item.path.join(' · '))}</span>`;
-  const status=dailyExecutionStatus(item.entity,today).status;
-  const badges=documentRef.createElement('span');
-  badges.className='today-card-badges';
-  const activity=documentRef.createElement('span');
-  activity.className='today-card-activity is-'+status;
-  activity.textContent=DAILY_EXECUTION_LABELS[status];
-  badges.append(activity);
-  if(today<=tehranTodayJalali()){
-    const report=documentRef.createElement('span');
-    const saved=!!todayReportOf(item.entity,today);
-    report.className='today-card-activity'+(saved?' is-active':'');
-    report.textContent=saved?'گزارش ثبت شده':'بدون گزارش';
-    badges.append(report);
-  }
-  heading.append(titles,badges,progressCircle(documentRef,item.entity,{summary:{},
-    onClick:()=>openTodayDetails(documentRef,project,item,today,onChanged,returnToCalendar),
-  }));
+  const {entity}=item;
+  const titles=linkButton(documentRef,'today-card-titles','');
+  titles.innerHTML=`<strong><small class="wbs-type-chip ${TYPE_CLASSES.get(entity.type)||'type-7'}">${esc(entity.type||item.work.type||'کار')}</small> ${esc(entity.title||entity.text||'')}</strong><span>${esc(item.path.join(' · '))}</span>`;
+  const assignee=(project.contacts||[]).find(contact=>!contact.trashed && String(contact.id)===String(entity.assigneeContactId));
+  const contractor=contractorForItem(project,item).contact;
+  const people=documentRef.createElement('span');
+  people.textContent=[assignee?'مسئول '+contactName(assignee):'',contractor?'پیمانکار '+contactName(contractor):''].filter(Boolean).join(' | ');
+  if(people.textContent)titles.append(people);
+  const openDetails=()=>openTodayDetails(documentRef,project,item,today,onChanged,returnToCalendar);
+  heading.onclick=openDetails;
+  const current=dailyExecutionStatus(entity,today);
+  const status=current.reasonId==='officialHoliday'?'holiday':current.status;
+  const saved=!!todayReportOf(entity,today);
+  const currentActor=currentExecutionActor(project);
+  const canReport=today===tehranTodayJalali() && canWriteProjectModule(project.id,'execution:today')
+    && isExecutionAssignee(entity,currentActor) && !['approved','pending_approval'].includes(executionStatus(entity));
+  const report=documentRef.createElement(canReport?'button':'span');
+  report.className='today-report-circle is-'+status+(saved?' is-saved':'');
+  report.textContent='گزارش';
+  report.setAttribute('aria-label',(status==='holiday'?'تعطیل رسمی':DAILY_EXECUTION_LABELS[status])+'، '+(saved?'گزارش ثبت شده':'بدون گزارش'));
+  report.onclick=event=>{
+    event.stopPropagation();
+    if(canReport)openDailyExecutionReport({projectId:project.id,item,actor:currentActor,day:today,statusControls:true,
+      onChanged,onReturn:returnToCalendar,onSubmitted(updated){activeMode=timeState(updated,tehranTodayJalali());}});
+  };
+  if(canReport)report.type='button';
+  const progress=progressCircle(documentRef,entity,{summary:{}});
+  progress.onclick=event=>event.stopPropagation();
+  heading.append(titles,report,progress);
   card.appendChild(heading);
   return card;
 }

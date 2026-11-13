@@ -1,5 +1,6 @@
+import {projectRepository} from '../../data/projectRepository.js';
 import { REPORT_MIN_LENGTH, todayApi } from '../../domain/wbs/todayApi.js';
-import { executionReportDay, tehranTodayJalali } from '../../domain/wbs/todayDomain.js';
+import { collectTodayItems, dailyExecutionStatus, INACTIVE_REASONS, executionReportDay, tehranTodayJalali } from '../../domain/wbs/todayDomain.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { fieldRow, openWbsSheet } from './wbsSheet.js';
@@ -48,18 +49,79 @@ export function appendReportPhotos(root,photos){
   }
 }
 
-export function openDailyExecutionReport({ projectId, item, actor, onChanged, onSubmitted, day=tehranTodayJalali(), subject='کار' }){
+function statusFields(root,projectId,entity,day){
+  const current=dailyExecutionStatus(entity,day);
+  const state={status:current.status,reasonId:current.reasonId||''};
+  const row=document.createElement('fieldset');
+  row.className='today-report-status-row';
+  const question=document.createElement('span');
+  question.textContent='وضعیت این کار چگونه است؟';
+  row.setAttribute('aria-label',question.textContent);
+  row.append(question);
+  const reasons=new Map(Object.entries(INACTIVE_REASONS));
+  const project=projectRepository.find(projectId);
+  for(const {entity:work} of collectTodayItems(project,day,{includeApproved:true})){
+    for(const entry of work.executionHistory||[]){
+      if(entry.type==='daily_status' && entry.reasonId?.startsWith('custom:'))reasons.set(entry.reasonId,entry.reason);
+    }
+  }
+  const reason=document.createElement('button');
+  reason.type='button';reason.className='wbs-input';
+  const reasonRow=fieldRow('دلیل غیرفعال بودن',reason);
+  const selectReason=id=>{state.reasonId=id;reason.textContent=reasons.get(id)||'انتخاب کنید';};
+  selectReason(state.reasonId);
+  reason.onclick=async()=>{
+    const {openStaticChoicePicker}=await import("../contracts/contractPickers.js");
+    openStaticChoicePicker('دلیل غیرفعال بودن','دلیل‌ها',
+    [...reasons].map(([value,label])=>({value,label})),state.reasonId,selectReason,()=>{
+      window.KarhaSearchTemplate?.close?.();
+      const input=document.createElement('input');
+      input.className='wbs-input';input.maxLength=120;
+      const add=document.createElement('button');
+      add.type='button';add.textContent='افزودن دلیل';
+      const field=fieldRow('دلیل جدید',input);
+      field.append(add);reasonRow.append(field);
+      add.onclick=()=>{
+        const label=input.value.trim();
+        if(!label)return;
+        const id='custom:'+label;
+        reasons.set(id,label);selectReason(id);field.remove();
+      };
+      input.focus();
+    },{preserveOrder:true});
+  };
+  const choices=[];
+  const paint=()=>{
+    reasonRow.hidden=state.status!=='inactive';
+    reasonRow.classList.toggle('hidden',reasonRow.hidden);
+    choices.forEach(input=>{input.checked=input.value===state.status;});
+  };
+  for(const [value,label] of [['active','فعال'],['inactive','غیرفعال'],['unknown','هنوز نامشخص']]){
+    const option=document.createElement('label');
+    const input=document.createElement('input');
+    input.type='checkbox';input.value=value;choices.push(input);
+    input.onchange=()=>{state.status=value;paint();};
+    option.append(input,label);row.append(option);
+  }
+  root.append(row,reasonRow);paint();
+  return state;
+}
+
+export function openDailyExecutionReport({ projectId, item, actor, onChanged, onSubmitted, onReturn, statusControls=false, day=tehranTodayJalali(), subject='کار' }){
   const current=todayReportOf(item.entity,day);
   const photos=[...(current?.photos||[])];
   const ref={kind:item.kind,id:item.id,workId:item.workId};
-  let uploader;
+  let uploader,dailyStatus;
   const sheet=openWbsSheet({
-    title:`ثبت گزارش:\n${item.entity.title || item.entity.text || subject}`,
+    title:statusControls?`ثبت گزارش ${item.entity.title || item.entity.text || subject}`:`ثبت گزارش:\n${item.entity.title || item.entity.text || subject}`,
     saveLabel:'ذخیره', presentation:'stage-create', autoFocus:false,
     historyKey:`execution-report:${projectId}:${item.id}:${day}`,
+    ...(onReturn?{requestClose:onReturn,reuseHistoryOnReplace:true}:{}),
     body(root){
-      const progress=fieldRow('وارد کردن درصد پیشرفت',progressInput(document,current?.progress ?? item.entity.progress));
+      if(statusControls)dailyStatus=statusFields(root,projectId,item.entity,day);
+      const progress=fieldRow(statusControls?'درصد پیشرفت':'وارد کردن درصد پیشرفت',progressInput(document,current?.progress ?? item.entity.progress));
       progress.classList.add('today-report-progress-row');
+      if(statusControls)progress.classList.add('today-report-progress-compact');
       root.append(progress,fieldRow('شرح گزارش',textarea(document,current?.description||'')));
       const attachments=document.createElement('div');
       const note=document.createElement('div');
@@ -81,14 +143,19 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
         return false;
       }
       const progress=root.querySelector('[name="reportProgress"]').dataset.value;
-      const result=todayApi.saveReport(projectId,ref,root.querySelector('[name="reportDescription"]').value,
-        actor,Date.now,progress,{files:photos,completeAt100:true});
+      const description=root.querySelector('[name="reportDescription"]').value;
+      const statusOnly=statusControls && !current && !description.trim() && !photos.length && Number(progress)===(Number(item.entity.progress)||0);
+      const result=statusOnly
+        ? todayApi.setDailyStatus(projectId,ref,dailyStatus.status,dailyStatus.reasonId,'',actor)
+        : todayApi.saveReport(projectId,ref,description,actor,Date.now,progress,{files:photos,completeAt100:true,dailyStatus});
       if(!result.ok){
+        if(result.code==='invalid_reason'){toast('دلیل غیرفعال بودن را انتخاب کنید');return false;}
         toast(result.code==='report_too_short' ? `شرح گزارش حداقل ${toPersianDigits(REPORT_MIN_LENGTH)} حرف باشد` : 'ذخیرهٔ گزارش انجام نشد');
         return false;
       }
-      if(Number(progress)===100) onSubmitted?.(result.entity);
+      if(!statusOnly && Number(progress)===100) onSubmitted?.(result.entity);
       onChanged?.();
+      if(onReturn){onReturn();return false;}
       return true;
     },
   });
