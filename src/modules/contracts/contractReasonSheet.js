@@ -61,8 +61,12 @@ export function renderInlineContractReject(submit,onRejected){
     reason.required=true;
     const counter=document.createElement('div');
     counter.className='finance-rejection-count';
+    counter.id='inline-contract-reject-count';
     counter.setAttribute('aria-live','polite');
-    form.append(fieldRow('دلیل رد',reason),counter);
+    reason.setAttribute('aria-describedby',counter.id);
+    const field=fieldRow('دلیل رد',reason);
+    reason.before(counter);
+    form.append(field);
     const back=document.createElement('button');
     back.type='button';back.className='close-btn';back.textContent='→';
     back.setAttribute('aria-label','بازگشت');

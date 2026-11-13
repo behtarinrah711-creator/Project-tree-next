@@ -204,13 +204,9 @@ function renderContractWorkflowRow(contract){
   return row;
 }
 
-export function renderContractReviewRow(contract,{action,preview,reject,onRejected}){
+export function renderContractReviewRow(contract,{action,reject,onRejected}){
   const row=renderContractStatusRow(contract);
   if(contract.parentContractId)row.className='contract-addendum-toolbar';
-  const view=document.createElement('button');
-  view.type='button';view.className='contract-review-action';view.textContent='مشاهده سند';
-  view.onclick=event=>{event.stopPropagation();preview(view);};
-  row.appendChild(view);
   if(action)row.appendChild(action);
   if(reject && onRejected)row.appendChild(renderInlineContractReject(reject,onRejected));
   if(contract.approvalStatus==='unapproved' && contract.approvalRejectionReason){
@@ -239,10 +235,10 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
         openStatusSheet({title:'وضعیت قرارداد',showSave:false,reuseHistoryOnReplace:true,historyKey:'contract-status:'+c.id,
           body(root){root.classList.add('contract-status-sheet');statusSheetBody(root);root.appendChild(renderContractHistory(document,statusRecord,{finance}));}});
       };
-      const heading=renderContractCardHeading(p,c,approval?null:{
-        onEdit:!writable?undefined:()=>{if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
+      const heading=renderContractCardHeading(p,c,{
+        onEdit:approval || !writable?undefined:()=>{if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
         onExport:trigger=>openContractExport(p,finance?c.accountingPackage.contract:c,{trigger,frozen:finance}),
-        onDelete:!writable?undefined:()=>openConfirm('آیا از حذف این قرارداد اطمینان دارید؟',()=>{
+        onDelete:approval || !writable?undefined:()=>openConfirm('آیا از حذف این قرارداد اطمینان دارید؟',()=>{
           const result=contractApi.trash(id,c.id);
           if(!result.ok){
             if(result.code==='in_use')window.KarhaLegacy?.showRecordDeleteBlocked?.('contract',result.refs);
@@ -256,7 +252,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       if(approval){
         row.appendChild(renderContractDocuments(p,c,{reviewOnly:true,approvals:approvalDocuments}));
         statusSheetBody=root=>root.append(renderContractReviewRow(statusRecord,{
-          ...(statusRecord===c?approval:{}),preview,
+          ...(statusRecord===c?approval:{}),
           onRejected(record){statusRecord=record;openStatus();},
         }),renderContractProgress(document,statusRecord,p));
         return row;

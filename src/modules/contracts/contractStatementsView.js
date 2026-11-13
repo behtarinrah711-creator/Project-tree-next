@@ -311,7 +311,7 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
   const title=statementTitle(record);
   const open=()=>openStatement(project,contract,record,onChanged,{approval});
   const progress=renderContractProgressCircle(document,record,project,event=>{event.stopPropagation();open();});
-  const writable=record.statementType && canWriteProjectModule(project.id,'contracts');
+  const writable=!approval && record.statementType && canWriteProjectModule(project.id,'contracts');
   const deletable=writable && canDeleteContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id]);
   const editable=record.status==='draft';
   const buildDocument=()=>{
@@ -321,7 +321,7 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
       operationSummary(record.operations||[]),table([['مبلغ سند',money(record.statementAmount??record.stageAmount??0)]]));
     return documentNode;
   };
-  const heading=renderContractCardHeading(project,contract,approval?null:{
+  const heading=renderContractCardHeading(project,contract,{
     onEdit:writable?()=>editable?openStatementForm(project,contract,onChanged,record):toast('صورت‌وضعیت در وضعیت فعلی قابل ویرایش نیست'):undefined,
     onExport:trigger=>{
       const documentNode=buildDocument();
