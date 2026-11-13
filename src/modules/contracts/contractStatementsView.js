@@ -5,12 +5,12 @@ import { approvedStatement, contractStatementTotals, finalStatementSummary, stat
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
 import { fieldRow, openWbsSheet, closeWbsSheet } from '../wbs/wbsSheet.js';
-import { todayJalaliStr, formatJalaliDisplay } from '../../ui/jalali.js';
+import { todayJalaliStr, formatJalaliDisplay, openJalaliPicker } from '../../ui/jalali.js';
 import { makeQuantityRow, numericValue, renderQuantityRows, rowAmount } from './contractPricing.js';
 import { ftAmountSummary, ftNumberRow, ftSelectRow } from './realContractFormModule.js';
 import { openStaticChoicePicker } from './contractPickers.js';
 import { saveContractHandoff } from './contractHandoffApi.js';
-import { renderContractCardHeading } from './contractsModule.js';
+import { contractRowData, renderContractCardHeading } from './contractsModule.js';
 import { renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
 import { renderContractHistory } from './contractHistoryView.js';
 import { openContractExport } from './contractExportView.js';
@@ -102,25 +102,29 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
   if(record && !record.operations?.length){
     Object.assign(operations[0],{description:record.note||'کارکرد صورت‌وضعیت',pricingMode:'agreed',agreedPrice:record.statementType==='final'?record.cumulativeAmount:record.stageAmount});
   }
+  const statementType=documentRecord.statementType;
+  const label=statementType==='retention-release'?'آزاد کردن حسن انجام کار'
+    :(record?'اصلاح':'ایجاد')+' صورت‌وضعیت '+statementTypes.find(([value])=>value===statementType)[1];
+  let date=record?.date||todayJalaliStr();
   const sheet=openWbsSheet({
-    title:record?'اصلاح صورت‌وضعیت':'ایجاد صورت‌وضعیت',historyKey:'statement-form:'+contract.id,
+    title:label,historyKey:'statement-form:'+contract.id,
     body(root){
-      const kind=element('select','wbs-input');
-      for(const [value,label] of statementTypes){
-        const option=element('option','',label);
-        option.value=value;kind.append(option);
-      }
-      kind.value=documentRecord.statementType;
-      kind.name='kind';
-      const date=input('تاریخ صورت‌وضعیت','text',record?.date||todayJalaliStr());
-      date.node.name='date';
+      const contractInfo=contractRowData(project.id,contract);
+      const identity=element('div','contract-statement-identity');
+      identity.append(element('strong','',contractInfo.title),element('div','',contractInfo.number));
+      const dateField=element('div','form-template');
+      const paintDate=()=>{
+        dateField.replaceChildren();
+        ftSelectRow(dateField,'تاریخ صورت‌وضعیت',formatJalaliDisplay(date),()=>openJalaliPicker(date,next=>{date=next;paintDate();}));
+      };
+      paintDate();
       const note=element('textarea','wbs-input');
       note.name='note';note.value=record?.note||'';
       const fields=element('div','contract-form-body');
       const calculation=element('div');
       const refresh=()=>{
         fields.replaceChildren();
-        if(kind.value==='final'){
+        if(statementType==='final'){
           if(final.operations.length)fields.append(operationSummary(final.operations));
           calculation.replaceChildren(table([
             ['جمع عملیات موقت تأییدشده',money(final.gross)],
@@ -131,7 +135,7 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
           if(!final.ready)calculation.append(element('p','wbs-note','برای صدور قطعی، صورت‌وضعیت‌های موقت تأییدشده باید تمام کارکرد قرارداد را پوشش دهند.'));
           return;
         }
-        if(kind.value==='interim'){
+        if(statementType==='interim'){
           const update=()=>{
             const resolved=resolveStatementWork(workRows,workEntries());
             const gross=(resolved||[]).reduce((sum,row)=>sum+rowAmount(row),0);
@@ -143,15 +147,13 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
             const entry=entries[index];
             entry.method ||= row.measured?'quantity':'amount';
             const card=element('div','contract-quantity-row form-template');
-            card.append(element('h3','',row.description||'عملیات '+format.format(index+1)));
+            card.append(element('h3','contract-statement-operation-title',row.description||'عملیات '+format.format(index+1)));
             const display=value=>row.measured?format.format(value)+' '+(row.unit||''):money(value);
             card.append(table([
               [row.measured?'بهای واحد قرارداد':'مبلغ توافقی قرارداد',money(numericValue(row.measured?row.unitPrice:row.agreedPrice))],
               ['کارکرد قبلی',display(row.previous)],
               ['مانده ردیف',row.limit===null?'تعیین نشده':display(Math.max(0,row.limit-row.previous))],
             ]));
-            const control=input('کارکرد این دوره','text',entry.raw??entry.value??'');
-            control.node.inputMode='decimal';
             const equivalent=element('p','wbs-note');
             const updateRow=()=>{
               const item=workEntries().find(item=>item.key===row.key);
@@ -165,14 +167,21 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
                 const choice=element('label');
                 const radio=element('input');radio.type='radio';radio.name='statement-method-'+index;
                 radio.checked=entry.method===method;
-                radio.onchange=()=>{entry.method=method;entry.raw='';entry.value=null;control.node.value='';control.node.placeholder=method==='percent'?'درصد این دوره از کل ردیف':'مقدار انجام‌شده';updateRow();};
+                radio.onchange=()=>{entry.method=method;entry.raw='';entry.value=null;refresh();};
                 choice.append(radio,document.createTextNode(label));choices.append(choice);
               }
               card.append(choices);
             }
-            control.node.placeholder=entry.method==='percent'?'درصد این دوره از کل ردیف':row.measured?'مقدار انجام‌شده':'مبلغ کار انجام‌شده';
-            control.node.oninput=()=>{entry.raw=control.node.value;entry.value=null;updateRow();};
-            card.append(control.row,equivalent);fields.append(card);updateRow();
+            const percent=entry.method==='percent';
+            ftNumberRow(card,percent?'درصد این دوره از کل ردیف':'کارکرد این دوره',entry.raw??entry.value??'',raw=>{
+              entry.raw=raw;entry.value=null;
+            },{
+              suffix:percent?'٪':row.measured?row.unit:'تومان',
+              allowDecimal:row.measured,
+              placeholder:percent?'درصد انجام‌شده':row.measured?'مقدار انجام‌شده':'مبلغ کار انجام‌شده',
+              onCommit:refresh,
+            });
+            card.append(equivalent);fields.append(card);updateRow();
           }
           if(!workRows.length)fields.append(element('p','wbs-note','عملیاتی در قرارداد ثبت نشده است.'));
           update();
@@ -185,8 +194,8 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
         });
         const value=operations.reduce((sum,row)=>sum+rowAmount(row),0);
         ftAmountSummary(fields,'مبلغ کل صورت‌وضعیت',value);
-        const result=statementAmounts(totals,contract,value,kind.value);
-        calculation.replaceChildren(table(kind.value==='retention-release'?[
+        const result=statementAmounts(totals,contract,value,statementType);
+        calculation.replaceChildren(table(statementType==='retention-release'?[
           ['مانده حسن انجام کار پیش از آزادسازی',money(totals.retained)],
           ['مبلغ قابل آزادسازی در این سند',money(result.netAmount)],
         ]:[
@@ -197,19 +206,19 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
           ['خالص این صورت‌وضعیت',money(result.netAmount)],
         ]));
       };
-      kind.onchange=refresh;
-      root.append(fieldRow('نوع صورت‌وضعیت',kind),date.row,fields,fieldRow('توضیحات',note),calculation);
+      root.classList.add('contract-statement-form');
+      root.append(identity,dateField,fields,fieldRow('توضیحات اختیاری',note),calculation);
       refresh();
     },
     onSave(root){
       if(saving)return false;
       const value=name=>root.querySelector('[name="'+name+'"]').value.trim();
-      const type=value('kind');
+      const type=statementType;
       if(type==='final' && !final.ready){toast('شرایط صدور صورت‌وضعیت قطعی تکمیل نشده است');return false;}
       if(type==='interim' && !resolveStatementWork(workRows,workEntries())){toast('کارکرد عملیات قرارداد را معتبر وارد کنید');return false;}
       if(type==='retention-release' && (!operations.length || operations.some(row=>!row.description.trim() || !rowAmount(row) || (row.pricingMode==='quantity' && !row.unit)))){toast('شرح و مبلغ عملیات را کامل کنید');return false;}
       saving=true;
-      saveContractHandoff(project.id,documentRecord,'save_statement',{contractId:contract.id,statementType:type,date:value('date'),...(type==='interim'?{workEntries:workEntries()}:type==='final'?{}:{operations}),note:value('note')})
+      saveContractHandoff(project.id,documentRecord,'save_statement',{contractId:contract.id,statementType:type,date,...(type==='interim'?{workEntries:workEntries()}:type==='final'?{}:{operations}),note:value('note')})
         .then(()=>{if(root.isConnected)closeWbsSheet();onChanged();})
         .catch(error=>toast(error.message)).finally(()=>{saving=false;});
       return false;
