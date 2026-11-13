@@ -214,7 +214,7 @@ export function renderContractReviewRow(contract,{action,preview}){
   return row;
 }
 
-export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,openStatusSheet=openWbsSheet,showDetails=false}={}){
+export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,approvalDocuments,openStatusSheet=openWbsSheet,showDetails=false}={}){
   const preview=trigger=>openContractPreview(p,c,{trigger});
   const id=p.id,actor=currentExecutionActor(p);
   const writable=!finance && canWriteProjectModule(id,'contracts');
@@ -245,6 +245,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       },{onPreview:showDetails && !finance && !approval ? trigger=>openContractDetails(p,c,trigger) : approval?preview:openPreview,progress:renderContractProgressCircle(document,c,p,openStatus)});
       row.appendChild(heading);
       if(approval){
+        row.appendChild(renderContractDocuments(p,c,{reviewOnly:true,approvals:approvalDocuments}));
         statusSheetBody=root=>root.append(renderContractReviewRow(c,{...approval,preview}),renderContractProgress(document,c,p));
         return row;
       }
