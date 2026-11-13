@@ -1,0 +1,20 @@
+name: Read Arvan disk usage
+on:
+  push:
+    branches: [ops/arvan-disk-usage]
+permissions: {}
+jobs:
+  disk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Measure server storage
+        env:
+          SERVER_KEY: ${{ secrets.ARVAN_SSH_PRIVATE_KEY }}
+        run: |
+          set -eu
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SERVER_KEY" > ~/.ssh/id_arvan
+          chmod 600 ~/.ssh/id_arvan
+          ssh-keyscan -T 10 -H 37.32.30.98 > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/id_arvan -o BatchMode=yes -o ConnectTimeout=10 root@37.32.30.98 'df -hP /; du -xsh /srv/saosa/releases /srv/saosa/runtimes /var/lib/saosa/uploads /var/lib/postgresql /var/log; du -xh --max-depth=1 / 2>/dev/null | sort -h'
