@@ -2023,3 +2023,8 @@ textarea.contract-project-item-input{
 :is(.contract-details-body,#contractPendingAddenda) .contract-card-heading{display:grid;align-items:center;gap:8px;}
 
 .contract-addenda-children > h3.contract-project-path{text-align:right;}
+
+.contract-statement-form .contract-statement-identity{font-size:13px;margin-bottom:12px;}
+.contract-statement-form .contract-statement-identity div{font-size:11px;}
+.contract-statement-form .contract-statement-operation-title{font-size:13px;line-height:1.65;margin:8px;}
+.contract-statement-form .contract-financial-table{font-size:12px;}
