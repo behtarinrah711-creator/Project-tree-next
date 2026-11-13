@@ -1,3 +1,4 @@
+import {canWriteProjectModule} from '../../modules/roleManagement/permissionState.js';
 import { uid } from '../../data/projectFactories.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { workTaskRepository } from '../../data/workTaskRepository.js';
@@ -44,7 +45,7 @@ function validate(projectId, workId, input){
   if(approvalContactId && !contactRepository.get(projectId, approvalContactId)) return { ok:false, code:'approver' };
   if(activityId && !activityRepository.get(projectId, activityId)) return { ok:false, code:'activity' };
   if(!validDateRange(input.scheduleStart || '', input.scheduleEnd || '')) return { ok:false, code:'dates' };
-  if(!workTaskRepository.work(projectId, workId)) return { ok:false, code:'work' };
+  if(workId && !workTaskRepository.work(projectId, workId)) return { ok:false, code:'work' };
   return { ok:true, value:{ ...input, title, weight, assigneeContactId, counterpartyContactId, contractorContactId,
     contractTemplateId:input.hasContract ? contractTemplateId : '',
     activityId, activityIds:activityId ? [activityId] : [], activities:activityId ? [activityId] : [],
@@ -68,6 +69,18 @@ function syncWorkCompletion(projectId, workId){
 
 function predecessorIds(value){
   return [...new Set((Array.isArray(value) ? value : []).map(String).filter(Boolean))];
+}
+
+export function createStandaloneWork(projectId,draft,clock=Date.now){
+  if(!canWriteProjectModule(projectId,'execution:today'))return {ok:false,code:'forbidden'};
+  const checked=validate(projectId,null,draft);
+  if(!checked.ok)return checked;
+  const now=clock();
+  const task=normalizeWorkTask({...checked.value,id:uid(),predecessorIds:[],dependencies:[],createdAt:now,updatedAt:now});
+  const saved=projectRepository.updateProject(projectId,project=>({...project,standaloneWorks:[...(project.standaloneWorks||[]),task]}));
+  if(!saved)return {ok:false,code:'persist'};
+  publish(projectId);
+  return {ok:true,task};
 }
 
 export const workTaskApi = {

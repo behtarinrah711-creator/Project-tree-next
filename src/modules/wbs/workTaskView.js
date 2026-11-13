@@ -180,7 +180,7 @@ function renderActivity(container,{activities,value,onSelect,workId,documentRef}
   paint();container.appendChild(fieldRow('فعالیت',button));
 }
 
-function taskForm({ projectId, work, task = null, onChanged, readOnly=false, canDelete=true }){
+function taskForm({ projectId, work, task = null, onChanged, readOnly=false, canDelete=true, saveStandalone }){
   const editing = Boolean(task);
   const documentRef = document;
   const linkedContract=task ? linkedContractForWork(projectId,work.id,task.id) : null;
@@ -339,7 +339,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       }
       root.appendChild(fieldRow('وزن',numericButton('taskWeight',task?.weight || 1)));
       root.appendChild(amountContainer);
-      const dependency = predecessorField({ documentRef, project:projectRepository.find(projectId), consumerId:task?.id || `new:${work.id}`, initial:task?.dependencies || task?.predecessorIds || [] });
+      const dependency = predecessorField({ documentRef, project:saveStandalone?{...projectRepository.find(projectId),tasks:[]}:projectRepository.find(projectId), consumerId:task?.id || `new:${work.id}`, initial:task?.dependencies || task?.predecessorIds || [] });
       root.appendChild(dependency.element); root._taskDependency = dependency;
 
       if(editing && !readOnly){
@@ -395,7 +395,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         hasLaborPayroll:!!root.querySelector('[name="hasLaborPayroll"]')?.checked,
         isRental:!!root.querySelector('[name="isRental"]')?.checked,
       };
-      const result = editing
+      const result = saveStandalone ? saveStandalone(draft) : editing
         ? workTaskApi.update(projectId, work.id, task.id, draft)
         : workTaskApi.create(projectId, work.id, draft);
       if(!result.ok){
@@ -406,7 +406,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
           : 'اطلاعات کار را کامل و معتبر وارد کنید');
         return false;
       }
-      if(!editing && !isExpanded(projectId, work.id)) toggleExpanded(projectId, work.id);
+      if(!saveStandalone && !editing && !isExpanded(projectId, work.id)) toggleExpanded(projectId, work.id);
       onChanged?.();
       return true;
     },

@@ -164,3 +164,5 @@ button.today-report-circle{cursor:pointer;}
 .today-detail-schedule>progress::-webkit-progress-bar{background:#eae6dc;}
 .today-detail-schedule>progress::-webkit-progress-value{background:#171a58;border-radius:10px;}
 .today-detail-schedule>progress::-moz-progress-bar{background:#171a58;border-radius:10px;}
+
+.today-task-toolbar .oddjobs-add:not(.active){background:#1565c0;color:#fff;border-color:#1565c0;min-width:32px;font-size:20px;}

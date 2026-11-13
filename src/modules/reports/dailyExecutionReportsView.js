@@ -14,7 +14,7 @@ export function executionWorkKey({ kind, workId, id }){
 export function collectDailyExecutionReports(project){
   const rows = [];
   function add(entity, path, ref){
-    if(!entity || entity.trashed || entity.type==='خرید') return;
+    if(!entity || entity.trashed || (entity.type==='خرید' && ref.kind!=='standalone')) return;
     const work = {
       key:executionWorkKey(ref),
       title:entity.title || entity.text || 'کار',
@@ -46,6 +46,9 @@ export function collectDailyExecutionReports(project){
     }
   }
   walk(project?.tasks, []);
+  for(const work of project?.standaloneWorks||[]){
+    if(work)add(work,[],{kind:'standalone',workId:work.id,id:work.id});
+  }
   return rows.sort((a,b)=>b.day.localeCompare(a.day) || new Date(b.at) - new Date(a.at));
 }
 

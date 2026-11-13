@@ -27,7 +27,7 @@ function event(type, actor, at, extra = {}){
 function mutate(projectId, ref, updater, { completion } = {}){
   const entity = todayRepository.get(projectId, ref);
   if(!entity) return { ok:false, code:'not_found' };
-  const scope = entity.type === 'خرید' ? 'execution:shopping' : 'execution:today';
+  const scope = ref.kind!=='standalone' && entity.type === 'خرید' ? 'execution:shopping' : 'execution:today';
   if(!canWriteProjectModule(projectId, scope)) return { ok:false, code:'forbidden' };
   const saved = todayRepository.update(projectId, ref, updater);
   if(!saved) return { ok:false, code:'not_found' };

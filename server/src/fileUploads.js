@@ -134,8 +134,9 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
     const canReadFinanceFile=contract?.statementType
       ? canAccessFiles(row,accountId,false,statementScope) && contract.accountingPackage?.signedFiles?.some(file=>file.id===id)
       : canAccessFiles(row,accountId,false,'accounting') || canAccessFiles(row,accountId,false,'accounting-contracts');
-    const work=category==='reports'?reportWork(row?.payload?.tasks,recordId):null;
-    const scope=work?.type==='خرید'?'execution:shopping':'execution:today';
+    const standalone=category==='reports' && (row?.payload?.standaloneWorks||[]).find(item=>!item.trashed && String(item.id)===recordId);
+    const work=category==='reports'?(standalone||reportWork(row?.payload?.tasks,recordId)):null;
+    const scope=!standalone && work?.type==='خرید'?'execution:shopping':'execution:today';
     const canUploadReport=work && !work.completed && !['approved','pending_approval'].includes(work.completionState)
       && canAccessFiles(row,accountId,true,scope) && isReportAssignee(row,work);
     const attachedReportPhoto=work && !write && (work.executionReports||[]).some(report=>

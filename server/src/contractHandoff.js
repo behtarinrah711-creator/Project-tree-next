@@ -48,7 +48,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         if(!item || Number(item.entity.updatedAt||0)!==Number(body.updatedAt)){
           sendJson(response,409,{message:'این مورد تغییر کرده است؛ صفحه را به‌روز کنید'});return true;
         }
-        const actualScope=item.entity.type==='خرید'?'execution:shopping':'execution:today';
+        const actualScope=item.kind!=='standalone' && item.entity.type==='خرید'?'execution:shopping':'execution:today';
         if(scope!==actualScope || !actor.contactId || String(item.entity.approvalContactId)!==actor.contactId){
           sendJson(response,403,{message:'این مورد در انتظار تأیید شما نیست'});return true;
         }
