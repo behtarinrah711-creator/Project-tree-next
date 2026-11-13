@@ -1,3 +1,5 @@
+import {mountFileUploader} from '../files/fileUploader.js';
+import {uid} from '../../data/projectFactories.js';
 import { approvalLabels, contractApprovalState } from '../../domain/contractApproval.js';
 import { isContractInFinance } from '../../domain/contractHandoff.js';
 import { contactRepository } from '../../data/contactRepository.js';
@@ -413,6 +415,50 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
   });
   overlay.classList.add('wbs-task-form-overlay');
   titleEditor=documentRef.createElement('span');titleEditor.className='wbs-stage-edit-title';titleEditor.contentEditable=readOnly?'false':'true';titleEditor.setAttribute('role','textbox');titleEditor.setAttribute('aria-label','عنوان کار');titleEditor.textContent=task?.title || '';titleEditor.addEventListener('keydown',event=>{if(event.key==='Enter')event.preventDefault();});overlay.querySelector('.sheet-caption').append(' ',titleEditor);
+}
+
+export function openStandaloneWorkSheet({projectId,onChanged,saveStandalone}){
+  const id='oddjob-'+uid();
+  const invoices=[];
+  const contacts=contactRepository.list(projectId).filter(contact=>!contact.trashed);
+  const people=[{id:'',name:'انتخاب کنید'},...contacts.map(contact=>({id:contact.id,name:contactName(contact)}))];
+  const types=['خرید فوری','خدمات و تعمیر','حمل'];
+  const toast=message=>window.KarhaUI?.showToast?.(message);
+  let uploader;
+  const sheet=openWbsSheet({
+    title:'خرده کار',presentation:'stage-create',autoFocus:false,historyKey:'oddjob:'+projectId,
+    body(root){
+      const title=document.createElement('input');
+      title.className='wbs-input';title.name='title';
+      const description=document.createElement('input');description.className='wbs-input';description.name='description';
+      const attachment=document.createElement('div');
+      root.append(fieldRow('عنوان',title),fieldRow('شرح کوتاه',description),
+        fieldRow('نوع کار',optionButton({name:'type',value:types[0],options:types.map(id=>({id,name:id}))})),
+        fieldRow('مسئول پیگیری',optionButton({name:'assignee',value:'',options:people})),
+        fieldRow('درجه اهمیت',optionButton({name:'priority',value:'normal',options:Object.entries(PRIORITY_LABELS).map(([id,name])=>({id,name}))})),
+        fieldRow('مبلغ',numericButton('amount',0,{money:true})),
+        dateField(document,'due','موعد',''),
+        fieldRow('مسئول تأیید خرج',optionButton({name:'expenseApprover',value:'',options:people})),
+        fieldRow('فاکتور',attachment));
+      uploader=mountFileUploader(attachment,{projectId,recordId:id,category:'oddjob-invoices',files:invoices,label:'افزودن عکس فاکتور',buttonLabel:true,onError:toast});
+    },
+    onSave(root){
+      if(uploader?.isBusy()){toast('ابتدا بارگذاری عکس فاکتور را تمام کنید');return false;}
+      const field=name=>root.querySelector('[name="'+name+'"]');
+      const result=saveStandalone({id,title:field('title').value,description:field('description').value,oddJobType:field('type').value,
+        assigneeContactId:field('assignee').value,priority:field('priority').value,
+        amount:Number(field('amount').dataset.value),dueDate:field('due').dataset.value,
+        expenseApproverContactId:field('expenseApprover').value,invoices});
+      if(!result.ok){toast('اطلاعات خرده‌کار را کامل و معتبر وارد کنید');return false;}
+      onChanged?.();
+      return true;
+    },
+  });
+  const observer=new MutationObserver(()=>{
+    if(sheet.isConnected)return;
+    uploader?.destroy();observer.disconnect();
+  });
+  observer.observe(document.body,{childList:true});
 }
 
 export function openCreateWorkTaskSheet(options){ taskForm(options); }

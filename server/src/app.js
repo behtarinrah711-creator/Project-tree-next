@@ -359,6 +359,10 @@ export function hasDeniedExecutionChanges(current,incoming,permissions,phone){
     if(!item?.id)return false;
     const previous=priorStandalone.get(String(item.id));
     const scopeItem={...item,type:'اجرا'};
+    if(previous?.oddJobType && ['oddJobType','amount','expenseApproverContactId','invoices'].some(key=>JSON.stringify(previous[key])!==JSON.stringify(item[key])))return true;
+    if(item.oddJobType && (item.expenseApprovalStatus!== (previous?.expenseApprovalStatus ?? (item.expenseApproverContactId?'pending':null))
+      || JSON.stringify(item.expenseApprovedBy)!==JSON.stringify(previous?.expenseApprovedBy)
+      || item.expenseApprovedAt!==previous?.expenseApprovedAt))return true;
     if(deniedDailyHistory(previous,scopeItem))return true;
     const reportsChanged=JSON.stringify(comparable(previous,'executionReports'))!==JSON.stringify(comparable(item,'executionReports'));
     return reportsChanged && (!canWriteExecutionItem(permissions,scopeItem) || !contactIds.has(String(previous?.assigneeContactId)));

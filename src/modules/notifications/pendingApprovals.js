@@ -18,7 +18,7 @@ import {openConfirm} from '../../ui/confirm.js';
 export const approvalGroups=[
   {id:'addenda',title:'قراردادها',scope:'contracts'},
   {id:'shopping',title:'خریدها',scope:'execution:shopping',collect:collectShoppingItems},
-  {id:'execution',title:'اجرا',scope:'execution:today',collect:(project,day,options)=>[...collectTodayItems(project,day,options),...collectStandaloneWorks(project,day).filter(item=>!item.entity.completed)]},
+  {id:'execution',title:'اجرا',scope:'execution:today',collect:(project,day,options)=>[...collectTodayItems(project,day,options),...collectStandaloneWorks(project,day).filter(item=>!item.entity.completed || item.entity.expenseApprovalStatus==='pending')]},
 ];
 
 const number=value=>Number(value).toLocaleString('fa-IR');
@@ -54,9 +54,9 @@ export function pendingApprovals(project,windowRef=globalThis.window){
     const writable=canWriteProjectModule(project.id,group.scope,windowRef);
     if(!projectPermissionState(project.id,[group.scope],windowRef).visible)return {...group,items:[]};
     if(group.collect){
-      const mine=group.collect(project,undefined,{includeApproved:true}).filter(item=>isExecutionApprover(item.entity,actor));
+      const mine=group.collect(project,undefined,{includeApproved:true}).filter(item=>(item.entity.oddJobType?String(item.entity.expenseApproverContactId)===actor.contactId:isExecutionApprover(item.entity,actor)));
       assigned ||= mine.length>0;
-      return {...group,writable,items:mine.filter(item=>item.entity.completionState==='pending_approval')};
+      return {...group,writable,items:mine.filter(item=>(item.entity.oddJobType?item.entity.expenseApprovalStatus==='pending':item.entity.completionState==='pending_approval'))};
     }
     const collection=[...(project.contracts||[]),...(project.contractAddenda||[]),...(project.contractStatusReports||[]).filter(record=>record.statementType)];
     const mine=collection.filter(record=>record && !record.trashed && (
@@ -102,7 +102,7 @@ function approvalOptions(documentRef,project,group,item,onChanged){
   const action=item.statementType?'approve_statement':item.parentContractId?'approve_addendum':'approve_contract';
   const approval={};
   if(group.writable){
-    const approve=button(documentRef,shopping?'تأیید خرید':'تأیید',()=>openConfirm('این مورد تأیید شود؟',async()=>{
+    const approve=button(documentRef,item.entity?.oddJobType?'تأیید خرج':shopping?'تأیید خرید':'تأیید',()=>openConfirm('این مورد تأیید شود؟',async()=>{
       approve.disabled=true;
       try{
         const latest=projectRepository.find(project.id);

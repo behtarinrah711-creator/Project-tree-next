@@ -49,10 +49,10 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
           sendJson(response,409,{message:'این مورد تغییر کرده است؛ صفحه را به‌روز کنید'});return true;
         }
         const actualScope=item.kind!=='standalone' && item.entity.type==='خرید'?'execution:shopping':'execution:today';
-        if(scope!==actualScope || !actor.contactId || String(item.entity.approvalContactId)!==actor.contactId){
+        if(scope!==actualScope || !actor.contactId || String(item.entity.oddJobType?item.entity.expenseApproverContactId:item.entity.approvalContactId)!==actor.contactId){
           sendJson(response,403,{message:'این مورد در انتظار تأیید شما نیست'});return true;
         }
-        const entity={...approveExecutionEntity(item.entity,item.kind,actor,Date.now()),progress:100};
+        const entity={...approveExecutionEntity(item.entity,item.kind,actor,Date.now()),...(item.entity.oddJobType?{}:{progress:100})};
         const project=applyExecutionApproval(row.payload,item,entity);
         await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[projectId,JSON.stringify(project)]);
         await client.query('COMMIT');committed=true;sendJson(response,200,{entity});

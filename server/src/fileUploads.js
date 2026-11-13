@@ -111,7 +111,7 @@ function isReportAssignee(row,work){
 export function createFileUploadHandler({pool,sessionSecret,storage}){
   let active=0;
   return async function handleFiles(request,response,url){
-    const match=/^\/api\/v1\/projects\/([^/]+)\/files\/(contacts|contracts|reports)\/([^/]+)(?:\/([^/]+))?$/.exec(url.pathname);
+    const match=/^\/api\/v1\/projects\/([^/]+)\/files\/(contacts|contracts|reports|oddjob-invoices)\/([^/]+)(?:\/([^/]+))?$/.exec(url.pathname);
     if(!match)return false;
     let projectId,category,recordId,id;
     try{[projectId,category,recordId,id]=match.slice(1).map(value=>value===undefined?undefined:decodeURIComponent(value));}
@@ -143,7 +143,11 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
       report && !report.trashed && (report.photos||[]).some(photo=>String(photo?.id)===id));
     const canReadReport=attachedReportPhoto && (canAccessFiles(row,accountId,false,scope)
       || (scope==='execution:today' && canAccessFiles(row,accountId,false,'reports:reports')));
-    const allowed=category==='reports' ? canUploadReport || canReadReport : category==='contacts'
+    const invoice=category==='oddjob-invoices';
+    const invoiceWork=invoice && (row?.payload?.standaloneWorks||[]).find(item=>!item.trashed && String(item.id)===recordId);
+    const invoiceAttached=invoiceWork && (invoiceWork.invoices||[]).some(file=>file.id===id);
+    const allowed=invoice ? /^oddjob-[a-z0-9]+$/.test(recordId) && canAccessFiles(row,accountId,write,'execution:today')
+      && (!write || !invoiceWork) : category==='reports' ? canUploadReport || canReadReport : category==='contacts'
       ? canAccessFiles(row,accountId,write) || (!write && canReadContractDocument(row,accountId,url.searchParams.get('contractId'),recordId,id))
       : !!contract && (canAccessFiles(row,accountId,write,'contracts') || (!write && financeFile && canReadFinanceFile));
     if(!allowed){sendJson(response,403,{error:'forbidden_project_files'});return true;}
@@ -156,7 +160,7 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
       try{
         const input=await readBytes(request,MAX_FILE_BYTES);
         const file=await prepareFile(input,url.searchParams.get('name'));
-        if(category==='reports' && file.mime!=='image/jpeg'){sendJson(response,415,{error:'unsupported_report_type'});return true;}
+        if((category==='reports' || invoice) && file.mime!=='image/jpeg'){sendJson(response,415,{error:'unsupported_report_type'});return true;}
         const fileId=randomUUID();
         if(category==='contracts' && !['image/jpeg','application/pdf'].includes(file.mime)){sendJson(response,415,{error:'unsupported_signed_type'});return true;}
         const metadata={id:fileId,projectId,category,recordId,name:file.name,mime:file.mime,size:file.bytes.length,
@@ -173,6 +177,7 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
         if(category==='reports' && !canReadReport && String(metadata.uploadedBy)!==String(accountId)){
           sendJson(response,403,{error:'forbidden_project_files'});return true;
         }
+        if(invoice && !invoiceAttached && String(metadata.uploadedBy)!==String(accountId)){sendJson(response,403,{error:'forbidden_project_files'});return true;}
         const thumbnail=url.searchParams.get('variant')==='thumbnail' && metadata.hasThumbnail;
         const bytes=await storage.read(prefix+id,thumbnail);
         response.writeHead(200,{'content-type':thumbnail?'image/jpeg':metadata.mime,'content-length':bytes.length,

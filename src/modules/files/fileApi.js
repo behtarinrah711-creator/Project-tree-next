@@ -7,7 +7,7 @@ export function imageBounds(width,height,edge=3200){
   return {width:Math.max(1,Math.round(width*scale)),height:Math.max(1,Math.round(height*scale))};
 }
 export function fileEndpoint(file){
-  return '/api/v1/projects/'+encodeURIComponent(file.projectId)+'/files/'+(['contracts','reports'].includes(file.category)?file.category:'contacts')+'/'+encodeURIComponent(file.recordId)+'/'+encodeURIComponent(file.id);
+  return '/api/v1/projects/'+encodeURIComponent(file.projectId)+'/files/'+(['contracts','reports','oddjob-invoices'].includes(file.category)?file.category:'contacts')+'/'+encodeURIComponent(file.recordId)+'/'+encodeURIComponent(file.id);
 }
 export function fileError(code){
   return ({unauthorized:'برای بارگذاری یا دریافت فایل وارد حساب شوید',forbidden_project_files:'به فایل‌های این پروژه دسترسی ندارید',
