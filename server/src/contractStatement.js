@@ -1,3 +1,4 @@
+import {statementWorkRows,resolveStatementWork} from '../../src/domain/statementWork.js';
 import {rowAmount,numericValue} from '../../src/modules/contracts/contractPricing.js';
 import {contractApproverIds} from '../../src/domain/contractApproval.js';
 import {contractStatementTotals,statementsFor,approvedStatement,statementAmounts,finalStatementSummary} from '../../src/domain/contractStatements.js';
@@ -15,8 +16,12 @@ export function saveStatement(project,parent,current,id,body,actor,at){
   const totals=contractStatementTotals(project,parent);
   const final=statementType==='final'?finalStatementSummary(project,parent):null;
   if(final && !final.ready)return fail('صدور صورت‌وضعیت قطعی پس از پوشش کامل مبلغ قرارداد در صورت‌وضعیت‌های موقت تأییدشده امکان‌پذیر است');
-  const operations=final?.operations || [];
-  if(!final && body.operations!==undefined){
+  const workRows=statementType==='interim'?statementWorkRows(parent,records.filter(approvedStatement)):[];
+  const linked=statementType==='interim' && (body.workEntries!==undefined || workRows.some(row=>row.description));
+  const resolved=linked?resolveStatementWork(workRows,body.workEntries):null;
+  if(linked && !resolved)return fail('کارکرد عملیات قرارداد را در محدوده مانده هر ردیف وارد کنید');
+  const operations=final?.operations || resolved || [];
+  if(!final && !linked && body.operations!==undefined){
     if(!Array.isArray(body.operations) || !body.operations.length || body.operations.length>40)return fail('بین یک تا چهل عملیات وارد کنید');
     for(const row of body.operations){
       const description=typeof row?.description==='string'?row.description.trim().slice(0,500):'';
@@ -29,7 +34,7 @@ export function saveStatement(project,parent,current,id,body,actor,at){
       operations.push(operation);
     }
   }else if(statementType==='retention-release')return fail('عملیات آزادسازی را وارد کنید');
-  const entered=final?.gross ?? (body.operations===undefined?body.amount:operations.reduce((sum,row)=>sum+rowAmount(row),0));
+  const entered=final?.gross ?? (!linked && body.operations===undefined?body.amount:operations.reduce((sum,row)=>sum+rowAmount(row),0));
   if(!Number.isSafeInteger(entered) || entered<0 || (statementType==='interim' && entered===0))return fail('مبلغ صورت‌وضعیت نامعتبر است');
   const gross=final?0:entered;
   if(statementType==='retention-release' && (entered<=0 || entered>totals.retained))return fail('مبلغ آزادسازی از مانده حسن انجام کار بیشتر است');
@@ -37,7 +42,7 @@ export function saveStatement(project,parent,current,id,body,actor,at){
   const approvers=contractApproverIds(parent);
   const sequence=current?.sequence ?? Math.max(0,...records.map(record=>Number(record.sequence)||0),records.length)+1;
   return {ok:true,contract:{...current,id,contractId:parent.id,statementType,sequence,date,note:String(note||'').trim().slice(0,2000),
-    operations,statementAmount:entered,...(final?{stageAmount:0,cumulativeAmount:final.gross,retentionAmount:0,netAmount:0,finalTotals:{gross:final.gross,retention:final.retention,net:final.net}}:statementAmounts(totals,parent,gross,statementType)),status:'final',isDraft:false,approvalStatus:approvers.length?'pending':'approved',
+    operations,workEntries:linked?body.workEntries:undefined,statementAmount:entered,...(final?{stageAmount:0,cumulativeAmount:final.gross,retentionAmount:0,netAmount:0,finalTotals:{gross:final.gross,retention:final.retention,net:final.net}}:statementAmounts(totals,parent,gross,statementType)),status:'final',isDraft:false,approvalStatus:approvers.length?'pending':'approved',
     approvalContactIds:approvers,approvedContactIds:[],submittedAt:at,submittedBy:actor,
     accountingStatus:null,signedAt:null,signedBy:null,signedFiles:[],signedFilesUpdatedAt:at,createdAt:current?.createdAt ?? at,updatedAt:at}};
 }

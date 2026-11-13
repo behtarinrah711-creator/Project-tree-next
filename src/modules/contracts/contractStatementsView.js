@@ -1,3 +1,4 @@
+import {statementWorkRows,resolveStatementWork} from '../../domain/statementWork.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { canReviewContract } from '../../domain/contractApproval.js';
 import { approvedStatement, contractStatementTotals, finalStatementSummary, statementAmounts, statementsFor } from '../../domain/contractStatements.js';
@@ -88,6 +89,11 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
   const source=currentProject(project);
   const totals=contractStatementTotals(source,contract);
   const final=finalStatementSummary(source,contract);
+  const workRows=statementWorkRows(contract,statementsFor(source,contract.id).filter(approvedStatement));
+  const entries=workRows.map(row=>({...record?.workEntries?.find(item=>item.key===row.key),key:row.key}));
+  const workEntries=()=>entries.filter(entry=>entry.raw?.trim() || entry.value!=null).map(({key,method,raw,value})=>({
+    key,method,value:raw===undefined?value:/^[\d۰-۹٠-٩,٬.٫]+$/.test(raw.trim())?numericValue(raw):null,
+  }));
   let saving=false;
   const documentRecord=record||{id:'statement-'+crypto.randomUUID(),statementType:type};
   const operations=record?.operations?.length
@@ -125,6 +131,53 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
           if(!final.ready)calculation.append(element('p','wbs-note','برای صدور قطعی، صورت‌وضعیت‌های موقت تأییدشده باید تمام کارکرد قرارداد را پوشش دهند.'));
           return;
         }
+        if(kind.value==='interim'){
+          const update=()=>{
+            const resolved=resolveStatementWork(workRows,workEntries());
+            const gross=(resolved||[]).reduce((sum,row)=>sum+rowAmount(row),0);
+            const result=statementAmounts(totals,contract,gross,'interim');
+            calculation.replaceChildren(table([['مبلغ کل صورت‌وضعیت',money(gross)],['حسن انجام کار',money(result.retentionAmount)],['خالص این صورت‌وضعیت',money(result.netAmount)]]));
+            if(workEntries().length && !resolved)calculation.append(element('p','wbs-note','کارکرد را در محدوده مانده هر ردیف وارد کنید.'));
+          };
+          for(const [index,row] of workRows.entries()){
+            const entry=entries[index];
+            entry.method ||= row.measured?'quantity':'amount';
+            const card=element('div','contract-quantity-row form-template');
+            card.append(element('h3','',row.description||'عملیات '+format.format(index+1)));
+            const display=value=>row.measured?format.format(value)+' '+(row.unit||''):money(value);
+            card.append(table([
+              [row.measured?'بهای واحد قرارداد':'مبلغ توافقی قرارداد',money(numericValue(row.measured?row.unitPrice:row.agreedPrice))],
+              ['کارکرد قبلی',display(row.previous)],
+              ['مانده ردیف',row.limit===null?'تعیین نشده':display(Math.max(0,row.limit-row.previous))],
+            ]));
+            const control=input('کارکرد این دوره','text',entry.raw??entry.value??'');
+            control.node.inputMode='decimal';
+            const equivalent=element('p','wbs-note');
+            const updateRow=()=>{
+              const item=workEntries().find(item=>item.key===row.key);
+              const operation=item && resolveStatementWork([row],[item])?.[0];
+              equivalent.textContent=operation?[row.measured?display(operation.quantity):'',money(rowAmount(operation))].filter(Boolean).join(' | '):'';
+              update();
+            };
+            if(row.measured && row.limit!==null){
+              const choices=element('div','ft-row contract-operation-method');
+              for(const [method,label] of [['quantity','مقدار'],['percent','درصد']]){
+                const choice=element('label');
+                const radio=element('input');radio.type='radio';radio.name='statement-method-'+index;
+                radio.checked=entry.method===method;
+                radio.onchange=()=>{entry.method=method;entry.raw='';entry.value=null;control.node.value='';control.node.placeholder=method==='percent'?'درصد این دوره از کل ردیف':'مقدار انجام‌شده';updateRow();};
+                choice.append(radio,document.createTextNode(label));choices.append(choice);
+              }
+              card.append(choices);
+            }
+            control.node.placeholder=entry.method==='percent'?'درصد این دوره از کل ردیف':row.measured?'مقدار انجام‌شده':'مبلغ کار انجام‌شده';
+            control.node.oninput=()=>{entry.raw=control.node.value;entry.value=null;updateRow();};
+            card.append(control.row,equivalent);fields.append(card);updateRow();
+          }
+          if(!workRows.length)fields.append(element('p','wbs-note','عملیاتی در قرارداد ثبت نشده است.'));
+          update();
+          return;
+        }
         renderQuantityRows(fields,operations,{
           operations:true,mixed:true,allowRemeasurement:false,
           selectRow:ftSelectRow,pick:openStaticChoicePicker,onDirty:()=>{},onChange:refresh,
@@ -153,9 +206,10 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
       const value=name=>root.querySelector('[name="'+name+'"]').value.trim();
       const type=value('kind');
       if(type==='final' && !final.ready){toast('شرایط صدور صورت‌وضعیت قطعی تکمیل نشده است');return false;}
-      if(type!=='final' && (!operations.length || operations.some(row=>!row.description.trim() || !rowAmount(row) || (row.pricingMode==='quantity' && !row.unit)))){toast('شرح و مبلغ عملیات را کامل کنید');return false;}
+      if(type==='interim' && !resolveStatementWork(workRows,workEntries())){toast('کارکرد عملیات قرارداد را معتبر وارد کنید');return false;}
+      if(type==='retention-release' && (!operations.length || operations.some(row=>!row.description.trim() || !rowAmount(row) || (row.pricingMode==='quantity' && !row.unit)))){toast('شرح و مبلغ عملیات را کامل کنید');return false;}
       saving=true;
-      saveContractHandoff(project.id,documentRecord,'save_statement',{contractId:contract.id,statementType:type,date:value('date'),...(type==='final'?{}:{operations}),note:value('note')})
+      saveContractHandoff(project.id,documentRecord,'save_statement',{contractId:contract.id,statementType:type,date:value('date'),...(type==='interim'?{workEntries:workEntries()}:type==='final'?{}:{operations}),note:value('note')})
         .then(()=>{if(root.isConnected)closeWbsSheet();onChanged();})
         .catch(error=>toast(error.message)).finally(()=>{saving=false;});
       return false;
