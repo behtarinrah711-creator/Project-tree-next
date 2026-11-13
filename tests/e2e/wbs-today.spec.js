@@ -16,6 +16,11 @@ const project={id:'e2e-today',name:'پروژه امروز',location:'تهران'
   {id:'overdue-work',kind:'work',text:'کار عقب‌افتاده',type:'اجرا',scheduleStart:'1405/06/01',scheduleEnd:'1405/06/17',workTasks:[],executionHistory:[{id:'past-status',type:'daily_status',day:'1405/08/18',status:'active',at:Date.parse('2026-11-09T09:00:00Z')}],executionReports:[{id:'past-report',reportDay:'1405/08/18',description:'گزارش کار عقب‌افتاده'}]},
 ]}],activityTemplates:[],contractTemplates:[],generalConditions:[],trashed:false,archived:false};
 
+const overdue=project.tasks[0].subtasks.find(work=>work.id==='overdue-work');
+project.tasks[0].subtasks.push({...overdue,id:'midnight-work',text:'کار در حال اجرا',
+  scheduleStart:'1405/08/18',scheduleEnd:'1405/08/19',
+});
+
 test.beforeEach(async({page})=>{
   await page.addInitScript(seed=>{localStorage.clear();localStorage.setItem('saosa:v1:sms-session',JSON.stringify({accountId:'e2e',phone:'09120000000',token:'test',expiresAt:Date.now()+3600000}));localStorage.setItem('ptnext-v1:app-data',JSON.stringify({schemaVersion:8,projects:[seed],activeTab:seed.id,viewMode:'simple',starredOrder:[]}));},project);
   await page.goto('/index.html#/projects/e2e-today/execution');
@@ -131,19 +136,20 @@ test('completion enters pending approval, rejection returns Today with typed new
 });
 
 
-test('overdue badges reset at Tehran midnight and the previous status stays in history',async({page})=>{
-  await page.clock.install({time:new Date('2026-11-09T20:29:50Z')});
-  await page.clock.pauseAt(new Date('2026-11-09T20:29:55Z'));
-  await page.reload();
-  await page.locator('.wbs-tab[aria-label="لیست کارها"]').click();
-  await page.getByRole('tab',{name:'عقب‌افتاده'}).click();
-  const card=page.locator('.today-task-card[data-entity-id="overdue-work"]');
-  const badges=card.locator('.today-card-activity');
-  await expect(badges).toHaveText(['فعال','گزارش ثبت شده']);
-  await page.clock.fastForward(6000);
-  await expect(badges).toHaveText(['نامشخص','گزارش ثبت نشده']);
-  await expect(page.getByRole('tab',{name:'عقب‌افتاده'})).toHaveAttribute('aria-selected','true');
-  await card.locator('.today-progress-circle').click();
-  await page.locator('.today-history summary').click();
-  await expect(page.locator('.today-history')).toContainText('فعال');
-});
+for(const [tab,id] of [['امروز','midnight-work'],['عقب‌افتاده','overdue-work']]){
+  test(`daily badges reset at Tehran midnight in ${tab}`,async({page})=>{
+    await page.clock.setFixedTime(new Date('2026-11-09T20:29:55Z'));
+    await page.reload();
+    await page.locator('.wbs-tab[aria-label="لیست کارها"]').click();
+    await page.getByRole('tab',{name:tab,exact:true}).click();
+    const card=page.locator(`.today-task-card[data-entity-id="${id}"]`);
+    const badges=card.locator('.today-card-activity');
+    await expect(badges).toHaveText(['فعال','گزارش ثبت شده']);
+    await page.clock.setFixedTime(new Date('2026-11-09T20:30:01Z'));
+    await expect(badges).toHaveText(['نامشخص','گزارش ثبت نشده']);
+    await expect(page.getByRole('tab',{name:tab,exact:true})).toHaveAttribute('aria-selected','true');
+    await card.locator('.today-progress-circle').click();
+    await page.locator('.today-history summary').click();
+    await expect(page.locator('.today-history')).toContainText('فعال');
+  });
+}
