@@ -75,7 +75,7 @@ export function contractProjectPath(project, contract){
   return String(contract.projectItemPath || contract.accountingPackage?.contract?.projectItemPath || '').replaceAll(' / ', ' ← ');
 }
 
-function contractRowData(projectId,c){
+export function contractRowData(projectId,c){
   const a=findActivity(projectId,c.activityId);
   const contact=findContact(projectId,c.contractorId||c.contactId);
   const person=contact ? ([contact.firstName,contact.lastName].filter(Boolean).join(' ')||contact.name) : c.contractorName || 'بدون پیمانکار';
