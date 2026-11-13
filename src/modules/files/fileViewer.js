@@ -31,10 +31,11 @@ export function openFileViewer(file,{onError=()=>{},compactImageHeader=false,gal
   };
   const controller=new AbortController();let objectUrl,blob,closed=false,activeFetch,zoomed=false,generation=0;
   const key='transient:file-viewer';
+  const urls=[];
   const releaseUrl=()=>{if(objectUrl){URL.revokeObjectURL(objectUrl);objectUrl='';}};
   const close=(fromPopState=false)=>{
     if(closed)return;closed=true;controller.abort();activeFetch?.abort();dialog.close();dialog.remove();
-    releaseUrl();
+    releaseUrl();urls.forEach(url=>URL.revokeObjectURL(url));
     window.KarhaChildHistory?.consume(key,{fromPopState});previous?.focus?.();
   };
   const download=()=>{
@@ -61,6 +62,17 @@ export function openFileViewer(file,{onError=()=>{},compactImageHeader=false,gal
     return zoomed;
   };
   if(isImage(current) && !compact)header.append(button('بزرگ‌نمایی',toggleZoom));
+  const cache=new Map();
+  const ready=new Map();
+  const ensure=itemIndex=>{
+    if(itemIndex<0||itemIndex>=images.length)return Promise.resolve(null);
+    if(cache.has(itemIndex))return cache.get(itemIndex);
+    const pending=fetchFile(images[itemIndex],false,{signal:controller.signal}).then(value=>{
+      const url=URL.createObjectURL(value);urls.push(url);const entry={blob:value,url};ready.set(itemIndex,entry);return entry;
+    }).catch(error=>{cache.delete(itemIndex);throw error;});
+    cache.set(itemIndex,pending);
+    return pending;
+  };
   const load=()=>{
     activeFetch?.abort();
     const local=new AbortController();
@@ -89,35 +101,74 @@ export function openFileViewer(file,{onError=()=>{},compactImageHeader=false,gal
       downloadButton.disabled=false;shareButton.disabled=false;
     }).catch(error=>{if(error.name!=='AbortError' && !closed && token===generation){content.textContent=error.message;onError(error.message);}});
   };
-  if(compact && images.length>1){
-    content.classList.add('is-gallery');
-    let startX=0,startY=0,delta=0,tracking=false,suppressClick=false;
+  const setupGallery=()=>{
+    content.textContent='';content.classList.add('is-gallery');
+    const track=document.createElement('div');track.className='saosa-file-viewer-track';
+    const slides=[0,1,2].map(()=>document.createElement('div'));
+    slides.forEach(slide=>{slide.className='saosa-file-slide';track.appendChild(slide);});
+    content.appendChild(track);
+    let motion;
+    const shift=(px,ms)=>{
+      const nextMotion=track.animate([{transform:`translate3d(calc(-100% + ${px}px),0,0)`}],{duration:ms,easing:'cubic-bezier(0.2, 0, 0, 1)',fill:'forwards'});
+      motion?.cancel();motion=nextMotion;return nextMotion;
+    };
+    const paintSlide=(slide,itemIndex)=>{
+      slide.classList.toggle('is-current',itemIndex===index);
+      slide.dataset.i=String(itemIndex);
+      const mount=entry=>{
+        if(closed||slide.dataset.i!==String(itemIndex)||!entry)return;
+        slide.replaceChildren();
+        const img=document.createElement('img');img.src=entry.url;img.alt=images[itemIndex].name||'تصویر پیوست';img.draggable=false;
+        const zoom=document.createElement('button');zoom.type='button';zoom.className='saosa-file-image-zoom';
+        zoom.setAttribute('aria-label','بزرگ‌نمایی عکس');zoom.setAttribute('aria-pressed',String(zoomed&&itemIndex===index));
+        zoom.onclick=()=>{if(itemIndex!==index)return;zoom.setAttribute('aria-pressed',String(toggleZoom()));};
+        zoom.appendChild(img);slide.appendChild(zoom);
+        if(itemIndex===index){blob=entry.blob;objectUrl=entry.url;current=images[index];downloadButton.disabled=false;shareButton.disabled=false;}
+      };
+      if(itemIndex<0||itemIndex>=images.length){slide.replaceChildren();return;}
+      if(ready.has(itemIndex)){mount(ready.get(itemIndex));return;}
+      ensure(itemIndex).then(mount).catch(error=>{if(error.name!=='AbortError'&&!closed&&itemIndex===index){slide.textContent=error.message;onError(error.message);}});
+    };
+    const render=()=>{slides.forEach((slide,offset)=>paintSlide(slide,index+offset-1));shift(0,0);};
+    images.forEach((_,itemIndex)=>ensure(itemIndex).catch(()=>{}));
+    let startX=0,startY=0,delta=0,tracking=false,axis='',suppressClick=false;
     content.addEventListener('pointerdown',event=>{
       if(zoomed||event.button)return;
-      tracking=true;startX=event.clientX;startY=event.clientY;delta=0;
+      tracking=true;axis='';startX=event.clientX;startY=event.clientY;delta=0;
       content.setPointerCapture?.(event.pointerId);
     });
     content.addEventListener('pointermove',event=>{
-      if(!tracking)return;
-      delta=event.clientX-startX;
-      if(Math.abs(event.clientY-startY)>Math.abs(delta)+12)tracking=false;
+      if(!tracking||zoomed)return;
+      const x=event.clientX-startX,y=event.clientY-startY;
+      if(!axis&&Math.hypot(x,y)>8)axis=Math.abs(x)>Math.abs(y)?'x':'y';
+      if(axis!=='x')return;
+      delta=x;
+      const limited=(index<=0&&delta>0)||(index>=images.length-1&&delta<0);
+      shift(limited?delta*0.2:delta,0);
     });
     content.addEventListener('pointerup',()=>{
       if(!tracking)return;tracking=false;
-      if(Math.abs(delta)<48)return;
-      const next=delta<0?index+1:index-1;
-      if(next<0||next>=images.length)return;
-      suppressClick=true;index=next;load();
+      if(axis!=='x')return;
+      const width=content.clientWidth||1;
+      const forward=delta<-width*0.18&&index<images.length-1;
+      const backward=delta>width*0.18&&index>0;
+      if(!forward&&!backward){shift(0,180);return;}
+      suppressClick=true;
+      shift(forward?-width:width,200).finished.then(()=>{
+        if(closed)return;
+        index+=forward?1:-1;current=images[index];render();
+      }).catch(()=>{});
     });
-    content.addEventListener('pointercancel',()=>{tracking=false;});
+    content.addEventListener('pointercancel',()=>{if(!tracking)return;tracking=false;shift(0,180);});
     content.addEventListener('click',event=>{
       if(!suppressClick)return;
       suppressClick=false;event.preventDefault();event.stopPropagation();
     },true);
-  }
+    render();
+  };
   document.body.appendChild(dialog);dialog.showModal();
   window.KarhaChildHistory?.register(key,{onPop:()=>close(true)});window.KarhaChildHistory?.open(key);
   dialog.addEventListener('cancel',event=>{event.preventDefault();close();});
-  load();
+  if(compact&&images.length>1)setupGallery();else load();
   return close;
 }
