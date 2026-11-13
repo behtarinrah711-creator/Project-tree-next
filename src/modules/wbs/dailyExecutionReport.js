@@ -1,5 +1,4 @@
 import {projectRepository} from '../../data/projectRepository.js';
-import {openStaticChoicePicker} from '../contracts/contractPickers.js';
 import { REPORT_MIN_LENGTH, todayApi } from '../../domain/wbs/todayApi.js';
 import { collectTodayItems, dailyExecutionStatus, INACTIVE_REASONS, executionReportDay, tehranTodayJalali } from '../../domain/wbs/todayDomain.js';
 import { toPersianDigits } from '../../ui/digits.js';
@@ -71,7 +70,9 @@ function statusFields(root,projectId,entity,day){
   const reasonRow=fieldRow('دلیل غیرفعال بودن',reason);
   const selectReason=id=>{state.reasonId=id;reason.textContent=reasons.get(id)||'انتخاب کنید';};
   selectReason(state.reasonId);
-  reason.onclick=()=>openStaticChoicePicker('دلیل غیرفعال بودن','دلیل‌ها',
+  reason.onclick=async()=>{
+    const {openStaticChoicePicker}=await import("../contracts/contractPickers.js");
+    openStaticChoicePicker('دلیل غیرفعال بودن','دلیل‌ها',
     [...reasons].map(([value,label])=>({value,label})),state.reasonId,selectReason,()=>{
       window.KarhaSearchTemplate?.close?.();
       const input=document.createElement('input');
@@ -88,6 +89,7 @@ function statusFields(root,projectId,entity,day){
       };
       input.focus();
     },{preserveOrder:true});
+  };
   const choices=[];
   const paint=()=>{
     reasonRow.hidden=state.status!=='inactive';
