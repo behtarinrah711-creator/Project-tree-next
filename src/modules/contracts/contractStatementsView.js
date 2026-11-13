@@ -1,7 +1,7 @@
 import {statementWorkRows,resolveStatementWork} from '../../domain/statementWork.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { canReviewContract } from '../../domain/contractApproval.js';
-import { approvedStatement, contractStatementTotals, finalStatementSummary, statementAmounts, statementsFor } from '../../domain/contractStatements.js';
+import { accountStatements, approvedStatement, statementAccount, statementAddenda, contractStatementTotals, finalStatementSummary, statementAmounts, statementsFor } from '../../domain/contractStatements.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
 import { fieldRow, openWbsSheet, closeWbsSheet } from '../wbs/wbsSheet.js';
@@ -55,7 +55,7 @@ function table(rows){
 }
 
 export function renderContractFinancialSummary(project,contract){
-  const totals=contractStatementTotals(project,contract);
+  const totals=contractStatementTotals(project,contract,{combined:true});
   return table([
     ['مبلغ اولیه قرارداد',money(totals.original)],
     ['جمع الحاقیه‌های نهایی‌شده',money(totals.adjustments)],
@@ -85,12 +85,19 @@ function operationSummary(rows){
   }));
 }
 
-export function openStatementForm(project,contract,onChanged,record=null,type='interim'){
+export function openStatementForm(project,contract,onChanged,record=null,type='interim',selectedId=''){
   const source=currentProject(project);
-  const totals=contractStatementTotals(source,contract);
-  const final=finalStatementSummary(source,contract);
-  const workRows=statementWorkRows(contract,statementsFor(source,contract.id).filter(approvedStatement));
-  const entries=workRows.map(row=>({...record?.workEntries?.find(item=>item.key===row.key),key:row.key}));
+  const addenda=statementAddenda(source,contract);
+  let addendumId=record?.addendumId || selectedId;
+  let account,totals,final,workRows,entries;
+  function selectAccount(){
+    account=statementAccount(contract,addenda.find(item=>item.id===addendumId));
+    totals=contractStatementTotals(source,account);
+    final=finalStatementSummary(source,account);
+    workRows=statementWorkRows(account,accountStatements(source,account).filter(approvedStatement));
+    entries=workRows.map(row=>({...record?.workEntries?.find(item=>item.key===row.key),key:row.key}));
+  }
+  selectAccount();
   const workEntries=()=>entries.filter(entry=>entry.raw?.trim() || entry.value!=null).map(({key,method,raw,value})=>({
     key,method,value:raw===undefined?value:/^[\d۰-۹٠-٩,٬.٫]+$/.test(raw.trim())?numericValue(raw):null,
   }));
@@ -139,7 +146,7 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
           const update=()=>{
             const resolved=resolveStatementWork(workRows,workEntries());
             const gross=(resolved||[]).reduce((sum,row)=>sum+rowAmount(row),0);
-            const result=statementAmounts(totals,contract,gross,'interim');
+            const result=statementAmounts(totals,account,gross,'interim');
             calculation.replaceChildren(table([['مبلغ کل صورت‌وضعیت',money(gross)],['حسن انجام کار',money(result.retentionAmount)],['خالص این صورت‌وضعیت',money(result.netAmount)]]));
             if(workEntries().length && !resolved)calculation.append(element('p','wbs-note','کارکرد را در محدوده مانده هر ردیف وارد کنید.'));
           };
@@ -194,7 +201,7 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
         });
         const value=operations.reduce((sum,row)=>sum+rowAmount(row),0);
         ftAmountSummary(fields,'مبلغ کل صورت‌وضعیت',value);
-        const result=statementAmounts(totals,contract,value,statementType);
+        const result=statementAmounts(totals,account,value,statementType);
         calculation.replaceChildren(table(statementType==='retention-release'?[
           ['مانده حسن انجام کار پیش از آزادسازی',money(totals.retained)],
           ['مبلغ قابل آزادسازی در این سند',money(result.netAmount)],
@@ -207,7 +214,14 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
         ]));
       };
       root.classList.add('contract-statement-form');
-      root.append(identity,dateField,fields,fieldRow('توضیحات اختیاری',note),calculation);
+      const target=element('select','wbs-input');
+      for(const [id,title] of [['','قرارداد اصلی'],...addenda.map(item=>[item.id,item.contractNo||'الحاقیه'])]){
+        const option=element('option','',title);option.value=id;target.append(option);
+      }
+      target.value=addendumId;
+      target.disabled=!!record;
+      target.onchange=()=>{addendumId=target.value;selectAccount();refresh();};
+      root.append(identity,fieldRow('مربوط به',target),dateField,fields,fieldRow('توضیحات اختیاری',note),calculation);
       refresh();
     },
     onSave(root){
@@ -218,7 +232,7 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
       if(type==='interim' && !resolveStatementWork(workRows,workEntries())){toast('کارکرد عملیات قرارداد را معتبر وارد کنید');return false;}
       if(type==='retention-release' && (!operations.length || operations.some(row=>!row.description.trim() || !rowAmount(row) || (row.pricingMode==='quantity' && !row.unit)))){toast('شرح و مبلغ عملیات را کامل کنید');return false;}
       saving=true;
-      saveContractHandoff(project.id,documentRecord,'save_statement',{contractId:contract.id,statementType:type,date,...(type==='interim'?{workEntries:workEntries()}:type==='final'?{}:{operations}),note:value('note')})
+      saveContractHandoff(project.id,documentRecord,'save_statement',{contractId:contract.id,addendumId,statementType:type,date,...(type==='interim'?{workEntries:workEntries()}:type==='final'?{}:{operations}),note:value('note')})
         .then(()=>{if(root.isConnected)closeWbsSheet();onChanged();})
         .catch(error=>toast(error.message)).finally(()=>{saving=false;});
       return false;
@@ -246,7 +260,7 @@ function openStatement(project,contract,record,onChanged,{finance=false}={}){
       root.classList.add('contract-status-sheet');
       const status=approvedStatement(record)?'تأیید مالی شده':record.accountingStatus==='sent'?'در انتظار تأیید مالی':record.status==='draft'?'برگشت برای اصلاح':record.approvalStatus==='pending'?'در انتظار تأیید':'در انتظار امضا یا ارسال به مالی';
       root.append(table([
-        ['شماره قرارداد',contract.contractNo||'—'],['تاریخ',formatJalaliDisplay(record.date)||record.date||'—'],
+        ['شماره قرارداد',contract.contractNo||'—'],['مربوط به',record.addendumNo||'قرارداد اصلی'],['تاریخ',formatJalaliDisplay(record.date)||record.date||'—'],
         ['وضعیت',status],['کارکرد این سند',money(record.stageAmount||0)],['کارکرد تجمعی',money(record.cumulativeAmount||0)],
         ['حسن انجام کار',money(record.retentionAmount||0)],['خالص',money(record.netAmount??record.approvedAmount??record.stageAmount??0)],
         ['پرداخت‌شده',money(record.paidAmount||0)],
@@ -254,7 +268,7 @@ function openStatement(project,contract,record,onChanged,{finance=false}={}){
       if(record.operations?.length)root.append(element('h3','','عملیات'),operationSummary(record.operations));
       if(record.finalTotals)root.append(table([['جمع عملیات موقت',money(record.finalTotals.gross)],['حسن انجام کار',money(record.finalTotals.retention)],['خالص موقت‌ها',money(record.finalTotals.net)]]));
       if(record.statementType==='final' && !record.finalTotals){
-        const previous=statementsFor(project,contract.id).filter(item=>item.id!==record.id && (!item.statementType || item.statementType==='interim') && approvedStatement(item));
+        const previous=statementsFor(project,contract.id).filter(item=>item.id!==record.id && (item.addendumId||null)===(record.addendumId||null) && (!item.statementType || item.statementType==='interim') && approvedStatement(item));
         if(previous.length)root.append(element('h3','','صورت‌وضعیت‌های موقت تأییدشده'),table(previous.map(item=>[statementTitle(item),money(item.approvedAmount??item.stageAmount??0)])));
       }
       if(record.statementType)root.append(renderContractProgress(document,record,project),renderContractHistory(document,record,{finance}));
@@ -311,8 +325,8 @@ export function renderStatementCard(project,contract,record,onChanged){
   const main=heading.children[0];
   main.children[0].textContent=title;
   main.children[1].dir='rtl';
-  main.children[1].textContent=[record.statementAmount??record.stageAmount,formatJalaliDisplay(record.date)]
-    .map((value,index)=>index===0?(Number(value)?money(value):''):value).filter(Boolean).join(' | ');
+  main.children[1].textContent=[record.addendumNo,Number(record.statementAmount??record.stageAmount)?money(record.statementAmount??record.stageAmount):'',formatJalaliDisplay(record.date)].filter(Boolean).join(' | ');
+
   heading.children[2].hidden=true;
   row.append(heading);
   return row;
