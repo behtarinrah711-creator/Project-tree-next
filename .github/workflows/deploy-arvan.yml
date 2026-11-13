@@ -65,6 +65,14 @@ jobs:
           ssh -i ~/.ssh/id_arvan -o BatchMode=yes -o ConnectTimeout=10 root@37.32.30.98 'bash -s' <<'REMOTE'
           set -euo pipefail
           export DEBIAN_FRONTEND=noninteractive
+          if command -v psql >/dev/null 2>&1 && ! runuser -u postgres -- psql -X -d postgres -Atqc 'SELECT 1'; then
+            echo 'PostgreSQL preflight failed. Inspect filesystem usage and PostgreSQL service logs below.' >&2
+            df -hP / /srv /var/lib/postgresql
+            df -iP / /srv /var/lib/postgresql
+            findmnt -T /var/lib/postgresql -o TARGET,FSTYPE,OPTIONS
+            journalctl -u 'postgresql*' --since '10 minutes ago' -n 40 --no-pager || true
+            exit 1
+          fi
           if ! command -v nginx >/dev/null 2>&1; then
             apt-get update
             apt-get install -y nginx
