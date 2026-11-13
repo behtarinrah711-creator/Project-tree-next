@@ -55,7 +55,7 @@ test('Today shows Tasks instead of their Work, formats one-day dates once, and e
   const card=page.locator('.wbs-today-frame[data-view="today"] .today-task-card[data-entity-id="today-task"]');
   await expect(card).toContainText('قالب‌بندی');
   await expect(page.locator('.today-task-card',{hasText:'فونداسیون'})).toHaveCount(1);
-  await expect(card.locator('.today-card-activity')).toHaveText(['نامشخص','گزارش ثبت نشده']);
+  await expect(card.locator('.today-card-activity')).toHaveText(['نامشخص','بدون گزارش']);
   await expect(card.locator('.today-comment, .wbs-type-chip')).toHaveCount(0);
   const details=await openTaskDetails(page,card);
   await expect(details).toHaveClass(/today-detail-overlay/);
@@ -105,7 +105,7 @@ test('completion enters pending approval, rejection returns Today with typed new
   const sheet=await openTaskDetails(page,card);
   await sheet.getByRole('button',{name:'تغییر وضعیت'}).click();
   await page.locator('#searchTemplatePage .stpl-row[data-id="active"]').click();
-  await expect(card.locator('.today-card-activity')).toHaveText(['فعال','گزارش ثبت نشده']);
+  await expect(card.locator('.today-card-activity')).toHaveText(['فعال','بدون گزارش']);
   await sheet.getByRole('button',{name:/^(ثبت|ویرایش) گزارش$/}).click();
   await page.locator('[name="reportDescription"]').fill('گزارش تکمیل قالب‌بندی');
   await page.locator('[name="reportProgress"]').click();
@@ -146,7 +146,7 @@ for(const [tab,id] of [['امروز','midnight-work'],['عقب‌افتاده','
     const badges=card.locator('.today-card-activity');
     await expect(badges).toHaveText(['فعال','گزارش ثبت شده']);
     await page.clock.setFixedTime(new Date('2026-11-09T20:30:01Z'));
-    await expect(badges).toHaveText(['نامشخص','گزارش ثبت نشده']);
+    await expect(badges).toHaveText(['نامشخص','بدون گزارش']);
     await expect(page.getByRole('tab',{name:tab,exact:true})).toHaveAttribute('aria-selected','true');
     await card.locator('.today-progress-circle').click();
     await page.locator('.today-history summary').click();

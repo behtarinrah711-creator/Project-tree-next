@@ -157,7 +157,7 @@ function renderDailyControls(documentRef,project,item,day,refresh,afterClose){
   const current=dailyExecutionStatus(entity,day);
   const report=todayReportOf(entity,day);
   root.append(detailRow(documentRef,'وضعیت اجرا',DAILY_EXECUTION_LABELS[current.status]),
-    detailRow(documentRef,'گزارش',report?'گزارش ثبت شده':'گزارش ثبت نشده'));
+    detailRow(documentRef,'گزارش',report?'گزارش ثبت شده':'بدون گزارش'));
   if(current.reason)root.append(detailRow(documentRef,current.reason,current.description||''));
   const currentActor=currentExecutionActor(project);
   const writable=canWriteProjectModule(project.id,'execution:today');
@@ -291,7 +291,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     const report=documentRef.createElement('span');
     const saved=!!todayReportOf(item.entity,today);
     report.className='today-card-activity'+(saved?' is-active':'');
-    report.textContent=saved?'گزارش ثبت شده':'گزارش ثبت نشده';
+    report.textContent=saved?'گزارش ثبت شده':'بدون گزارش';
     badges.append(report);
   }
   heading.append(titles,badges,progressCircle(documentRef,item.entity,{summary:{},
