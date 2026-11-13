@@ -25,7 +25,7 @@ test.beforeEach(async({page})=>{
   await page.addInitScript(seed=>{localStorage.clear();localStorage.setItem('saosa:v1:sms-session',JSON.stringify({accountId:'e2e',phone:'09120000000',token:'test',expiresAt:Date.now()+3600000}));localStorage.setItem('ptnext-v1:app-data',JSON.stringify({schemaVersion:8,projects:[seed],activeTab:seed.id,viewMode:'simple',starredOrder:[]}));},project);
   await page.goto('/index.html#/projects/e2e-today/execution');
   await page.waitForFunction(()=>Boolean(window.KarhaLegacy&&window.KarhaApp));
-  await page.locator('.wbs-tab[aria-label="لیست کارها"]').click();
+  await page.locator('.wbs-tab[aria-label="کارها"]').click();
 });
 
 async function openTaskDetails(page,card){
@@ -153,7 +153,7 @@ for(const [tab,id] of [['امروز','midnight-work'],['عقب‌افتاده','
   test(`daily badges reset at Tehran midnight in ${tab}`,async({page})=>{
     await page.clock.setFixedTime(new Date('2026-11-09T20:29:55Z'));
     await page.reload();
-    await page.locator('.wbs-tab[aria-label="لیست کارها"]').click();
+    await page.locator('.wbs-tab[aria-label="کارها"]').click();
     await page.getByRole('tab',{name:tab,exact:true}).click();
     const card=page.locator(`.today-task-card[data-entity-id="${id}"]`);
     const badges=card.locator('.today-report-circle');

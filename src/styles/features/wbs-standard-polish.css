@@ -2,8 +2,8 @@
   grid-template-columns:repeat(var(--wbs-tab-count,3),minmax(0,1fr));
 }
 
-.wbs-tab[aria-label="لیست کارها"]{order:1;}
-.wbs-tab[aria-label="لیست خریدها"]{order:2;}
+.wbs-tab[aria-label="کارها"]{order:1;}
+.wbs-tab[aria-label="خریدها"]{order:2;}
 .wbs-tab[aria-label="خرده‌کارها"]{order:3;}
 .wbs-tab[aria-label="درخت پروژه"]{order:3;}
 .wbs-tab[aria-label="نمودار گانت"]{order:4;}

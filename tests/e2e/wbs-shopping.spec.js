@@ -39,7 +39,7 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('shopping is a native WBS view with its own modular surface', async ({ page }) => {
-  const shoppingTab = page.locator('.wbs-tab[aria-label="لیست خریدها"]');
+  const shoppingTab = page.locator('.wbs-tab[aria-label="خریدها"]');
   await expect(shoppingTab).toBeVisible();
   await shoppingTab.click();
 
@@ -47,7 +47,7 @@ test('shopping is a native WBS view with its own modular surface', async ({ page
   await expect(page.locator('.wbs-home-root')).toHaveClass(/is-shopping-view/);
   await expect(page.locator('.wbs-shopping-frame')).toBeVisible();
   await expect(page.locator('.wbs-shopping-frame')).toHaveAttribute('data-view', 'shopping');
-  await expect(page.locator('.wbs-shopping-frame .wbs-view-title')).toHaveText('خریدهای امروز');
+  await expect(page.locator('.wbs-shopping-frame .wbs-view-title')).toHaveText('لیست خریدهای امروز');
   await expect(page.locator('.wbs-shopping-body')).toBeVisible();
   await expect(page.locator('.wbs-shopping-frame .today-mode-tab img')).toHaveCount(4);
   await expect(page.locator('.wbs-shopping-frame .today-filter')).toHaveCount(1);
@@ -72,7 +72,7 @@ test('shopping is a native WBS view with its own modular surface', async ({ page
 });
 
 test('shopping report, comment and approval use the same WBS purchase entity',async({page})=>{
-  await page.locator('.wbs-tab[aria-label="لیست خریدها"]').click();
+  await page.locator('.wbs-tab[aria-label="خریدها"]').click();
   let card=page.locator('.shopping-item-card[data-entity-id="w1"]');
   await card.locator('.today-progress-circle').click();
   await page.locator('[name="reportDescription"]').fill('پیش‌فاکتور آهن دریافت شد');

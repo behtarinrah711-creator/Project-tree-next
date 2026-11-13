@@ -308,7 +308,7 @@ test('Planning contains tree, timeline and estimate while Execution and Reports 
   const reportRows = page.locator('#reportsPageBody .workspace-option');
   await expect(reportRows).toHaveCount(4);
   await expect(reportRows.locator('.workspace-option-title')).toHaveText([
-    'قرارداد پیمانکاران', 'گزارش‌های روزانهٔ اجرا', 'کارهای انجام‌شده', 'دیرکردها',
+    'قرارداد پیمانکاران', 'گزارش‌های روزانهٔ اجرا', 'لیست کارهای انجام‌شده', 'دیرکردها',
   ]);
   await expect(reportRows.locator('.workspace-option-arrow svg')).toHaveCount(4);
   await expect(page.locator('.reports-workspace-tabs')).toHaveCount(0);
@@ -393,7 +393,7 @@ test('Planning and Execution keep separate view controls after background refres
   await page.evaluate(() => window.KarhaApp.modules.get('planning').mount({projectId:'e2e-wbs-home'}));
   await expect(tabs).toHaveCount(3);
   await expect(page.locator('.wbs-tab[aria-label="نمودار گانت"]')).toHaveAttribute('aria-selected','true');
-  await expect(page.locator('.wbs-tab[aria-label="لیست کارها"]')).toHaveCount(0);
+  await expect(page.locator('.wbs-tab[aria-label="کارها"]')).toHaveCount(0);
   await page.locator('.wbs-gantt-order-toggle').click();
   await expect(tabs).toHaveCount(3);
   await expect(page.locator('.wbs-tab[aria-label="نمودار گانت"]')).toHaveAttribute('aria-selected','true');
@@ -405,15 +405,15 @@ test('Planning and Execution keep separate view controls after background refres
   await expect(tabs).toHaveCount(3);
   await page.locator('.wbs-tab[aria-label="خرده‌کارها"]').click();
   await expect(page.getByRole('button',{name:'افزودن خرده‌کار'})).toBeVisible();
-  await page.locator('.wbs-tab[aria-label="لیست خریدها"]').click();
-  await expect(page.locator('.wbs-tab[aria-label="لیست خریدها"]')).toHaveAttribute('aria-selected','true');
+  await page.locator('.wbs-tab[aria-label="خریدها"]').click();
+  await expect(page.locator('.wbs-tab[aria-label="خریدها"]')).toHaveAttribute('aria-selected','true');
 
   await page.locator('#bottomPlanningBtn').click();
   await expect(tabs).toHaveCount(3);
   await expect(page.locator('.wbs-tab[aria-label="نمودار گانت"]')).toHaveAttribute('aria-selected','true');
   await page.evaluate(() => window.KarhaLegacy.renderAll());
   await expect(tabs).toHaveCount(3);
-  await expect(page.locator('.wbs-tab[aria-label="لیست خریدها"]')).toHaveCount(0);
+  await expect(page.locator('.wbs-tab[aria-label="خریدها"]')).toHaveCount(0);
   await expect(page.locator('.wbs-tab[aria-label="خرده‌کارها"]')).toHaveCount(0);
 });
 
