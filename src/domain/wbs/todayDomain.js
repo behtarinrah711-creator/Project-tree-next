@@ -104,6 +104,13 @@ export function collectTodayItems(project, today = tehranTodayJalali(), {include
   return result;
 }
 
+export function collectStandaloneWorks(project,day=tehranTodayJalali()){
+  return (project?.standaloneWorks||[]).filter(entity=>entity && !entity.trashed).map(entity=>({
+    id:entity.id,kind:'standalone',entity,work:entity,workId:entity.id,path:[],
+    mode:executionStatus(entity)==='approved'?'pending':timeState(entity,day),
+  }));
+}
+
 export function itemsForMode(project, mode, today = tehranTodayJalali()){
   return collectTodayItems(project, today).filter(item => item.mode === mode);
 }

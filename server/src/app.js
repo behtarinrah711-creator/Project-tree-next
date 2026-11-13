@@ -221,9 +221,18 @@ function mergeMemberCatalogue(current=[],incoming=[],level){
   return [...records.values()];
 }
 
+function mergeStandaloneWorks(current,incoming,permissions){
+  const modules=modulePermissions(permissions);
+  const level=modules ? modules['execution:today'] : permissions?.edit?'full':'none';
+  const prior=current?.standaloneWorks||[];
+  if(!['edit','create','full'].includes(level))return prior;
+  return mergeMemberCatalogue(prior,Array.isArray(incoming?.standaloneWorks)?incoming.standaloneWorks:[],level);
+}
+
 export function mergeSharedProjectPayload(current,incoming,permissions,actor=null){
   const modules=modulePermissions(permissions);
-  if(!modules) return incoming;
+  if(!modules) return Array.isArray(current?.standaloneWorks)||Array.isArray(incoming?.standaloneWorks)
+    ? {...incoming,standaloneWorks:mergeStandaloneWorks(current,incoming,permissions)} : incoming;
   const costline = canWriteProjectCostline(permissions);
   const tasks=mergeTaskCollection(
     Array.isArray(current?.tasks)?current.tasks:[],
@@ -233,6 +242,7 @@ export function mergeSharedProjectPayload(current,incoming,permissions,actor=nul
   return {
     ...current,
     tasks,
+    ...(Array.isArray(current?.standaloneWorks)||Array.isArray(incoming?.standaloneWorks)?{standaloneWorks:mergeStandaloneWorks(current,incoming,permissions)}:{}),
     ...Object.fromEntries([['contacts','people'],['activityTemplates','activities']]
       .filter(([,module])=>['edit','create','full'].includes(modules[module]))
       .map(([field,module])=>[field,mergeMemberCatalogue(current?.[field],incoming?.[field],modules[module])])),
@@ -344,7 +354,16 @@ export function hasDeniedExecutionChanges(current,incoming,permissions,phone){
         || check(previous?.subtasks||[],item.subtasks||[]) || check(previous?.workTasks||[],item.workTasks||[]);
     });
   };
-  return check(current?.tasks||[],incoming?.tasks||[]);
+  const priorStandalone=new Map((current?.standaloneWorks||[]).map(item=>[String(item.id),item]));
+  const deniedStandalone=(Array.isArray(incoming?.standaloneWorks)?incoming.standaloneWorks:[]).some(item=>{
+    if(!item?.id)return false;
+    const previous=priorStandalone.get(String(item.id));
+    const scopeItem={...item,type:'اجرا'};
+    if(deniedDailyHistory(previous,scopeItem))return true;
+    const reportsChanged=JSON.stringify(comparable(previous,'executionReports'))!==JSON.stringify(comparable(item,'executionReports'));
+    return reportsChanged && (!canWriteExecutionItem(permissions,scopeItem) || !contactIds.has(String(previous?.assigneeContactId)));
+  });
+  return deniedStandalone || check(current?.tasks||[],incoming?.tasks||[]);
 }
 
 function executionContactIds(project,phone){
@@ -491,10 +510,12 @@ async function readWorkspace(pool, accountId){
         const canRead=key=>access.role==='owner' || (modules
           ? ['view','create','edit','full'].includes(modules[key])
           : row.permissions?.view===true || row.permissions?.edit===true);
-        if(canRead('contracts'))return row.payload;
+        const project=canRead('execution:today')?row.payload:
+          Object.fromEntries(Object.entries(row.payload).filter(([key])=>key!=='standaloneWorks'));
+        if(canRead('contracts'))return project;
         const financeKey=Object.hasOwn(modules||{},'accounting-statements')?'accounting-statements':'accounting';
         const financial=canRead(financeKey);
-        return {...row.payload,contractStatusReports:(row.payload.contractStatusReports||[])
+        return {...project,contractStatusReports:(row.payload.contractStatusReports||[])
           .filter(record=>!record.statementType || (financial && ['sent','accepted'].includes(record.accountingStatus)))};
       }),
       viewMode:prefs.viewMode || 'simple',
@@ -628,14 +649,19 @@ async function saveWorkspace(pool, accountId, snapshot){
         const assignedExecution=!canMutateSharedProject(permissions)
           ? mergeAssignedExecutionPayload(currentPayload,project,membership.rows[0].phone,permissions)
           : null;
-        if(assignedExecution&&!assignedExecution.ok){const error=new Error('forbidden_project');error.statusCode=403;throw error;}
+        const standaloneWorks=mergeStandaloneWorks(currentPayload,project,permissions);
+        const standaloneChanged=JSON.stringify(standaloneWorks)!==JSON.stringify(currentPayload.standaloneWorks||[]);
+        const onlyStandalone=standaloneChanged && !projectPayloadChanged(currentPayload,{
+          ...project,standaloneWorks:currentPayload.standaloneWorks,contractStatusReports:currentPayload.contractStatusReports,
+        });
+        if(assignedExecution&&!assignedExecution.ok&&!onlyStandalone){const error=new Error('forbidden_project');error.statusCode=403;throw error;}
         if(!assignedExecution?.ok && projectTasksChanged(currentPayload,project) && !canWriteProjectTasks(permissions)){
           const error=new Error('forbidden_planning_write');error.statusCode=403;throw error;
         }
         if(projectFundingChanged(currentPayload,project) && !canWriteProjectCostline(permissions)){
           const error=new Error('forbidden_costline_write');error.statusCode=403;throw error;
         }
-        const savedProject=assignedExecution?.ok?assignedExecution.project:mergeSharedProjectPayload(currentPayload,project,permissions,{id:String(accountId),name:membership.rows[0].phone});
+        const savedProject=onlyStandalone?{...currentPayload,standaloneWorks}:assignedExecution?.ok?{...assignedExecution.project,...(standaloneChanged?{standaloneWorks}:{})}:mergeSharedProjectPayload(currentPayload,project,permissions,{id:String(accountId),name:membership.rows[0].phone});
         stampContractCreation(savedProject,currentPayload,accountId,membership.rows[0].phone);
         await assignContractNumbers(client,savedProject,existing.rows[0].owner_account_id);
         await client.query(

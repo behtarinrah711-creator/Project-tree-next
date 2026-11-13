@@ -1,4 +1,4 @@
-import { canWriteProjectModule } from '../roleManagement/permissionState.js';
+import { canWriteProjectModule, projectPermissionState } from '../roleManagement/permissionState.js';
 import { buildTimelineRows } from './timelineRows.js';
 import { openWorkCreationSheet } from './workCreationSheet.js';
 import { openStageEditSheet as openStageEditor } from './stageEditSheet.js';
@@ -65,6 +65,7 @@ const VIEWS = [
   { id:'timeline', label:'نمودار گانت', icon:'M240-280h240v-80H240v80Zm120-160h240v-80H360v80Zm120-160h240v-80H480v80ZM200-120q-33 0-56.5-23.5T120-200v-560q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm0-80h560v-560H200v560Z' },
   { id:'costline', label:'برآورد هزینه', icon: COSTLINE_ICON },
   { id:'shopping', label:'لیست خریدها', icon: SHOPPING_ICON },
+  { id:'oddjobs', label:'خرده‌کارها', icon:'M440-160v-120H320v-80h120v-120h80v120h120v80H520v120h-80ZM200-120v-720h560v720H200Zm80-80h400v-560H280v560Z' },
   { id:'delay', label:'دیرکردها', icon: DELAY_ICON },
 ];
 
@@ -636,6 +637,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   }
   ensureTreeState(project);
   const allowedIds = scopedOptions.views.filter(id => VIEWS.some(view => view.id === id))
+    .filter(id=>id!=='oddjobs' || projectPermissionState(project.id,['execution:today']).visible)
     .filter(id=>scope!=='planning'||canViewPlanning(planningAccessLevel(project.id,id)));
   const allowedViews = VIEWS.filter(view => allowedIds.includes(view.id));
   if(!allowedViews.length){
@@ -685,8 +687,8 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   });
   if(allowedViews.length>1) root.appendChild(tabs);
 
-  if(currentView === 'today'){
-    root.appendChild(renderTodayView(project, document, rerender));
+  if(currentView === 'today' || currentView === 'oddjobs'){
+    root.appendChild(renderTodayView(project, document, rerender,{standalone:currentView==='oddjobs'}));
     return;
   }
 

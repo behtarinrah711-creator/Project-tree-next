@@ -2,7 +2,7 @@ import {projectRepository} from '../../data/projectRepository.js';
 import {canReviewContract, contractApproverIds} from '../../domain/contractApproval.js';
 import {contractApi} from '../../domain/contractApi.js';
 import {isSaosaHost} from '../../cloud/saosaWorkspaceSync.js';
-import {collectTodayItems, tehranTodayJalali} from '../../domain/wbs/todayDomain.js';
+import {collectStandaloneWorks,collectTodayItems, tehranTodayJalali} from '../../domain/wbs/todayDomain.js';
 import {collectShoppingItems} from '../../domain/wbs/shoppingDomain.js';
 import {applyExecutionApproval,executionApprovalItem} from '../../domain/wbs/executionApproval.js';
 import {fileToken} from '../files/fileApi.js';
@@ -18,7 +18,7 @@ import {openConfirm} from '../../ui/confirm.js';
 export const approvalGroups=[
   {id:'addenda',title:'قراردادها',scope:'contracts'},
   {id:'shopping',title:'خریدها',scope:'execution:shopping',collect:collectShoppingItems},
-  {id:'execution',title:'اجرا',scope:'execution:today',collect:collectTodayItems},
+  {id:'execution',title:'اجرا',scope:'execution:today',collect:(project,day,options)=>[...collectTodayItems(project,day,options),...collectStandaloneWorks(project,day).filter(item=>!item.entity.completed)]},
 ];
 
 const number=value=>Number(value).toLocaleString('fa-IR');
