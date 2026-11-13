@@ -1,3 +1,4 @@
+import {acceptedMembership} from './acceptedMembership.js';
 import { isWork } from '../../src/domain/wbs/normalize.js';
 import {canAttachSignedContract,canReviseReturnedSignedContract,isAddendumVisibleInFinance,isContractInFinance} from '../../src/domain/contractHandoff.js';
 import {randomUUID, createHash} from 'node:crypto';
@@ -120,7 +121,7 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
     if(!write && !(request.method==='GET' && id)){sendJson(response,405,{error:'method_not_allowed'});return true;}
     const accountId=await authenticate(request,pool,sessionSecret);
     if(!accountId){sendJson(response,401,{error:'unauthorized'});return true;}
-    const result=await pool.query(`SELECT p.owner_account_id,p.payload,m.status AS membership_status,r.permissions,a.phone
+    const result=await pool.query(`SELECT p.owner_account_id,p.payload,CASE WHEN p.owner_account_id=a.id OR ${acceptedMembership} THEN m.status END AS membership_status,r.permissions,a.phone
       FROM projects p JOIN accounts a ON a.id=$2
       LEFT JOIN project_memberships m ON m.project_id=p.id AND m.account_id=a.id
       LEFT JOIN project_roles r ON r.id=m.role_id AND r.project_id=p.id WHERE p.id=$1`,[projectId,accountId]);
@@ -133,8 +134,9 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
     const canReadFinanceFile=contract?.statementType
       ? canAccessFiles(row,accountId,false,statementScope) && contract.accountingPackage?.signedFiles?.some(file=>file.id===id)
       : canAccessFiles(row,accountId,false,'accounting') || canAccessFiles(row,accountId,false,'accounting-contracts');
-    const work=category==='reports'?reportWork(row?.payload?.tasks,recordId):null;
-    const scope=work?.type==='خرید'?'execution:shopping':'execution:today';
+    const standalone=category==='reports' && (row?.payload?.standaloneWorks||[]).find(item=>!item.trashed && String(item.id)===recordId);
+    const work=category==='reports'?(standalone||reportWork(row?.payload?.tasks,recordId)):null;
+    const scope=!standalone && work?.type==='خرید'?'execution:shopping':'execution:today';
     const canUploadReport=work && !work.completed && !['approved','pending_approval'].includes(work.completionState)
       && canAccessFiles(row,accountId,true,scope) && isReportAssignee(row,work);
     const attachedReportPhoto=work && !write && (work.executionReports||[]).some(report=>

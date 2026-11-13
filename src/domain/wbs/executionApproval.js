@@ -1,11 +1,11 @@
 import {uid} from '../../data/projectFactories.js';
-import {collectTodayItems} from './todayDomain.js';
+import {collectStandaloneWorks,collectTodayItems} from './todayDomain.js';
 import {collectShoppingItems} from './shoppingDomain.js';
 import {workTaskProgress} from './workTaskModel.js';
 
 export function executionApprovalItem(project,ref){
-  return [...collectTodayItems(project),...collectShoppingItems(project)].find(item=>
-    item.mode==='pending' && item.kind===ref.kind && String(item.id)===String(ref.id)
+  return [...collectStandaloneWorks(project),...collectTodayItems(project),...collectShoppingItems(project)].find(item=>
+    item.mode==='pending' && !item.entity.completed && item.kind===ref.kind && String(item.id)===String(ref.id)
     && (item.kind==='work' || String(item.workId)===String(ref.workId)));
 }
 
@@ -20,6 +20,7 @@ export function approveExecutionEntity(entity,kind,actor,at){
 }
 
 export function applyExecutionApproval(project,item,approved){
+  if(item.kind==='standalone')return {...project,standaloneWorks:project.standaloneWorks.map(work=>work.id===item.id?approved:work)};
   const update=nodes=>(nodes||[]).map(node=>{
     if(String(node.id)===String(item.workId)){
       if(item.kind==='work')return approved;

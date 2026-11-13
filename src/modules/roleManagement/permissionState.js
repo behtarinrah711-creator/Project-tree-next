@@ -12,7 +12,7 @@ function normalizeLevel(value){
 
 export function projectPermissionState(projectId,moduleKeys,windowRef=globalThis.window){
   const access=accessRecord(projectId,windowRef);
-  if(!access || access.role==='owner'){
+  if(!access || (access.role==='owner' && access.permissions?.adminAccess!==true)){
     const levels=Object.fromEntries(moduleKeys.map(key=>[key,'full']));
     return Object.freeze({levels,visible:true});
   }

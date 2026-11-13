@@ -1,3 +1,4 @@
+import {acceptedMembership} from './acceptedMembership.js';
 import {contractStatementTotals} from '../../src/domain/contractStatements.js';
 import {saveStatement,recordStatementPayment} from './contractStatement.js';
 import {applyExecutionApproval,approveExecutionEntity,executionApprovalItem} from '../../src/domain/wbs/executionApproval.js';
@@ -28,9 +29,9 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       const result=await client.query('SELECT owner_account_id,payload FROM projects WHERE id=$1 FOR UPDATE',[projectId]);
       const row=result.rows[0];
       if(!row){sendJson(response,404,{message:'پروژه پیدا نشد'});return true;}
-      const member=await client.query(`SELECT a.phone,m.status AS membership_status,r.permissions FROM accounts a
+      const member=await client.query(`SELECT a.phone,CASE WHEN a.id=$3 OR ${acceptedMembership} THEN m.status END AS membership_status,r.permissions FROM accounts a
         LEFT JOIN project_memberships m ON m.account_id=a.id AND m.project_id=$1
-        LEFT JOIN project_roles r ON r.id=m.role_id AND r.project_id=$1 WHERE a.id=$2`,[projectId,accountId]);
+        LEFT JOIN project_roles r ON r.id=m.role_id AND r.project_id=$1 WHERE a.id=$2`,[projectId,accountId,row.owner_account_id]);
       Object.assign(row,member.rows[0]);
       const memberContact=(row.payload.projectMembers||[]).find(member=>member.mobile===row.phone && member.status==='active')?.contactId;
       const person=(row.payload.contacts||[]).find(c=>!c.trashed && (String(c.id)===String(memberContact||'') || (c.phones||[c.phone]).includes(row.phone)));
@@ -47,7 +48,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         if(!item || Number(item.entity.updatedAt||0)!==Number(body.updatedAt)){
           sendJson(response,409,{message:'این مورد تغییر کرده است؛ صفحه را به‌روز کنید'});return true;
         }
-        const actualScope=item.entity.type==='خرید'?'execution:shopping':'execution:today';
+        const actualScope=item.kind!=='standalone' && item.entity.type==='خرید'?'execution:shopping':'execution:today';
         if(scope!==actualScope || !actor.contactId || String(item.entity.approvalContactId)!==actor.contactId){
           sendJson(response,403,{message:'این مورد در انتظار تأیید شما نیست'});return true;
         }
@@ -58,7 +59,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         return true;
       }
       const financeAction=['approve_finance','reject_finance','revoke_finance','record_payment'].includes(body.action);
-      const reviewAction=statement?body.action==='approve_statement':addendum ? ['approve_addendum','revoke_addendum'].includes(body.action) : body.action==='approve_contract';
+      const reviewAction=statement?['approve_statement','reject_statement'].includes(body.action):addendum ? ['approve_addendum','reject_addendum','revoke_addendum'].includes(body.action) : ['approve_contract','reject_contract'].includes(body.action);
       const permissions=row.permissions||{};
       const financeModule=Object.hasOwn(permissions.modules||permissions,'accounting-contracts')?'accounting-contracts':'accounting';
       const deleteAddendum=addendum && body.action==='delete_addendum';
@@ -73,7 +74,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       const contract=(row.payload[collection]||[]).find(c=>String(c.id)===contractId && (addendum || !c.trashed));
       const saveDraft=(addendum && body.action==='save_addendum') || (statement && body.action==='save_statement');
       const statementParent=statement && (row.payload.contracts||[]).find(record=>!record.trashed && String(record.id)===String(contract?.contractId ?? body.contractId));
-      if(statement && (!statementParent || (contract && !contract.statementType) || !['save_statement','delete_statement','approve_statement','save_signed','send_finance','approve_finance','reject_finance','withdraw_finance','record_payment'].includes(body.action))){sendJson(response,400,{message:'قرارداد یا عملیات صورت‌وضعیت نامعتبر است'});return true;}
+      if(statement && (!statementParent || (contract && !contract.statementType) || !['save_statement','delete_statement','approve_statement','reject_statement','save_signed','send_finance','approve_finance','reject_finance','withdraw_finance','record_payment'].includes(body.action))){sendJson(response,400,{message:'قرارداد یا عملیات صورت‌وضعیت نامعتبر است'});return true;}
       if(!statement && body.action==='record_payment'){sendJson(response,400,{message:'عملیات نامعتبر است'});return true;}
       if(contract?.trashed || (!contract && !saveDraft)){sendJson(response,404,{message:'قرارداد پیدا نشد'});return true;}
       if(Number(body.version)!==Number(contract?.handoffVersion||0) || Number(body.updatedAt)!==Number(contract?.updatedAt||0)){
@@ -116,7 +117,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       }
       else if(saveDraft) transition=saveAddendumDraft(row.payload,contract,body,actor,contractId,Date.now());
       else if(reviewAction){
-        transition=transitionContractApproval(contract,body.action==='revoke_addendum'?'revoke':'approve',actor,{reason:body.reason});
+        transition=transitionContractApproval(contract,body.action.split('_')[0],actor,{reason:body.reason});
         if(transition.ok && body.action==='revoke_addendum')Object.assign(transition.contract,{isDraft:true,status:'draft'});
       }else if(addendum && body.action==='submit_addendum'){
         transition=transitionContractApproval(contract,'submit',actor,{approverIds:contract.contractApproverContactIds});

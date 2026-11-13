@@ -186,3 +186,19 @@ test('saving at 100 percent completes work directly when there is no reviewer',(
   assert.equal(entity(store).executionReports.length,1);
   assert.equal(entity(store).executionHistory.at(-1).type,'completed_without_approval');
 });
+
+test('daily status requires a reason when inactive and records same-day changes independently of reports',()=>{
+  const store=install();
+  const snapshot=store.getSnapshot();
+  snapshot.projects[0].tasks[0].workTasks[0].assigneeContactId='a';
+  store.replaceSnapshot(snapshot);
+  const actor={id:'a',contactId:'a'};
+  const now=()=>Date.parse('2026-11-09T20:29:58Z');
+  assert.equal(todayApi.setDailyStatus('p1',ref,'inactive','',null,actor,now).ok,false);
+  assert.equal(todayApi.setDailyStatus('p1',ref,'inactive','funding','',actor,now).ok,true);
+  assert.equal(todayApi.setDailyStatus('p1',ref,'active',null,null,actor,now).ok,true);
+  assert.deepEqual(entity(store).executionHistory.map(({day,status,reasonId})=>[day,status,reasonId]),[
+    ['1405/08/18','inactive','funding'],['1405/08/18','active',undefined],
+  ]);
+  assert.equal((entity(store).executionReports||[]).length,0);
+});

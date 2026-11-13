@@ -14,10 +14,10 @@ function button(label,classes,action){
   return control;
 }
 
-export function renderContractDocuments(project,contract,{onChanged=()=>{}}={}){
+export function renderContractDocuments(project,contract,{onChanged=()=>{},reviewOnly=false,approvals=new Map()}={}){
   const row=document.createElement('section');row.className='contract-addenda-row';
   const toolbar=document.createElement('div');toolbar.className='contract-addenda-row-toolbar';
-  const list=document.createElement('div');list.className='contract-addenda-children';list.hidden=true;
+  const list=document.createElement('div');list.className='contract-addenda-children';list.hidden=!approvals.size;
   const current=()=>projectRepository.find(project.id)||project;
   const toggle=button('','contract-addenda-toggle',()=>{list.hidden=!list.hidden;paint(current());});
   const changed=()=>{if(row.isConnected)paint(current());onChanged();};
@@ -29,9 +29,9 @@ export function renderContractDocuments(project,contract,{onChanged=()=>{}}={}){
     toggle.setAttribute('aria-expanded',String(!list.hidden));
     if(list.hidden)return;
     const groups=[
-      ['الحاقیه‌ها',addenda,item=>renderAddendumCard(source,item,changed,false,undefined,{nested:true})],
-      ['صورت‌وضعیت‌ها',statements.filter(item=>item.statementType!=='retention-release'),item=>renderStatementCard(source,contract,item,changed)],
-      ['آزادسازی حسن انجام کار',statements.filter(item=>item.statementType==='retention-release'),item=>renderStatementCard(source,contract,item,changed)],
+      ['الحاقیه‌ها',addenda,item=>renderAddendumCard(source,item,changed,false,reviewOnly?(approvals.get(item.id)||{}):undefined,{nested:true})],
+      ['صورت‌وضعیت‌ها',statements.filter(item=>item.statementType!=='retention-release'),item=>renderStatementCard(source,contract,item,changed,reviewOnly?(approvals.get(item.id)||{}):undefined)],
+      ['آزادسازی حسن انجام کار',statements.filter(item=>item.statementType==='retention-release'),item=>renderStatementCard(source,contract,item,changed,reviewOnly?(approvals.get(item.id)||{}):undefined)],
     ];
     list.replaceChildren();
     for(const [label,records,render] of groups){
@@ -45,7 +45,7 @@ export function renderContractDocuments(project,contract,{onChanged=()=>{}}={}){
     }
   }
   toolbar.append(toggle);
-  const writable=canWriteProjectModule(project.id,'contracts');
+  const writable=!reviewOnly && canWriteProjectModule(project.id,'contracts');
   const addendum=writable && canCreateAddendumFromContract(contract,project);
   const statement=writable && contract.accountingStatus==='accepted';
   if(addendum || statement)toolbar.append(button('ثبت سند','contract-addendum-create',()=>{

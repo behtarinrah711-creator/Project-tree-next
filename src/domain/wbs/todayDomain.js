@@ -104,6 +104,13 @@ export function collectTodayItems(project, today = tehranTodayJalali(), {include
   return result;
 }
 
+export function collectStandaloneWorks(project,day=tehranTodayJalali()){
+  return (project?.standaloneWorks||[]).filter(entity=>entity && !entity.trashed).map(entity=>({
+    id:entity.id,kind:'standalone',entity,work:entity,workId:entity.id,path:[],
+    mode:executionStatus(entity)==='approved'?'pending':timeState(entity,day),
+  }));
+}
+
 export function itemsForMode(project, mode, today = tehranTodayJalali()){
   return collectTodayItems(project, today).filter(item => item.mode === mode);
 }
@@ -121,4 +128,23 @@ export function contractorForItem(project, item){
 
 export function statusLabel(status){
   return ({ not_started:'شروع نشده', in_progress:'در حال انجام', pending_approval:'در انتظار تأیید', approved:'تأیید شده' })[status] || 'شروع نشده';
+}
+
+export const DAILY_EXECUTION_LABELS=Object.freeze({unknown:'نامشخص',active:'فعال',inactive:'غیرفعال'});
+export const INACTIVE_REASONS=Object.freeze({
+  funding:'عدم تأمین مالی', absence:'عدم حضور پیمانکار یا نیرو', materials:'نرسیدن مصالح',
+  prerequisite:'آماده نبودن پیش‌نیاز', weather:'شرایط جوی', holiday:'تعطیلی کارگاه', officialHoliday:'تعطیل رسمی',
+});
+
+export function dailyExecutionStatus(entity,day){
+  return (entity.executionHistory||[]).findLast(entry=>entry?.type==='daily_status' && entry.day===day)
+    || {status:'unknown'};
+}
+
+export function executionItemsOnDay(items,day){
+  return items.filter(({entity})=>{
+    const planned=entity.scheduleStart && entity.scheduleEnd && entity.scheduleStart<=day && day<=entity.scheduleEnd;
+    return planned || (entity.executionReports||[]).some(report=>report && !report.trashed && executionReportDay(report)===day)
+      || (entity.executionHistory||[]).some(entry=>entry?.type==='daily_status' && entry.day===day);
+  });
 }

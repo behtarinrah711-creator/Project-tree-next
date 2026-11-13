@@ -231,3 +231,13 @@ test('start delay requires execution write access and assignment in the stored w
   entry.reason='سایر';
   assert.equal(hasDeniedExecutionChanges(current,incoming,write,'09120000000'),true);
 });
+
+test('standalone work follows execution permission and stays out of planning',()=>{
+  const current={tasks:[]};
+  const incoming={tasks:[],standaloneWorks:[{id:'repair',title:'تعمیر پیکور',updatedAt:1}]};
+  const view=mergeSharedProjectPayload(current,incoming,{modules:{'execution:today':'view','planning:tree':'full'}});
+  assert.deepEqual(view.standaloneWorks,[]);
+  const create=mergeSharedProjectPayload(current,incoming,{modules:{'execution:today':'create'}});
+  assert.deepEqual(create.standaloneWorks,incoming.standaloneWorks);
+  assert.deepEqual(create.tasks,[]);
+});

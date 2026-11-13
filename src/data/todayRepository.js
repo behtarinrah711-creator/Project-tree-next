@@ -32,12 +32,20 @@ export class TodayRepository{
 
   get(projectId, ref){
     const project = this.projectRepository.find(projectId);
+    if(ref.kind==='standalone')return project?.standaloneWorks?.find(item=>!item.trashed && String(item.id)===String(ref.id));
     return updateTarget(project?.tasks, ref, entity => entity).updated;
   }
 
   update(projectId, ref, updater){
     let updated = null;
     const saved = this.projectRepository.updateProject(projectId, project => {
+      if(ref.kind==='standalone'){
+        const standaloneWorks=(project.standaloneWorks||[]).map(item=>{
+          if(item.trashed || String(item.id)!==String(ref.id))return item;
+          updated=updater(item);return updated;
+        });
+        return updated?{...project,standaloneWorks}:project;
+      }
       const result = updateTarget(project.tasks || [], ref, updater);
       updated = result.updated;
       return updated ? { ...project, tasks:result.nodes } : project;

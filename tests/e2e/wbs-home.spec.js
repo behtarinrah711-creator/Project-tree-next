@@ -330,7 +330,7 @@ test('Planning contains tree, timeline and estimate while Execution and Reports 
   await expect(page).toHaveURL(/\/reports$/);
   await expect(reportRows).toHaveCount(4);
   await expect(reportRows.getByText('الحاقیه‌ها',{exact:true})).toHaveCount(0);
-  await page.evaluate(()=>window.KarhaApp.router.navigate('e2e-wbs-home','contract-addenda'));
+  await page.evaluate(()=>{window.KarhaApp.router.navigate('e2e-wbs-home','contract-addenda');});
   await expect(page).toHaveURL(/\/contract-addenda$/);
   const addendaBar=page.locator('#workspaceProjectContext');
   await expect(addendaBar.locator('#workspaceProjectName')).toHaveText('الحاقیه‌ها');
@@ -400,9 +400,11 @@ test('Planning and Execution keep separate view controls after background refres
 
   await page.locator('#bottomExecutionBtn').click();
   await expect(page.locator('.wbs-home-root')).toHaveAttribute('data-scope','execution');
-  await expect(tabs).toHaveCount(2);
+  await expect(tabs).toHaveCount(3);
   await page.evaluate(() => window.KarhaLegacy.renderAll());
-  await expect(tabs).toHaveCount(2);
+  await expect(tabs).toHaveCount(3);
+  await page.locator('.wbs-tab[aria-label="خرده‌کارها"]').click();
+  await expect(page.getByRole('button',{name:'افزودن خرده‌کار'})).toBeVisible();
   await page.locator('.wbs-tab[aria-label="لیست خریدها"]').click();
   await expect(page.locator('.wbs-tab[aria-label="لیست خریدها"]')).toHaveAttribute('aria-selected','true');
 
@@ -412,6 +414,7 @@ test('Planning and Execution keep separate view controls after background refres
   await page.evaluate(() => window.KarhaLegacy.renderAll());
   await expect(tabs).toHaveCount(3);
   await expect(page.locator('.wbs-tab[aria-label="لیست خریدها"]')).toHaveCount(0);
+  await expect(page.locator('.wbs-tab[aria-label="خرده‌کارها"]')).toHaveCount(0);
 });
 
 test('Timeline details survive initial render, timescale changes, and tree rerenders', async ({ page }) => {

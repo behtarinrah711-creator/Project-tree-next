@@ -1,3 +1,12 @@
+✔ report rows open independent destinations using the financial row design (139.440006ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 377.7057
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { renderDelayView } from '../wbs/delayView.js';

@@ -61,6 +61,22 @@ test('first signed-in startup imports an existing unowned browser project once',
   assert.deepEqual(store.getProjects(), cached.projects);
 });
 
+test('an empty server workspace removes previously cached projects without uploading them', async () => {
+  const cached = {schemaVersion:8, projects:[{id:'old-project'}]};
+  const local = storage({
+    [SAOSA_SESSION_KEY]:session,
+    [APP_DATA_STORAGE_KEY]:JSON.stringify(cached),
+    [`${APP_DATA_STORAGE_KEY}:account-id`]:'account-a',
+  });
+  const win = windowWith({localStorage:local, fetch:async (_url, options) => {
+    assert.equal(options.method, undefined);
+    return response(200, {accountId:'account-a', snapshot:{...cached, projects:[]}});
+  }});
+  const store = createAppDataStore({storage:local});
+  await prepareSaosaWorkspace({windowRef:win, store});
+  assert.deepEqual(store.getProjects(), []);
+});
+
 test('logout removes token and all workspace cache', () => {
   const local = storage({
     [SAOSA_SESSION_KEY]:session,

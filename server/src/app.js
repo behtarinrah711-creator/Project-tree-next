@@ -1,3 +1,4 @@
+import {acceptedMembership} from './acceptedMembership.js';
 import {findInTree} from '../../src/domain/wbs/normalize.js';
 import {configuredContractReviewers, contractRevisionContent, routeCompletedContract} from '../../src/domain/contractApproval.js';
 import {createContractHandoffHandler} from './contractHandoff.js';
@@ -9,7 +10,7 @@ import {createHash, randomBytes, randomInt, randomUUID} from 'node:crypto';
 import {constantTimeEqual, hashToken} from './auth.js';
 import {normalizeAccountNotebook, readAccountNotebook, saveAccountNotebook} from './accountNotebook.js';
 import {createFileUploadHandler} from './fileUploads.js';
-import {START_DELAY_REASONS, tehranTodayJalali} from '../../src/domain/wbs/todayDomain.js';
+import {DAILY_EXECUTION_LABELS, INACTIVE_REASONS, START_DELAY_REASONS, tehranTodayJalali} from '../../src/domain/wbs/todayDomain.js';
 
 const SCOPE_PATTERN = /^[a-z0-9][a-z0-9._-]{0,63}$/i;
 const IRAN_PHONE_PATTERN = /^09\d{9}$/;
@@ -220,9 +221,18 @@ function mergeMemberCatalogue(current=[],incoming=[],level){
   return [...records.values()];
 }
 
+function mergeStandaloneWorks(current,incoming,permissions){
+  const modules=modulePermissions(permissions);
+  const level=modules ? modules['execution:today'] : permissions?.edit?'full':'none';
+  const prior=current?.standaloneWorks||[];
+  if(!['edit','create','full'].includes(level))return prior;
+  return mergeMemberCatalogue(prior,Array.isArray(incoming?.standaloneWorks)?incoming.standaloneWorks:[],level);
+}
+
 export function mergeSharedProjectPayload(current,incoming,permissions,actor=null){
   const modules=modulePermissions(permissions);
-  if(!modules) return incoming;
+  if(!modules) return Array.isArray(current?.standaloneWorks)||Array.isArray(incoming?.standaloneWorks)
+    ? {...incoming,standaloneWorks:mergeStandaloneWorks(current,incoming,permissions)} : incoming;
   const costline = canWriteProjectCostline(permissions);
   const tasks=mergeTaskCollection(
     Array.isArray(current?.tasks)?current.tasks:[],
@@ -232,6 +242,7 @@ export function mergeSharedProjectPayload(current,incoming,permissions,actor=nul
   return {
     ...current,
     tasks,
+    ...(Array.isArray(current?.standaloneWorks)||Array.isArray(incoming?.standaloneWorks)?{standaloneWorks:mergeStandaloneWorks(current,incoming,permissions)}:{}),
     ...Object.fromEntries([['contacts','people'],['activityTemplates','activities']]
       .filter(([,module])=>['edit','create','full'].includes(modules[module]))
       .map(([field,module])=>[field,mergeMemberCatalogue(current?.[field],incoming?.[field],modules[module])])),
@@ -305,17 +316,23 @@ function canWriteExecutionItem(permissions,item){
 
 export function hasDeniedExecutionChanges(current,incoming,permissions,phone){
   const contactIds=executionContactIds(current,phone);
-  const deniedStartDelay=(previous,item)=>{
+  const deniedDailyHistory=(previous,item)=>{
     const prior=new Map((previous?.executionHistory||[])
-      .filter(entry=>entry?.type==='start_delayed').map(entry=>[entry.id,entry]));
+      .filter(entry=>['start_delayed','daily_status'].includes(entry?.type)).map(entry=>[entry.id,entry]));
     return (item.executionHistory||[]).some(entry=>{
-      if(entry?.type!=='start_delayed' || JSON.stringify(prior.get(entry.id))===JSON.stringify(entry))return false;
+      if(!['start_delayed','daily_status'].includes(entry?.type) || JSON.stringify(prior.get(entry.id))===JSON.stringify(entry))return false;
       const at=new Date(entry.at);
-      return item.type==='خرید' || !previous?.assigneeContactId
-        || !contactIds.has(String(previous.assigneeContactId))
-        || !START_DELAY_REASONS.includes(entry.reason)
-        || (entry.reason==='سایر' && (typeof entry.description!=='string' || !entry.description.trim()))
-        || !Number.isFinite(at.getTime()) || entry.day!==tehranTodayJalali(at);
+      if(item.type==='خرید' || !previous?.assigneeContactId || !contactIds.has(String(previous.assigneeContactId))
+        || !Number.isFinite(at.getTime()) || entry.day!==tehranTodayJalali(at))return true;
+      if(entry.type==='daily_status'){
+        if(!Object.hasOwn(DAILY_EXECUTION_LABELS,entry.status))return true;
+        if(entry.status!=='inactive')return false;
+        const reason=Object.hasOwn(INACTIVE_REASONS,entry.reasonId)?INACTIVE_REASONS[entry.reasonId]
+          : typeof entry.reasonId==='string' && entry.reasonId.startsWith('custom:')?entry.reasonId.slice(7).trim():'';
+        return !reason || reason!==entry.reason;
+      }
+      return !START_DELAY_REASONS.includes(entry.reason)
+        || (entry.reason==='سایر' && (typeof entry.description!=='string' || !entry.description.trim()));
     });
   };
   const meaningful=value=>Array.isArray(value)?value.length>0:value!=null && value!=='';
@@ -333,11 +350,20 @@ export function hasDeniedExecutionChanges(current,incoming,permissions,phone){
       if(!item)return false;
       const previous=records.get(String(item.id));
       return (changed(previous,item) && (!canWriteExecutionItem(permissions,previous||item) || !canWriteExecutionItem(permissions,item)))
-        || deniedStartDelay(previous,item)
+        || deniedDailyHistory(previous,item)
         || check(previous?.subtasks||[],item.subtasks||[]) || check(previous?.workTasks||[],item.workTasks||[]);
     });
   };
-  return check(current?.tasks||[],incoming?.tasks||[]);
+  const priorStandalone=new Map((current?.standaloneWorks||[]).map(item=>[String(item.id),item]));
+  const deniedStandalone=(Array.isArray(incoming?.standaloneWorks)?incoming.standaloneWorks:[]).some(item=>{
+    if(!item?.id)return false;
+    const previous=priorStandalone.get(String(item.id));
+    const scopeItem={...item,type:'اجرا'};
+    if(deniedDailyHistory(previous,scopeItem))return true;
+    const reportsChanged=JSON.stringify(comparable(previous,'executionReports'))!==JSON.stringify(comparable(item,'executionReports'));
+    return reportsChanged && (!canWriteExecutionItem(permissions,scopeItem) || !contactIds.has(String(previous?.assigneeContactId)));
+  });
+  return deniedStandalone || check(current?.tasks||[],incoming?.tasks||[]);
 }
 
 function executionContactIds(project,phone){
@@ -460,10 +486,10 @@ async function readWorkspace(pool, accountId){
          JOIN accounts a ON a.id = m.account_id
          JOIN project_roles r ON r.id = m.role_id AND r.project_id = m.project_id
         WHERE m.account_id = $1 AND m.status = 'active'
-          AND (p.owner_account_id=m.account_id OR EXISTS (
+          AND (p.owner_account_id=m.account_id OR (${acceptedMembership} AND EXISTS (
             SELECT 1 FROM jsonb_array_elements(COALESCE(p.payload->'projectMembers','[]'::jsonb)) listed
              WHERE listed->>'mobile'=a.phone AND listed->>'status'='active'
-          ))
+          )))
         ORDER BY p.created_at, p.id`,
       [accountId],
     ),
@@ -484,10 +510,12 @@ async function readWorkspace(pool, accountId){
         const canRead=key=>access.role==='owner' || (modules
           ? ['view','create','edit','full'].includes(modules[key])
           : row.permissions?.view===true || row.permissions?.edit===true);
-        if(canRead('contracts'))return row.payload;
+        const project=canRead('execution:today')?row.payload:
+          Object.fromEntries(Object.entries(row.payload).filter(([key])=>key!=='standaloneWorks'));
+        if(canRead('contracts'))return project;
         const financeKey=Object.hasOwn(modules||{},'accounting-statements')?'accounting-statements':'accounting';
         const financial=canRead(financeKey);
-        return {...row.payload,contractStatusReports:(row.payload.contractStatusReports||[])
+        return {...project,contractStatusReports:(row.payload.contractStatusReports||[])
           .filter(record=>!record.statementType || (financial && ['sent','accepted'].includes(record.accountingStatus)))};
       }),
       viewMode:prefs.viewMode || 'simple',
@@ -592,10 +620,10 @@ async function saveWorkspace(pool, accountId, snapshot){
              JOIN projects p ON p.id=m.project_id
              JOIN accounts a ON a.id=m.account_id
             WHERE m.project_id = $1 AND m.account_id = $2 AND m.status = 'active'
-              AND (p.owner_account_id=m.account_id OR EXISTS (
+              AND (p.owner_account_id=m.account_id OR (${acceptedMembership} AND EXISTS (
                 SELECT 1 FROM jsonb_array_elements(COALESCE(p.payload->'projectMembers','[]'::jsonb)) listed
                  WHERE listed->>'mobile'=a.phone AND listed->>'status'='active'
-              ))`,
+              )))`,
           [projectId, accountId],
         );
         if(!membership.rowCount){
@@ -621,14 +649,19 @@ async function saveWorkspace(pool, accountId, snapshot){
         const assignedExecution=!canMutateSharedProject(permissions)
           ? mergeAssignedExecutionPayload(currentPayload,project,membership.rows[0].phone,permissions)
           : null;
-        if(assignedExecution&&!assignedExecution.ok){const error=new Error('forbidden_project');error.statusCode=403;throw error;}
+        const standaloneWorks=mergeStandaloneWorks(currentPayload,project,permissions);
+        const standaloneChanged=JSON.stringify(standaloneWorks)!==JSON.stringify(currentPayload.standaloneWorks||[]);
+        const onlyStandalone=standaloneChanged && !projectPayloadChanged(currentPayload,{
+          ...project,standaloneWorks:currentPayload.standaloneWorks,contractStatusReports:currentPayload.contractStatusReports,
+        });
+        if(assignedExecution&&!assignedExecution.ok&&!onlyStandalone){const error=new Error('forbidden_project');error.statusCode=403;throw error;}
         if(!assignedExecution?.ok && projectTasksChanged(currentPayload,project) && !canWriteProjectTasks(permissions)){
           const error=new Error('forbidden_planning_write');error.statusCode=403;throw error;
         }
         if(projectFundingChanged(currentPayload,project) && !canWriteProjectCostline(permissions)){
           const error=new Error('forbidden_costline_write');error.statusCode=403;throw error;
         }
-        const savedProject=assignedExecution?.ok?assignedExecution.project:mergeSharedProjectPayload(currentPayload,project,permissions,{id:String(accountId),name:membership.rows[0].phone});
+        const savedProject=onlyStandalone?{...currentPayload,standaloneWorks}:assignedExecution?.ok?{...assignedExecution.project,...(standaloneChanged?{standaloneWorks}:{})}:mergeSharedProjectPayload(currentPayload,project,permissions,{id:String(accountId),name:membership.rows[0].phone});
         stampContractCreation(savedProject,currentPayload,accountId,membership.rows[0].phone);
         await assignContractNumbers(client,savedProject,existing.rows[0].owner_account_id);
         await client.query(
@@ -852,14 +885,15 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
           const email=normalizeEmail(body.email);if(email===null) return sendJson(response,400,{error:'invalid_email'});
           if(phone===owner.rows[0].phone) return sendJson(response,409,{error:'project_owner'});
           const member=await pool.query(
-            `SELECT m.status,m.account_id FROM project_memberships m JOIN accounts a ON a.id=m.account_id
+            `SELECT m.status,m.account_id, ${acceptedMembership} AS accepted FROM project_memberships m JOIN accounts a ON a.id=m.account_id
+              JOIN project_roles r ON r.id=m.role_id AND r.project_id=m.project_id
               WHERE m.project_id=$1 AND a.phone=$2 LIMIT 1`,[inviteRoute.projectId,phone],
           );
           if(member.rowCount){
             const projectMembers=owner.rows[0].payload?.projectMembers;
             const listed=Array.isArray(projectMembers) && projectMembers.some(item=>item?.mobile===phone && item?.status!=='deleted');
-            if(listed) return sendJson(response,409,{error:member.rows[0].status==='active'?'already_member':'inactive_member'});
-            await pool.query(
+            if(listed && member.rows[0].accepted) return sendJson(response,409,{error:member.rows[0].status==='active'?'already_member':'inactive_member'});
+            if(!listed) await pool.query(
               `DELETE FROM project_memberships WHERE project_id=$1 AND account_id=$2`,
               [inviteRoute.projectId,member.rows[0].account_id],
             );
@@ -987,7 +1021,8 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
           );
           const membership=await client.query(
             `SELECT m.role_id,m.account_id FROM project_memberships m JOIN accounts a ON a.id=m.account_id
-              WHERE m.project_id=$1 AND a.phone=$2 FOR UPDATE`,
+              JOIN project_roles r ON r.id=m.role_id AND r.project_id=m.project_id
+              WHERE m.project_id=$1 AND a.phone=$2 AND ${acceptedMembership} FOR UPDATE OF m`,
             [memberEditRoute.projectId,phone],
           );
           if(membership.rowCount){
