@@ -280,10 +280,15 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose){
   schedule.append(kicker,hero);
   const share=elapsedShare(entity,day);
   if(share!==null){
-    const track=documentRef.createElement('div');
-    track.className='today-detail-track';
-    const fill=documentRef.createElement('i');
-    fill.style.width=(Math.round(share*100))+'%';
+    const track=documentRef.createElementNS('http://www.w3.org/2000/svg','svg');
+    track.setAttribute('class','today-detail-track');
+    track.setAttribute('viewBox','0 0 100 6');
+    track.setAttribute('preserveAspectRatio','none');
+    track.setAttribute('aria-hidden','true');
+    const fill=documentRef.createElementNS('http://www.w3.org/2000/svg','rect');
+    fill.setAttribute('width',String(Math.round(share*100)));
+    fill.setAttribute('height','6');
+    fill.setAttribute('rx','3');
     track.appendChild(fill);
     schedule.appendChild(track);
   }

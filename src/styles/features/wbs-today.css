@@ -122,8 +122,8 @@ button.today-detail-stat{cursor:pointer;}
 .today-detail-chip.is-empty{background:#fff1d6;color:#8a5a12;}
 .today-detail-kicker{margin:0 0 10px;color:#77706a;font-size:12px;font-weight:500;}
 .today-detail-hero{margin:0;font-size:22px;font-weight:700;letter-spacing:-.3px;}
-.today-detail-track{margin-top:12px;height:6px;border-radius:99px;background:#ece7df;overflow:hidden;}
-.today-detail-track i{display:block;height:100%;width:0;background:#00075d;border-radius:99px;}
+.today-detail-track{display:block;width:100%;height:6px;margin-top:12px;border-radius:99px;background:#ece7df;}
+.today-detail-track rect{fill:#00075d;}
 .today-detail-dates{display:flex;justify-content:space-between;gap:8px;margin-top:8px;color:#77706a;font-size:12px;}
 .today-detail-people{padding:6px 12px;}
 .today-detail-person{display:flex;align-items:center;gap:10px;min-height:58px;}
