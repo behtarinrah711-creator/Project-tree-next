@@ -97,3 +97,62 @@
 .execution-calendar .jalali-days button{height:auto;min-height:42px;}
 .execution-calendar .jalali-days small{display:block;font-size:10px;}
 .execution-calendar .jalali-days button.is-holiday{text-decoration:underline dotted;}
+
+.today-detail-overlay > .wbs-sheet{background:#f6f3ee;}
+.today-detail-overlay .today-detail-head{display:grid;grid-template-columns:44px minmax(0,1fr) 44px;align-items:center;gap:8px;min-height:72px;padding:8px 12px 4px;background:#f6f3ee;border-bottom:0;}
+.today-detail-overlay .today-detail-head .close-btn{margin:0;width:36px;height:36px;justify-self:start;background:#fff;color:#3c4043;font-size:22px;box-shadow:0 0 0 1px #e6e0d6;}
+.today-detail-overlay .today-detail-title{min-width:0;text-align:center;}
+.today-detail-overlay .today-detail-head .sheet-caption{display:block;font-size:18px;font-weight:700;color:#202124;}
+.today-detail-overlay .today-detail-path{display:block;margin-top:1px;color:#77706a;font-size:11px;overflow-wrap:anywhere;}
+.today-detail-overlay .today-detail-ring{justify-self:end;width:42px;height:42px;}
+.today-detail-overlay .today-detail-ring .today-progress-circle{opacity:1;}
+.today-detail-overlay .sheet-body{background:#f6f3ee;padding:4px 16px 28px;}
+.today-detail-card{background:#fff;border:1px solid #e7e1d7;border-radius:14px;padding:14px;margin:0 0 10px;}
+.today-detail-stats{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.today-detail-stat{min-width:0;border:0;border-radius:12px;background:#f7f5f1;padding:10px 12px;min-height:78px;text-align:right;color:inherit;font:inherit;}
+button.today-detail-stat{cursor:pointer;}
+.today-detail-stat b{display:block;margin-bottom:8px;color:#77706a;font-size:12px;font-weight:500;}
+.today-detail-hint{display:block;margin-top:6px;color:#9a9288;font-size:10px;}
+.today-detail-hint:empty{display:none;}
+.today-detail-chip{display:inline-flex;align-items:center;height:26px;padding:0 10px;border-radius:999px;font-size:13px;font-weight:600;}
+.today-detail-chip.is-unknown{background:#eceae6;color:#5f574f;}
+.today-detail-chip.is-active{background:#e5f6ea;color:#0f7a3a;}
+.today-detail-chip.is-inactive{background:#f4e4e1;color:#9a3b32;}
+.today-detail-chip.is-saved{background:#e7eef8;color:#00075d;}
+.today-detail-chip.is-empty{background:#fff1d6;color:#8a5a12;}
+.today-detail-kicker{margin:0 0 10px;color:#77706a;font-size:12px;font-weight:500;}
+.today-detail-hero{margin:0;font-size:22px;font-weight:700;letter-spacing:-.3px;}
+.today-detail-track{margin-top:12px;height:6px;border-radius:99px;background:#ece7df;overflow:hidden;}
+.today-detail-track i{display:block;height:100%;width:0;background:#00075d;border-radius:99px;}
+.today-detail-dates{display:flex;justify-content:space-between;gap:8px;margin-top:8px;color:#77706a;font-size:12px;}
+.today-detail-people{padding:6px 12px;}
+.today-detail-person{display:flex;align-items:center;gap:10px;min-height:58px;}
+.today-detail-person + .today-detail-person{border-top:1px solid #f0ebe3;}
+.today-detail-avatar{width:36px;height:36px;border-radius:18px;display:grid;place-items:center;flex:0 0 auto;background:#e8eef8;color:#00075d;font-weight:700;}
+.today-detail-person small{display:block;color:#77706a;font-size:11px;}
+.today-detail-person b{display:block;font-size:14px;font-weight:600;line-height:1.6;}
+.today-detail-pending{font-size:14px;font-weight:700;color:#9a6500;}
+.today-detail-actions{display:flex;justify-content:flex-end;gap:16px;margin:0 0 10px;}
+.today-detail-report-head{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin-bottom:8px;}
+.today-detail-report-head strong{font-size:14px;}
+.today-detail-report-head span,.today-detail-edited{color:#77706a;font-size:12px;}
+.today-detail-report p{margin:0;font-size:14px;line-height:1.9;}
+.today-detail-thumbs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:12px;}
+.today-detail-thumb{border:0;padding:0;border-radius:10px;overflow:hidden;aspect-ratio:1;background:#eee;cursor:pointer;}
+.today-detail-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.today-detail-comments-title{margin:14px 0 0;padding-top:10px;border-top:1px solid #f0ebe3;color:#77706a;font-size:12px;font-weight:600;}
+.today-detail-overlay .today-comment{padding:8px 0;border-top:1px solid #f6f2eb;background:transparent;}
+.today-detail-overlay .today-comment p{font-size:13px;line-height:1.7;}
+.today-detail-overlay .today-comment span{font-size:12px;}
+.today-detail-composer{display:flex;gap:8px;margin-top:8px;}
+.today-detail-composer input{flex:1;min-width:0;height:42px;border:1px solid #e7e1d7;border-radius:12px;background:#f7f5f1;padding:0 12px;color:#202124;font:inherit;}
+.today-detail-composer button{height:42px;padding:0 14px;border:0;border-radius:12px;background:#00075d;color:#fff;font:inherit;font-weight:700;}
+.today-detail-menu{padding:4px 6px;}
+.today-detail-overlay .today-detail-row,.today-detail-overlay .today-history summary{display:flex;align-items:center;gap:10px;min-height:52px;padding:0 8px;color:#202124;font-size:14px;font-weight:600;text-align:right;text-decoration:none;}
+.today-detail-overlay .today-history{margin:0;border:0;padding:0;font-size:14px;}
+.today-detail-overlay .today-history summary{cursor:pointer;justify-content:flex-start;}
+.today-detail-overlay .today-history div{padding:4px 8px 8px;color:#77706a;font-size:12px;font-weight:500;}
+.today-detail-row span{flex:1;}
+.today-detail-count{min-width:22px;height:22px;padding:0 6px;border-radius:99px;background:#f4f1eb;color:#5f574f;font-size:12px;font-style:normal;display:grid;place-items:center;}
+.today-detail-reason{padding:4px 0 12px;}
+
