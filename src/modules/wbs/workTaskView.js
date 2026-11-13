@@ -5,7 +5,7 @@ import { isContractInFinance } from '../../domain/contractHandoff.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { activityRepository } from '../../data/activityRepository.js';
 import { projectRepository } from '../../data/projectRepository.js';
-import { FOLLOW_UP_WORK_TYPE, WORK_TYPES, WORK_TYPE_TOGGLES, taskCostOf } from '../../domain/wbs/normalize.js';
+import { FOLLOW_UP_WORK_TYPE, ODD_JOB_TYPES, WORK_TYPES, WORK_TYPE_TOGGLES, taskCostOf } from '../../domain/wbs/normalize.js';
 import { workTaskApi } from '../../domain/wbs/workTaskApi.js';
 import { TASK_PRIORITIES, isTaskComplete } from '../../domain/wbs/workTaskModel.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
@@ -424,7 +424,7 @@ export function openStandaloneWorkSheet({projectId,onChanged,saveStandalone}){
   const invoices=[];
   const contacts=contactRepository.list(projectId).filter(contact=>!contact.trashed);
   const people=[{id:'',name:'انتخاب کنید'},...contacts.map(contact=>({id:contact.id,name:contactName(contact)}))];
-  const types=['خرید فوری','خدمات و تعمیر','حمل'];
+  const types=ODD_JOB_TYPES;
   const toast=message=>window.KarhaUI?.showToast?.(message);
   let uploader;
   const sheet=openWbsSheet({
