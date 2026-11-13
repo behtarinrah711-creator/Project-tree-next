@@ -144,7 +144,8 @@ export function installWorkspaceChrome({
     const managementVisible = !get('projectsPage')?.classList?.contains?.('hidden');
     const routeModuleId = routeModuleOverride || windowRef.KarhaRoute?.moduleId;
     const routeProjectId = windowRef.KarhaRoute?.projectId;
-    if(homeButton) homeButton.hidden = !!routeProjectId && !canViewProjectHome(routeProjectId,windowRef);
+    const homeProjectId = routeProjectId || state.project?.id;
+    if(homeButton) homeButton.hidden = !!homeProjectId && !canViewProjectHome(homeProjectId,windowRef);
     setPlanningFooterMounted(!state.project || planningPermissionState(state.project.id,windowRef).visible);
     settingsTrigger?.classList?.toggle?.('active',SETTINGS_MODULES.has(routeModuleId));
     settingsTrigger?.setAttribute?.('aria-pressed',SETTINGS_MODULES.has(routeModuleId)?'true':'false');

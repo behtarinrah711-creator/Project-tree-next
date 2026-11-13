@@ -158,6 +158,10 @@ test('Home visibility follows the active project and restores when permission is
   assert.equal(home.hidden,true);
   assert.ok(h.footers.slice(1).every(tab=>!tab.hidden && tab.parentNode===h.ids.get('bottomNav')));
 
+  h.windowRef.KarhaRoute={moduleId:'notifications'};
+  h.chrome.updateWorkspaceContextBar();
+  assert.equal(home.hidden,true);
+
   modules.dashboard='view';
   h.chrome.updateWorkspaceContextBar();
   assert.equal(home.hidden,false);
@@ -167,6 +171,10 @@ test('Home visibility follows the active project and restores when permission is
   h.state={...h.state,project:{id:'B',name:'Beta'}};
   h.chrome.setBottomNavActive('Home');
   assert.equal(home.hidden,false);
+
+  h.windowRef.KarhaSaosaWorkspaceAccess.B.permissions.adminAccess=true;
+  h.chrome.updateWorkspaceContextBar();
+  assert.equal(home.hidden,true);
 
   const css=await readFile(new URL('../styles/workspace/chrome.css',import.meta.url),'utf8');
   assert.match(css,/grid-auto-flow:column;grid-auto-columns:minmax\(0,1fr\)/);

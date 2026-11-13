@@ -52,7 +52,7 @@ export function renderInlineContractReject(submit,onRejected){
     const body=sheet.querySelector('.sheet-body');
     const header=sheet.querySelector('.sheet-head');
     const caption=header.querySelector('.sheet-caption');
-    const close=header.querySelector('.close-btn');
+    const originalHeader=[...header.childNodes];
     const originalTitle=caption.textContent;
     const scrollTop=body.scrollTop;
     const form=document.createElement('div');
@@ -68,7 +68,8 @@ export function renderInlineContractReject(submit,onRejected){
     reason.before(counter);
     form.append(field);
     const back=document.createElement('button');
-    back.type='button';back.className='close-btn';back.textContent='→';
+    back.type='button';back.className='close-btn';
+    back.innerHTML='<svg width="22" height="22" viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="m8 4 6 6-6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
     back.setAttribute('aria-label','بازگشت');
     const save=document.createElement('button');
     save.type='button';save.className='wbs-sheet-save';save.textContent='ذخیره';
@@ -88,13 +89,10 @@ export function renderInlineContractReject(submit,onRejected){
       body.scrollTop=scrollTop;
       caption.textContent=originalTitle;
       sheet.setAttribute('aria-label',originalTitle);
-      close.hidden=false;
-      back.remove();save.remove();
+      header.replaceChildren(...originalHeader);
       button.focus();
     };
-    close.hidden=true;
-    header.prepend(back);
-    header.append(save);
+    header.replaceChildren(back,caption,save);
     caption.textContent='دلیل رد';
     sheet.setAttribute('aria-label','دلیل رد');
     body.replaceChildren(form);
