@@ -1971,13 +1971,13 @@ textarea.contract-project-item-input{
 :is(#contractsPageBody,#accountingPageBody,.contract-details-body,#contractPendingAddenda,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading:has(> .today-progress-circle) :is(.contract-title,.contract-number,.contract-project-path){text-align:right;}
 :is(#contractsPageBody,#accountingPageBody,.contract-details-body,#contractPendingAddenda,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts)) .contract-heading-stamp{display:flex;justify-content:flex-start;gap:4px;text-align:right;}
 :is(#contractsPageBody,#accountingPageBody,.contract-details-body,#contractPendingAddenda,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading:has(> .today-progress-circle) > .contract-actions{grid-area:1/3;justify-content:center;}
-:is(#contractsPageBody,.contract-details-body) .contract-addenda-row{border-top:1px solid var(--divider);}
-:is(#contractsPageBody,.contract-details-body) .contract-addenda-row-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:4px 0;}
-:is(#contractsPageBody,.contract-details-body) .contract-addenda-toggle::after{content:"▾";display:inline-block;margin-inline-start:5px;}
-:is(#contractsPageBody,.contract-details-body) .contract-addenda-toggle[aria-expanded="true"]::after{transform:rotate(180deg);}
-:is(#contractsPageBody,.contract-details-body) .contract-addenda-row-toolbar > :is(.contract-addenda-toggle,.contract-addendum-create){font-size:calc(1em - 2px);}
-:is(#contractsPageBody,.contract-details-body) .contract-addenda-row-toolbar > .contract-addendum-create{margin-inline-start:auto;white-space:nowrap;}
-:is(#contractsPageBody,.contract-details-body) .contract-addendum-create::before{content:"+";margin-inline-end:5px;}
+:is(#contractsPageBody,.contract-details-body,#notificationsPageBody :where(.approval-queue-contracts)) .contract-addenda-row{border-top:1px solid var(--divider);}
+:is(#contractsPageBody,.contract-details-body,#notificationsPageBody :where(.approval-queue-contracts)) .contract-addenda-row-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;min-height:44px;padding:4px 0;}
+:is(#contractsPageBody,.contract-details-body,#notificationsPageBody :where(.approval-queue-contracts)) .contract-addenda-toggle::after{content:"▾";display:inline-block;margin-inline-start:5px;}
+:is(#contractsPageBody,.contract-details-body,#notificationsPageBody :where(.approval-queue-contracts)) .contract-addenda-toggle[aria-expanded="true"]::after{transform:rotate(180deg);}
+:is(#contractsPageBody,.contract-details-body,#notificationsPageBody :where(.approval-queue-contracts)) .contract-addenda-row-toolbar > :is(.contract-addenda-toggle,.contract-addendum-create){font-size:calc(1em - 2px);}
+:is(#contractsPageBody,.contract-details-body,#notificationsPageBody :where(.approval-queue-contracts)) .contract-addenda-row-toolbar > .contract-addendum-create{margin-inline-start:auto;white-space:nowrap;}
+:is(#contractsPageBody,.contract-details-body,#notificationsPageBody :where(.approval-queue-contracts)) .contract-addendum-create::before{content:"+";margin-inline-end:5px;}
 
 
 .contract-addendum-toolbar{display:flex;gap:4px;align-items:stretch;padding:12px 0;border-top:1px solid var(--divider);}
@@ -2009,7 +2009,7 @@ textarea.contract-project-item-input{
 .contract-status-sheet .contract-status-badge{display:inline-block;padding:5px 10px;border-radius:6px;background:#e5e7eb;color:#374151;}
 :is(#contractsPageBody,#accountingPageBody,.contract-details-body,#contractPendingAddenda,#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading > button.today-progress-circle{cursor:pointer;}
 
-:is(#contractsPageBody,.contract-details-body,#contractPendingAddenda,#reportsPageBody :where(.contract-addenda-list)) .contract-card-heading.contract-card-heading--nested-addendum{background:#fff;}
+:is(#contractsPageBody,.contract-details-body,#contractPendingAddenda,#reportsPageBody :where(.contract-addenda-list),#notificationsPageBody :where(.approval-queue-contracts)) .contract-card-heading.contract-card-heading--nested-addendum{background:#fff;}
 .contract-card-heading--nested-addendum .contract-heading-details[hidden]{display:none;}
 .contract-card-heading > .contract-progress-circle--complete > span{font-size:18px;line-height:1;}
 

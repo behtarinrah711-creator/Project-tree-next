@@ -10,14 +10,13 @@ import {todayApi} from '../../domain/wbs/todayApi.js';
 import {canWriteProjectModule, projectPermissionState} from '../roleManagement/permissionState.js';
 import {currentExecutionActor, isExecutionApprover} from '../wbs/executionActor.js';
 import {renderContractCard} from '../contracts/contractsModule.js';
-import {renderAddendumCard} from '../contracts/contractAddendaView.js';
 import {renderTodayCard} from '../wbs/todayView.js';
 import {renderShoppingCard} from '../wbs/shoppingView.js';
 import {saveContractHandoff} from '../contracts/contractHandoffApi.js';
 import {openConfirm} from '../../ui/confirm.js';
 
 export const approvalGroups=[
-  {id:'addenda',title:'قراردادها و الحاقیه‌ها',scope:'contracts'},
+  {id:'addenda',title:'قراردادها',scope:'contracts'},
   {id:'shopping',title:'خریدها',scope:'execution:shopping',collect:collectShoppingItems},
   {id:'execution',title:'اجرا',scope:'execution:today',collect:collectTodayItems},
 ];
@@ -59,7 +58,7 @@ export function pendingApprovals(project,windowRef=globalThis.window){
       assigned ||= mine.length>0;
       return {...group,writable,items:mine.filter(item=>item.entity.completionState==='pending_approval')};
     }
-    const collection=[...(project.contracts||[]),...(project.contractAddenda||[])];
+    const collection=[...(project.contracts||[]),...(project.contractAddenda||[]),...(project.contractStatusReports||[]).filter(record=>record.statementType)];
     const mine=collection.filter(record=>record && !record.trashed && (
       contractApproverIds(record).includes(actor.contactId)
       || (record.contractApproverContactIds||[]).some(id=>String(id)===actor.contactId)));
@@ -97,10 +96,10 @@ export function approvalNavigationRow(documentRef,title,count,onClick,descriptio
   return row;
 }
 
-function renderApprovalItem(documentRef,project,group,item,onChanged){
+function approvalOptions(documentRef,project,group,item,onChanged){
   const execution=!!group.collect;
   const shopping=group.id==='shopping';
-  const addendum=!execution && Boolean(item.parentContractId);
+  const action=item.statementType?'approve_statement':item.parentContractId?'approve_addendum':'approve_contract';
   const approval={};
   if(group.writable){
     const approve=button(documentRef,shopping?'تأیید خرید':'تأیید',()=>openConfirm('این مورد تأیید شود؟',async()=>{
@@ -112,12 +111,12 @@ function renderApprovalItem(documentRef,project,group,item,onChanged){
         const current=currentGroup?.items.find(candidate=>String(candidate.id)===String(item.id)
           && (execution
             ? String(candidate.workId)===String(item.workId) && candidate.kind===item.kind
-            : Boolean(candidate.parentContractId)===addendum));
+            : Boolean(candidate.parentContractId)===Boolean(item.parentContractId) && candidate.statementType===item.statementType));
         if(!current || !currentGroup.writable)throw new Error('این مورد دیگر در انتظار تأیید شما نیست.');
         if(execution){
           await approveExecution(project.id,group.scope,current,queue.actor);
-        }else if(addendum || isSaosaHost()){
-          await saveContractHandoff(project.id,current,addendum?'approve_addendum':'approve_contract');
+        }else if(action!=='approve_contract' || isSaosaHost()){
+          await saveContractHandoff(project.id,current,action);
         }else{
           const result=contractApi.review(project.id,current.id,'approve',queue.actor);
           if(!result.ok)throw new Error(result.message || 'ثبت تأیید انجام نشد.');
@@ -130,10 +129,7 @@ function renderApprovalItem(documentRef,project,group,item,onChanged){
     },'تأیید'),execution ? (shopping ? '' : 'wbs-costline-manual') : 'contract-review-action');
     approval.action=approve;
   }
-  if(addendum)return renderAddendumCard(project,item,onChanged,false,approval);
-  if(!execution)return renderContractCard(project,item,{approval});
-  const renderCard=shopping?renderShoppingCard:renderTodayCard;
-  return renderCard(documentRef,project,item,tehranTodayJalali(),onChanged,approval);
+  return approval;
 }
 
 export function renderPendingApprovals(body,projectId,section,openSection){
@@ -168,6 +164,25 @@ export function renderPendingApprovals(body,projectId,section,openSection){
   const cardScope=group.id==='shopping'?'wbs-shopping-frame':group.id==='execution'?'wbs-today-frame':'approval-queue-contracts';
   const list=element(documentRef,'section','approval-queue-list '+cardScope);
   const refresh=()=>{if(list.isConnected)renderPendingApprovals(body,projectId,section,openSection);};
-  for(const item of group.items)list.append(renderApprovalItem(documentRef,project,group,item,refresh));
+  const options=item=>approvalOptions(documentRef,project,group,item,refresh);
+  if(group.collect){
+    const renderCard=group.id==='shopping'?renderShoppingCard:renderTodayCard;
+    for(const item of group.items)list.append(renderCard(documentRef,project,item,tehranTodayJalali(),refresh,options(item)));
+  }else{
+    const grouped=new Map();
+    for(const item of group.items){
+      const id=String(item.parentContractId || (item.statementType?item.contractId:item.id));
+      if(!grouped.has(id))grouped.set(id,{});
+      const entry=grouped.get(id);
+      if(item.parentContractId || item.statementType){
+        entry.documents ||= new Map();
+        entry.documents.set(item.id,options(item));
+      }else entry.contract=options(item);
+    }
+    for(const [id,entry] of grouped){
+      const contract=(project.contracts||[]).find(record=>!record.trashed && String(record.id)===id);
+      if(contract)list.append(renderContractCard(project,contract,{approval:entry.contract||{},approvalDocuments:entry.documents}));
+    }
+  }
   body.append(list);
 }

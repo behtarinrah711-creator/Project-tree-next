@@ -227,7 +227,8 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
     openWbsSheet({title:'وضعیت الحاقیه',showSave:false,reuseHistoryOnReplace:true,historyKey:'addendum-status:'+addendum.id,
       body(root){
         root.classList.add('contract-status-sheet');
-        renderDetails(root,latestAddendum());
+        if(approval)root.append(renderContractReviewRow(latestAddendum(),{...approval,preview}),renderContractProgress(document,latestAddendum(),project));
+        else renderDetails(root,latestAddendum());
       },
     });
   };
@@ -269,7 +270,7 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
   }
   row.append(heading);
   if(approval){
-    row.append(renderContractReviewRow(addendum,{...approval,preview}),renderContractProgress(document,addendum,project));
+    if(!nested)row.append(renderContractReviewRow(addendum,{...approval,preview}),renderContractProgress(document,addendum,project));
     return row;
   }
   function renderDetails(root,addendum){
