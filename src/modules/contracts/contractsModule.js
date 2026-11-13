@@ -1,3 +1,4 @@
+import {renderInlineContractReject} from './contractReasonSheet.js';
 import {openContractDetails} from './contractDetailsView.js';
 import {renderContractDocuments} from './contractDocumentsView.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
@@ -203,7 +204,7 @@ function renderContractWorkflowRow(contract){
   return row;
 }
 
-export function renderContractReviewRow(contract,{action,preview}){
+export function renderContractReviewRow(contract,{action,preview,reject,onRejected}){
   const row=renderContractStatusRow(contract);
   if(contract.parentContractId)row.className='contract-addendum-toolbar';
   const view=document.createElement('button');
@@ -211,6 +212,13 @@ export function renderContractReviewRow(contract,{action,preview}){
   view.onclick=event=>{event.stopPropagation();preview(view);};
   row.appendChild(view);
   if(action)row.appendChild(action);
+  if(reject && onRejected)row.appendChild(renderInlineContractReject(reject,onRejected));
+  if(contract.approvalStatus==='unapproved' && contract.approvalRejectionReason){
+    const reason=document.createElement('div');
+    reason.className='contract-rejection-reason';
+    reason.textContent=contract.approvalRejectionReason;
+    row.appendChild(reason);
+  }
   return row;
 }
 
@@ -225,10 +233,11 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       row.dataset.approvalState=contractApprovalState(c);
       const openPreview=()=>openContractPreview(p,finance?c.accountingPackage.contract:c,{trigger:heading.querySelector('.contract-main'),frozen:finance,signedFiles:finance?c.accountingPackage.signedFiles:null});
       let statusSheetBody;
+      let statusRecord=c;
       const openStatus=event=>{
-        event.stopPropagation();
+        event?.stopPropagation();
         openStatusSheet({title:'وضعیت قرارداد',showSave:false,reuseHistoryOnReplace:true,historyKey:'contract-status:'+c.id,
-          body(root){root.classList.add('contract-status-sheet');statusSheetBody(root);root.appendChild(renderContractHistory(document,c,{finance}));}});
+          body(root){root.classList.add('contract-status-sheet');statusSheetBody(root);root.appendChild(renderContractHistory(document,statusRecord,{finance}));}});
       };
       const heading=renderContractCardHeading(p,c,approval?null:{
         onEdit:!writable?undefined:()=>{if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
@@ -246,7 +255,10 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       row.appendChild(heading);
       if(approval){
         row.appendChild(renderContractDocuments(p,c,{reviewOnly:true,approvals:approvalDocuments}));
-        statusSheetBody=root=>root.append(renderContractReviewRow(c,{...approval,preview}),renderContractProgress(document,c,p));
+        statusSheetBody=root=>root.append(renderContractReviewRow(statusRecord,{
+          ...(statusRecord===c?approval:{}),preview,
+          onRejected(record){statusRecord=record;openStatus();},
+        }),renderContractProgress(document,statusRecord,p));
         return row;
       }
       if(!finance){
@@ -269,7 +281,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
         }),true);
       }
       if(c.approvalRejectionReason && ['unapproved','incomplete'].includes(contractApprovalState(c))){
-        const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='علت لغو تأیید: '+c.approvalRejectionReason;statusRow.appendChild(reason);
+        const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent=(c.approvalHistory?.at(-1)?.action==='reject'?'علت رد: ':'علت لغو تأیید: ')+c.approvalRejectionReason;statusRow.appendChild(reason);
       }
       if(c.financeRejection?.reason && c.accountingStatus==='rejected'){const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='دلیل رد توسط بخش مالی: '+c.financeRejection.reason;statusRow.appendChild(reason);}
       statusSheetBody=root=>{

@@ -224,10 +224,13 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
   const latestAddendum=()=>projectRepository.find(project.id)?.contractAddenda?.find(record=>record.id===addendum.id) || addendum;
   const openProgress=event=>{
     event?.stopPropagation();
+    const record=latestAddendum();
     openWbsSheet({title:'وضعیت الحاقیه',showSave:false,reuseHistoryOnReplace:true,historyKey:'addendum-status:'+addendum.id,
       body(root){
         root.classList.add('contract-status-sheet');
-        if(approval)root.append(renderContractReviewRow(latestAddendum(),{...approval,preview}),renderContractProgress(document,latestAddendum(),project));
+        if(approval)root.append(renderContractReviewRow(record,{
+          ...(record.approvalStatus==='pending'?approval:{}),preview,onRejected:()=>openProgress(),
+        }),renderContractProgress(document,record,project),renderContractHistory(document,record,{finance}));
         else renderDetails(root,latestAddendum());
       },
     });

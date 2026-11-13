@@ -1,3 +1,4 @@
+import {renderInlineContractReject} from './contractReasonSheet.js';
 import {openContractPreview} from './contractPreviewView.js';
 import {statementWorkRows,resolveStatementWork} from '../../domain/statementWork.js';
 import { projectRepository } from '../../data/projectRepository.js';
@@ -275,7 +276,12 @@ function openStatement(project,contract,record,onChanged,{finance=false,approval
       if(record.statementType)root.append(renderContractProgress(document,record,project),renderContractHistory(document,record,{finance}));
       if(record.note)root.append(element('p','',record.note));
       if(record.financeRejection?.reason)root.append(element('p','contract-rejection-reason',record.financeRejection.reason));
-      if(approval?.action)root.append(approval.action);
+      if(approval?.action && record.approvalStatus==='pending'){
+        const actions=element('div','contract-addendum-toolbar');
+        actions.append(approval.action);
+        if(approval.reject)actions.append(renderInlineContractReject(approval.reject,reopen));
+        root.append(actions);
+      }
       if(!approval && !finance && record.statementType && canWriteProjectModule(project.id,'contracts')){
         if(canReviewContract(record,currentExecutionActor(project)))root.append(button('تأیید صورت‌وضعیت',()=>run('approve_statement')));
         if(record.status==='draft')root.append(button('اصلاح و ارسال مجدد',()=>openStatementForm(project,contract,onChanged,record)));
