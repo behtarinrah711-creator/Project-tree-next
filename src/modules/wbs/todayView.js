@@ -172,6 +172,7 @@ function renderDailyControls(documentRef,project,item,day,refresh,afterClose){
     if(result.ok)refresh();
     else window.KarhaUI?.showToast?.('ذخیره تغییر انجام نشد');
   };
+  if(status==='pending_approval')root.append(detailRow(documentRef,'تکمیل','در انتظار تأیید'));
   if(day===tehranTodayJalali() && status==='pending_approval'){
     if(assigned)add('پس گرفتن تکمیل',()=>apply(todayApi.withdrawCompletion(project.id,refOf(item),currentActor)));
     if(writable && isExecutionApprover(entity,currentActor)){
@@ -254,7 +255,7 @@ function openTodayDetails(documentRef,project,item,today,onChanged,returnToCalen
     onChanged?.();
     if(!frame.isConnected)return;
     const entity=todayRepository.get(project.id,refOf(item));
-    if(!entity || entity.trashed){
+    if(!entity || entity.trashed || (executionStatus(entity)==='approved' && !returnToCalendar)){
       if(returnToCalendar)returnToCalendar();
       else closeWbsSheet();
       return;
@@ -343,14 +344,17 @@ export function renderTodayView(project,documentRef=document,onChanged){
   body.className='wbs-view-body wbs-today-body';
   if(!items.length)body.innerHTML='<div class="empty-state">موردی در این بخش وجود ندارد.</div>';
   else items.forEach(item=>body.appendChild(renderTodaySummary(documentRef,project,item,today,onChanged)));
-  const refreshDate=()=>{
-    if(frame.isConnected && today!==tehranTodayJalali())onChanged?.();
+  const stopWatching=()=>{
+    clearInterval(timer);
+    documentRef.removeEventListener('visibilitychange',refreshDate);
   };
-  const timer=setInterval(()=>{
-    if(!frame.isConnected){clearInterval(timer);return;}
-    refreshDate();
-  },30000);
+  const refreshDate=()=>{
+    if(!frame.isConnected){stopWatching();return;}
+    if(today!==tehranTodayJalali()){stopWatching();onChanged?.();}
+  };
+  const timer=setInterval(refreshDate,1000);
   timer.unref?.();
+  documentRef.addEventListener('visibilitychange',refreshDate);
   frame.append(header,body);
   return frame;
 }
