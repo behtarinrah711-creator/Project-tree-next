@@ -44,7 +44,7 @@ export function appendReportPhotos(root,photos){
     button.type='button';
     button.className='today-report-photo';
     button.textContent='مشاهدهٔ عکس '+toPersianDigits(index+1);
-    button.addEventListener('click',()=>openFileViewer(photo,{onError:toast,compactImageHeader:true}));
+    button.addEventListener('click',()=>openFileViewer(photo,{onError:toast,compactImageHeader:true,gallery:photos}));
     root.appendChild(button);
   }
 }
