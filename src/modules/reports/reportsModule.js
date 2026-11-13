@@ -84,6 +84,7 @@ export const reportsModule = {
     wrap.className = 'workspace-option-list';
 
     REPORT_SECTIONS.forEach(section => {
+      if(section.id==='contract-addenda') return;
       if(section.id==='daily-execution-reports' && !canViewDailyReports) return;
       const row = document.createElement('button');
       row.type = 'button';
