@@ -52,14 +52,38 @@ function linkButton(documentRef, className, text, label){
   return button;
 }
 
-function renderComments(documentRef,item,onChanged){
+function renderComments(documentRef,item,onChanged,editContext){
   const host=documentRef.createElement('div'); host.className='today-comments'; const comments=commentsOf(item.entity); let expanded=false; const list=documentRef.createElement('div');
-  const paint=()=>{ list.replaceChildren(); (expanded?comments:comments.slice(0,2)).forEach(comment=>{ const row=documentRef.createElement('div'); row.className='today-comment'+(comment.type==='approval_rejected'?' is-rejection':''); row.innerHTML=`<p>${esc(comment.text)}</p><span>${esc(comment.createdBy?.name||'کاربر')} · ${esc(formatMoment(comment.createdAt))}</span>`; list.appendChild(row); }); }; paint(); host.appendChild(list);
+  const paint=()=>{ list.replaceChildren(); (expanded?comments:comments.slice(0,2)).forEach(comment=>{ const row=documentRef.createElement('div'); row.className='today-comment'+(comment.type==='approval_rejected'?' is-rejection':''); row.innerHTML=`<p>${esc(comment.text)}</p><span>${esc(comment.createdBy?.name||'کاربر')} · ${esc(formatMoment(comment.createdAt))}</span>`; if(comment.updatedAt)row.lastChild.append(' · ویرایش‌شده '+formatMoment(comment.updatedAt));
+    if(editContext && comment.createdBy?.id===editContext.actor.id && editContext.actor.id!=='guest' && comment.type!=='approval_rejected'){
+      const edit=linkButton(documentRef,'today-show-comments','ویرایش');
+      edit.onclick=()=>{
+        const form=documentRef.createElement('form');form.className='today-detail-composer';
+        const input=textArea(documentRef,comment.text,'editComment');
+        const save=documentRef.createElement('button');save.textContent='ذخیره';
+        const cancel=linkButton(documentRef,'','انصراف');cancel.onclick=paint;
+        form.append(input,save,cancel);
+        form.onsubmit=event=>{
+          event.preventDefault();
+          const result=todayApi.editComment(editContext.projectId,refOf(item),comment.id,input.value,editContext.actor);
+          if(result.ok)onChanged?.();
+          else window.KarhaUI?.showToast?.('ویرایش نظر ذخیره نشد. متن نظر را بررسی کنید.');
+        };
+        row.replaceChildren(form);input.focus();
+      };
+      row.append(edit);
+    }
+    list.appendChild(row); }); }; paint(); host.appendChild(list);
   if(comments.length>2){ const more=documentRef.createElement('button'); more.type='button'; more.className='today-show-comments'; more.textContent=`مشاهده ${toPersianDigits(comments.length-2)} نظر قبلی`; more.addEventListener('click',()=>{ expanded=true; paint(); more.remove(); }); host.appendChild(more); }
   return host;
 }
-function historyLabel(type){ return ({started:'شروع شد',start_delayed:'دلیل شروع نشدن ثبت شد',start_cancelled:'شروع لغو شد',report_created:'گزارش ثبت شد',report_edited:'گزارش ویرایش شد',comment_added:'نظر ثبت شد',marked_complete:'انجام‌شده اعلام شد',completed_without_approval:'بدون نیاز به تأیید تکمیل شد',sent_for_approval:'برای تأیید ارسال شد',approval_rejected:'تأیید رد شد',approval_cancelled:'تأیید نهایی لغو شد',returned_to_active:'به فهرست فعال برگشت',completion_withdrawn:'تیک انجام‌شدن برداشته شد',returned_to_previous:'به تب قبلی برگشت',approved:'تأیید نهایی شد'})[type]||type; }
-function renderHistory(documentRef,entity){ const history=(entity.executionHistory||[]).slice().sort((a,b)=>Number(b.at)-Number(a.at)); const details=documentRef.createElement('details'); details.className='today-history'; details.innerHTML='<summary>تاریخچه</summary>'; history.forEach(entry=>{ const row=documentRef.createElement('div'); row.textContent=`${(entry.type==='daily_status'?DAILY_EXECUTION_LABELS[entry.status]:historyLabel(entry.type))} · ${entry.actor?.name||'کاربر'} · ${formatMoment(entry.at)}${['start_delayed','daily_status'].includes(entry.type) ? [entry.reason,entry.description].filter(Boolean).map(value=>` · ${value}`).join('') : ''}`; details.appendChild(row); }); return details; }
+function historyLabel(type){ return ({started:'شروع شد',start_delayed:'دلیل شروع نشدن ثبت شد',start_cancelled:'شروع لغو شد',report_created:'گزارش ثبت شد',report_edited:'گزارش ویرایش شد',comment_added:'نظر ثبت شد',comment_edited:'نظر ویرایش شد',marked_complete:'انجام‌شده اعلام شد',completed_without_approval:'بدون نیاز به تأیید تکمیل شد',sent_for_approval:'برای تأیید ارسال شد',approval_rejected:'تأیید رد شد',approval_cancelled:'تأیید نهایی لغو شد',returned_to_active:'به فهرست فعال برگشت',completion_withdrawn:'تیک انجام‌شدن برداشته شد',returned_to_previous:'به تب قبلی برگشت',approved:'تأیید نهایی شد'})[type]||type; }
+function renderHistory(documentRef,entity){ const history=[...(entity.executionHistory||[])];
+  const logged=new Set(history.filter(entry=>entry.type==='report_created').map(entry=>entry.reportId));
+  for(const report of reportsOf(entity)){
+    if(report.createdAt && !logged.has(report.id))history.push({type:'report_created',at:report.createdAt,actor:report.createdBy,reportId:report.id});
+  }
+  history.sort((a,b)=>Number(b.at)-Number(a.at)); const details=documentRef.createElement('details'); details.className='today-history'; details.innerHTML='<summary>تاریخچه</summary>'; history.forEach(entry=>{ const row=documentRef.createElement('div'); row.textContent=`${(entry.type==='daily_status'?DAILY_EXECUTION_LABELS[entry.status]:historyLabel(entry.type))} · ${entry.actor?.name||'کاربر'} · ${formatMoment(entry.at)}${['start_delayed','daily_status'].includes(entry.type) ? [entry.reason,entry.description].filter(Boolean).map(value=>` · ${value}`).join('') : ''}`; details.appendChild(row); }); return details; }
 export function renderTodayCard(documentRef,project,item,today,onChanged,approval){
   return renderTodaySummary(documentRef,project,item,today,onChanged,undefined,approval);
 }
@@ -242,7 +266,7 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
   const commentsCount=documentRef.createElement('small');
   commentsCount.textContent=toPersianDigits(commentsOf(item.entity).length)+' نظر';
   commentsHead.append(commentsTitle,commentsCount);
-  commentsCard.append(commentsHead,renderComments(documentRef,item,refresh));
+  commentsCard.append(commentsHead,renderComments(documentRef,item,refresh,writable?{projectId:project.id,actor:currentActor}:null));
   if(writable){
     const form=documentRef.createElement('form');
     form.className='today-detail-composer';
