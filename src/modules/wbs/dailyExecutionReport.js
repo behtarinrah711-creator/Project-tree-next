@@ -19,14 +19,14 @@ function textarea(documentRef, value){
   return field;
 }
 
-function progressInput(documentRef, value){
+function progressInput(documentRef, value, editing){
   const button=documentRef.createElement('button');
   button.type='button';
   button.name='reportProgress';
   button.className='wbs-input today-progress-input';
   button.dataset.value=String(Math.min(100,Math.max(0,Number(value)||0)));
   const paint=()=>{ button.textContent='٪'+toPersianDigits(button.dataset.value); };
-  button.addEventListener('click',()=>openNumpadGeneric('',raw=>{
+  button.addEventListener('click',()=>openNumpadGeneric(editing?button.dataset.value:'',raw=>{
     if(raw!==''){
       button.dataset.value=String(Number(raw));
       paint();
@@ -119,7 +119,7 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
     ...(onReturn?{requestClose:onReturn,reuseHistoryOnReplace:true}:{}),
     body(root){
       if(statusControls)dailyStatus=statusFields(root,projectId,item.entity,day);
-      const progress=fieldRow(statusControls?'درصد پیشرفت':'وارد کردن درصد پیشرفت',progressInput(document,current?.progress ?? item.entity.progress));
+      const progress=fieldRow(statusControls?'درصد پیشرفت':'وارد کردن درصد پیشرفت',progressInput(document,current?.progress ?? item.entity.progress,!!current));
       progress.classList.add('today-report-progress-row');
       if(statusControls)progress.classList.add('today-report-progress-compact');
       root.append(progress,fieldRow('شرح گزارش',textarea(document,current?.description||'')));

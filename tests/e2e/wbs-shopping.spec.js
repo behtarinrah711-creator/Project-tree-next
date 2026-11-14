@@ -86,6 +86,8 @@ test('shopping report, comment and approval use the same WBS purchase entity',as
   await expect(card).toContainText('قیمت با فروشنده بررسی شود');
   await card.locator('.today-progress-circle').click();
   await page.locator('[name="reportProgress"]').click();
+  await expect(page.locator('#numpadDisplay')).toContainText('۹۰');
+  for(let digit=0;digit<2;digit++) await page.locator('#numpadBackspace').click();
   for(const digit of '100') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
   await page.locator('#numpadDoneBtn').click();
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();

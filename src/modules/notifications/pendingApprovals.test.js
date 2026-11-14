@@ -94,8 +94,14 @@ test('the approval inbox renders the original cards with only review controls',(
       const card=body.children[1].children[0];
       assert.ok(card.className.split(' ').includes(css));
       const buttons=card.nodes().filter(node=>node.tag==='button');
-      assert.deepEqual(buttons.map(node=>node.textContent),[undefined,label]);
-      assert.equal(buttons[0].disabled,true);
+      if(group==='execution'){
+        assert.ok(card.nodes().some(node=>node.className==='today-card-heading today-card-summary'));
+        assert.ok(card.nodes().some(node=>node.tag==='span' && node.className.startsWith('today-report-circle')));
+        assert.deepEqual(buttons.map(node=>node.className),['today-card-titles']);
+      }else{
+        assert.deepEqual(buttons.map(node=>node.textContent),[undefined,label]);
+        assert.equal(buttons[0].disabled,true);
+      }
     }
     window.KarhaSaosaWorkspaceAccess.p.permissions.modules.contracts='view';
     renderPendingApprovals(body,'p','approvals-addenda',()=>{});
