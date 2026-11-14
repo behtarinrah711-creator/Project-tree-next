@@ -314,7 +314,7 @@ function canWriteExecutionItem(permissions,item){
   return ['edit','create','full'].includes(modules[scope]);
 }
 
-export function hasDeniedExecutionChanges(current,incoming,permissions,phone){
+export function hasDeniedExecutionChanges(current,incoming,permissions,phone,accountId){
   const contactIds=executionContactIds(current,phone);
   const deniedDailyHistory=(previous,item)=>{
     const prior=new Map((previous?.executionHistory||[])
@@ -335,6 +335,15 @@ export function hasDeniedExecutionChanges(current,incoming,permissions,phone){
         || (entry.reason==='سایر' && (typeof entry.description!=='string' || !entry.description.trim()));
     });
   };
+  const deniedCommentEdit=(previous,item)=>{
+    const comments=new Map((previous?.executionComments||[]).filter(Boolean).map(comment=>[comment.id,comment]));
+    return (item.executionComments||[]).some(comment=>{
+      const prior=comments.get(comment?.id);
+      if(!prior || JSON.stringify(prior)===JSON.stringify(comment))return false;
+      return !accountId || prior.type==='approval_rejected' || String(prior.createdBy?.id)!==String(accountId)
+        || JSON.stringify(prior.createdBy)!==JSON.stringify(comment.createdBy);
+    });
+  };
   const meaningful=value=>Array.isArray(value)?value.length>0:value!=null && value!=='';
   const comparable=(item,key)=>{
     const value=item?.[key];
@@ -350,7 +359,7 @@ export function hasDeniedExecutionChanges(current,incoming,permissions,phone){
       if(!item)return false;
       const previous=records.get(String(item.id));
       return (changed(previous,item) && (!canWriteExecutionItem(permissions,previous||item) || !canWriteExecutionItem(permissions,item)))
-        || deniedDailyHistory(previous,item)
+        || deniedDailyHistory(previous,item) || deniedCommentEdit(previous,item)
         || check(previous?.subtasks||[],item.subtasks||[]) || check(previous?.workTasks||[],item.workTasks||[]);
     });
   };
@@ -363,7 +372,7 @@ export function hasDeniedExecutionChanges(current,incoming,permissions,phone){
     if(item.oddJobType && (item.expenseApprovalStatus!== (previous?.expenseApprovalStatus ?? (item.expenseApproverContactId?'pending':null))
       || JSON.stringify(item.expenseApprovedBy)!==JSON.stringify(previous?.expenseApprovedBy)
       || item.expenseApprovedAt!==previous?.expenseApprovedAt))return true;
-    if(deniedDailyHistory(previous,scopeItem))return true;
+    if(deniedDailyHistory(previous,scopeItem) || deniedCommentEdit(previous,item))return true;
     const reportsChanged=JSON.stringify(comparable(previous,'executionReports'))!==JSON.stringify(comparable(item,'executionReports'));
     return reportsChanged && (!canWriteExecutionItem(permissions,scopeItem) || !contactIds.has(String(previous?.assigneeContactId)));
   });
@@ -647,7 +656,7 @@ async function saveWorkspace(pool, accountId, snapshot){
           continue;
         }
         const permissions=membership.rows[0].permissions||{};
-        if(hasDeniedExecutionChanges(currentPayload,project,permissions,membership.rows[0].phone)){
+        if(hasDeniedExecutionChanges(currentPayload,project,permissions,membership.rows[0].phone,accountId)){
           const error=new Error('forbidden_execution_write');error.statusCode=403;throw error;
         }
         const assignedExecution=!canMutateSharedProject(permissions)
