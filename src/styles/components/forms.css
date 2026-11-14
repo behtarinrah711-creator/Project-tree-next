@@ -181,8 +181,8 @@
 .saosa-file-viewer--compact .saosa-file-viewer-head button{display:grid;place-items:center;flex:0 0 44px;width:44px;padding:0;}
 .saosa-file-viewer--compact .saosa-file-viewer-head svg{width:23px;height:23px;}
 .saosa-file-viewer--compact .saosa-file-viewer-body{height:auto;min-height:0;box-sizing:border-box;}
-.saosa-file-viewer-body.is-gallery:not(.is-zoomed){display:block;overflow:hidden;padding:0;touch-action:pan-y pinch-zoom;}
-.saosa-file-viewer-track{display:flex;height:100%;direction:ltr;}
+.saosa-file-viewer-body.is-gallery:not(.is-zoomed){display:block;overflow:hidden;padding:0;touch-action:none;}
+.saosa-file-viewer-track{display:flex;height:100%;width:100%;direction:ltr;}
 .saosa-file-slide{flex:0 0 100%;height:100%;min-width:0;display:grid;place-items:center;}
 .saosa-file-viewer-body.is-gallery.is-zoomed .saosa-file-slide:not(.is-current){display:none;}
 .saosa-file-viewer-body.is-gallery.is-zoomed .saosa-file-viewer-track{display:block;height:auto;}
