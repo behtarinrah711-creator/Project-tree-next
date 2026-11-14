@@ -8,6 +8,7 @@ const make=tag=>({tag,children:[],dataset:{},className:'',
   prepend(child){this.children=[child,...this.children.filter(node=>node!==child)];},
   replaceChildren(...children){this.children=children;},
   setAttribute(){},
+  addEventListener(type,fn){this[type]=fn;},
   remove(){},
 });
 
@@ -179,8 +180,14 @@ test('finance approval shows a failed save on the card and rerenders an accepted
 
   const body=make('div');
   renderAccountingContracts(body,'p');
-  const card=()=>body.children[0].children.at(-1);
-  const actions=()=>card().children.find(node=>node.className.includes('contract-finance-actions'));
+  assert.equal(body.children.length,1);
+  const documents=body.children[0].children[0].children[1];
+  assert.equal(documents.children[1].hidden,false);
+  assert.equal(documents.children[1].children.at(-1).children.length,1);
+  const {renderAddendumCard}=await import('./contractAddendaView.js');
+  const card=()=>renderAddendumCard(projects[0],projects[0].contractAddenda[0],()=>renderAccountingContracts(body,'p'),true);
+  let detail=card();
+  const actions=()=>detail.children.find(node=>node.className.includes('contract-finance-actions'));
   const approve=actions().children[0];
   assert.equal(approve.textContent,'تأیید الحاقیه');
   const confirmApproval=async()=>{
@@ -198,12 +205,14 @@ test('finance approval shows a failed save on the card and rerenders an accepted
   await confirmApproval();
   assert.equal(mock.mock.callCount(),2);
   assert.equal(projects[0].contractAddenda[0].accountingStatus,'accepted');
-  assert.equal(card().children[1].children[0].textContent,'وضعیت: تأیید شده توسط بخش مالی');
+  detail=card();
+  assert.equal(detail.children[1].children[0].textContent,'وضعیت: تأیید شده توسط بخش مالی');
   assert.ok(!actions().children.some(node=>node.textContent==='تأیید الحاقیه'));
-  assert.match(card().children[2].textContent,/جمع الحاقیه‌های تأییدشده: ۱۰۰ تومان/);
+  assert.match(detail.children[2].textContent,/جمع الحاقیه‌های تأییدشده: ۱۰۰ تومان/);
 
   permissions.p.permissions.modules['accounting-contracts']='view';
   projects[0].contractAddenda=[addendum];
   renderAccountingContracts(body,'p');
+  detail=card();
   assert.equal(actions().children.length,0);
 });
