@@ -137,7 +137,7 @@ test('completion enters pending approval, rejection returns Today with typed new
   await sheet.getByRole('button',{name:'بستن'}).click();
   await card.locator('.today-report-circle').click();
   await page.locator('[name="reportProgress"]').click();
-  for(const digit of '100') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
+  await expect(page.locator('#numpadDisplay')).toHaveText('٪۱۰۰');
   await page.locator('#numpadDoneBtn').click();
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
   await openTaskDetails(page,card);
