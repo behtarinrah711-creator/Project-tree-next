@@ -419,38 +419,61 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
   titleEditor=documentRef.createElement('span');titleEditor.className='wbs-stage-edit-title';titleEditor.contentEditable=readOnly?'false':'true';titleEditor.setAttribute('role','textbox');titleEditor.setAttribute('aria-label','عنوان کار');titleEditor.textContent=task?.title || '';titleEditor.addEventListener('keydown',event=>{if(event.key==='Enter')event.preventDefault();});overlay.querySelector('.sheet-caption').append(' ',titleEditor);
 }
 
-export function openStandaloneWorkSheet({projectId,onChanged,saveStandalone}){
+export async function openStandaloneWorkSheet({projectId,onChanged,saveStandalone}){
   const id='oddjob-'+uid();
   const invoices=[];
-  const contacts=contactRepository.list(projectId).filter(contact=>!contact.trashed);
-  const people=[{id:'',name:'انتخاب کنید'},...contacts.map(contact=>({id:contact.id,name:contactName(contact)}))];
+  const {ftSelectRow,ftNumberRow}=await import('../contracts/realContractFormModule.js');
+  const {openStaticChoicePicker}=await import('../contracts/contractPickers.js');
+  const draft={oddJobType:ODD_JOB_TYPES[0],assigneeContactId:'',priority:'normal',dueDate:'',expenseApproverContactId:'',amount:''};
   const types=ODD_JOB_TYPES;
   const toast=message=>window.KarhaUI?.showToast?.(message);
   let uploader;
   const sheet=openWbsSheet({
     title:'خرده کار',presentation:'stage-create',autoFocus:false,historyKey:'oddjob:'+projectId,
     body(root){
-      const title=document.createElement('input');
-      title.className='wbs-input';title.name='title';
-      const description=document.createElement('input');description.className='wbs-input';description.name='description';
+      root.classList.add('form-template','contract-form-body');
+      const fields=document.createElement('div');
       const attachment=document.createElement('div');
-      root.append(fieldRow('عنوان',title),fieldRow('شرح کوتاه',description),
-        fieldRow('نوع کار',optionButton({name:'type',value:types[0],options:types.map(id=>({id,name:id}))})),
-        fieldRow('مسئول پیگیری',optionButton({name:'assignee',value:'',options:people})),
-        fieldRow('درجه اهمیت',optionButton({name:'priority',value:'normal',options:Object.entries(PRIORITY_LABELS).map(([id,name])=>({id,name}))})),
-        fieldRow('مبلغ',numericButton('amount',0,{money:true})),
-        dateField(document,'due','موعد',''),
-        fieldRow('مسئول تأیید خرج',optionButton({name:'expenseApprover',value:'',options:people})),
-        fieldRow('فاکتور',attachment));
+      root.append(fields,attachment);
+      const paint=()=>{
+        fields.replaceChildren();
+        const textRow=(label,key)=>{
+          const row=document.createElement('label');row.className='ft-row';
+          const caption=document.createElement('span');caption.className='ft-label';caption.textContent=label;
+          const input=document.createElement('input');input.className='ft-input';input.value=draft[key]||'';
+          input.placeholder='وارد کنید';input.oninput=()=>{draft[key]=input.value;};
+          row.append(caption,input);fields.append(row);
+        };
+        const update=(key,value)=>{draft[key]=value;paint();};
+        const choice=(label,key,options)=>ftSelectRow(fields,label,options.find(option=>option.value===draft[key])?.label,
+          ()=>openStaticChoicePicker(label,'گزینه‌ها',options,draft[key],value=>update(key,value),null,{preserveOrder:true}));
+        const person=(label,key)=>{
+          const contacts=contactRepository.list(projectId).filter(contact=>!contact.trashed);
+          const selected=contacts.find(contact=>String(contact.id)===draft[key]);
+          ftSelectRow(fields,label,selected?contactName(selected):'',()=>openSearchPicker({
+            title:'انتخاب '+label,listTitle:'مخاطبین',selectedTitle:label+' منتخب',
+            contextKey:'oddjob:'+projectId+':'+key,resourceType:'contact',showStar:false,showAdd:false,
+            items:[{id:'',name:'بدون '+label},...contacts.map(contact=>({id:contact.id,name:contactName(contact)}))],
+            onSelect:contact=>update(key,String(contact.id||'')),
+          }));
+        };
+        textRow('عنوان','title');
+        textRow('شرح کوتاه','description');
+        choice('نوع کار','oddJobType',types.map(value=>({value,label:value})));
+        person('مسئول پیگیری','assigneeContactId');
+        choice('درجه اهمیت','priority',Object.entries(PRIORITY_LABELS).map(([value,label])=>({value,label})));
+        ftSelectRow(fields,'موعد',formatJalaliDisplay(draft.dueDate),()=>window.KarhaUI?.openJalaliPicker?.(
+          draft.dueDate,value=>update('dueDate',value)),{placeholder:'انتخاب تاریخ'});
+        person('مسئول تأیید خرید','expenseApproverContactId');
+        ftNumberRow(fields,'مبلغ',draft.amount,value=>{draft.amount=toEnglishDigits(String(value)).replace(/[^\d]/g,'');},
+          {suffix:'تومان',onCommit:paint});
+      };
+      paint();
       uploader=mountFileUploader(attachment,{projectId,recordId:id,category:'oddjob-invoices',files:invoices,label:'افزودن عکس فاکتور',buttonLabel:true,onError:toast});
     },
-    onSave(root){
+    onSave(){
       if(uploader?.isBusy()){toast('ابتدا بارگذاری عکس فاکتور را تمام کنید');return false;}
-      const field=name=>root.querySelector('[name="'+name+'"]');
-      const result=saveStandalone({id,title:field('title').value,description:field('description').value,oddJobType:field('type').value,
-        assigneeContactId:field('assignee').value,priority:field('priority').value,
-        amount:Number(field('amount').dataset.value),dueDate:field('due').dataset.value,
-        expenseApproverContactId:field('expenseApprover').value,invoices});
+      const result=saveStandalone({...draft,id,amount:Number(draft.amount),invoices});
       if(!result.ok){toast('اطلاعات خرده‌کار را کامل و معتبر وارد کنید');return false;}
       onChanged?.();
       return true;
