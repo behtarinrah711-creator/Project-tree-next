@@ -107,13 +107,14 @@ export function openFileViewer(file,{onError=()=>{},compactImageHeader=false,gal
     const slides=[0,1,2].map(()=>document.createElement('div'));
     slides.forEach(slide=>{slide.className='saosa-file-slide';track.appendChild(slide);});
     content.appendChild(track);
-    let motion;
+    let motion,settling=false;
     const shift=(px,ms)=>{
       const nextMotion=track.animate([{transform:`translate3d(calc(-100% + ${px}px),0,0)`}],{duration:ms,easing:'cubic-bezier(0.2, 0, 0, 1)',fill:'forwards'});
       motion?.cancel();motion=nextMotion;return nextMotion;
     };
     const paintSlide=(slide,itemIndex)=>{
       slide.classList.toggle('is-current',itemIndex===index);
+      if(slide.dataset.i!==String(itemIndex))slide.replaceChildren();
       slide.dataset.i=String(itemIndex);
       const mount=entry=>{
         if(closed||slide.dataset.i!==String(itemIndex)||!entry)return;
@@ -133,31 +134,34 @@ export function openFileViewer(file,{onError=()=>{},compactImageHeader=false,gal
     images.forEach((_,itemIndex)=>ensure(itemIndex).catch(()=>{}));
     let startX=0,startY=0,delta=0,tracking=false,axis='',suppressClick=false;
     content.addEventListener('pointerdown',event=>{
-      if(zoomed||event.button)return;
+      if(zoomed||settling||tracking||!event.isPrimary||event.button)return;
+      suppressClick=false;
       tracking=true;axis='';startX=event.clientX;startY=event.clientY;delta=0;
-      content.setPointerCapture?.(event.pointerId);
+
     });
     content.addEventListener('pointermove',event=>{
-      if(!tracking||zoomed)return;
+      if(!tracking||zoomed||!event.isPrimary)return;
       const x=event.clientX-startX,y=event.clientY-startY;
       if(!axis&&Math.hypot(x,y)>8)axis=Math.abs(x)>Math.abs(y)?'x':'y';
       if(axis!=='x')return;
+      if(!content.hasPointerCapture(event.pointerId))content.setPointerCapture(event.pointerId);
       delta=x;
       const limited=(index<=0&&delta>0)||(index>=images.length-1&&delta<0);
       shift(limited?delta*0.2:delta,0);
     });
-    content.addEventListener('pointerup',()=>{
-      if(!tracking)return;tracking=false;
+    content.addEventListener('pointerup',event=>{
+      if(!tracking||!event.isPrimary)return;tracking=false;
       if(axis!=='x')return;
       const width=content.clientWidth||1;
       const forward=delta<-width*0.18&&index<images.length-1;
       const backward=delta>width*0.18&&index>0;
-      if(!forward&&!backward){shift(0,180);return;}
       suppressClick=true;
+      if(!forward&&!backward){shift(0,180);return;}
+      settling=true;
       shift(forward?-width:width,200).finished.then(()=>{
         if(closed)return;
         index+=forward?1:-1;current=images[index];render();
-      }).catch(()=>{});
+      }).catch(()=>{}).finally(()=>{settling=false;});
     });
     content.addEventListener('pointercancel',()=>{if(!tracking)return;tracking=false;shift(0,180);});
     content.addEventListener('click',event=>{
