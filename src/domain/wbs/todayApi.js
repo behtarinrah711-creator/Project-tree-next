@@ -121,6 +121,21 @@ export const todayApi = {
     },{completion:completeAt100 ? saved=>saved.completed || undefined : undefined});
   },
 
+  editComment(projectId,ref,id,text,actor,clock=Date.now){
+    const entity=todayRepository.get(projectId,ref);
+    const comment=entity?.executionComments?.find(item=>item.id===id && !item.trashed);
+    const by=actorValue(actor);
+    const value=String(text||'').trim();
+    if(!comment || comment.type==='approval_rejected' || by.id==='guest' || comment.createdBy?.id!==by.id)return {ok:false,code:'forbidden'};
+    if(value.length<COMMENT_MIN_LENGTH)return {ok:false,code:'comment_too_short'};
+    if(value===comment.text)return {ok:true,entity};
+    const at=clock();
+    return mutate(projectId,ref,current=>({...current,
+      executionComments:current.executionComments.map(item=>item.id===id?{...item,text:value,updatedAt:at}:item),
+      executionHistory:[...(current.executionHistory||[]),event('comment_edited',by,at,{commentId:id})],updatedAt:at,
+    }));
+  },
+
   addComment(projectId, ref, text, actor, clock = Date.now, type = 'comment_added'){
     const description = String(text || '').trim();
     if(description.length < COMMENT_MIN_LENGTH) return { ok:false, code:'comment_too_short' };

@@ -136,7 +136,7 @@ button.today-detail-pill{cursor:pointer;}
 .today-detail-composer input{min-width:0;flex:1;height:auto;border:1px solid #ddd9ce;border-radius:8px;background:#fff;padding:6px 9px;color:#202334;font:inherit;}
 .today-detail-composer button{border:0;border-radius:8px;background:#171a58;color:#fff;padding:6px 11px;font:inherit;cursor:pointer;}
 .today-detail-overlay .today-history{margin:0;font-size:12px;}
-.today-detail-overlay .today-history summary{display:block;min-height:0;padding:0;color:var(--text);font-size:13px;font-weight:600;text-align:right;cursor:pointer;}
+.today-detail-overlay .today-history summary{display:block;min-height:0;padding:0;color:var(--text);font-size:13px;font-weight:600;text-align:center;cursor:pointer;}
 .today-detail-overlay .today-history div{padding:8px 0 0;color:#666779;font-size:12px;font-weight:500;}
 .today-detail-pending{font-size:14px;font-weight:700;color:#9a6500;}
 .today-detail-actions{display:flex;justify-content:flex-end;gap:16px;margin:0 0 11px;}
