@@ -238,15 +238,12 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose){
   let releasePhotos=()=>{};
 
   const summary=detailCard(documentRef);
-  const statusTile=documentRef.createElement('span');
-  statusTile.className='today-detail-status';
-  const statusLabel=documentRef.createElement('span');
-  statusLabel.textContent='وضعیت اجرا ';
   const statusChip=documentRef.createElement('b');
   statusChip.className='today-detail-pill is-'+current.status;
   statusChip.textContent=DAILY_EXECUTION_LABELS[current.status]||'نامشخص';
-  statusTile.append(statusLabel,statusChip);
-  summary.appendChild(statusTile);
+  summary.append(detailRow(documentRef,day===tehranTodayJalali()?'وضعیت امروز':'وضعیت روز انتخاب‌شده',statusChip));
+  const progress=detailCard(documentRef,'today-detail-progress');
+  progress.append(detailRow(documentRef,'میزان پیشرفت',progressCircle(documentRef,entity,{summary:{}})));
   const schedule=detailCard(documentRef,'today-detail-schedule');
   const scheduleLabel=documentRef.createElement('span');
   scheduleLabel.textContent='زمان‌بندی';
@@ -263,31 +260,11 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose){
   const assignee=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.assigneeContactId||''));
   const approver=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.approvalContactId||''));
   const contractor=contractorForItem(project,item).contact;
-  const people=documentRef.createElement('details');
-  people.className='today-detail-meta';
-  const peopleSummary=documentRef.createElement('summary');
-  peopleSummary.textContent='مسئولان کار';
-  const peopleBody=documentRef.createElement('div');
-  const followName=assignee?contactName(assignee):'—';
-  const approveName=approver?contactName(approver):'—';
-  const peopleLine=documentRef.createElement('p');
-  peopleLine.textContent=followName===approveName
-    ? 'پیگیری و تأیید · '+followName
-    : 'پیگیری · '+followName+' · تأیید · '+approveName;
-  peopleBody.appendChild(peopleLine);
-  if(contractor){
-    const contractorLine=documentRef.createElement('p');
-    contractorLine.textContent='پیمانکار: '+contactName(contractor);
-    peopleBody.appendChild(contractorLine);
-  }
-  if(current.reason){
-    const reasonLine=documentRef.createElement('p');
-    reasonLine.textContent=[current.reason,current.description].filter(Boolean).join(' · ');
-    peopleBody.appendChild(reasonLine);
-  }
-  people.append(peopleSummary,peopleBody);
-  summary.appendChild(people);
-  root.append(schedule,summary);
+  summary.append(detailRow(documentRef,'مسئول کار',assignee?contactName(assignee):'—'),
+    detailRow(documentRef,'مسئول تأیید',approver?contactName(approver):'—'));
+  if(contractor)summary.append(detailRow(documentRef,'پیمانکار',contactName(contractor)));
+  if(current.reason)summary.append(detailRow(documentRef,'دلیل',[current.reason,current.description].filter(Boolean).join(' · ')));
+  root.append(schedule,progress,summary);
   if(item.kind==='standalone' && entity.oddJobType){
     const expense=detailCard(documentRef);
     if(entity.description)expense.append(detailRow(documentRef,'شرح کوتاه',entity.description));
@@ -343,6 +320,11 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose){
       releasePhotos=photos.release;
       reportCard.appendChild(photos.strip);
     }
+  }else{
+    const empty=documentRef.createElement('p');
+    empty.className='today-detail-meta today-detail-empty-report';
+    empty.textContent=day===tehranTodayJalali()?'هنوز گزارش امروز ثبت نشده است':'برای این تاریخ گزارشی ثبت نشده است';
+    reportCard.appendChild(empty);
   }
   root.appendChild(reportCard);
 
@@ -415,29 +397,9 @@ function openTodayDetails(documentRef,project,item,today,onChanged,returnToCalen
   };
   const frame=documentRef.createElement('div');
   frame.className='wbs-today-frame today-detail-frame';
-  const header=documentRef.createElement('div');
-  header.className='sheet-head today-detail-head';
-  const close=documentRef.createElement('button');
-  close.type='button';
-  close.className='close-btn';
-  close.setAttribute('aria-label','بستن');
-  close.textContent='×';
-  const titles=documentRef.createElement('div');
-  titles.className='today-detail-title';
-  const caption=documentRef.createElement('span');
-  caption.className='sheet-caption';
-  caption.textContent=item.entity.title || item.entity.text || 'جزئیات کار';
-  const path=documentRef.createElement('span');
-  path.className='today-detail-path';
-  titles.append(path,caption);
-  const ring=documentRef.createElement('div');
-  ring.className='today-detail-ring';
-  header.append(close,titles,ring);
   let release=()=>{};
   const paint=current=>{
     release();
-    path.textContent=(current.path||[]).filter(Boolean).join(' · ');
-    ring.replaceChildren(progressCircle(documentRef,current.entity,{summary:{}}));
     const view=renderExecutionDetail(documentRef,project,current,today,refresh,afterClose);
     release=view.release;
     frame.replaceChildren(view.root);
@@ -455,11 +417,16 @@ function openTodayDetails(documentRef,project,item,today,onChanged,returnToCalen
     paint({...item,entity,mode:timeState(entity,today)});
   };
   paint(item);
-  openWbsSheet({
+  const sheet=openWbsSheet({
     title:item.entity.title || item.entity.text || 'جزئیات کار',
-    header,body:frame,showSave:false,autoFocus:false,historyKey:key,reuseHistoryOnReplace:!!returnToCalendar,
+    body:frame,showSave:false,autoFocus:false,historyKey:key,reuseHistoryOnReplace:!!returnToCalendar,
     ...(returnToCalendar?{requestClose:returnToCalendar}:{}),
-  }).classList.add('today-detail-overlay');
+  });
+  sheet.classList.add('today-detail-overlay');
+  const path=documentRef.createElement('span');
+  path.className='today-detail-path';
+  path.textContent=(item.path||[]).filter(Boolean).join(' · ');
+  if(path.textContent)sheet.querySelector('.sheet-caption').appendChild(path);
 }
 
 function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCalendar){
