@@ -227,7 +227,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       const row=document.createElement('article'); row.className='contract-row';
       row.dataset.searchText=normalizeContractSearch(title+' '+meta+' '+path+' '+(created ? `${created.date} ${created.time}` : ''));
       row.dataset.approvalState=contractApprovalState(c);
-      const openPreview=()=>openContractPreview(p,finance?c.accountingPackage.contract:c,{trigger:heading.querySelector('.contract-main'),frozen:finance,signedFiles:finance?c.accountingPackage.signedFiles:null});
+      const openPreview=()=>openContractPreview(p,finance?(c.accountingPackage?.contract||c):c,{trigger:heading.querySelector('.contract-main'),frozen:finance,signedFiles:finance?c.accountingPackage?.signedFiles:null});
       let statusSheetBody;
       let statusRecord=c;
       const openStatus=event=>{
@@ -237,7 +237,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       };
       const heading=renderContractCardHeading(p,c,{
         onEdit:approval || !writable?undefined:()=>{if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
-        onExport:trigger=>openContractExport(p,finance?c.accountingPackage.contract:c,{trigger,frozen:finance}),
+        onExport:trigger=>openContractExport(p,finance?(c.accountingPackage?.contract||c):c,{trigger,frozen:finance}),
         onDelete:approval || !writable?undefined:()=>openConfirm('آیا از حذف این قرارداد اطمینان دارید؟',()=>{
           const result=contractApi.trash(id,c.id);
           if(!result.ok){
@@ -287,7 +287,13 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       };
       const documents=showDetails?renderContractDocuments(p,c):renderContractAddendaRow(p,c);
       if(documents)row.appendChild(documents);
-      }else statusSheetBody=root=>root.append(renderContractFinanceReview(p,c,{onChanged}),renderContractProgress(document,c,p));
+      }else{
+        row.appendChild(renderContractDocuments(p,c,{finance:true,onChanged}));
+        statusSheetBody=root=>{
+          if(c.accountingPackage)root.append(renderContractFinanceReview(p,c,{onChanged}));
+          root.append(renderContractProgress(document,c,p));
+        };
+      }
       return row;
 }
 

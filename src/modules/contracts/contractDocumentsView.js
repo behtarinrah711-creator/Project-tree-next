@@ -1,3 +1,4 @@
+import { isAddendumVisibleInFinance } from '../../domain/contractHandoff.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { canCreateAddendumFromContract } from '../../domain/contractAddenda.js';
 import { statementsFor } from '../../domain/contractStatements.js';
@@ -14,22 +15,22 @@ function button(label,classes,action){
   return control;
 }
 
-export function renderContractDocuments(project,contract,{onChanged=()=>{},reviewOnly=false,approvals=new Map()}={}){
+export function renderContractDocuments(project,contract,{onChanged=()=>{},reviewOnly=false,finance=false,approvals=new Map()}={}){
   const row=document.createElement('section');row.className='contract-addenda-row';
   const toolbar=document.createElement('div');toolbar.className='contract-addenda-row-toolbar';
-  const list=document.createElement('div');list.className='contract-addenda-children';list.hidden=!approvals.size;
+  const list=document.createElement('div');list.className='contract-addenda-children';list.hidden=finance?!((project.contractAddenda||[]).some(item=>String(item.parentContractId)===String(contract.id) && item.accountingStatus==='sent' && isAddendumVisibleInFinance(item))):!approvals.size;
   const current=()=>projectRepository.find(project.id)||project;
   const toggle=button('','contract-addenda-toggle',()=>{list.hidden=!list.hidden;paint(current());});
   const changed=()=>{if(row.isConnected)paint(current());onChanged();};
   const created=()=>{list.hidden=false;changed();};
   function paint(source){
-    const addenda=(source.contractAddenda||[]).filter(item=>!item.trashed && String(item.parentContractId)===String(contract.id));
-    const statements=statementsFor(source,contract.id);
+    const addenda=(source.contractAddenda||[]).filter(item=>!item.trashed && (!finance || isAddendumVisibleInFinance(item)) && String(item.parentContractId)===String(contract.id));
+    const statements=finance?[]:statementsFor(source,contract.id);
     toggle.textContent='اسناد ('+number.format(addenda.length+statements.length)+')';
     toggle.setAttribute('aria-expanded',String(!list.hidden));
     if(list.hidden)return;
     const groups=[
-      ['الحاقیه‌ها',addenda,item=>renderAddendumCard(source,item,changed,false,reviewOnly?(approvals.get(item.id)||{}):undefined,{nested:true})],
+      ['الحاقیه‌ها',addenda,item=>renderAddendumCard(source,item,changed,finance,reviewOnly?(approvals.get(item.id)||{}):undefined,{nested:true})],
       ['صورت‌وضعیت‌ها',statements.filter(item=>item.statementType!=='retention-release'),item=>renderStatementCard(source,contract,item,changed,reviewOnly?(approvals.get(item.id)||{}):undefined)],
       ['آزادسازی حسن انجام کار',statements.filter(item=>item.statementType==='retention-release'),item=>renderStatementCard(source,contract,item,changed,reviewOnly?(approvals.get(item.id)||{}):undefined)],
     ];
@@ -45,7 +46,7 @@ export function renderContractDocuments(project,contract,{onChanged=()=>{},revie
     }
   }
   toolbar.append(toggle);
-  const writable=!reviewOnly && canWriteProjectModule(project.id,'contracts');
+  const writable=!finance && !reviewOnly && canWriteProjectModule(project.id,'contracts');
   const addendum=writable && canCreateAddendumFromContract(contract,project);
   const statement=writable && contract.accountingStatus==='accepted';
   if(addendum || statement)toolbar.append(button('ثبت سند','contract-addendum-create',()=>{
