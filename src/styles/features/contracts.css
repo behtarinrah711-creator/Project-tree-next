@@ -1956,6 +1956,7 @@ textarea.contract-project-item-input{
   display:block;margin:0 auto 0 0;padding:6px 14px;border-radius:8px;
   background:#1565c0;color:#fff;
 }
+.contract-status-sheet .contract-signed-section:not(.contract-signed-section--sent) > .contract-signed-trigger:only-child{margin-inline:auto;text-align:center;}
 .contract-signed-section--sent{display:flex;direction:rtl;align-items:center;gap:8px;}
 .contract-signed-section--sent .contract-review-action{margin-block:0;}
 .contract-signed-section--sent .contract-review-action:not(.contract-signed-trigger){margin-inline:0;}
