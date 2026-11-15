@@ -1,4 +1,4 @@
-import {canWriteProjectModule} from '../../modules/roleManagement/permissionState.js';
+import {canWriteProjectModule,projectPermissionState} from '../../modules/roleManagement/permissionState.js';
 import { uid } from '../../data/projectFactories.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { workTaskRepository } from '../../data/workTaskRepository.js';
@@ -171,7 +171,19 @@ export const workTaskApi = {
       updatedAt:clock(),
     }));
     if(!saved) return { ok:false, code:'persist' };
-    projectRepository.updateProject(projectId, row => placeCardFunding(row, taskId));
+    projectRepository.updateProject(projectId, row => {
+      const contract=linkedWorkTaskContract(projectId,workId,taskId);
+      const canDeleteContract=projectPermissionState(projectId,['contracts']).levels.contracts==='full';
+      if(canDeleteContract && contract?.systemGenerated && contract.status==='draft' && contract.isDraft
+        && !contract.signedAt && !contract.sentToAccountingAt && !contract.accountingPackage
+        && !['pending','approved','unapproved'].includes(contract.approvalStatus)){
+        const at=clock();
+        row.contracts=row.contracts.map(item=>item.id===contract.id
+          ? {...item,trashed:true,deletedAt:at,updatedAt:at}
+          : item);
+      }
+      return placeCardFunding(row, taskId);
+    });
     if(remaining.length) syncWorkCompletion(projectId, workId);
     publish(projectId);
     return { ok:true };
