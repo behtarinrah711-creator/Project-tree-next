@@ -64,7 +64,7 @@
 
 .wbs-today-frame .today-card-summary.has-oddjob-menu,
 .wbs-today-frame .today-task-card.has-oddjob-menu .today-card-summary{grid-template-columns:minmax(0,1fr) 62px 42px 36px;}
-.wbs-today-frame .has-oddjob-menu .contract-menu-wrap{justify-self:end;align-self:center;}
+.wbs-today-frame .has-oddjob-menu .nb-project-menu-wrap{justify-self:end;align-self:center;}
 .wbs-today-frame .has-oddjob-menu .nb-more{color:#1565c0;margin:0;}
 .wbs-today-frame .today-card-summary .today-card-titles{align-items:flex-start;padding:0;overflow-wrap:anywhere;}
 .wbs-today-frame .today-card-summary .today-card-titles>*{text-align:right;}
