@@ -15,7 +15,7 @@ test('incomplete and approved cards offer the appropriate separate attachment an
   c={id:'c',status:'final',approvalStatus:'approved',contractApproverContactIds:[]};
   assert.deepEqual(labels(renderContractSignedSection(project,c)),['افزودن عکس یا PDF قرارداد']);
   c={...c,signedAt:1,signedFiles:[file]};
-  assert.deepEqual(labels(renderContractSignedSection(project,c)),['نسخه امضاشده قرارداد','ارسال به واحد مالی']);
+  assert.deepEqual(labels(renderContractSignedSection(project,c)),['نسخه امضاشده قرارداد','ارسال به واحد مالی','بازگشت برای ویرایش']);
   assert.deepEqual(contractProgressSteps(c).map(s=>s.done),[true,true,true,false,false]);
   c={...c,sentToAccountingAt:2,accountingStatus:'sent',accountingPackage:{contract:{...c},signedFiles:[file]}};
   assert.deepEqual(labels(renderContractSignedSection(project,c)),['پس‌گرفتن از مالی','نسخه امضاشده قرارداد']);
@@ -44,7 +44,7 @@ test('recompleted contracts can resend the same signed copy when their content i
   globalThis.document=documentRef;
   const previous={id:'c',title:'قرارداد',contractNo:'CTR-1',status:'final',approvalStatus:'approved',signedAt:10,signedFiles:[file]};
   const returned={...previous,signedAt:null,accountingStatus:'rejected',accountingPackage:{contract:previous,signedFiles:[file]}};
-  assert.deepEqual(labels(renderContractSignedSection(project,returned)),['نسخه امضاشده قرارداد','ارسال به واحد مالی']);
+  assert.deepEqual(labels(renderContractSignedSection(project,returned)),['نسخه امضاشده قرارداد','ارسال به واحد مالی','بازگشت برای ویرایش']);
   assert.deepEqual(contractProgressSteps(returned).map(s=>s.done),[true,true,true,false,false]);
   for(const contract of [{...returned,approvalStatus:'pending'},{...returned,title:'نسخه اصلاحی'},{...returned,signedFiles:[{...file,id:'replacement'}]}]){
     assert.deepEqual(labels(renderContractSignedSection(project,contract)),['نسخه امضاشده قرارداد']);

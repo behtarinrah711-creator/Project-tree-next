@@ -38,12 +38,31 @@ export function canReuseReturnedSignature(contract){
     && JSON.stringify(operationValues(contract))===JSON.stringify(operationValues(previous));
 }
 
+export function canDeleteContractDocument(document){
+  return !!document && !document.trashed && !document.signedAt && document.signatureStatus!=='signed'
+    && !document.sentToAccountingAt && !['sent','accepted'].includes(document.accountingStatus)
+    && !(Number(document.paidAmount)>0) && !['pending','approved'].includes(document.approvalStatus)
+    && (!document.accountingPackage || (document.accountingStatus==='rejected' && document.status==='draft' && document.isDraft));
+}
+
+export function canReopenSignedContract(contract){
+  return !(Number(contract?.paidAmount)>0) && canAttachSignedContract(contract)
+    && !isContractInFinance(contract) && (isContractSigned(contract) || canReuseReturnedSignature(contract));
+}
+
 export function transitionContractHandoff(contract,action,actor,{files=[],reason='',at=Date.now(),projectName,activityName}={}){
   const fail=message=>({ok:false,message});
   if(!actor?.id || actor.id==='guest')return fail('ابتدا وارد حساب کاربری شوید');
   if(!canAttachSignedContract(contract) && !(action==='save_signed' && canReviseReturnedSignedContract(contract)))return fail('ابتدا قرارداد باید تکمیل و تأیید شود');
   const next={...contract},events=[];
-  if(['approve_finance','reject_finance','revoke_finance'].includes(action)){
+  if(action==='reopen_signed_contract'){
+    if(!canReopenSignedContract(contract))return fail('قرارداد در این مرحله قابل بازگشت برای ویرایش نیست');
+    const text=String(reason).trim();
+    if(text.length<FINANCE_REASON_MIN_LENGTH)return fail('دلیل بازگشت حداقل ۵ حرف باشد');
+    const previousFiles=signedContractFiles(contract).map(file=>({...file}));
+    Object.assign(next,{status:'draft',isDraft:true,approvalStatus:null,approvedContactIds:[],approvalContactIds:[],approvalContactId:'',submittedAt:null,submittedBy:null,reviewedAt:null,reviewedBy:null,revisionBaseline:null,completedAt:null,completedBy:null,completionDeclarationId:null,manualCompletionFields:[],signedAt:null,signedBy:null,signatureStatus:null,signedFiles:[],signedFilesUpdatedAt:at,accountingStatus:null});
+    events.push({action,reason:text,files:previousFiles.map(file=>file.name),previousSignedFiles:previousFiles});
+  }else if(['approve_finance','reject_finance','revoke_finance'].includes(action)){
     if(!isContractInFinance(contract))return fail('قرارداد در واحد مالی نیست');
     if(action==='revoke_finance'){
       if(contract.accountingStatus!=='accepted' || contract.accountingDecision?.actor?.id!==actor.id)return fail('فقط می‌توانید تأیید مالی خودتان را پس بگیرید');
