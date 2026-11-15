@@ -46,7 +46,7 @@ function completeExecution(entity,ref,by,at,day){
     : {progressBeforeApproval:Number(entity.progress)||0,status:'in_progress'};
   return {
     ...entity, completed:immediate, done:immediate, completionState:status, workflowStatus:status,
-    completionSubmittedAt:at, completionSubmittedBy:by, actualFinishDay:day,
+    completionSubmittedAt:at, completionSubmittedBy:by, actualFinishDay:immediate ? day : null,
     ...(immediate ? { completedAt:at } : {}),
     ...(ref.kind==='work' ? workProgress : {}),
     executionHistory:[...(entity.executionHistory||[]),event('marked_complete',by,at,{day}),

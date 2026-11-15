@@ -2,6 +2,7 @@ import {uid} from '../../data/projectFactories.js';
 import {collectStandaloneWorks,collectTodayItems} from './todayDomain.js';
 import {collectShoppingItems} from './shoppingDomain.js';
 import {workTaskProgress} from './workTaskModel.js';
+import {tehranTodayJalali} from './todayDomain.js';
 
 export function executionApprovalItem(project,ref){
   return [...collectStandaloneWorks(project),...collectTodayItems(project),...collectShoppingItems(project)].find(item=>
@@ -13,7 +14,7 @@ export function approveExecutionEntity(entity,kind,actor,at){
   if(kind==='standalone' && entity.oddJobType)return {...entity,expenseApprovalStatus:'approved',expenseApprovedAt:at,expenseApprovedBy:actor,updatedAt:at};
   return {
     ...entity,completed:true,done:true,completionState:'approved',workflowStatus:'approved',
-    completedAt:entity.completionSubmittedAt || at,actualFinishDay:entity.completionSubmittedAt || at,
+    completedAt:at,actualFinishDay:tehranTodayJalali(new Date(at)),
     approvedAt:at,approvedBy:actor,
     ...(kind==='work'?{progress:100,status:'completed'}:{}),
     executionHistory:[...(entity.executionHistory||[]),{id:uid(),type:'approved',actor,at}],updatedAt:at,

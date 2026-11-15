@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createAppDataStore } from '../../data/appDataStore.js';
 import { todayApi } from './todayApi.js';
+import { tehranTodayJalali } from './todayDomain.js';
 
 function install(hasApprover=true){
   const store=createAppDataStore({storage:null});
@@ -55,8 +56,8 @@ test('completion waits for approval; rejection is typed and returns actionable',
   assert.equal(entity(store).completionState,'approved');
   assert.equal(entity(store).completed,true);
   assert.equal(entity(store).completionSubmittedAt,300);
-  assert.equal(entity(store).completedAt,300);
-  assert.equal(entity(store).actualFinishDay,300);
+  assert.equal(entity(store).completedAt,400);
+  assert.equal(entity(store).actualFinishDay,tehranTodayJalali(new Date(400)));
   assert.equal(entity(store).approvedAt,400);
   assert.equal(store.getSnapshot().projects[0].tasks[0].progress,100);
 });

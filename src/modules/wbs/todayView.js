@@ -112,12 +112,10 @@ function elapsedShare(entity,day){
 function completionDay(entity){
   const explicit=jalaliDayNumber(entity.actualFinishDay);
   if(explicit!==null) return explicit;
-  const report=(entity.executionReports||[]).filter(item=>item && !item.trashed && Number(item.progress)===100)
-    .sort((a,b)=>Number(a.createdAt||0)-Number(b.createdAt||0))[0];
-  const reportDay=jalaliDayNumber(report?.reportDay) ?? jalaliDayNumber(report?.createdAt ? tehranTodayJalali(new Date(report.createdAt)) : '');
-  if(reportDay!==null) return reportDay;
-  const event=(entity.executionHistory||[]).find(entry=>['marked_complete','sent_for_approval','completed_without_approval','approved'].includes(entry?.type) && entry.at);
-  const stamp=Number(event?.at || entity.completionSubmittedAt || entity.completedAt || entity.approvedAt);
+  const approved=executionStatus(entity)==='approved' || entity.completed===true || entity.done===true;
+  if(!approved) return null;
+  const event=(entity.executionHistory||[]).find(entry=>['approved','completed_without_approval'].includes(entry?.type) && entry.at);
+  const stamp=Number(entity.approvedAt || event?.at || entity.completedAt);
   if(!Number.isFinite(stamp)) return null;
   return jalaliDayNumber(tehranTodayJalali(new Date(stamp)));
 }
@@ -125,7 +123,7 @@ function scheduleStatus(entity,day){
   const end=jalaliDayNumber(entity.scheduleEnd);
   const now=jalaliDayNumber(day);
   if(end===null || now===null) return null;
-  const completed=['approved','pending_approval'].includes(executionStatus(entity)) || entity.completed===true || entity.done===true || jalaliDayNumber(entity.actualFinishDay)!==null;
+  const completed=executionStatus(entity)==='approved' || entity.completed===true || entity.done===true;
   if(completed){
     const finished=completionDay(entity);
     const delta=Number.isFinite(finished) ? finished-end : now-end;
