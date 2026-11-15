@@ -302,12 +302,18 @@ function renderContractInlineAddRow(parentId = null) {
   input.rows = 1;
   input.wrap = 'soft';
   input.enterKeyHint = 'enter';
+  const grow = () => {
+    input.style.height = 'auto';
+    input.style.height = Math.max(42, input.scrollHeight) + 'px';
+  };
+  input.addEventListener('input', grow);
   input.onkeydown = event => {
     if (event.key === 'Escape') {
       inlineAddState = null;
       renderContractForm();
     }
   };
+  setTimeout(grow, 0);
 
   const confirm = document.createElement('button');
   confirm.type = 'button';
@@ -386,10 +392,16 @@ function renderRealContractRow(item, list, index, isChild) {
   input.placeholder = isChild ? 'متن بند را وارد کنید…' : 'عنوان ماده را وارد کنید…';
   input.rows = 1;
   input.wrap = 'soft';
+  const grow = () => {
+    input.style.height = 'auto';
+    input.style.height = Math.max(isChild ? 44 : 40, input.scrollHeight) + 'px';
+  };
   input.oninput = () => {
     contractItemInteractions.updateItemText(item, input.value, { dirty: true });
     dirty = true;
+    grow();
   };
+  setTimeout(grow, 0);
 
   const remove = document.createElement('input');
   remove.type = 'checkbox';

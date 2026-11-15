@@ -533,14 +533,14 @@
 .ctf-grip{border:0;background:transparent;color:#b9bdc1;width:30px;height:34px;display:flex;align-items:center;justify-content:center;padding:0;touch-action:none;cursor:grab;}
 .ctf-grip:active{cursor:grabbing;}.ctf-grip svg{width:16px;height:22px;}
 .ctf-num{font-size:15px;color:var(--text);white-space:nowrap;text-align:center;direction:rtl;}
-.ctf-text{width:100%;min-width:0;height:40px;border:0;background:transparent;outline:none;box-shadow:none;color:var(--text);font-family:IRANSansX,IRANSans,Arial,sans-serif;font-size:15px;text-align:right;padding:0 4px;}
+.ctf-text{width:100%;min-width:0;min-height:40px;height:auto;border:0;background:transparent;outline:none;box-shadow:none;color:var(--text);font-family:IRANSansX,IRANSans,Arial,sans-serif;font-size:15px;text-align:right;padding:0 4px;resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;}
 .ctf-text:focus{outline:none;box-shadow:none;border:0;}
 .ctf-text::placeholder{color:#8a8f94;}
 .ctf-delete{border:0;background:transparent;color:#c52f2f;font-family:IRANSansX,IRANSans,Arial,sans-serif;font-size:13px;font-weight:600;padding:8px 4px;white-space:nowrap;}
 .ctf-add-material{display:flex;align-items:center;justify-content:flex-start;gap:7px;margin:0;padding:0 46px 0 12px;border:0;background:transparent;color:#5d6368;font:inherit;font-size:14px;font-weight:600;line-height:42px;height:42px;width:100%;box-sizing:border-box;direction:rtl;} .ctf-add-material .ctf-add-plus{font-size:24px;font-weight:400;line-height:1;}
 .ctf-add-band{width:100%;height:50px;margin-top:10px;border:0;border-top:1px solid var(--divider);background:var(--surface);color:var(--primary);font:inherit;font-size:14px;font-weight:800;}
-.ctf-add-input-row{display:flex;align-items:center;gap:8px;min-height:54px;padding:6px 12px;border-top:1px solid rgba(0,0,0,.07);box-sizing:border-box;}
-.ctf-inline-input{flex:1;min-width:0;height:42px;border:0;background:transparent;outline:none;box-shadow:none;color:var(--text);font-family:IRANSansX,IRANSans,Arial,sans-serif;font-size:15px;text-align:right;padding:0 4px;resize:none;}
+.ctf-add-input-row{display:flex;align-items:flex-start;gap:8px;min-height:54px;padding:6px 12px;border-top:1px solid rgba(0,0,0,.07);box-sizing:border-box;}
+.ctf-inline-input{flex:1;min-width:0;min-height:42px;height:auto;border:0;background:transparent;outline:none;box-shadow:none;color:var(--text);font-family:IRANSansX,IRANSans,Arial,sans-serif;font-size:15px;text-align:right;padding:8px 4px;resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.7;}
 .ctf-inline-input:focus{outline:none;border:0;box-shadow:none;}
 .ctf-inline-confirm,.ctf-inline-cancel{border:0;background:transparent;font:inherit;font-size:12px;min-height:36px;padding:0 8px;}
 .ctf-inline-confirm{color:var(--primary);font-weight:800;}
