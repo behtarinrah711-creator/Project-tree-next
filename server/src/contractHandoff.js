@@ -5,7 +5,7 @@ import {saveStatement,recordStatementPayment} from './contractStatement.js';
 import {applyExecutionApproval,approveExecutionEntity,executionApprovalItem} from '../../src/domain/wbs/executionApproval.js';
 import {saveAddendumDraft} from './contractAddendum.js';
 import {canDeleteAddendumRecord,canDeleteContractAddenda,parentContractOf} from '../../src/domain/contractAddenda.js';
-import {transitionContractApproval} from '../../src/domain/contractApproval.js';
+import {saveContractReviewEdit,transitionContractApproval} from '../../src/domain/contractApproval.js';
 import {syncContractPartyData} from '../../src/domain/contractPartyData.js';
 import {authenticate} from './auth.js';
 import {readJson,sendJson} from './http.js';
@@ -117,8 +117,23 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         transition=recordStatementPayment(contract,body.amount,actor,Date.now());
       }
       else if(saveDraft) transition=saveAddendumDraft(row.payload,contract,body,actor,contractId,Date.now());
+      else if(!addendum && !statement && body.action==='edit_contract_review'){
+        transition=saveContractReviewEdit(contract,actor,body.changes);
+        if(transition.ok && transition.contract!==contract){
+          const revised=transition.contract;
+          const references=[['employerId','contacts'],['contractorId','contacts'],['activityId','activityTemplates'],['templateId','contractTemplates']];
+          if(references.some(([key,collection])=>revised[key] && revised[key]!==contract[key] &&
+            !(row.payload[collection]||[]).some(record=>!record.trashed && String(record.id)===String(revised[key])))){
+            sendJson(response,400,{message:'یکی از موارد انتخاب‌شده در این پروژه معتبر نیست'});return true;
+          }
+          if(revised.employerId && revised.employerId===revised.contractorId){
+            sendJson(response,400,{message:'کارفرما و پیمانکار نمی‌توانند یک مخاطب باشند'});return true;
+          }
+          syncContractPartyData(revised,row.payload);
+        }
+      }
       else if(reviewAction){
-        transition=transitionContractApproval(contract,body.action.split('_')[0],actor,{reason:body.reason});
+        transition=transitionContractApproval(contract,body.action.split('_')[0],actor,{reason:body.reason,allowRejectApproved:body.action==='reject_contract'});
         if(transition.ok && body.action==='revoke_addendum')Object.assign(transition.contract,{isDraft:true,status:'draft'});
       }else if(addendum && body.action==='submit_addendum'){
         transition=transitionContractApproval(contract,'submit',actor,{approverIds:contract.contractApproverContactIds});

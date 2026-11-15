@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 globalThis.window={location:{hash:'',search:''}};
-const {transitionContractApproval,contractApprovalState,canReviewContract,canSubmitContract}=await import('./contractApproval.js');
+const {transitionContractApproval,contractApprovalState,saveContractReviewEdit,canReviewContract,canSubmitContract}=await import('./contractApproval.js');
 const author={id:'author',contactId:'writer',name:'نویسنده'};
 const manager={id:'manager',contactId:'reviewer',name:'مدیر'};
 test('incomplete contracts cannot be submitted and only designated reviewer can decide',()=>{
@@ -132,4 +132,22 @@ test('only assigned reviewers can reject pending contracts with a reason',()=>{
  assert.equal(result.contract.approvalRejectionReason,'اصلاح لازم است');
  assert.equal(result.contract.approvalHistory.at(-1).action,'reject');
  assert.equal(canReviewContract(result.contract,manager),false);
+});
+
+test('review edits preserve the submitted content and require a separate decision on the edited version',()=>{
+ const initial={id:'c',status:'final',approvalStatus:'pending',approvalContactIds:['reviewer','other'],
+   approvedContactIds:['other'],approvalHistory:[{action:'approve',actor:{contactId:'other'}}],title:'عنوان اولیه'};
+ assert.equal(saveContractReviewEdit(initial,author,{title:'غیرمجاز'}).ok,false);
+ assert.equal(saveContractReviewEdit({...initial,signedAt:1},manager,{title:'غیرمجاز'}).ok,false);
+ const edited=saveContractReviewEdit(initial,manager,{title:'عنوان اصلاح‌شده',signedAt:1,approvalStatus:'approved'},10).contract;
+ assert.equal(edited.approvalStatus,'pending');
+ assert.deepEqual(edited.approvedContactIds,[]);
+ assert.equal(edited.signedAt,undefined);
+ assert.equal(edited.approvalHistory.at(-1).action,'edit_review');
+ const accepted=transitionContractApproval(edited,'approve',manager).contract;
+ assert.equal(accepted.title,'عنوان اصلاح‌شده');
+ assert.equal(accepted.approvalHistory.at(-1).action,'approve');
+ const returned=transitionContractApproval(edited,'reject',manager,{reason:'موارد دیگر اصلاح شوند'}).contract;
+ assert.equal(returned.title,'عنوان اصلاح‌شده');
+ assert.equal(returned.status,'draft');
 });
