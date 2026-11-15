@@ -329,8 +329,9 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
     },
     onDelete:deletable?()=>{
       if(record.signedAt || ['sent','accepted'].includes(record.accountingStatus)){toast('صورت‌وضعیت در وضعیت فعلی قابل حذف نیست');return;}
-      openConfirm('صورت‌وضعیت حذف شود؟',()=>saveContractHandoff(project.id,record,'delete_statement')
-        .then(onChanged).catch(error=>toast(error.message)),'حذف');
+      openConfirm('آیا می‌خواهید '+title+' را حذف کنید؟',()=>saveContractHandoff(project.id,record,'delete_statement')
+        .then(()=>{onChanged();toast(title+(record.addendumNo?' ('+record.addendumNo+')':'')+' حذف شد.');})
+        .catch(error=>toast(error.message)),'بله',{cancelLabel:'خیر'});
     }:undefined,
   },{onPreview:trigger=>openContractPreview(project,contract,{trigger,documentPreview:{title:'پیش‌نمایش '+title,content:buildDocument()}}),progress});
   heading.className+=' contract-card-heading--nested-addendum';
