@@ -109,16 +109,45 @@ function elapsedShare(entity,day){
   if(end<=start) return now>=start ? 1 : 0;
   return Math.min(1,Math.max(0,(now-start)/(end-start)));
 }
+function completionDay(entity){
+  const explicit=entity.actualFinishDay;
+  const asDate=jalaliDayNumber(explicit);
+  if(asDate!==null) return asDate;
+  const numeric=Number(explicit);
+  if(Number.isFinite(numeric) && numeric>100000) return jalaliDayNumber(new Date(numeric).toLocaleDateString('fa-IR-u-ca-persian',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/-/g,'/'));
+  const stamp=Number(entity.completedAt || entity.completionSubmittedAt || entity.approvedAt);
+  if(!Number.isFinite(stamp)) return null;
+  const formatted=new Intl.DateTimeFormat('en-CA-u-ca-persian',{timeZone:'Asia/Tehran',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(stamp));
+  return jalaliDayNumber(formatted.replaceAll('-','/'));
+}
+function scheduleStatus(entity,day){
+  const end=jalaliDayNumber(entity.scheduleEnd);
+  const now=jalaliDayNumber(day);
+  if(end===null || now===null) return null;
+  const completed=executionStatus(entity)==='approved' || entity.completed===true || entity.done===true || Number.isFinite(Number(entity.actualFinishDay));
+  if(completed){
+    const finished=completionDay(entity);
+    if(!Number.isFinite(finished)) return {text:'تکمیل شد',tone:'done'};
+    const delta=finished-end;
+    if(delta<0) return {text:`${toPersianDigits(Math.abs(delta))} روز زودتر از موعد تکمیل شد`,tone:'early'};
+    if(delta>0) return {text:`با ${toPersianDigits(delta)} روز تأخیر تکمیل شد`,tone:'late'};
+    return {text:'در موعد تکمیل شد',tone:'done'};
+  }
+  const remaining=end-now;
+  if(remaining<0) return {text:`${toPersianDigits(Math.abs(remaining))} روز تأخیر`,tone:'late'};
+  if(remaining>0) return {text:`${toPersianDigits(remaining)} روز زمان باقی مانده است`,tone:'remaining'};
+  return {text:'امروز موعد پایان است',tone:'remaining'};
+}
 function scheduleBar(documentRef,entity,day){
   const share=elapsedShare(entity,day);
   if(share===null)return null;
-  const daysLate=jalaliDayNumber(day)-jalaliDayNumber(entity.scheduleEnd);
-  const overdue=daysLate>0 && executionStatus(entity)!=='approved';
+  const status=scheduleStatus(entity,day);
+  const overdue=status?.tone==='late' && executionStatus(entity)!=='approved' && !entity.completed;
   const bar=documentRef.createElement('progress');
   bar.className='today-schedule-bar'+(overdue?' is-overdue':'');
   bar.max=1;bar.value=share;
-  bar.setAttribute('aria-label',overdue?`${toPersianDigits(daysLate)} روز تأخیر`:'زمان سپری‌شده');
-  return {bar,overdue,daysLate};
+  bar.setAttribute('aria-label',status?.text || 'زمان سپری‌شده');
+  return {bar,status};
 }
 function detailCard(documentRef,className=''){
   const card=documentRef.createElement('section');
@@ -427,11 +456,11 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   if(timing){
     const schedule=documentRef.createElement('div');
     schedule.className='today-card-schedule';
-    if(timing.overdue){
-      const delay=documentRef.createElement('small');
-      delay.className='today-schedule-delay';
-      delay.textContent=`${toPersianDigits(timing.daysLate)} روز تأخیر`;
-      schedule.append(delay);
+    if(timing.status?.text){
+      const label=documentRef.createElement('small');
+      label.className='today-schedule-status is-'+timing.status.tone;
+      label.textContent=timing.status.text;
+      schedule.append(label);
     }
     schedule.append(timing.bar);
     card.append(schedule);
