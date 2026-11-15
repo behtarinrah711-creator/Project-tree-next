@@ -45,7 +45,7 @@ test('saved addenda use the contract card layout and their own status, number an
       assert.ok(menuClickStopped);
       assert.deepEqual(heading.children.map(node=>node.className),['contract-main','contract-created','contract-actions']);
       assert.deepEqual(heading.children[0].children.map(node=>node.textContent),
-        ['الحاقیه قرارداد پیمانکاری جواد قریشی','CTR-1-A01','تصفیه خانه ← فونداسیون']);
+        ['الحاقیه قرارداد پیمانکاری جواد قریشی | فونداسیون','CTR-1-A01','تصفیه خانه ← فونداسیون']);
       assert.equal(status.children[0].textContent,finance?'وضعیت: تأیید شده توسط بخش مالی':'وضعیت: ناقص');
       assert.equal(status.children.at(-1).textContent,'مشاهده قرارداد اصلی');
       const progress=card.children.find(node=>node.className==='contract-progress');

@@ -87,13 +87,19 @@ export function contractRowData(projectId,c){
   return {title,meta,number,created:contractCreatedParts(c.createdAt)};
 }
 
+function contractTitleWithStage(title, path){
+  const stage=String(path||'').split('←').map(part=>part.trim()).filter(Boolean).at(-1);
+  return stage ? title+' | '+stage : title;
+}
+
 export function renderContractCardHeading(project, contract, menu, {titlePrefix="",onPreview,progress}={}){
   const {title,number,created}=contractRowData(project.id,contract);
   const path=contractProjectPath(project,contract);
+  const displayTitle=contractTitleWithStage(title, path);
   const heading=document.createElement('div');
   heading.className='contract-card-heading';
   const main=document.createElement('div'); main.className='contract-main';
-  const t=document.createElement('div'); t.className='contract-title'; t.textContent=titlePrefix ? titlePrefix+' '+title : title;
+  const t=document.createElement('div'); t.className='contract-title'; t.textContent=titlePrefix ? titlePrefix+' '+displayTitle : displayTitle;
   const numberRow=document.createElement('div');numberRow.className='contract-meta contract-number';numberRow.dir='ltr';numberRow.textContent=number;
   main.append(t,numberRow);
   const pathRow=path ? document.createElement('div') : null;
