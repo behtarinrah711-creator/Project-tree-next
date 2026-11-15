@@ -78,8 +78,11 @@ function renderComments(documentRef,item,onChanged,editContext){
   if(comments.length>2){ const more=documentRef.createElement('button'); more.type='button'; more.className='today-show-comments'; more.textContent=`مشاهده ${toPersianDigits(comments.length-2)} نظر قبلی`; more.addEventListener('click',()=>{ expanded=true; paint(); more.remove(); }); host.appendChild(more); }
   return host;
 }
-function historyLabel(type){ return ({started:'شروع شد',start_delayed:'دلیل شروع نشدن ثبت شد',start_cancelled:'شروع لغو شد',report_created:'گزارش ثبت شد',report_edited:'گزارش ویرایش شد',comment_added:'نظر ثبت شد',comment_edited:'نظر ویرایش شد',marked_complete:'انجام‌شده اعلام شد',completed_without_approval:'بدون نیاز به تأیید تکمیل شد',sent_for_approval:'برای تأیید ارسال شد',approval_rejected:'تأیید رد شد',approval_cancelled:'تأیید نهایی لغو شد',returned_to_active:'به فهرست فعال برگشت',completion_withdrawn:'تیک انجام‌شدن برداشته شد',returned_to_previous:'به تب قبلی برگشت',approved:'تأیید نهایی شد'})[type]||type; }
+function historyLabel(type){ return ({odd_job_created:'خرده‌کار ایجاد شد',odd_job_edited:'خرده‌کار ویرایش شد',odd_job_deleted:'خرده‌کار حذف شد',started:'شروع شد',start_delayed:'دلیل شروع نشدن ثبت شد',start_cancelled:'شروع لغو شد',report_created:'گزارش ثبت شد',report_edited:'گزارش ویرایش شد',comment_added:'نظر ثبت شد',comment_edited:'نظر ویرایش شد',marked_complete:'انجام‌شده اعلام شد',completed_without_approval:'بدون نیاز به تأیید تکمیل شد',sent_for_approval:'برای تأیید ارسال شد',approval_rejected:'تأیید رد شد',approval_cancelled:'تأیید نهایی لغو شد',returned_to_active:'به فهرست فعال برگشت',completion_withdrawn:'تیک انجام‌شدن برداشته شد',returned_to_previous:'به تب قبلی برگشت',approved:'تأیید نهایی شد'})[type]||type; }
 function renderHistory(documentRef,entity){ const history=[...(entity.executionHistory||[])];
+  if(entity.oddJobType && entity.createdAt && !history.some(entry=>entry.type==='odd_job_created')){
+    history.push({type:'odd_job_created',at:entity.createdAt,actor:entity.createdBy});
+  }
   const logged=new Set(history.filter(entry=>entry.type==='report_created').map(entry=>entry.reportId));
   for(const report of reportsOf(entity)){
     if(report.createdAt && !logged.has(report.id))history.push({type:'report_created',at:report.createdAt,actor:report.createdBy,reportId:report.id});
@@ -453,17 +456,18 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   const progress=progressCircle(documentRef,entity,{summary:{}});
   progress.onclick=event=>event.stopPropagation();
   heading.append(titles,report,progress);
-  if(item.kind==='standalone' && entity.oddJobType && !approval){
-    card.classList.add('has-oddjob-menu');
+  if(item.kind==='standalone' && entity.oddJobType && !approval && canWriteProjectModule(project.id,'execution:today')){
+    heading.classList.add('has-oddjob-menu');
+    const canDelete=projectPermissionState(project.id,['execution:today']).levels['execution:today']==='full';
     const menu=contractActionsMenu({
       onEdit:()=>openStandaloneWorkSheet({projectId:project.id,existing:entity,onChanged,saveStandalone:draft=>updateStandaloneWork(project.id,draft)}),
-      onDelete:()=>openConfirm('این خرده‌کار حذف شود؟',()=>{
+      onDelete:canDelete?()=>openConfirm('این خرده‌کار حذف شود؟',()=>{
         const result=deleteStandaloneWork(project.id,entity.id);
         if(!result.ok)window.KarhaLegacy?.showToast?.('حذف خرده‌کار انجام نشد');
         else onChanged?.();
-      },'بله',{cancelLabel:'خیر'}),
+      },'بله',{cancelLabel:'خیر'}):undefined,
     });
-    menu.querySelector('.nb-more')?.setAttribute('aria-label','عملیات خرده‌کار');
+    menu.querySelector?.('.nb-more')?.setAttribute('aria-label','عملیات خرده‌کار');
     heading.append(menu);
   }
   card.appendChild(heading);

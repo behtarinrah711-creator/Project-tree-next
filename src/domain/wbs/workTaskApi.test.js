@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createAppDataStore } from '../../data/appDataStore.js';
-import { workTaskApi } from './workTaskApi.js';
+import { createStandaloneWork, deleteStandaloneWork, updateStandaloneWork, workTaskApi } from './workTaskApi.js';
 import { rollupProgress } from './estimate.js';
 import { contractApi } from '../contractApi.js';
 
@@ -262,4 +262,22 @@ test('invited contract editor can save a linked draft without changing the read-
   assert.equal(contractApi.saveDraft('p1',{...linked,activityId:'a2'}).ok,true);
   assert.equal(contractApi.get('p1',linked.id).activityId,'a2');
   assert.deepEqual(store.getSnapshot().projects[0].tasks,before);
+});
+
+test('odd-job creation, edit and deletion preserve ordered history on the saved record',t=>{
+  const store=installFixture();
+  const oldWindow=globalThis.window;
+  t.after(()=>{globalThis.window=oldWindow;});
+  const access={role:'member',permissions:{modules:{'execution:today':'create'}}};
+  globalThis.window={KarhaSaosaWorkspaceAccess:{p1:access}};
+  const job={id:'oddjob-test',title:'تعمیر دستگاه',oddJobType:'سایر',priority:'high',amount:0};
+  assert.equal(createStandaloneWork('p1',job,()=>10).ok,true);
+  assert.equal(updateStandaloneWork('p1',{...job,title:'تعمیر دستگاه کارگاه'},()=>20).ok,true);
+  assert.equal(deleteStandaloneWork('p1',job.id,()=>30).code,'forbidden');
+  access.permissions.modules['execution:today']='full';
+  assert.equal(deleteStandaloneWork('p1',job.id,()=>30).ok,true);
+  const saved=store.getSnapshot().projects[0].standaloneWorks[0];
+  assert.equal(saved.trashed,true);
+  assert.deepEqual(saved.executionHistory.map(({type,at})=>[type,at]),
+    [['odd_job_created',10],['odd_job_edited',20],['odd_job_deleted',30]]);
 });
