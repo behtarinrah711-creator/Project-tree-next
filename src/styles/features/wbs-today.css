@@ -62,10 +62,6 @@
 .wbs-today-frame .today-history summary{min-height:40px;display:flex;align-items:center;justify-content:center;color:#033E8A;font-size:11px;font-weight:600;text-align:center}
 .wbs-today-frame .today-history div{padding:4px 0 8px}
 
-.wbs-today-frame .today-card-summary.has-oddjob-menu,
-.wbs-today-frame .today-task-card.has-oddjob-menu .today-card-summary{grid-template-columns:minmax(0,1fr) 62px 42px 36px;}
-.wbs-today-frame .has-oddjob-menu .nb-project-menu-wrap{justify-self:end;align-self:center;}
-.wbs-today-frame .has-oddjob-menu .nb-more{color:#1565c0;margin:0;}
 .wbs-today-frame .today-card-summary .today-card-titles{align-items:flex-start;padding:0;overflow-wrap:anywhere;}
 .wbs-today-frame .today-card-summary .today-card-titles>*{text-align:right;}
 .today-card-people{display:inline;font-size:11px;color:#4d4741;}
@@ -182,3 +178,11 @@ button.today-report-circle{cursor:pointer;}
 .today-schedule-bar.is-overdue::-moz-progress-bar{background:#b42318;}
 .today-schedule-bar.is-complete::-webkit-progress-value{background:#16763e;}
 .today-schedule-bar.is-complete::-moz-progress-bar{background:#16763e;}
+
+.wbs-today-frame .today-card-summary.has-oddjob-menu{
+  display:grid;direction:rtl;grid-template-columns:minmax(0,1fr) 42px 42px 30px;
+  align-items:center;gap:6px;
+}
+.wbs-today-frame .today-card-summary.has-oddjob-menu > .today-progress-circle{position:relative;inset:auto;}
+.wbs-today-frame .today-card-summary.has-oddjob-menu > .nb-project-menu-wrap{justify-self:end;align-self:center;}
+.wbs-today-frame .today-card-summary.has-oddjob-menu .nb-more{color:#1565c0;margin:0;}

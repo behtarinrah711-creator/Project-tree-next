@@ -1,3 +1,4 @@
+import {currentExecutionActor} from '../../modules/wbs/executionActor.js';
 import {canWriteProjectModule,projectPermissionState} from '../../modules/roleManagement/permissionState.js';
 import { uid } from '../../data/projectFactories.js';
 import { contactRepository } from '../../data/contactRepository.js';
@@ -71,6 +72,16 @@ function predecessorIds(value){
   return [...new Set((Array.isArray(value) ? value : []).map(String).filter(Boolean))];
 }
 
+function oddJobHistory(projectId,work,type,at){
+  const actor=currentExecutionActor(projectRepository.find(projectId),globalThis.window||{});
+  const history=[...(work.executionHistory||[])];
+  if(type!=='odd_job_created' && work.createdAt && !history.some(entry=>entry.type==='odd_job_created')){
+    history.unshift({id:uid(),type:'odd_job_created',at:work.createdAt,actor:work.createdBy});
+  }
+  history.push({id:uid(),type,at,actor});
+  return history;
+}
+
 export function createStandaloneWork(projectId,draft,clock=Date.now){
   if(!canWriteProjectModule(projectId,'execution:today'))return {ok:false,code:'forbidden'};
   if(!ODD_JOB_TYPES.includes(draft.oddJobType) || !/^oddjob-[a-z0-9]+$/.test(draft.id)
@@ -89,7 +100,7 @@ export function createStandaloneWork(projectId,draft,clock=Date.now){
     expenseApproverContactId:draft.expenseApproverContactId,
     expenseApprovalStatus:draft.expenseApproverContactId?'pending':null,
     invoices:(draft.invoices||[]).filter(file=>file.category==='oddjob-invoices' && file.projectId===projectId && file.recordId===draft.id),
-    createdAt:now,updatedAt:now});
+    executionHistory:oddJobHistory(projectId,{},'odd_job_created',now),createdAt:now,updatedAt:now});
   const saved=projectRepository.updateProject(projectId,project=>(project.standaloneWorks||[]).some(work=>work.id===task.id)?project:({...project,standaloneWorks:[...(project.standaloneWorks||[]),task]}));
   if(!saved)return {ok:false,code:'persist'};
   publish(projectId);
@@ -112,7 +123,7 @@ export function updateStandaloneWork(projectId,draft,clock=Date.now){
     const works=project.standaloneWorks||[];
     if(!works.some(work=>work.id===draft.id && !work.trashed))return project;
     found=true;
-    return {...project,standaloneWorks:works.map(work=>work.id===draft.id?{...work,...checked.value,description:String(draft.description||'').trim(),oddJobType:draft.oddJobType,scheduleStart:start,scheduleEnd:end,dueDate:end,expenseApproverContactId:draft.expenseApproverContactId||'',amount:Number(draft.amount)||0,updatedAt:now}:work)};
+    return {...project,standaloneWorks:works.map(work=>work.id===draft.id?{...work,...checked.value,description:String(draft.description||'').trim(),oddJobType:draft.oddJobType,scheduleStart:start,scheduleEnd:end,dueDate:end,expenseApproverContactId:draft.expenseApproverContactId||'',amount:Number(draft.amount)||0,executionHistory:oddJobHistory(projectId,work,'odd_job_edited',now),updatedAt:now}:work)};
   });
   if(!found || !saved)return {ok:false,code:'not_found'};
   publish(projectId);
@@ -120,14 +131,14 @@ export function updateStandaloneWork(projectId,draft,clock=Date.now){
 }
 
 export function deleteStandaloneWork(projectId,id,clock=Date.now){
-  if(!canWriteProjectModule(projectId,'execution:today'))return {ok:false,code:'forbidden'};
+  if(projectPermissionState(projectId,['execution:today']).levels['execution:today']!=='full')return {ok:false,code:'forbidden'};
   const now=clock();
   let found=false;
   const saved=projectRepository.updateProject(projectId,project=>{
     const works=project.standaloneWorks||[];
     if(!works.some(work=>work.id===id && !work.trashed))return project;
     found=true;
-    return {...project,standaloneWorks:works.map(work=>work.id===id?{...work,trashed:true,deletedAt:now,updatedAt:now}:work)};
+    return {...project,standaloneWorks:works.map(work=>work.id===id?{...work,trashed:true,deletedAt:now,executionHistory:oddJobHistory(projectId,work,'odd_job_deleted',now),updatedAt:now}:work)};
   });
   if(!found || !saved)return {ok:false,code:'not_found'};
   publish(projectId);
