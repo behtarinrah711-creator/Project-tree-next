@@ -9,7 +9,7 @@ test('optional decimal quantity keypad shows unit and does not leak decimal mode
   for(const id of ['numpadDisplay','numpadOverlay','numpadBackspace','numpadDoneBtn','numpadCancelBtn','numpadError']) nodes.set(id,element());
   nodes.get('numpadBackspace').after=node=>{decimalAfter='numpadBackspace';nodes.set(node.id,node);};
   const keys=[...'0123456789'].map(d=>({...element(),dataset:{d}}));
-  const documentRef={getElementById:id=>nodes.get(id),createElement:element,querySelectorAll:()=>keys};
+  const documentRef={addEventListener(){},getElementById:id=>nodes.get(id),createElement:element,querySelectorAll:()=>keys};
   const env={documentRef,windowRef:{}};let saved;
   installNumpadBindings(env);
   openNumpadGeneric('12',value=>{saved=value;},{allowDecimal:true,suffix:' مترمربع'},env);
