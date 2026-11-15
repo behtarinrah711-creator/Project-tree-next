@@ -122,7 +122,7 @@ export function renderContractApprovalLists(body,project,group,actor,options){
       if(!normalizeContractSearch([title,meta,path,record.contractNo,record.title].join(' ')).includes(query))continue;
       if(!grouped.has(contract.id))grouped.set(contract.id,{contract,documents:new Map(),at:0,decisions:[]});
       const entry=grouped.get(contract.id);
-      const action=approved?{}:options(record);
+      const action=approved && record!==contract?{}:options(record);
       if(record===contract)entry.action=action;
       else entry.documents.set(record.id,action);
       entry.at=Math.max(entry.at,at||0);

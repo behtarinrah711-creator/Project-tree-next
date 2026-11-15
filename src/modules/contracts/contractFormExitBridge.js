@@ -94,8 +94,8 @@ export function installContractFormExitBridge({windowRef = window} = {}){
   const hasBlockingChild = () => childOpen('searchTemplatePage') || childOpen('numpadOverlay') || childOpen('jalaliPop');
   const hasPendingChanges = () => !!exitSession?.isDirty?.() || !!form.isDirty?.();
 
-  form.open = function(id = null, projectId = null){
-    const opened = originalOpen(id, projectId);
+  form.open = function(id = null, projectId = null, options = null){
+    const opened = originalOpen(id, projectId, options);
     if(!opened) return opened;
 
     const current = form.getState?.();

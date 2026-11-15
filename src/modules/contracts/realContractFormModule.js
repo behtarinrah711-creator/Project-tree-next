@@ -24,6 +24,7 @@ let editingId = null;
 let inlineAddState = null;
 let activeProjectId = null;
 let pendingCompletion = null;
+let reviewEdit=null;
 let confirmingCompletion = false;
 // True only while the current browser entry is owned by this mounted form.
 // A popstate consumes that entry before requestClose runs, so this is ownership
@@ -192,7 +193,9 @@ export function renderContractSavebar({onSave,onComplete,onCancel}){
 
   const complete=document.createElement('button');complete.className='if-complete';complete.textContent='اعلام تکمیل';
   complete.onclick=onComplete;
-  bar.append(save,complete,cancel);
+  bar.append(save);
+  if(onComplete)bar.append(complete);
+  bar.append(cancel);
   return bar;
 }
 
@@ -502,7 +505,7 @@ function renderContractForm() {
   numberInput.id='contractNumberDisplay';
   numberInput.dir='ltr';
 
-  const projectItemRow=state.workTaskId ? ftTextRow(form,'آیتم پروژه',state.projectItemPath || '',()=>{}, {inline:true,readonly:true,placeholder:'توسط سیستم انتخاب شده'})
+  const projectItemRow=state.workTaskId || reviewEdit ? ftTextRow(form,'آیتم پروژه',state.projectItemPath || '',()=>{}, {inline:true,readonly:true,placeholder:'توسط سیستم انتخاب شده'})
     : ftSelectRow(form, 'آیتم پروژه', state.projectItemPath || '', () => openContractPicker('projectItem'), { placeholder: 'انتخاب' });
   markMissing(projectItemRow,!state.projectItemId);
 
@@ -649,8 +652,8 @@ function renderContractForm() {
     actions.innerHTML = '';
     actions.appendChild(renderContractSavebar({
       onSave:()=>realContractFormModule.save(activeProjectId,false),
-      onComplete:()=>realContractFormModule.declareComplete(),
-      onCancel:()=>realContractFormModule.requestClose(),
+      onComplete:reviewEdit?null:()=>realContractFormModule.declareComplete(),
+      onCancel:()=>reviewEdit?realContractFormModule.close(false):realContractFormModule.requestClose(),
     }));
   }
 
@@ -672,6 +675,20 @@ function renderContractForm() {
 function saveDraft() {
   const project=activeProject(activeProjectId);
   if(!project || !state) return false;
+  if(reviewEdit){
+    if(confirmingCompletion)return false;
+    const edit=reviewEdit;
+    confirmingCompletion=true;
+    const changes=structuredClone(state);
+    syncContractAmount(changes);
+    Promise.resolve().then(()=>edit.save(changes)).then(record=>{
+      if(reviewEdit!==edit)return;
+      edit.record=record;
+      dirty=false;
+      realContractFormModule.close(false);
+    }).catch(error=>helper('showToast',error.message)).finally(()=>{confirmingCompletion=false;});
+    return false;
+  }
   const saosa=!!globalThis.window && isSaosaHost(window);
   if(saosa && confirmingCompletion)return false;
   const finish=()=>{
@@ -713,7 +730,7 @@ export const realContractFormModule = {
   commitContractInlineAdd,
   focusInlineAdd,
 
-  open(id = null, projectId = null) {
+  open(id = null, projectId = null, options = null) {
     const project = activeProject(projectId);
     if (!project || !canWriteProjectModule(project.id,'contracts')) return false;
 
@@ -723,6 +740,7 @@ export const realContractFormModule = {
       return false;
     }
 
+    reviewEdit=options;
     editingId = id || null;
     state = realContractDomain.resolveContractDocumentDraft(
       id ? realContractDomain.findProjectContract(id, project) : null,
@@ -900,6 +918,11 @@ export const realContractFormModule = {
   saveDraft,
 
   close(fromPopState = false) {
+    const edit=reviewEdit;
+    reviewEdit=null;
+    const history=edit && window.KarhaContractHistory;
+    const afterPop=edit && !fromPopState && history?.formOwned() && window.KarhaChildHistory?.afterNextPop;
+    if(afterPop)window.KarhaChildHistory.afterNextPop(()=>edit.onReturn(edit.record));
     disposeDocumentPreview?.();disposeDocumentPreview=null;
     pendingCompletion=null;
     state = null;
@@ -908,6 +931,7 @@ export const realContractFormModule = {
     inlineAddState = null;
     activeProjectId = null;
     closeFormShell(fromPopState);
+    if(edit && !afterPop)edit.onReturn(edit.record);
     return true;
   },
 
