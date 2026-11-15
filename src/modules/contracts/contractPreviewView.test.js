@@ -1,16 +1,17 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-globalThis.window={location:{hash:'',search:''}};
+globalThis.window={location:{hash:'',search:''},localStorage:{getItem:()=>null}};
 const {createContractPreviewView}=await import('./contractPreviewView.js');
+const {contractDisplayTitle}=await import('./contractTitle.js');
 const {projectRepository}=await import('../../data/projectRepository.js');
 
 test('reopening a contract from a cached list reads newly saved contact documents',t=>{
-  const previous=projectRepository.getActiveProject;t.after(()=>{projectRepository.getActiveProject=previous;});
+  const previous=projectRepository.find;t.after(()=>{projectRepository.find=previous;});
   const make=()=>({children:[],classList:{add(){},remove(){}},setAttribute(){},append(...x){this.children.push(...x);},appendChild(x){this.children.push(x);},replaceChildren(){this.children=[];}});
   const contract={id:'c',status:'draft',isDraft:true,contractorId:'person',contractorDocuments:[],contractorDocumentsContactId:'person'};
   const cached={id:'p',contracts:[contract],contacts:[{id:'person',nationalityType:'ایرانی',iranianDocumentImages:[]}]};
   const fresh=structuredClone(cached);fresh.contacts[0].iranianDocumentImages=['data:image/jpeg;base64,YQ=='];
-  projectRepository.getActiveProject=()=>fresh;
+  projectRepository.find=id=>id===fresh.id?fresh:null;
   let html;
   const view=createContractPreviewView({documentRef:{createElement:make,body:make()},windowRef:{},mountPrintPage:(_body,preview)=>{html=preview.innerHTML;}});
   view.open(cached,contract);view.close();
@@ -44,7 +45,7 @@ test('contract row preview is read-only, preserves data and closes with header/d
   const page=root.children[0],header=page.children[0];
   assert.match(page.className,/workspace-page--own-section-bar/);
   assert.doesNotMatch(page.className,/\bhidden\b/);
-  assert.equal(header.children[1].textContent,'پیش‌نمایش قرارداد');
+  assert.equal(header.children[1].textContent,contractDisplayTitle(project,contract,{prefix:'پیش‌نمایش'}));
   assert.equal(page.children.length,2);
   assert.match(mounts[0],/Article/);assert.match(mounts[0],/Clause/);assert.match(mounts[0],/Builder/);
   assert.doesNotMatch(mounts[0],/<input|<textarea|contenteditable|<button/);
@@ -79,13 +80,13 @@ test('addendum preview reuses the contract page and renders saved operations and
     documentRef:{createElement:make,body:root},windowRef:{},
     mountPrintPage:(_,preview)=>{markup=preview.innerHTML;},
   });
-  const project={id:'p'};
+  const project={};
   const parent={contractNo:'CTR-1',contractorName:'جواد قریشی',employerName:'کارفرما'};
   view.open(project,{contractNo:'CTR-1-A01',type:'extra',rows:[
     {description:'روز مزد',amount:300},
     {description:'بتن',pricingMode:'quantity',unit:'مترمکعب',quantity:2,unitPrice:50},
   ]},{addendum:{parent}});
-  assert.equal(root.children[0].children[0].children[1].textContent,'پیش‌نمایش الحاقیه');
+  assert.match(root.children[0].children[0].children[1].textContent,/^پیش‌نمایش الحاقیه /);
   assert.match(markup,/شماره الحاقیه: <bdi>CTR-1-A01/);
   assert.match(markup,/قرارداد اصلی: <bdi>CTR-1<\/bdi>/);
   assert.match(markup,/contract-document-quantity/);
@@ -94,5 +95,5 @@ test('addendum preview reuses the contract page and renders saved operations and
   assert.match(markup,/جمع کل عملیات‌ها<\/b><\/td><td><b>۴۰۰/);
   view.open(project,parent,{frozen:true});
   assert.equal(root.children.length,1);
-  assert.equal(root.children[0].children[0].children[1].textContent,'پیش‌نمایش قرارداد');
+  assert.match(root.children[0].children[0].children[1].textContent,/^پیش‌نمایش قرارداد /);
 });
