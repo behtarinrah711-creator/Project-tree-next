@@ -5,14 +5,13 @@ import {projectRepository} from '../../data/projectRepository.js';
 import { todayRepository } from '../../data/todayRepository.js';
 import { canWriteProjectModule, projectPermissionState } from '../roleManagement/permissionState.js';
 import { todayApi, COMMENT_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
-import { collectStandaloneWorks, dailyExecutionStatus, DAILY_EXECUTION_LABELS, contractorForItem, executionStatus, itemsForMode, jalaliDayNumber, remainingLabel, TODAY_MODES, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
+import { collectStandaloneWorks, executionWorkKey, dailyExecutionStatus, DAILY_EXECUTION_LABELS, contractorForItem, executionStatus, itemsForMode, jalaliDayNumber, remainingLabel, TODAY_MODES, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
 import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { currentExecutionActor, isExecutionAssignee } from './executionActor.js';
 import { appendReportPhotos, openDailyExecutionReport, progressCircle, todayReportOf } from './dailyExecutionReport.js';
 import { fetchFile } from '../files/fileApi.js';
 import { openFileViewer } from '../files/fileViewer.js';
-import { executionWorkKey } from '../reports/dailyExecutionReportsView.js';
 
 export const TODAY_ICON = 'M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v255l-80 80v-175H200v400h248l80 80H200Zm0-560h560v-80H200v80Zm0 0v-80 80ZM662-60 520-202l56-56 85 85 170-170 56 57L662-60Z';
 const LABELS = Object.freeze({ overdue:'عقب‌افتاده', today:'امروز', future:'آینده', pending:'تکمیل', unscheduled:'بی زمان' });
@@ -110,6 +109,17 @@ function elapsedShare(entity,day){
   if(end<=start) return now>=start ? 1 : 0;
   return Math.min(1,Math.max(0,(now-start)/(end-start)));
 }
+function scheduleBar(documentRef,entity,day){
+  const share=elapsedShare(entity,day);
+  if(share===null)return null;
+  const daysLate=jalaliDayNumber(day)-jalaliDayNumber(entity.scheduleEnd);
+  const overdue=daysLate>0 && executionStatus(entity)!=='approved';
+  const bar=documentRef.createElement('progress');
+  bar.className='today-schedule-bar'+(overdue?' is-overdue':'');
+  bar.max=1;bar.value=share;
+  bar.setAttribute('aria-label',overdue?`${toPersianDigits(daysLate)} روز تأخیر`:'زمان سپری‌شده');
+  return {bar,overdue,daysLate};
+}
 function detailCard(documentRef,className=''){
   const card=documentRef.createElement('section');
   card.className='today-detail-card'+(className?' '+className:'');
@@ -179,12 +189,10 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
   const remain=documentRef.createElement('strong');
   remain.textContent=heroRemaining(entity,day)||'بی‌زمان';
   schedule.append(scheduleLabel,remain);
-  const share=elapsedShare(entity,day);
-  if(share!==null){
-    const bar=documentRef.createElement('progress');
-    bar.max=1;bar.value=share;
-    bar.setAttribute('aria-label','زمان سپری‌شده');
-    schedule.append(bar,detailRow(documentRef,'شروع '+formatDate(entity.scheduleStart),'پایان '+formatDate(entity.scheduleEnd)));
+  const timing=scheduleBar(documentRef,entity,day);
+  if(timing){
+    if(timing.overdue)remain.className='today-schedule-delay';
+    schedule.append(timing.bar,detailRow(documentRef,'شروع '+formatDate(entity.scheduleStart),'پایان '+formatDate(entity.scheduleEnd)));
   }
   const assignee=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.assigneeContactId||''));
   const approver=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.approvalContactId||''));
@@ -368,7 +376,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   heading.className='today-card-heading today-card-summary';
   const {entity}=item;
   const titles=linkButton(documentRef,'today-card-titles','');
-  titles.innerHTML=`<strong><small class="wbs-type-chip ${TYPE_CLASSES.get(entity.type)||'type-7'}">${esc(entity.oddJobType||entity.type||item.work.type||'کار')}</small> ${esc(entity.title||entity.text||'')}</strong><span>${esc(item.path.join(' · '))}</span>`;
+  titles.innerHTML=`<strong><small class="wbs-type-chip ${TYPE_CLASSES.get(entity.type)||'type-7'}">${esc(entity.oddJobType||entity.type||item.work?.type||'کار')}</small> ${esc(entity.title||entity.text||'')}</strong><span>${esc(item.path.join(' · '))}</span>`;
   const assignee=(project.contacts||[]).find(contact=>!contact.trashed && String(contact.id)===String(entity.assigneeContactId));
   const contractor=contractorForItem(project,item).contact;
   if(assignee || contractor){
@@ -399,16 +407,15 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   const current=dailyExecutionStatus(entity,today);
   const status=current.reasonId==='officialHoliday'?'holiday':current.status;
   const saved=!!todayReportOf(entity,today);
-  const currentActor=currentExecutionActor(project);
   const canReport=!approval && today===tehranTodayJalali() && canWriteProjectModule(project.id,'execution:today')
-    && isExecutionAssignee(entity,currentActor) && !['approved','pending_approval'].includes(executionStatus(entity));
+    && isExecutionAssignee(entity,currentExecutionActor(project)) && !['approved','pending_approval'].includes(executionStatus(entity));
   const report=documentRef.createElement(canReport?'button':'span');
   report.className='today-report-circle is-'+status+(saved?' is-saved':'');
   report.textContent='گزارش';
   report.setAttribute('aria-label',(status==='holiday'?'تعطیل رسمی':DAILY_EXECUTION_LABELS[status])+'، '+(saved?'گزارش ثبت شده':'بدون گزارش'));
   report.onclick=event=>{
     event.stopPropagation();
-    if(canReport)openDailyExecutionReport({projectId:project.id,item,actor:currentActor,day:today,statusControls:true,
+    if(canReport)openDailyExecutionReport({projectId:project.id,item,actor:currentExecutionActor(project),day:today,statusControls:true,
       onChanged,onReturn:returnToCalendar,onSubmitted(updated){if(item.kind==='standalone')standaloneMode='pending';else activeMode=timeState(updated,tehranTodayJalali());}});
   };
   if(canReport)report.type='button';
@@ -416,6 +423,19 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   progress.onclick=event=>event.stopPropagation();
   heading.append(titles,report,progress);
   card.appendChild(heading);
+  const timing=scheduleBar(documentRef,entity,today);
+  if(timing){
+    const schedule=documentRef.createElement('div');
+    schedule.className='today-card-schedule';
+    if(timing.overdue){
+      const delay=documentRef.createElement('small');
+      delay.className='today-schedule-delay';
+      delay.textContent=`${toPersianDigits(timing.daysLate)} روز تأخیر`;
+      schedule.append(delay);
+    }
+    schedule.append(timing.bar);
+    card.append(schedule);
+  }
   return card;
 }
 

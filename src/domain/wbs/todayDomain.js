@@ -148,3 +148,7 @@ export function executionItemsOnDay(items,day){
       || (entity.executionHistory||[]).some(entry=>entry?.type==='daily_status' && entry.day===day);
   });
 }
+
+export function executionWorkKey({kind,workId,id}){
+  return JSON.stringify([kind,String(workId),String(id)]);
+}

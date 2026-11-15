@@ -21,9 +21,13 @@ export function renderContractProgressCircle(documentRef,contract,project,onClic
   const count=new Intl.NumberFormat('fa-IR');
   const value=count.format(completed)+' از '+count.format(steps.length);
   const next=steps.find(step=>!step.done);
+  const latestDecision=(contract.approvalHistory||[]).findLast(event=>['reject','withdraw_submission','cancel_completion','revoke','submit','approve'].includes(event.action));
+  const rejected=completed===1 && (contract.accountingStatus==='rejected' ||
+    (['unapproved','returned'].includes(contract.approvalStatus) && latestDecision?.action==='reject'));
   const circle=progressCircle(documentRef,{progress:completed/steps.length*100},{
-    onClick,summary:{value:next?value:'✓',label:'پیشرفت '+(contract.statementType?'صورت‌وضعیت':contract.parentContractId?'الحاقیه':'قرارداد')+': '+value+' مرحله'+(next?'؛ مرحله بعد: '+next.label:'؛ تکمیل شده')},
+    onClick,summary:{value:next?value:'✓',label:'پیشرفت '+(contract.statementType?'صورت‌وضعیت':contract.parentContractId?'الحاقیه':'قرارداد')+': '+value+' مرحله'+(rejected?'؛ رد شده':'')+(next?'؛ مرحله بعد: '+next.label:'؛ تکمیل شده')},
   });
+  if(rejected)circle.className+=' contract-progress-circle--rejected';
   if(!next)circle.className+=' contract-progress-circle--complete';
   return circle;
 }

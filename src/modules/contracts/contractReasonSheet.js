@@ -28,6 +28,7 @@ export function openContractReasonSheet({title,saveLabel='ذخیره',historyKey
       return false;
     },
   });
+  sheet.classList.add('contract-reason-sheet');
   const save=sheet.querySelector('.wbs-sheet-save');
   const updateCounter=()=>{
     const length=reason.value.trim().length;

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 globalThis.window={location:{hash:'',search:''}};
-const {contractProgressSteps,renderContractProgress}=await import('./contractProgressView.js');
+const {contractProgressSteps,renderContractProgress,renderContractProgressCircle}=await import('./contractProgressView.js');
 test('six-stage progress follows creation, completion, approval and revocation',()=>{
  const c={id:'c',status:'draft',isDraft:true,contractApproverContactIds:['reviewer']};
  const states=()=>contractProgressSteps(c).map(s=>s.done);
@@ -35,4 +35,14 @@ test('financial approval completes the last milestone and rejection returns to c
  assert.deepEqual(contractProgressSteps(c).map(step=>step.done),[true,true,true,true,true,true]);
  assert.equal(contractProgressSteps({...c,accountingStatus:'sent'}).at(-1).done,false);
  assert.deepEqual(contractProgressSteps({...c,status:'draft',isDraft:true,approvalStatus:null,signedAt:null,signedFiles:[],sentToAccountingAt:null,accountingStatus:'rejected'}).map(step=>step.done),[true,false,false,false,false,false]);
+});
+
+test('rejected contracts use the red ring until completion is declared again',()=>{
+ const doc={createElement:()=>({className:'',setAttribute(){},appendChild(){}})};
+ const draft={id:'c',status:'draft',isDraft:true};
+ const ring=record=>renderContractProgressCircle(doc,record).className;
+ assert.doesNotMatch(ring(draft),/rejected/);
+ assert.match(ring({...draft,approvalStatus:'unapproved',approvalHistory:[{action:'reject'}]}),/rejected/);
+ assert.match(ring({...draft,accountingStatus:'rejected'}),/rejected/);
+ assert.doesNotMatch(ring({...draft,status:'final',isDraft:false,accountingStatus:'rejected'}),/rejected/);
 });
