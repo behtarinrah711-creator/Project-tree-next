@@ -1719,7 +1719,6 @@ textarea.contract-project-item-input{
 .contract-real-print-preview{
   position:absolute!important;
   top:0;
-  left:50%;
   width:794px!important;
   min-height:1123px!important;
   height:auto!important;
@@ -1731,7 +1730,6 @@ textarea.contract-project-item-input{
   box-sizing:border-box!important;
   overflow:visible!important;
   direction:rtl;
-  transform-origin:top center;
   color:#202124!important;
   font-family:IRANSansX,IRANSans,Tahoma,sans-serif!important;
   font-size:13px!important;
@@ -1760,7 +1758,8 @@ textarea.contract-project-item-input{
 
 /* Shared A4 pagination, also copied from CSSOM into standalone exports. */
 
-.contract-pages{width:794px;direction:rtl;color:#202124;font-family:IRANSansX,Tahoma,sans-serif;font-size:13px;line-height:1.7;position:absolute;top:0;left:50%;transform-origin:top center;}
+.contract-pages{width:794px;direction:rtl;color:#202124;font-family:IRANSansX,Tahoma,sans-serif;font-size:13px;line-height:1.7}
+.ctf-preview-viewport > :is(.ctf-preview,.contract-pages){position:absolute;top:0;transform-origin:top left;}
 .contract-sheet{position:relative;width:794px;height:1123px;box-sizing:border-box;padding:76px;background:#fff;break-after:page;margin-bottom:20px}
 .contract-sheet:last-child{break-after:auto;margin-bottom:0}
 .contract-sheet:before{content:'';position:absolute;inset:38px;border:1px solid #777;pointer-events:none}

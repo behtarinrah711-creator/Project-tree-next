@@ -26,7 +26,7 @@ test('all method deducts proportionally and preserves descriptions on recalculat
  s.retentionMethod='first';
  assert.deepEqual(syncPaymentStages(s).map(x=>x.paymentAmount),[15000000,25000000,25000000,25000000]);
  assert.equal(s.paymentStages[0].description,'شرط اول');
- assert.match(contractDocumentMarkup(s),/آخرین صورت‌وضعیت/);
+ assert.match(contractDocumentMarkup(s),/پس از تحویل قطعی کار/);
 });
 test('calculated UI only allows description edits and has no add/delete or numeric buttons',()=>{
  const old=globalThis.document;

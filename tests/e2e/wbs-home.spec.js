@@ -345,7 +345,7 @@ test('Planning contains tree, timeline and estimate while Execution and Reports 
   await expect(choice.locator('.stpl-row-detail')).toHaveText(['CTR-TEST-0001 | آرماتوربندی','فونداسیون']);
   await choice.click();
   const form=page.getByRole('dialog',{name:'ثبت الحاقیه'});
-  await expect(form.locator('.contract-card-heading .contract-title')).toHaveText('قرارداد پیمانکاری مهندس احمدی');
+  await expect(form.locator('.contract-card-heading .contract-title')).toHaveText('قرارداد پیمانکاری مهندس احمدی | اجرای ریشه دیوار برشی');
   await expect(form.locator('.contract-created-time')).toBeVisible();
   await form.getByRole('button',{name:'عملیات قرارداد'}).click();
   await expect(form.getByRole('menuitem')).toHaveCount(1);

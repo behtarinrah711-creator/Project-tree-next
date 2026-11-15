@@ -67,25 +67,16 @@ function ctfFocus(selector){ setTimeout(()=>{const el=document.querySelector(sel
 export function mountContractPrintPage(body,page,viewportClass=''){
   const viewport=document.createElement('div');
   viewport.className='ctf-preview-viewport'+(viewportClass?' '+viewportClass:'');
-  viewport.style.direction='ltr';
   const source=page;
   const paginated=!!viewportClass;
-  const place=target=>{
-    target.style.position='absolute';
-    target.style.top='0';
-    target.style.left='50%';
-    target.style.transformOrigin='top center';
-  };
-  if(paginated){page=paginateContract(source);place(page);}
+  if(paginated)page=paginateContract(source);
   viewport.appendChild(page);
   body.appendChild(viewport);
   const resize=()=>{
     const available=Math.max(0,viewport.clientWidth);
     const scale=Math.min(1,available/794);
-    page.style.left='50%';
-    page.style.marginLeft=(-(794*scale)/2)+'px';
+    page.style.left=Math.max(0,(available-794*scale)/2)+'px';
     page.style.transform='scale('+scale+')';
-    page.style.transformOrigin='top center';
     viewport.style.height=Math.ceil(Math.max(1123,page.scrollHeight,page.offsetHeight)*scale)+'px';
   };
   if(previewResizeObserver) previewResizeObserver.disconnect();
@@ -97,7 +88,7 @@ export function mountContractPrintPage(body,page,viewportClass=''){
   requestAnimationFrame(resize);
   if(paginated) document.fonts?.ready.then(()=>{
     if(!viewport.isConnected)return;
-    const updated=paginateContract(source);place(updated);
+    const updated=paginateContract(source);
     previewResizeObserver?.unobserve(page);page.replaceWith(updated);page=updated;previewResizeObserver?.observe(page);resize();
   });
   return viewport;
