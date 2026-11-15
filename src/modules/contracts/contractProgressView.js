@@ -2,6 +2,19 @@ import {progressCircle} from '../wbs/dailyExecutionReport.js';
 import {contractProgressSteps} from '../../domain/contractProgress.js';
 export {contractProgressSteps};
 
+const progressRecords=new WeakMap();
+const recordKind=record=>record.statementType?'statement':record.parentContractId?'addendum':'contract';
+
+export function refreshOpenContractProgress(documentRef,project,record){
+  const sheet=documentRef?.getElementById?.('wbsSheetOverlay');
+  for(const list of sheet?.querySelectorAll('.contract-progress') || []){
+    const match=progressRecords.get(list);
+    if(match?.projectId===project?.id && String(match?.recordId)===String(record.id) && match.kind===recordKind(record)){
+      list.replaceWith(renderContractProgress(documentRef,record,project));
+    }
+  }
+}
+
 export function renderContractProgressCircle(documentRef,contract,project,onClick){
   const steps=contractProgressSteps(contract,project);
   const completed=steps.filter(step=>step.done).length;
@@ -30,6 +43,7 @@ export function renderContractProgress(documentRef,contract,project){
     const dot=documentRef.createElement('span');dot.className='contract-progress-dot';dot.setAttribute('aria-hidden','true');
     item.append(label,dot);list.appendChild(item);
   });
+  if(project)progressRecords.set(list,{projectId:project.id,recordId:contract.id,kind:recordKind(contract)});
   list.onclick=event=>event.stopPropagation();
   return list;
 }

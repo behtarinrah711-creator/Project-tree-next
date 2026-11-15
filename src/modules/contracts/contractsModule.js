@@ -261,6 +261,8 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
         return row;
       }
       if(!finance){
+      statusSheetBody=root=>{
+      const c=statusRecord;
       const statusRow=renderContractWorkflowRow(c);
       const run=(action,options={})=>{
         const result=contractApi.review(id,c.id,action,actor,options);
@@ -283,9 +285,8 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
         const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent=(c.approvalHistory?.at(-1)?.action==='reject'?'علت رد: ':'علت لغو تأیید: ')+c.approvalRejectionReason;statusRow.appendChild(reason);
       }
       if(c.financeRejection?.reason && c.accountingStatus==='rejected'){const reason=document.createElement('div');reason.className='contract-rejection-reason';reason.textContent='دلیل رد توسط بخش مالی: '+c.financeRejection.reason;statusRow.appendChild(reason);}
-      statusSheetBody=root=>{
         root.append(statusRow,renderContractProgress(document,c,p));
-        const signedSection=renderContractSignedSection(p,c,{onChanged});
+        const signedSection=renderContractSignedSection(p,statusRecord,{onChanged,onReturn:()=>{statusRecord=contractApi.get(id,c.id)||statusRecord;openStatus();}});
         if(signedSection)root.appendChild(signedSection);
       };
       const documents=showDetails?renderContractDocuments(p,c):renderContractAddendaRow(p,c);
