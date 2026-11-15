@@ -16,7 +16,7 @@ import { isExpanded, toggleExpanded } from './wbsExpandState.js';
 import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
 import { predecessorField } from './predecessorField.js';
 
-const PRIORITY_LABELS = Object.freeze({ low:'کم', normal:'عادی', high:'زیاد' });
+const PRIORITY_LABELS = Object.freeze({ low:'بحرانی', normal:'عادی', high:'مهم' });
 const TYPE_CLASSES = new Map([
   ['پیمانکار','type-1'], ['خرید','type-2'], ['نیروی کار','type-3'], ['حمل و نقل','type-4'],
   ['خدمات','type-5'], ['پیگیری','type-6'], ['ماشین آلات','type-7'],
