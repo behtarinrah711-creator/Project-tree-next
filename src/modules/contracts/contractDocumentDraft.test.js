@@ -33,7 +33,9 @@ test('document heading uses stacked metadata and one continuous introduction wit
   const intro=html.match(/<p class="doc-parties doc-introduction">(.*?)<\/p>/s)[1];
   assert.ok(!intro.includes('...'));
   assert.ok(!intro.includes('<div'));
-  for(const value of ['کارفرما','پیمانکار','شیراز','محوطه','فونداسیون','۱۰۰٬۰۰۰','۱۰٬۰۰۰','تحویل موقت','یک سال'])assert.ok(intro.includes(value),value);
+  assert.ok(intro.includes('به‌عنوان پیمانکار در بخش محوطه'));
+  assert.ok(!intro.includes('فونداسیون'));
+  for(const value of ['کارفرما','پیمانکار','شیراز','محوطه','۱۰۰٬۰۰۰','۱۰٬۰۰۰','تحویل موقت','یک سال'])assert.ok(intro.includes(value),value);
   assert.ok(html.indexOf('شماره قرارداد:')<html.indexOf('تاریخ قرارداد:'));
   assert.ok(html.indexOf('تاریخ قرارداد:')<html.indexOf('doc-title'));
   assert.ok(!html.includes('doc-line'));
