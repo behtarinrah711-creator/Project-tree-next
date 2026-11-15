@@ -17,9 +17,15 @@
   }
   .numpad-display{
     font-family:'JetBrains Mono',monospace;font-size:24px;font-weight:600;color:var(--text);
-    text-align:center;padding:14px 8px;margin-bottom:16px;border-bottom:2px solid var(--divider);
+    text-align:center;padding:14px 8px;margin-bottom:8px;border-bottom:2px solid var(--divider);
     overflow-wrap:anywhere;
   }
+  .numpad-paste{
+    display:block;width:100%;margin:0 0 14px;padding:8px 12px;border:1px solid var(--divider);
+    border-radius:10px;background:var(--bg);color:var(--primary,#00075d);font:inherit;font-size:14px;
+    font-weight:600;cursor:pointer;text-align:center;
+  }
+  .numpad-paste:active{background:var(--divider);}
   .numpad-display.empty{color:var(--text-dim);font-size:16px;font-weight:400;}
   .numpad-error{display:none;color:#b3261e;text-align:center;font-size:12px;margin:-8px 0 12px;direction:rtl;}
   .numpad-error.is-visible{display:block;}

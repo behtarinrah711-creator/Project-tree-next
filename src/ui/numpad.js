@@ -70,6 +70,25 @@ function showNumpadError(message, { documentRef = document } = {}){
   error.classList.toggle('is-visible', Boolean(message));
 }
 
+function applyPastedText(text, { documentRef = document } = {}){
+  if(!text) return;
+  const cleaned = toEnglishDigits(String(text)).replace(numpadOpts.allowDecimal ? /[^\d.]/g : /[^\d]/g, '');
+  if(!cleaned){
+    showNumpadError('محتوای قابل‌چسباندن عددی یافت نشد', { documentRef });
+    return;
+  }
+  const max = numpadOpts.maxLen || 16;
+  let next = cleaned;
+  if(numpadOpts.allowDecimal){
+    const parts = next.split('.');
+    next = parts[0] + (parts.length > 1 ? '.' + parts.slice(1).join('') : '');
+  }
+  if(next.length > max) next = next.slice(0, max);
+  numpadBuffer = next;
+  updateNumpadDisplay({ documentRef });
+  showNumpadError('', { documentRef });
+}
+
 export function installNumpadBindings({ documentRef, windowRef = globalThis } = {}){
   if(!documentRef) return;
   if(installed) return;
@@ -90,6 +109,25 @@ export function installNumpadBindings({ documentRef, windowRef = globalThis } = 
     updateNumpadDisplay({ documentRef });
     showNumpadError('', { documentRef });
   };
+  const pasteBtn = documentRef.getElementById('numpadPasteBtn');
+  if(pasteBtn){
+    pasteBtn.onclick = async ()=>{
+      try{
+        const text = await windowRef.navigator.clipboard?.readText?.();
+        if(text) applyPastedText(text, { documentRef });
+        else showNumpadError('دسترسی به کلیپ‌بورد ممکن نشد. از Ctrl+V استفاده کنید.', { documentRef });
+      }catch(_err){
+        showNumpadError('دسترسی به کلیپ‌بورد ممکن نشد. از Ctrl+V استفاده کنید.', { documentRef });
+      }
+    };
+  }
+  documentRef.addEventListener('paste', event=>{
+    if(overlay.classList.contains('hidden')) return;
+    const text = event.clipboardData?.getData('text') || '';
+    if(!text) return;
+    event.preventDefault();
+    applyPastedText(text, { documentRef });
+  });
   const done = documentRef.getElementById('numpadDoneBtn');
   if(done) done.onclick = ()=>{
     const validationError = typeof numpadOpts.validate === 'function' ? numpadOpts.validate(numpadBuffer) : '';
