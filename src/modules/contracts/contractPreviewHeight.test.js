@@ -14,6 +14,8 @@ test('scaled preview reserves the entire document height, including reflow and f
     const page={style:{},scrollHeight:3600,offsetHeight:3600};
     mountContractPrintPage({appendChild(){}},page);
     assert.equal(viewport.style.height,'1800px');
+    assert.equal(page.style.left,'0px');
+    assert.equal(page.style.transform,'scale(0.5)');
     assert.ok(observed.includes(page));
     page.scrollHeight=4200;resize();
     assert.equal(viewport.style.height,'2100px');
