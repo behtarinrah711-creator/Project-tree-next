@@ -407,7 +407,8 @@ test('deleting an addendum requires full contract access and retains its number'
   stored.status='final';
   stored.approvalStatus='pending';
   assert.equal((await f.call(remove,path)).status,409);
-  stored.approvalStatus=null;
+  Object.assign(stored,{status:'draft',isDraft:true,approvalStatus:null,accountingStatus:'rejected',
+    accountingPackage:{contract:{id}}});
   const result=await f.call(remove,path);
   assert.equal(result.status,200);
   assert.equal(result.result.contract.trashed,true);
