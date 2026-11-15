@@ -184,3 +184,20 @@ button.today-report-circle{cursor:pointer;}
 .wbs-today-frame .today-card-summary.has-oddjob-menu > .today-progress-circle{position:relative;inset:auto;}
 .wbs-today-frame .today-card-summary.has-oddjob-menu > .nb-project-menu-wrap{justify-self:end;align-self:center;}
 .wbs-today-frame .today-card-summary.has-oddjob-menu .nb-more{color:#1565c0;margin:0;}
+
+.daily-execution-filters{display:flex;gap:8px;align-items:center;}
+.daily-execution-filters input[type="search"]{flex:1;min-width:0;}
+.daily-execution-filters .filter-trigger{flex:none;padding:0 12px;display:flex;align-items:center;gap:4px;}
+.daily-execution-filters .filter-badge{background:#c62828;color:#fff;border-radius:10px;padding:1px 6px;font-size:11px;margin-inline-start:4px;}
+.daily-filter-body{padding:0;}
+.daily-filter-body .filter-breadcrumb{padding:12px 16px;border-bottom:1px solid #eee;display:flex;align-items:center;gap:6px;font-size:13px;}
+.daily-filter-body .filter-stage-back{border:0;background:transparent;font-size:18px;}
+.daily-filter-body .filter-stage-search{margin:12px 16px;width:calc(100% - 32px);}
+.daily-filter-body .filter-stage-list{padding:0 8px;}
+.daily-filter-body .filter-stage-row{display:flex;justify-content:space-between;align-items:center;width:100%;padding:14px 12px;border:0;border-bottom:1px solid #f0f0f0;background:transparent;text-align:right;font:inherit;}
+.daily-filter-body .filter-stage-package{font-size:11px;color:#1565c0;border:0;background:transparent;}
+.daily-filter-body .filter-apply-bar{position:sticky;bottom:0;padding:12px 16px;background:#fff;border-top:1px solid #eee;}
+.daily-filter-body .filter-apply-btn{width:100%;padding:12px;background:#c62828;color:#fff;border:0;border-radius:8px;font-weight:600;}
+.daily-filter-body .filter-option-row{display:flex;justify-content:space-between;align-items:center;width:100%;padding:16px;border:0;border-bottom:1px solid #eee;background:transparent;font:inherit;text-align:right;}
+.daily-filter-body .filter-clear-btn{width:100%;padding:16px;border:0;background:transparent;color:#c62828;font-weight:600;}
+.daily-filter-body .filter-select-label{color:#1565c0;}

@@ -3,9 +3,9 @@ import { appendReportPhotos } from '../wbs/dailyExecutionReport.js';
 import { executionWorkKey, executionReportDay, jalaliDayNumber, tehranTodayJalali } from '../../domain/wbs/todayDomain.js';
 import { formatJalaliDisplay, openJalaliPicker } from '../../ui/jalali.js';
 import { toEnglishDigits, toPersianDigits } from '../../ui/digits.js';
+import { openWbsSheet, closeWbsSheet } from '../wbs/wbsSheet.js';
 
 const clock = new Intl.DateTimeFormat('fa-IR', { timeZone:'Asia/Tehran', hour:'2-digit', minute:'2-digit' });
-const ALL_WORKS = '';
 const kindLabel = { progress:'گزارش پیشرفت', start_delayed:'شروع نشد' };
 
 export {executionWorkKey};
@@ -19,6 +19,9 @@ export function collectDailyExecutionReports(project){
       item:{...ref,entity,path},
       title:entity.title || entity.text || 'کار',
       path:path.join(' ← '),
+      contractorContactId: entity.contractorContactId || '',
+      activityIds: entity.activityIds || (entity.activityId ? [entity.activityId] : []),
+      templateId: entity.templateId || '',
     };
     for(const report of entity.executionReports || []){
       if(!report || report.trashed) continue;
@@ -56,20 +59,72 @@ function searchable(value){
   return toEnglishDigits(String(value ?? '')).replaceAll('ي','ی').replaceAll('ك','ک').replace(/\s|\u200c/g,'').toLowerCase();
 }
 
-export function filterDailyExecutionReports(rows, { work, query, firstDay, lastDay }){
+export function filterDailyExecutionReports(rows, filters = {}){
+  const { query, work, selectedWorkKeys, contractorId, activityId, templateId, fromDay=filters.firstDay, toDay=filters.lastDay } = filters;
   const search = searchable(query);
+  const keySet = selectedWorkKeys && selectedWorkKeys.size ? selectedWorkKeys : work ? new Set([work]) : null;
   return rows.filter(row=>{
     const day = jalaliDayNumber(row.day);
-    return (!work || row.work.key===work)
-      && (firstDay == null || day>=firstDay)
-      && (lastDay == null || day<=lastDay)
-      && [row.work.title,row.work.path,row.description].some(value=>searchable(value).includes(search));
+    if(keySet && !keySet.has(row.work.key)) return false;
+    if(contractorId && String(row.work.contractorContactId) !== String(contractorId)) return false;
+    if(activityId && !(row.work.activityIds || []).map(String).includes(String(activityId))) return false;
+    if(templateId && String(row.work.templateId) !== String(templateId)) return false;
+    if(fromDay != null && day < fromDay) return false;
+    if(toDay != null && day > toDay) return false;
+    if(search && ![row.work.title, row.work.path, row.description].some(value=>searchable(value).includes(search))) return false;
+    return true;
   });
 }
 
 function counts(rows){
   const delays = rows.filter(row=>row.kind==='start_delayed').length;
   return `${toPersianDigits(rows.length-delays)} گزارش پیشرفت · ${toPersianDigits(delays)} ثبت دلیل شروع نشدن`;
+}
+
+function buildStageTree(project){
+  const tree = [];
+  function walk(nodes, parentPath = []){
+    return (nodes || []).filter(n => n && !n.trashed).map(node => {
+      const title = node.title || node.text || 'بدون نام';
+      const path = [...parentPath, title];
+      const children = walk(node.subtasks, path);
+      const works = (node.workTasks || []).filter(t => t && !t.trashed).map(t => ({
+        key: executionWorkKey({ kind:'task', workId:node.id, id:t.id }),
+        title: t.title || t.text || 'کار',
+        path: [...path, t.title || t.text].join(' ← '),
+        isWork: true,
+      }));
+      return {
+        id: node.id,
+        title,
+        path: path.join(' ← '),
+        children,
+        works,
+        isStage: true,
+      };
+    });
+  }
+  tree.push(...walk(project?.tasks || []));
+  // standalone
+  for(const work of project?.standaloneWorks || []){
+    if(!work || work.trashed) continue;
+    tree.push({
+      id: work.id,
+      title: work.title || work.text || 'خرده کار',
+      path: work.title || '',
+      children: [],
+      works: [{ key: executionWorkKey({ kind:'standalone', workId:work.id, id:work.id }), title: work.title || 'کار', path:'', isWork:true }],
+      isStage: false,
+    });
+  }
+  return tree;
+}
+
+function collectAllWorkKeys(node){
+  const keys = new Set();
+  if(node.works) node.works.forEach(w => keys.add(w.key));
+  (node.children || []).forEach(c => collectAllWorkKeys(c).forEach(k => keys.add(k)));
+  return keys;
 }
 
 export function renderDailyExecutionReports(project, documentRef = document, requestedWork = ''){
@@ -79,73 +134,74 @@ export function renderDailyExecutionReports(project, documentRef = document, req
     if(text !== undefined) node.textContent = text;
     return node;
   };
-  const select = (label, options) => {
-    const control = element('select','wbs-input');
-    control.setAttribute('aria-label',label);
-    for(const [value,title] of options){
-      const option = element('option','',title);
-      option.value = value;
-      control.appendChild(option);
-    }
-    return control;
-  };
 
   const rows = collectDailyExecutionReports(project);
-  const works = new Map(rows.map(row=>[row.work.key,row.work]));
+  const stageTree = buildStageTree(project);
+
+  // Filter state
+  let selectedWorkKeys = new Set(requestedWork ? [requestedWork] : []);
+  let contractorId = '';
+  let activityId = '';
+  let templateId = '';
+  let fromDate = '';
+  let toDate = '';
+  let query = '';
+
   const frame = element('section','wbs-view-frame wbs-today-frame daily-execution-reports');
   const filters = element('div','daily-execution-filters');
+
   const search = element('input','wbs-input');
   search.type = 'search';
   search.placeholder = 'جست‌وجوی کار، مسیر یا متن گزارش';
-  search.setAttribute('aria-label',search.placeholder);
-  const work = select('انتخاب کار',[[ALL_WORKS,'همهٔ کارها'], ...Array.from(works.values(), item=>
-    [item.key,[item.title,item.path].filter(Boolean).join(' · ')])]);
-  const period = select('بازهٔ گزارش',[
-    ['today','امروز'],['week','۷ روز اخیر'],['custom','بازهٔ دلخواه'],['all','همهٔ تاریخ‌ها'],
-  ]);
-  work.value = works.has(requestedWork) ? requestedWork : ALL_WORKS;
-  period.value = work.value ? 'all' : 'week';
-  const dates = element('div','daily-execution-dates');
-  let from = tehranTodayJalali();
-  let to = from;
-  const fromButton = element('button','wbs-input');
-  const toButton = element('button','wbs-input');
-  fromButton.type = toButton.type = 'button';
-  const pickerOptions = { documentRef, windowRef:documentRef.defaultView };
-  fromButton.addEventListener('click',()=>openJalaliPicker(from,day=>{
-    from = day;
-    if(to<from) to=from;
-    paint();
-  },{},pickerOptions));
-  toButton.addEventListener('click',()=>openJalaliPicker(to,day=>{
-    to = day;
-    if(from>to) from=to;
-    paint();
-  },{},pickerOptions));
-  dates.append(fromButton,toButton);
-  filters.append(search,work,period,dates);
+  search.setAttribute('aria-label', search.placeholder);
 
-  const selected = element('div','daily-execution-work');
+  const filterBtn = element('button','wbs-input filter-trigger');
+  filterBtn.type = 'button';
+  filterBtn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M3 5h18v2H3V5zm4 6h10v2H7v-2zm2 6h6v2H9v-2z"/></svg> فیلتر`;
+
+  const badge = element('span','filter-badge');
+  badge.hidden = true;
+  filterBtn.append(badge);
+
+  filters.append(search, filterBtn);
+
   const totals = element('div','daily-execution-totals');
   totals.setAttribute('aria-live','polite');
   const body = element('div','wbs-view-body daily-execution-days');
 
+  function activeFilterCount(){
+    let n = 0;
+    if(selectedWorkKeys.size) n++;
+    if(contractorId) n++;
+    if(activityId) n++;
+    if(templateId) n++;
+    if(fromDate || toDate) n++;
+    return n;
+  }
+
+  function updateBadge(){
+    const n = activeFilterCount();
+    badge.hidden = !n;
+    badge.textContent = toPersianDigits(n);
+  }
+
   function paint(){
-    const today = jalaliDayNumber(tehranTodayJalali());
-    const firstDay = { today, week:today-6, custom:jalaliDayNumber(from) }[period.value];
-    const lastDay = period.value==='all' ? null : period.value==='custom' ? jalaliDayNumber(to) : today;
-    const filtered = filterDailyExecutionReports(rows,{work:work.value,query:search.value,firstDay,lastDay});
-    dates.hidden = period.value!=='custom';
-    fromButton.textContent = 'از ' + formatJalaliDisplay(from);
-    toButton.textContent = 'تا ' + formatJalaliDisplay(to);
-    const item = works.get(work.value);
-    selected.hidden = !item;
-    selected.replaceChildren();
-    if(item) selected.append(element('strong','',item.title),element('small','',item.path));
+    const fromDay = fromDate ? jalaliDayNumber(fromDate) : null;
+    const toDay = toDate ? jalaliDayNumber(toDate) : null;
+    const filtered = filterDailyExecutionReports(rows, {
+      query: search.value,
+      selectedWorkKeys,
+      contractorId,
+      activityId,
+      templateId,
+      fromDay,
+      toDay,
+    });
     totals.textContent = counts(filtered);
     body.replaceChildren();
+    updateBadge();
     if(!filtered.length){
-      body.appendChild(element('div','empty-state','گزارشی در این بازه پیدا نشد.'));
+      body.appendChild(element('div','empty-state','گزارشی با این فیلترها پیدا نشد.'));
       return;
     }
     const groups = new Map();
@@ -161,7 +217,7 @@ export function renderDailyExecutionReports(project, documentRef = document, req
       );
       for(const row of dayRows){
         const card = element('details','today-report');
-        card.open = Boolean(work.value);
+        card.open = true;
         const heading = element('summary','daily-execution-summary');
         const progress = row.progress == null ? '' : ` · ${toPersianDigits(row.progress)}٪`;
         const stamp = new Date(row.at);
@@ -177,13 +233,159 @@ export function renderDailyExecutionReports(project, documentRef = document, req
     }
   }
 
-  search.addEventListener('input',paint);
-  period.addEventListener('change',paint);
-  work.addEventListener('change',()=>{
-    period.value = work.value ? 'all' : 'week';
-    paint();
-  });
-  frame.append(filters,selected,totals,body);
+  function openHierarchicalStagePicker(){
+    let currentPath = []; // array of nodes
+    let currentNodes = stageTree;
+    const selected = new Set(selectedWorkKeys);
+
+    const sheetBody = element('div','daily-filter-body');
+
+    function renderLevel(){
+      sheetBody.replaceChildren();
+      // breadcrumb
+      const crumb = element('div','filter-breadcrumb');
+      if(currentPath.length){
+        const back = element('button','filter-stage-back','←');
+        back.type = 'button';
+        back.onclick = () => {
+          currentPath.pop();
+          currentNodes = currentPath.length ? currentPath[currentPath.length-1].children : stageTree;
+          renderLevel();
+        };
+        crumb.append(back);
+      }
+      crumb.append(element('span','', currentPath.map(n=>n.title).join(' < ') || 'مراحل و کارها'));
+      sheetBody.append(crumb);
+
+      // search
+      const searchIn = element('input','wbs-input filter-stage-search');
+      searchIn.placeholder = 'جستجو در مراحل...';
+      sheetBody.append(searchIn);
+
+      const list = element('div','filter-stage-list');
+
+      currentNodes.forEach(node => {
+        const row = element('button','filter-stage-row');
+        row.type = 'button';
+        const hasChildren = (node.children && node.children.length) || (node.works && node.works.length);
+        const label = element('span','', node.title);
+        const right = element('span','');
+        if(hasChildren) right.textContent = '›';
+        else right.textContent = '';
+        row.append(label, right);
+        row.onclick = () => {
+          if(hasChildren){
+            currentPath.push(node);
+            currentNodes = node.children.length ? node.children : node.works.map(w => ({...w, children:[], works:[]}));
+            renderLevel();
+          } else {
+            // select single work
+            if(selected.has(node.key)) selected.delete(node.key);
+            else selected.add(node.key);
+            updateApplyButton();
+          }
+        };
+        // also allow selecting the package
+        if(node.isStage){
+          const selectPkg = element('button','filter-stage-package','انتخاب پکیج');
+          selectPkg.type = 'button';
+          selectPkg.onclick = (e) => {
+            e.stopPropagation();
+            const keys = collectAllWorkKeys(node);
+            keys.forEach(k => selected.add(k));
+            updateApplyButton();
+          };
+          row.append(selectPkg);
+        }
+        searchIn.addEventListener('input',()=>{row.hidden=!searchable(node.title).includes(searchable(searchIn.value));});
+        list.append(row);
+      });
+      sheetBody.append(list);
+
+      // bottom apply button (red)
+      const footer = element('div','filter-apply-bar');
+      const apply = element('button','filter-apply-btn');
+      apply.type = 'button';
+      function updateApplyButton(){
+        const count = selected.size;
+        apply.textContent = count ? `${toPersianDigits(count)} کار انتخاب شد · اعمال` : 'اعمال فیلتر مراحل';
+      }
+      updateApplyButton();
+      apply.onclick = () => {
+        selectedWorkKeys = selected;
+        closeWbsSheet();
+        paint();
+      };
+      footer.append(apply);
+      sheetBody.append(footer);
+    }
+
+    renderLevel();
+
+    openWbsSheet({
+      title: 'مراحل و کارها',
+      body: sheetBody,
+      showSave: false,
+      presentation: 'filter-sheet',
+    });
+  }
+
+  function openFilterSheet(){
+    const bodyEl = element('div','daily-filter-body');
+
+    const items = [
+      { label: 'پیمانکار', value: () => contractorId ? 'انتخاب شده' : 'انتخاب', action: () => {
+
+
+        void import('../contracts/contractPickers.js').then(({openContractorPicker})=>
+          openContractorPicker(project.id, { contractorId }, state=>{ contractorId=state.contractorId; paint(); openFilterSheet(); }));
+      }},
+      { label: 'مراحل و کارها', value: () => selectedWorkKeys.size ? `${toPersianDigits(selectedWorkKeys.size)} مورد` : 'انتخاب', action: () => { closeWbsSheet(); openHierarchicalStagePicker(); }},
+      { label: 'فعالیت', value: () => activityId ? 'انتخاب شده' : 'انتخاب', action: () => {
+        void import('../contracts/contractPickers.js').then(({openActivityPicker})=>
+          openActivityPicker(project.id, { activityId }, state=>{ activityId=state.activityId; paint(); openFilterSheet(); }));
+      }},
+      { label: 'قالب قرارداد', value: () => templateId ? 'انتخاب شده' : 'انتخاب', action: () => {
+        void import('../contracts/contractPickers.js').then(({openContractTemplatePicker})=>
+          openContractTemplatePicker(project.id, { templateId }, state=>{ templateId=state.templateId; paint(); openFilterSheet(); }));
+      }},
+      { label: 'از تاریخ', value: () => fromDate ? formatJalaliDisplay(fromDate) : 'انتخاب', action: () => {
+        openJalaliPicker(fromDate, day => { fromDate = day; if(toDate && toDate < fromDate) toDate = fromDate; paint(); openFilterSheet(); });
+      }},
+      { label: 'تا تاریخ', value: () => toDate ? formatJalaliDisplay(toDate) : 'انتخاب', action: () => {
+        openJalaliPicker(toDate, day => { toDate = day; if(fromDate && fromDate > toDate) fromDate = toDate; paint(); openFilterSheet(); });
+      }},
+    ];
+
+    items.forEach(item => {
+      const row = element('button','filter-option-row');
+      row.type = 'button';
+      row.append(element('span','', item.label), element('span','filter-select-label', item.value()));
+      row.onclick = item.action;
+      bodyEl.append(row);
+    });
+
+    const clear = element('button','filter-clear-btn','پاک کردن فیلترها');
+    clear.type = 'button';
+    clear.onclick = () => {
+      selectedWorkKeys = new Set();
+      contractorId = activityId = templateId = fromDate = toDate = '';
+      closeWbsSheet();
+      paint();
+    };
+    bodyEl.append(clear);
+
+    openWbsSheet({
+      title: 'فیلترها',
+      body: bodyEl,
+      showSave: false,
+    });
+  }
+
+  filterBtn.onclick = openFilterSheet;
+  search.addEventListener('input', paint);
+
+  frame.append(filters, totals, body);
   paint();
   return frame;
 }

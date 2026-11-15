@@ -45,9 +45,8 @@ test('a card link opens complete report text for only that work across all dates
     addEventListener(event,handler){ this.listeners[event]=handler; },
   });
   const frame = renderDailyExecutionReports(project,{createElement},key);
-  const [filters,work,totals,days] = frame.children;
-  assert.equal(filters.children[2].value,'all');
-  assert.equal(work.children[0].textContent,'اجرای سنگ نما');
+  const [filters,totals,days] = frame.children;
+  assert.equal(filters.children[1].children[0].textContent,'۱');
   assert.equal(totals.textContent,'۲ گزارش پیشرفت · ۱ ثبت دلیل شروع نشدن');
   const cards = days.children.flatMap(day=>day.children.filter(child=>child.tag==='details'));
   assert.equal(cards.length,3);
