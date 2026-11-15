@@ -92,9 +92,9 @@ export function contractDocumentMarkup(state,activityName='',{highlightValues=fa
     ? 'با نرخ‌های واحد توافق‌شده و مبلغ نهایی بر اساس مقدار کار تأییدشده'
     : 'به مبلغ کل '+formattedAmount+' تومان';
   const retentionText=Number(state.retentionPercent)>0
-    ? ' حسن انجام کار برابر با '+blank(persian(state.retentionPercent))+'٪ '+
-      (state.remeasurement?'از مبلغ هر صورت‌وضعیت تأییدشده کسر می‌شود.':'از مبلغ قرارداد، معادل '+formattedRetention+' تومان است.')+
-      ' مبنای شروع نگهداری آن '+blank(state.retentionBasis)+' و مدت نگهداری آن '+blank(state.retentionDuration)+' است و پس از تکمیل آخرین صورت‌وضعیت و پایان مدت نگهداری آزاد می‌شود.'
+    ? ' مقدار '+blank(persian(state.retentionPercent))+'٪ از مبلغ کل قرارداد'+
+      (state.remeasurement?' به‌عنوان حسن انجام کار در نظر گرفته شده است که در صورت اجرای صحیح، پس از تحویل قطعی کار آزاد و پرداخت می‌گردد.':
+        ' معادل '+formattedRetention+' تومان به‌عنوان حسن انجام کار در نظر گرفته شده است که در صورت اجرای صحیح، '+blank(state.retentionDuration)+' پس از تحویل قطعی کار آزاد و پرداخت می‌گردد.')
     : '';
   const documents=state.contractorDocuments||[];
   const annexPages=[];
