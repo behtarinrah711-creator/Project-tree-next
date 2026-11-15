@@ -518,7 +518,13 @@ function renderContractForm() {
   markMissing(ftDateRow(form, 'تاریخ تنظیم قرارداد', state.contractDate || '', value => { state.contractDate = value; }, { maxToday: true }),missingFields.has('contractDate'));
 
   markMissing(ftSelectRow(form, 'کارفرما', state.employerId ? contactDisplayName(findContact(state.employerId)) : '', () => openContractPicker('employer'), { placeholder: 'انتخاب' }),missingFields.has('employerId'));
+  ftTextRow(form,'نام پدر کارفرما',state.employerFatherName||'',()=>{},{readonly:true,placeholder:'از مشخصات مخاطب'});
+  ftTextRow(form,'کد ملی کارفرما',state.employerNationalId||'',()=>{},{readonly:true,placeholder:'از مشخصات مخاطب'});
+  ftTextRow(form,'شماره تماس کارفرما',state.employerPhone||'',()=>{},{readonly:true,placeholder:'از مشخصات مخاطب'});
   markMissing(ftSelectRow(form, 'پیمانکار', state.contractorId ? contactDisplayName(findContact(state.contractorId)) : '', () => openContractPicker('contractor'), { placeholder: 'انتخاب' }),!state.contractorId);
+  ftTextRow(form,'نام پدر پیمانکار',state.contractorFatherName||'',()=>{},{readonly:true,placeholder:'از مشخصات مخاطب'});
+  ftTextRow(form,'کد ملی پیمانکار',state.contractorNationalId||'',()=>{},{readonly:true,placeholder:'از مشخصات مخاطب'});
+  ftTextRow(form,'شماره تماس پیمانکار',state.contractorPhone||'',()=>{},{readonly:true,placeholder:'از مشخصات مخاطب'});
   markMissing(ftSelectRow(form, 'فعالیت', activityName, () => openContractPicker('activity'), { placeholder: 'انتخاب' }),!state.activityId);
 
   markMissing(ftDateRow(form, 'تاریخ شروع قرارداد', state.startDate || '', value => { state.startDate = value; }),missingFields.has('startDate'));

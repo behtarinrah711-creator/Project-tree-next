@@ -57,8 +57,8 @@ export function makeRealContractDraft(existing=null, today=''){
     startDate:'', endDate:'', amount:'', amountMethod:'', amountDescription:'', agreedRows:[{id:'agreed_1',description:'',agreedPrice:''}], amountRows:[], paymentRows:[], paymentMethod:'', retentionPercent:'',
     retentionBasis:'تحویل موقت', retentionDuration:'', contractPlace:'',
     paymentStages:[], paymentItems:[], items:[], attachments:[],
-    employerName:'', employerNationalId:'', employerAddress:'', employerPhone:'',
-    contractorName:'', contractorNationalId:'', contractorAddress:'', contractorPhone:'',
+    employerName:'', employerNationalId:'', employerFatherName:'', employerAddress:'', employerPhone:'',
+    contractorName:'', contractorNationalId:'', contractorFatherName:'', contractorAddress:'', contractorPhone:'',
     progressTimeline:[],progressPercent:0,createdAt:Date.now(),updatedAt:Date.now(),
     trashed:false
   };

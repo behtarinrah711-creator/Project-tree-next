@@ -29,13 +29,13 @@ test('explicit template links are respected; missing, trashed and ambiguous temp
 });
 
 test('document heading uses stacked metadata and one continuous introduction with filled values',()=>{
-  const html=contractDocumentMarkup({contractNo:'C-17',contractDate:'1405/08/06',contractPlace:'شیراز',employerName:'کارفرما',contractorName:'پیمانکار',projectItemPath:'محوطه',amount:100000,retentionPercent:10,startDate:'1405/08/07',endDate:'1405/09/07',retentionBasis:'تحویل موقت',retentionDuration:'یک سال'},'فونداسیون');
+  const html=contractDocumentMarkup({contractNo:'C-17',contractDate:'1405/08/06',contractPlace:'شیراز',employerName:'کارفرما',employerFatherName:'احمد',employerNationalId:'0012345678',employerPhone:'09120000000',contractorName:'پیمانکار',contractorFatherName:'رضا',contractorNationalId:'0098765432',contractorPhone:'09121111111',projectItemPath:'محوطه',amount:100000,retentionPercent:10,startDate:'1405/08/07',endDate:'1405/09/07',retentionBasis:'تحویل موقت',retentionDuration:'یک سال'},'فونداسیون');
   const intro=html.match(/<p class="doc-parties doc-introduction">(.*?)<\/p>/s)[1];
   assert.ok(!intro.includes('...'));
   assert.ok(!intro.includes('<div'));
   assert.ok(intro.includes('به‌عنوان پیمانکار در بخش محوطه'));
   assert.ok(!intro.includes('فونداسیون'));
-  for(const value of ['کارفرما','پیمانکار','شیراز','محوطه','۱۰۰٬۰۰۰','۱۰٬۰۰۰','یک سال'])assert.ok(intro.includes(value),value);
+  for(const value of ['کارفرما','پیمانکار','شیراز','محوطه','۱۰۰٬۰۰۰','۱۰٬۰۰۰','یک سال','احمد','رضا','0012345678','0098765432','09120000000','09121111111','فرزندِ','کد ملی'])assert.ok(intro.includes(value),value);
   assert.ok(html.indexOf('شماره قرارداد:')<html.indexOf('تاریخ قرارداد:'));
   assert.ok(html.indexOf('تاریخ قرارداد:')<html.indexOf('doc-title'));
   assert.ok(!html.includes('doc-line'));
@@ -43,8 +43,8 @@ test('document heading uses stacked metadata and one continuous introduction wit
 test('missing values get dots while zero values remain populated and user text is escaped',()=>{
   const html=contractDocumentMarkup({employerName:'  ',contractorName:'<نام>',amount:0,retentionPercent:0},'کار');
   const intro=html.match(/<p class="doc-parties doc-introduction">(.*?)<\/p>/s)[1];
-  assert.ok(intro.includes('فی‌مابین ................................................ به‌عنوان کارفرما'));
-  assert.ok(intro.includes('&lt;نام&gt; به‌عنوان پیمانکار'));
+  assert.ok(intro.includes('فی‌مابین ................................................، فرزندِ ................................................، به کد ملی ................................................ و شماره تماس ................................................ به‌عنوان کارفرما'));
+  assert.ok(intro.includes('&lt;نام&gt;، فرزندِ ................................................، به کد ملی ................................................ و شماره تماس ................................................ به‌عنوان پیمانکار'));
   assert.ok(intro.includes('مبلغ کل ۰ تومان'));
   assert.ok(!intro.includes('حسن انجام کار'));
   const emptyIntro=contractDocumentMarkup({},'').match(/<p class="doc-parties doc-introduction">(.*?)<\/p>/s)[1];

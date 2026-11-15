@@ -78,7 +78,7 @@ export function saveRealContract(projectId, draft, helpers={}){
 
   const s=JSON.parse(JSON.stringify(draft));
   s.contactId=s.contractorId;
-  if(deferred('employerId'))for(const key of ['employerName','employerNationalId','employerAddress','employerPhone'])s[key]='';
+  if(deferred('employerId'))for(const key of ['employerName','employerNationalId','employerFatherName','employerAddress','employerPhone'])s[key]='';
 
   if(helpers.syncContractPartyData) helpers.syncContractPartyData(s,project);
 

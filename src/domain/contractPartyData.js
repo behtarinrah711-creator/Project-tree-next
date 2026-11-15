@@ -12,12 +12,14 @@ export function syncContractPartyData(state, project){
   if(e){
     state.employerName=name(e);
     state.employerNationalId=e.nationalId||'';
+    state.employerFatherName=e.fatherName||'';
     state.employerAddress=e.address||'';
     state.employerPhone=(e.phones&&e.phones[0])||e.phone||'';
   }
   if(c){
     state.contractorName=name(c);
     state.contractorNationalId=c.nationalId||'';
+    state.contractorFatherName=c.fatherName||'';
     state.contractorAddress=c.address||'';
     state.contractorPhone=(c.phones&&c.phones[0])||c.phone||'';
   }

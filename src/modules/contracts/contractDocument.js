@@ -133,10 +133,16 @@ export function contractDocumentMarkup(state,activityName='',{highlightValues=fa
       '<div class="contract-document-annex-subject">موضوع / فعالیت: '+detail(activityName)+'</div></div></header>'+
       '<div class="contract-document-photo-grid">'+photos+'</div></section>');
   }
+  const party=(name,father,nationalId,phone)=>
+    blank(name)+
+    '، فرزندِ '+blank(father)+
+    '، به کد ملی '+blank(nationalId)+
+    ' و شماره تماس '+blank(phone);
   return documentMeta('قرارداد',state.contractNo,state.contractDate,{renderValue:blank})+
     '<div class="doc-title">' + escape(displayTitle || state.title || 'قرارداد ' + activityName) + '</div>' +
     '<p class="doc-parties doc-introduction">این قرارداد در ' + blank(state.contractPlace) +
-      ' فی‌مابین ' + blank(state.employerName) + ' به‌عنوان کارفرما و ' + blank(state.contractorName) +
+      ' فی‌مابین ' + party(state.employerName,state.employerFatherName,state.employerNationalId,state.employerPhone) +
+      ' به‌عنوان کارفرما و ' + party(state.contractorName,state.contractorFatherName,state.contractorNationalId,state.contractorPhone) +
       ' به‌عنوان پیمانکار در بخش ' + blank(state.projectItemPath) +
       ' پروژه، ' + amountText + '، برای اجرا از تاریخ ' + startDate +
       ' تا تاریخ ' + endDate + ' منعقد گردید.' + retentionText + ' طرفین متعهد به رعایت مفاد زیر هستند.' + (state.remeasurement ? ' مبلغ توافق شده جهت عملیات به شرح جدول زیر می باشد، بدیهی است مبلغ نهایی قرارداد در پایان عملیات پس از مشخص شدن مقدار هر عملیات مشخص می گردد.' : '') + '</p>' +
