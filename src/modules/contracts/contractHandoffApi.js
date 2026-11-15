@@ -1,3 +1,4 @@
+import {refreshOpenContractProgress} from './contractProgressView.js';
 import {fileToken} from '../files/fileApi.js';
 import {contractRepository} from '../../data/contractRepository.js';
 import {projectRepository} from '../../data/projectRepository.js';
@@ -22,6 +23,7 @@ export async function saveContractHandoff(projectId,contract,action,options={}){
   if(live && stored){
     live[field]=stored[field];
   }
+  if(stored)refreshOpenContractProgress(window.document,stored,result.contract);
   window.dispatchEvent(new CustomEvent('karha:contract-handoff',{detail:{projectId,contractId:contract.id}}));
   return result.contract;
 }

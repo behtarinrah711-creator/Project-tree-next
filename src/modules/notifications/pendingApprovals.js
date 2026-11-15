@@ -1,3 +1,4 @@
+import {refreshOpenContractProgress} from '../contracts/contractProgressView.js';
 import {projectRepository} from '../../data/projectRepository.js';
 import {canReviewContract, contractApproverIds} from '../../domain/contractApproval.js';
 import {contractApi} from '../../domain/contractApi.js';
@@ -120,6 +121,7 @@ function approvalOptions(documentRef,project,group,item,onChanged){
         }else{
           const result=contractApi.review(project.id,current.id,'approve',queue.actor);
           if(!result.ok)throw new Error(result.message || 'ثبت تأیید انجام نشد.');
+          refreshOpenContractProgress(documentRef,latest,result.contract);
         }
         onChanged();
       }catch(error){
