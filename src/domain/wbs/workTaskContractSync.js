@@ -1,3 +1,4 @@
+import { uid } from '../../data/projectFactories.js';
 import { cloneTemplateIntoContract } from '../contractTemplateItems.js';
 import { contractRepository } from '../../data/contractRepository.js';
 import { projectRepository } from '../../data/projectRepository.js';
@@ -54,9 +55,11 @@ export function syncContractFromWorkTask(projectId, workId, task, clock=Date.now
   const editable=!current || current.isDraft || current.status==='draft';
   if(!editable && ['pending','approved'].includes(current.approvalStatus)) return current;
   const now=clock();
+  const defaultId=`rc_task_${task.id}`;
+  const draftId=contractRepository.get(projectId,defaultId)?.trashed ? uid() : defaultId;
   const record={
     ...(current || {}),
-    id:current?.id || `rc_task_${task.id}`,
+    id:current?.id || draftId,
     workTaskId:String(task.id),
     projectItemId:String(workId),
     projectItemRootTaskId:String(workId),
