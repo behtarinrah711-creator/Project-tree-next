@@ -1714,11 +1714,12 @@ textarea.contract-project-item-input{
   max-width:720px;
   margin:10px auto 0;
 }
-.contract-real-preview-viewport{position:relative;width:100%;max-width:794px;margin:0 auto;overflow:hidden;flex-shrink:0;min-height:480px;}
+.contract-real-preview-viewport{position:relative;width:100%;max-width:794px;margin:0 auto;overflow:hidden;flex-shrink:0;min-height:480px;direction:ltr;}
 #contractPreviewPage .page-body{padding-top:12px;}
 .contract-real-print-preview{
   position:absolute!important;
   top:0;
+  left:50%;
   width:794px!important;
   min-height:1123px!important;
   height:auto!important;
@@ -1730,7 +1731,7 @@ textarea.contract-project-item-input{
   box-sizing:border-box!important;
   overflow:visible!important;
   direction:rtl;
-  transform-origin:top left;
+  transform-origin:top center;
   color:#202124!important;
   font-family:IRANSansX,IRANSans,Tahoma,sans-serif!important;
   font-size:13px!important;
@@ -1759,11 +1760,11 @@ textarea.contract-project-item-input{
 
 /* Shared A4 pagination, also copied from CSSOM into standalone exports. */
 
-.contract-pages{width:794px;direction:rtl;color:#202124;font-family:IRANSansX,Tahoma,sans-serif;font-size:13px;line-height:1.7}
+.contract-pages{width:794px;direction:rtl;color:#202124;font-family:IRANSansX,Tahoma,sans-serif;font-size:13px;line-height:1.7;position:absolute;top:0;left:50%;transform-origin:top center;}
 .contract-sheet{position:relative;width:794px;height:1123px;box-sizing:border-box;padding:76px;background:#fff;break-after:page;margin-bottom:20px}
 .contract-sheet:last-child{break-after:auto;margin-bottom:0}
 .contract-sheet:before{content:'';position:absolute;inset:38px;border:1px solid #777;pointer-events:none}
-.contract-sheet-content{height:851px;display:flow-root;overflow-wrap:anywhere}
+.contract-sheet-content{height:851px;display:flow-root;overflow-wrap:break-word;}
 .contract-sheet-number{position:absolute;bottom:43px;left:76px;right:76px;text-align:center;font-size:11px}
 .contract-pages .doc-title{text-align:center;font-size:21px;font-weight:600;margin:0 0 18px}
 .contract-pages .doc-meta{display:grid;grid-template-columns:1fr 1fr;gap:8px 18px;margin-bottom:16px}
@@ -1780,7 +1781,7 @@ textarea.contract-project-item-input{
 .contract-real-print-preview .doc-contract-meta>div:last-child,
 .contract-pages .doc-contract-meta>div:last-child{text-align:left;}
 .contract-real-print-preview .doc-introduction,
-.contract-pages .doc-introduction{display:block;margin:0 0 16px;text-align:justify;white-space:normal;line-height:2;}
+.contract-pages .doc-introduction{display:block;margin:0 0 16px;text-align:justify;white-space:normal;line-height:2;overflow-wrap:break-word;}
 
 .contract-payment-stage.contract-payment-calculated{grid-template-columns:1fr 2fr;line-height:1.8;font-size:12px}
 .contract-payment-calculated input{grid-column:1 / -1;width:100%}
