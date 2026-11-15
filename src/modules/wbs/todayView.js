@@ -82,7 +82,7 @@ function renderHistory(documentRef,entity){ const history=[...(entity.executionH
   for(const report of reportsOf(entity)){
     if(report.createdAt && !logged.has(report.id))history.push({type:'report_created',at:report.createdAt,actor:report.createdBy,reportId:report.id});
   }
-  history.sort((a,b)=>Number(b.at)-Number(a.at)); const details=documentRef.createElement('details'); details.className='today-history'; details.innerHTML='<summary>تاریخچه</summary>'; history.forEach(entry=>{ const row=documentRef.createElement('div'); row.textContent=`${(entry.type==='daily_status'?DAILY_EXECUTION_LABELS[entry.status]:historyLabel(entry.type))} · ${entry.actor?.name||'کاربر'} · ${formatMoment(entry.at)}${['start_delayed','daily_status'].includes(entry.type) ? [entry.reason,entry.description].filter(Boolean).map(value=>` · ${value}`).join('') : ''}`; details.appendChild(row); }); return details; }
+  history.sort((a,b)=>Number(b.at)-Number(a.at)); const details=documentRef.createElement('details'); details.className='today-history'; details.innerHTML='<summary>تاریخچه</summary>'; history.forEach(entry=>{ const row=documentRef.createElement('div'); const label=entry.type==='daily_status'?DAILY_EXECUTION_LABELS[entry.status]:historyLabel(entry.type); const extra=['start_delayed','daily_status','report_created','report_edited','marked_complete','sent_for_approval','completed_without_approval','approved'].includes(entry.type)?[entry.reason,entry.description,entry.day].filter(Boolean).map(value=>` · ${value}`).join(''):''; row.textContent=`${label} · ${entry.actor?.name||'کاربر'} · ${formatMoment(entry.at)}${extra}`; details.appendChild(row); }); return details; }
 export function renderTodayCard(documentRef,project,item,today,onChanged,approval){
   return renderTodaySummary(documentRef,project,item,today,onChanged,undefined,approval);
 }
@@ -110,21 +110,22 @@ function elapsedShare(entity,day){
   return Math.min(1,Math.max(0,(now-start)/(end-start)));
 }
 function completionDay(entity){
-  const explicit=entity.actualFinishDay;
-  const asDate=jalaliDayNumber(explicit);
-  if(asDate!==null) return asDate;
-  const numeric=Number(explicit);
-  if(Number.isFinite(numeric) && numeric>100000) return jalaliDayNumber(new Date(numeric).toLocaleDateString('fa-IR-u-ca-persian',{year:'numeric',month:'2-digit',day:'2-digit'}).replace(/-/g,'/'));
-  const stamp=Number(entity.completedAt || entity.completionSubmittedAt || entity.approvedAt);
+  const explicit=jalaliDayNumber(entity.actualFinishDay);
+  if(explicit!==null) return explicit;
+  const report=(entity.executionReports||[]).filter(item=>item && !item.trashed && Number(item.progress)===100)
+    .sort((a,b)=>Number(a.createdAt||0)-Number(b.createdAt||0))[0];
+  const reportDay=jalaliDayNumber(report?.reportDay) ?? jalaliDayNumber(report?.createdAt ? tehranTodayJalali(new Date(report.createdAt)) : '');
+  if(reportDay!==null) return reportDay;
+  const event=(entity.executionHistory||[]).find(entry=>['marked_complete','sent_for_approval','completed_without_approval','approved'].includes(entry?.type) && entry.at);
+  const stamp=Number(event?.at || entity.completionSubmittedAt || entity.completedAt || entity.approvedAt);
   if(!Number.isFinite(stamp)) return null;
-  const formatted=new Intl.DateTimeFormat('en-CA-u-ca-persian',{timeZone:'Asia/Tehran',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date(stamp));
-  return jalaliDayNumber(formatted.replaceAll('-','/'));
+  return jalaliDayNumber(tehranTodayJalali(new Date(stamp)));
 }
 function scheduleStatus(entity,day){
   const end=jalaliDayNumber(entity.scheduleEnd);
   const now=jalaliDayNumber(day);
   if(end===null || now===null) return null;
-  const completed=executionStatus(entity)==='approved' || entity.completed===true || entity.done===true || Number.isFinite(Number(entity.actualFinishDay));
+  const completed=['approved','pending_approval'].includes(executionStatus(entity)) || entity.completed===true || entity.done===true || jalaliDayNumber(entity.actualFinishDay)!==null;
   if(completed){
     const finished=completionDay(entity);
     const delta=Number.isFinite(finished) ? finished-end : now-end;

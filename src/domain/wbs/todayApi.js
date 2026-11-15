@@ -46,11 +46,11 @@ function completeExecution(entity,ref,by,at,day){
     : {progressBeforeApproval:Number(entity.progress)||0,status:'in_progress'};
   return {
     ...entity, completed:immediate, done:immediate, completionState:status, workflowStatus:status,
-    completionSubmittedAt:at, completionSubmittedBy:by, actualFinishDay:immediate ? day : null,
+    completionSubmittedAt:at, completionSubmittedBy:by, actualFinishDay:day,
     ...(immediate ? { completedAt:at } : {}),
     ...(ref.kind==='work' ? workProgress : {}),
-    executionHistory:[...(entity.executionHistory||[]),event('marked_complete',by,at),
-      event(immediate?'completed_without_approval':'sent_for_approval',by,at)],
+    executionHistory:[...(entity.executionHistory||[]),event('marked_complete',by,at,{day}),
+      event(immediate?'completed_without_approval':'sent_for_approval',by,at,{day})],
     updatedAt:at,
   };
 }
@@ -110,11 +110,11 @@ export const todayApi = {
       if(reportIndex >= 0){
         const current = reports[reportIndex];
         reports[reportIndex] = { ...current, ...attachments, description:text, progress:nextProgress, reportDay, updatedBy:by, updatedAt:at };
-        history.push(event('report_edited', by, at, { reportId:current.id }));
+        history.push(event('report_edited', by, at, { reportId:current.id, day:reportDay }));
       }else{
         const report = { id:uid(), ...attachments, description:text, progress:nextProgress, reportDay, createdBy:by, createdAt:at, updatedAt:null, updatedBy:null };
         reports.push(report);
-        history.push(event('report_created', by, at, { reportId:report.id }));
+        history.push(event('report_created', by, at, { reportId:report.id, day:reportDay }));
       }
       const updated = { ...entity, progress:nextProgress, actualStart:entity.actualStart || reportDay, executionReports:reports, executionHistory:history, workflowStatus:'in_progress', updatedAt:at };
       return completeAt100 && nextProgress===100 ? completeExecution(updated,ref,by,at,reportDay) : updated;
