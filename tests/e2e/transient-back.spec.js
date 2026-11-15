@@ -30,14 +30,14 @@ async function openContractsList(page, project = baseProject){
 }
 
 
-async function previewThenEdit(page, contractRow){
+async function previewThenEdit(page, contractRow, title){
   await contractRow.locator('.contract-main').click();
   const details = page.locator('.workspace-page').filter({ has: page.getByRole('heading', { name: 'جزئیات قرارداد', exact: true }) });
   await expect(details).toBeVisible();
   await details.getByRole('button', { name: 'پیش‌نمایش قرارداد', exact: true }).click();
   const preview = page.locator('#contractPreviewPage');
   await expect(preview).toBeVisible();
-  await expect(preview.locator('h2')).toHaveText('پیش‌نمایش قرارداد');
+  await expect(preview.locator('h2')).toHaveText('پیش‌نمایش '+title);
   await expect(page.locator('#contractFormPage')).toBeHidden();
   await expect(preview.locator('input, textarea, [contenteditable="true"]')).toHaveCount(0);
   await preview.getByRole('button', { name: 'بازگشت', exact: true }).click();
@@ -141,7 +141,7 @@ test('Yes persists a visible project-scoped Draft row and reopening it uses the 
   expect(savedDraft?.contractPlace).toBe('کارگاه مرکزی');
   expect(savedDraft?.isDraft).toBe(true);
 
-  await previewThenEdit(page, draftRow);
+  await previewThenEdit(page, draftRow, 'پیش‌نویس قرارداد بدون پیمانکار');
   await expect(page.locator('#contractFormPage')).toBeVisible();
   await expect(row(page, 'محل انعقاد قرارداد').locator('input')).toHaveValue('کارگاه مرکزی');
   await expect.poll(() => page.evaluate(() => window.KarhaRealContractForm?.getLifecycleMode?.()))
@@ -166,7 +166,7 @@ test('saved contract and draft contract share History ownership but keep differe
     }]
   };
   await openContractsList(page, project);
-  await previewThenEdit(page, page.locator('.contract-row').filter({ hasText: 'قرارداد ذخیره‌شده' }));
+  await previewThenEdit(page, page.locator('.contract-row').filter({ hasText: 'قرارداد ذخیره‌شده' }), 'قرارداد ذخیره‌شده بدون پیمانکار');
   await expect(page.locator('#contractFormPage')).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.KarhaRealContractForm?.getLifecycleMode?.()))
     .toBe('saved');
