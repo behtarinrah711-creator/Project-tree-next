@@ -1,3 +1,4 @@
+import {mountContractDocumentPreview} from './contractDocumentAttachments.js';
 import {mountFileUploader} from '../files/fileUploader.js';
 import { addendumDocumentMarkup, contractDocumentMarkup } from './contractDocument.js';
 import { resolveCurrentContractDocument,makeRealContractDraft } from './realContractDomain.js';
@@ -58,7 +59,7 @@ export function createContractPreviewView({documentRef=globalThis.document,windo
     const printBody=signedFiles?.length?documentRef.createElement('div'):body;
     if(printBody!==body)body.appendChild(printBody);
     try{
-      disposeDocuments=mountContractDocumentPreview(printBody,preview,draft,project.id,{mountPrintPage,activityName:activityName,highlightValues:true});
+      disposeDocuments=mountContractDocumentPreview(printBody,preview,draft,project.id,{mountPrintPage,activityName,highlightValues:true,displayTitle});
     }catch(_error){
       printBody.appendChild(preview);
     }
