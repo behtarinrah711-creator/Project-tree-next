@@ -84,7 +84,7 @@ export function createRoleManagementModule({
     const permissions=normalizePermissions(existing?.permissions,registry);
     permissionGroups(registry).forEach(group=>{
       const groupTitle=documentRef.createElement('h4');groupTitle.className='role-permission-group-title';groupTitle.textContent=group.label;fields.appendChild(groupTitle);
-      group.modules.forEach(module=>popupField(module.label,`permission:${module.id}`,module.accessProfile==='planning'?PLANNING_ACCESS_LEVELS:ACCESS_LEVELS,permissions[module.id]==='edit'&&module.accessProfile==='planning'?'create':permissions[module.id]));
+      group.modules.filter(module=>admin || module.id!=='project-settings').forEach(module=>popupField(module.label,`permission:${module.id}`,module.accessProfile==='planning'?PLANNING_ACCESS_LEVELS:ACCESS_LEVELS,permissions[module.id]==='edit'&&module.accessProfile==='planning'?'create':permissions[module.id]));
     });
     const hint=documentRef.createElement('p');hint.className='role-form-hint';hint.textContent='حذف اطلاعات هر ماژول فقط با «دسترسی کامل» مجاز است. مدیریت نقش‌ها قابل واگذاری نیست.';fields.appendChild(hint);
     const error=documentRef.createElement('p');error.className='role-form-error';error.setAttribute('role','alert');fields.appendChild(error);
@@ -99,7 +99,7 @@ export function createRoleManagementModule({
       event.preventDefault();
       clearInvalid();
       const data=new FormData(form);const mobileValue=String(data.get('mobile') || '');
-      const permissionValues=Object.fromEntries(permissionModules(registry).map(module=>[module.id,data.get(`permission:${module.id}`)]));
+      const permissionValues=Object.fromEntries(permissionModules(registry).map(module=>[module.id,data.get(`permission:${module.id}`) ?? permissions[module.id]]));
       if(admin){
         const submit=form.querySelector('[type="submit"]');
         if(submit.disabled)return;
