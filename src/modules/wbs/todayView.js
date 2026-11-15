@@ -127,11 +127,10 @@ function scheduleStatus(entity,day){
   const completed=executionStatus(entity)==='approved' || entity.completed===true || entity.done===true || Number.isFinite(Number(entity.actualFinishDay));
   if(completed){
     const finished=completionDay(entity);
-    if(!Number.isFinite(finished)) return {text:'تکمیل شد',tone:'done'};
-    const delta=finished-end;
-    if(delta<0) return {text:`${toPersianDigits(Math.abs(delta))} روز زودتر از موعد تکمیل شد`,tone:'early'};
-    if(delta>0) return {text:`با ${toPersianDigits(delta)} روز تأخیر تکمیل شد`,tone:'late'};
-    return {text:'در موعد تکمیل شد',tone:'done'};
+    const delta=Number.isFinite(finished) ? finished-end : now-end;
+    if(delta<0) return {text:`${toPersianDigits(Math.abs(delta))} روز زودتر از موعد انجام شد`,tone:'early'};
+    if(delta>0) return {text:`با ${toPersianDigits(delta)} روز تأخیر انجام شد`,tone:'late'};
+    return {text:'در موعد انجام شد',tone:'done'};
   }
   const remaining=end-now;
   if(remaining<0) return {text:`${toPersianDigits(Math.abs(remaining))} روز تأخیر`,tone:'late'};
@@ -142,7 +141,7 @@ function scheduleBar(documentRef,entity,day){
   const share=elapsedShare(entity,day);
   if(share===null)return null;
   const status=scheduleStatus(entity,day);
-  const overdue=status?.tone==='late' && executionStatus(entity)!=='approved' && !entity.completed;
+  const overdue=status?.tone==='late';
   const bar=documentRef.createElement('progress');
   bar.className='today-schedule-bar'+(overdue?' is-overdue':'');
   bar.max=1;bar.value=share;
@@ -216,11 +215,11 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
   const scheduleLabel=documentRef.createElement('span');
   scheduleLabel.textContent='زمان‌بندی';
   const remain=documentRef.createElement('strong');
-  remain.textContent=heroRemaining(entity,day)||'بی‌زمان';
+  remain.textContent=scheduleStatus(entity,day)?.text || heroRemaining(entity,day) || 'بی‌زمان';
   schedule.append(scheduleLabel,remain);
   const timing=scheduleBar(documentRef,entity,day);
   if(timing){
-    if(timing.overdue)remain.className='today-schedule-delay';
+    if(timing.status?.tone==='late')remain.className='today-schedule-delay';
     schedule.append(timing.bar,detailRow(documentRef,'شروع '+formatDate(entity.scheduleStart),'پایان '+formatDate(entity.scheduleEnd)));
   }
   const assignee=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.assigneeContactId||''));
