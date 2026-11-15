@@ -31,22 +31,12 @@ export function contractActionsMenu({onEdit,onExport,onDelete}){
     }
     wrap.append(dismiss,menu);
 
-    // Position menu above footer if near bottom of viewport
-    requestAnimationFrame(()=>{
-      if(!menu) return;
-      const toggleRect=toggle.getBoundingClientRect();
-      const menuHeight=menu.offsetHeight || 140;
+    const viewport=document.defaultView;
+    if(viewport){
       const bottomNav=document.getElementById('bottomNav');
-      const navHeight=bottomNav ? bottomNav.offsetHeight : 68;
-      const spaceBelow=window.innerHeight - toggleRect.bottom - navHeight - 12;
-      if(spaceBelow < menuHeight){
-        menu.style.top='auto';
-        menu.style.bottom='42px';
-      } else {
-        menu.style.top='42px';
-        menu.style.bottom='auto';
-      }
-    });
+      const spaceBelow=viewport.innerHeight-toggle.getBoundingClientRect().bottom-(bottomNav?.offsetHeight ?? 68)-12;
+      if(spaceBelow<(menu.offsetHeight || 140))menu.className+=' contract-menu-above';
+    }
   };
   wrap.onkeydown=e=>{if(e.key==='Escape'){shut();toggle.focus();}};
   wrap.appendChild(toggle);return wrap;
