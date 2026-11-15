@@ -1,3 +1,4 @@
+import {canDeleteContractDocument} from '../../domain/contractHandoff.js';
 import {renderInlineContractReject} from './contractReasonSheet.js';
 import {openContractPreview} from './contractPreviewView.js';
 import {statementWorkRows,resolveStatementWork} from '../../domain/statementWork.js';
@@ -328,7 +329,7 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
       openContractExport(project,{title,contractNo:contract.contractNo||''},{trigger,markup:documentNode.outerHTML});
     },
     onDelete:deletable?()=>{
-      if(record.signedAt || ['sent','accepted'].includes(record.accountingStatus)){toast('صورت‌وضعیت در وضعیت فعلی قابل حذف نیست');return;}
+      if(!canDeleteContractDocument(record)){toast('صورت‌وضعیت در وضعیت فعلی قابل حذف نیست');return;}
       openConfirm('آیا می‌خواهید '+title+' را حذف کنید؟',()=>saveContractHandoff(project.id,record,'delete_statement')
         .then(()=>{onChanged();toast(title+(record.addendumNo?' ('+record.addendumNo+')':'')+' حذف شد.');})
         .catch(error=>toast(error.message)),'بله',{cancelLabel:'خیر'});

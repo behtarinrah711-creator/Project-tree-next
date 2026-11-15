@@ -118,7 +118,7 @@ function saveContractRecord(projectId, draft, {status = null,declareCompletion=f
   record.updatedAt = Date.now();
 
   if(!contractRepository.save(projectId, record)) return deny('conflict', 'ذخیره قرارداد انجام نشد');
-  syncWorkTaskFromContract(projectId,record);
+  if(canWriteProjectModule(projectId,'planning:tree')) syncWorkTaskFromContract(projectId,record);
   publishLive(projectId, ['contracts','tasks']);
   return allow({ contract: record });
 }
