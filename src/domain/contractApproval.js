@@ -68,6 +68,35 @@ export function canReviewContract(contract,actor){
   return contractApprovalState(contract)==='pending' && !!actor?.contactId &&
     contractApproverIds(contract).includes(String(actor.contactId)) && !(contract.approvedContactIds || []).includes(String(actor.contactId));
 }
+export function canEditContractReview(contract,actor){
+  return !contract.trashed && !executedContract(contract) &&
+    (canReviewContract(contract,actor) || canRevokeContractApproval(contract,actor));
+}
+
+export function saveContractReviewEdit(contract,actor,changes,at=Date.now()){
+  if(!canEditContractReview(contract,actor) || !changes || typeof changes!=='object' || Array.isArray(changes)){
+    return {ok:false,message:'ویرایش این نسخه برای شما مجاز نیست'};
+  }
+  const fields=['title','contractDate','contractPlace','startDate','endDate','employerId','contractorId',
+    'activityId','templateId','items','amountMethod','operationRows','amountRows','agreedRows','amount',
+    'agreedAmount','amountDescription','remeasurement','paymentMethod','paymentRows','paymentItems',
+    'paymentStageCount','paymentStages','retentionPercent','retentionDuration','retentionBasis','retentionMethod'];
+  const next={...contract};
+  for(const key of fields)if(Object.hasOwn(changes,key))next[key]=changes[key];
+  if(next.startDate && next.endDate && next.endDate<next.startDate)return {ok:false,message:'تاریخ پایان قبل از شروع است'};
+  try{
+    if(contractRevisionContent(next)===contractRevisionContent(contract))return {ok:true,contract};
+  }catch{
+    return {ok:false,message:'محتوای ویرایش‌شده معتبر نیست'};
+  }
+  next.contactId=next.contractorId;
+  next.activityIds=next.activityId?[next.activityId]:[];
+  Object.assign(next,{approvalStatus:'pending',approvedContactIds:[],submittedAt:at,updatedAt:at,
+    reviewedAt:null,reviewedBy:null,handoffVersion:Number(contract.handoffVersion||0)+1});
+  next.approvalHistory=[...(contract.approvalHistory||[]),{action:'edit_review',at,actor:{...actor}}];
+  return {ok:true,contract:next};
+}
+
 function executedContract(contract){return contract.signedAt || contract.sentToAccountingAt || contract.signatureStatus==='signed' || ['sent','accepted'].includes(contract.accountingStatus);}
 export function canCancelContractCompletion(contract){
   if(contract.status!=='final' || contract.isDraft || executedContract(contract))return false;
@@ -75,7 +104,7 @@ export function canCancelContractCompletion(contract){
   const reviewers=Array.isArray(contract.contractApproverContactIds)?contract.contractApproverContactIds:contractApproverIds(contract);
   return ['ready','unapproved'].includes(status) || (status==='approved' && !reviewers.length);
 }
-export function transitionContractApproval(contract,action,actor,{approverId='',approverIds=null,reason='',at=Date.now()}={}){
+export function transitionContractApproval(contract,action,actor,{approverId='',approverIds=null,reason='',at=Date.now(),allowRejectApproved=false}={}){
   const reviewers=[...new Set((approverIds || [approverId]).filter(Boolean).map(String))];
   if(!actor?.id || actor.id==='guest')return {ok:false,message:'ابتدا وارد حساب کاربری شوید'};
   if(['cancel_completion','withdraw_submission'].includes(action)){
@@ -95,7 +124,7 @@ export function transitionContractApproval(contract,action,actor,{approverId='',
     if(!reviewers.length)return {ok:false,message:'مسئول تأیید را انتخاب کنید'};
   }else if(action==='revoke'){
     if(!canRevokeContractApproval(contract,actor))return {ok:false,message:'فقط می‌توانید تأیید خودتان را لغو کنید'};
-  }else if(!['approve','reject'].includes(action) || !canReviewContract(contract,actor)){
+  }else if(!['approve','reject'].includes(action) || !(canReviewContract(contract,actor) || (action==='reject' && allowRejectApproved && canRevokeContractApproval(contract,actor)))){
     return {ok:false,message:'این درخواست در انتظار تأیید شما نیست'};
   }
   const text=String(reason).trim();

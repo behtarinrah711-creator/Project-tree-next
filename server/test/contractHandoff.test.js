@@ -526,3 +526,22 @@ test('statement handoff requires contract and finance permissions for their resp
   assert.equal(result.result.contract.paidAmount,30);
   assert.equal(f.payload.contractStatusReports.length,1);
 });
+
+test('only an assigned contract editor can save changes during review',async()=>{
+  const f=fixture();
+  f.payload.contacts=[{id:'reviewer',phones:['0912']}];
+  Object.assign(f.payload.contracts[0],{approvalStatus:'pending',approvalContactIds:['other'],approvedContactIds:[]});
+  const action={action:'edit_contract_review',version:0,updatedAt:1,changes:{title:'عنوان اصلاح‌شده'}};
+  f.setPermissions({modules:{contracts:'create'}});
+  assert.equal((await f.call(action)).status,400);
+  f.payload.contracts[0].approvalContactIds=['reviewer'];
+  f.setPermissions({modules:{contracts:'view',accounting:'full'}});
+  assert.equal((await f.call(action)).status,403);
+  f.setPermissions({modules:{contracts:'create'}});
+  const saved=await f.call(action);
+  assert.equal(saved.status,200);
+  assert.equal(saved.result.contract.title,action.changes.title);
+  assert.equal(saved.result.contract.approvalStatus,'pending');
+  assert.equal(saved.result.contract.approvalHistory.at(-1).action,'edit_review');
+  assert.equal((await f.call(action)).status,409);
+});

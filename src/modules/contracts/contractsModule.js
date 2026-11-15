@@ -1,3 +1,4 @@
+import {closeWbsSheet} from '../wbs/wbsSheet.js';
 import {renderInlineContractReject} from './contractReasonSheet.js';
 import {openContractDetails} from './contractDetailsView.js';
 import {renderContractDocuments} from './contractDocumentsView.js';
@@ -206,10 +207,26 @@ function renderContractWorkflowRow(contract){
   return row;
 }
 
-export function renderContractReviewRow(contract,{action,reject,onRejected}){
+export function renderContractReviewRow(contract,{action,reject,edit,onEdited,onRejected}){
   const row=renderContractStatusRow(contract);
   if(contract.parentContractId)row.className='contract-addendum-toolbar';
   if(action)row.appendChild(action);
+  if(edit && onEdited){
+    const button=document.createElement('button');
+    button.type='button';button.className='contract-review-action';button.textContent='ویرایش';
+    button.onclick=()=>{
+      const history=window.KarhaChildHistory;
+      const key='contract-status:'+contract.id;
+      if(history?.isOpen?.(key) && history.afterNextPop){
+        history.afterNextPop(()=>edit(onEdited));
+        closeWbsSheet();
+      }else{
+        closeWbsSheet();
+        edit(onEdited);
+      }
+    };
+    row.appendChild(button);
+  }
   if(reject && onRejected)row.appendChild(renderInlineContractReject(reject,onRejected));
   if(contract.approvalStatus==='unapproved' && contract.approvalRejectionReason){
     const reason=document.createElement('div');
@@ -255,7 +272,8 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       if(approval){
         row.appendChild(renderContractDocuments(p,c,{reviewOnly:true,approvals:approvalDocuments}));
         statusSheetBody=root=>root.append(renderContractReviewRow(statusRecord,{
-          ...(statusRecord===c?approval:{}),
+          ...(statusRecord===c?approval:approval.refresh?.(statusRecord)||{}),
+          onEdited(record){statusRecord=record;openStatus();},
           onRejected(record){statusRecord=record;openStatus();},
         }),renderContractProgress(document,statusRecord,p));
         return row;

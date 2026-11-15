@@ -8,7 +8,7 @@ for(const outcome of ['success','denied','throws']){
  test('draft persistence '+outcome+' preserves form unless saved',()=>{
   const state={id:'c',operationRows:[{description:'عملیات',pricingMode:'agreed',agreedPrice:'300'}],paymentRows:[],items:[{text:'ماده'}]};
   let stored,closed=0;const messages=[];
-  const context={state,dirty:true,activeProjectId:'p',
+  const context={reviewEdit:null,state,dirty:true,activeProjectId:'p',
    activeProject:id=>({id}),helper:(name,message)=>messages.push(message),
    contractApi:{saveDraft:(id,draft)=>{
     assert.equal(id,'p');

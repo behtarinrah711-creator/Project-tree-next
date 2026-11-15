@@ -1,6 +1,6 @@
 import {refreshOpenContractProgress} from '../contracts/contractProgressView.js';
 import {projectRepository} from '../../data/projectRepository.js';
-import {canReviewContract, contractApproverIds} from '../../domain/contractApproval.js';
+import {canEditContractReview,canRevokeContractApproval,canReviewContract, contractApproverIds} from '../../domain/contractApproval.js';
 import {contractApi} from '../../domain/contractApi.js';
 import {isSaosaHost} from '../../cloud/saosaWorkspaceSync.js';
 import {collectStandaloneWorks,collectTodayItems, tehranTodayJalali} from '../../domain/wbs/todayDomain.js';
@@ -129,13 +129,32 @@ function approvalOptions(documentRef,project,group,item,onChanged){
         approve.disabled=false;
       }
     },'تأیید'),execution ? (shopping ? '' : 'wbs-costline-manual') : 'contract-review-action');
-    approval.action=approve;
-    if(!execution)approval.reject=async reason=>{
+    if(execution || canReviewContract(item,currentExecutionActor(project)))approval.action=approve;
+    else if(action==='approve_contract' && canRevokeContractApproval(item,currentExecutionActor(project))){
+      approve.disabled=true;
+      approval.action=approve;
+    }
+    if(action==='approve_contract' && !execution && isSaosaHost() && canEditContractReview(item,currentExecutionActor(project))){
+      approval.edit=onReturn=>window.KarhaRealContractForm?.open(item.id,project.id,{
+        save:changes=>saveContractHandoff(project.id,item,'edit_contract_review',{changes}),
+        onReturn:record=>{
+          window.KarhaApp?.router?.sync?.();
+          onChanged();
+          onReturn(record||item);
+        },
+      });
+      approval.refresh=record=>approvalOptions(documentRef,project,group,record,onChanged);
+    }
+    if(!execution && (canReviewContract(item,currentExecutionActor(project)) || (action==='approve_contract' && canRevokeContractApproval(item,currentExecutionActor(project)))))approval.reject=async reason=>{
       const latest=projectRepository.find(project.id);
       const queue=pendingApprovals(latest);
       const currentGroup=queue.groups.find(candidate=>candidate.id===group.id);
-      const current=currentGroup?.items.find(candidate=>String(candidate.id)===String(item.id)
+      let current=currentGroup?.items.find(candidate=>String(candidate.id)===String(item.id)
         && Boolean(candidate.parentContractId)===Boolean(item.parentContractId) && candidate.statementType===item.statementType);
+      if(!current && action==='approve_contract'){
+        const approved=latest?.contracts?.find(row=>String(row.id)===String(item.id));
+        if(approved && canRevokeContractApproval(approved,queue.actor))current=approved;
+      }
       if(!current || !currentGroup.writable)throw new Error('این مورد دیگر در انتظار تأیید شما نیست.');
       let updated;
       if(action!=='approve_contract' || isSaosaHost()){
