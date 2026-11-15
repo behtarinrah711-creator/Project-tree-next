@@ -18,7 +18,7 @@ test('preview omits empty payment section and fixed monetary retention for unkno
  const state=draft();state.paymentRows=[{description:'  ',unit:''}];
  const html=contractDocumentMarkup(state);
  assert.ok(!html.includes('doc-payment'));assert.ok(!html.includes('معادل'));assert.ok(!html.includes('مبلغ کل ۰'));
- assert.ok(html.includes('از مبلغ هر صورت‌وضعیت تأییدشده'));assert.ok(html.includes('پس از متره'));
+ assert.ok(html.includes('از مبلغ کل قرارداد'));assert.ok(html.includes('پس از مشخص شدن مقدار هر عملیات'));
  state.paymentRows=[{pricingMode:'agreed',description:'پس از تحویل',agreedPrice:1000000}];
  assert.ok(contractDocumentMarkup(state).includes('doc-payment'));
  const fixed=contractDocumentMarkup({amount:100,retentionPercent:0,paymentMethod:'quantity',paymentRows:[]});
@@ -49,7 +49,7 @@ test('mixed quantities preserve the known subtotal, individual values and unknow
  assert.equal(JSON.stringify(state),original,'preview must not mutate the saved rows');
  assert.ok(html.includes('جمع ردیف‌های با مبلغ مشخص'));assert.ok(html.includes('۱۴۱٬۰۰۰٬۰۰۰'));
  assert.ok(html.includes('<td>۱۰۰</td>'));assert.ok(html.includes('۱۴۰٬۰۰۰٬۰۰۰'));
- assert.ok(html.includes('پس از متره'));assert.ok(!html.includes('به مبلغ کل'));
+ assert.ok(html.includes('پس از مشخص شدن مقدار هر عملیات'));assert.ok(!html.includes('به مبلغ کل'));
  syncContractAmount(state);assert.equal(state.amount,null);assert.equal(state.knownAmount,'141000000');
  syncPaymentStages(state);assert.equal(state.retentionAmount,null);
  state.operationRows[1].remeasurement=false;state.operationRows[1].quantity=20;
