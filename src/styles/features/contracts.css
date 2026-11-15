@@ -1714,7 +1714,8 @@ textarea.contract-project-item-input{
   max-width:720px;
   margin:10px auto 0;
 }
-.contract-real-preview-viewport{position:relative;width:100%;max-width:794px;margin:0 auto;overflow:hidden;flex-shrink:0;}
+.contract-real-preview-viewport{position:relative;width:100%;max-width:794px;margin:0 auto;overflow:hidden;flex-shrink:0;min-height:480px;}
+#contractPreviewPage .page-body{padding-top:12px;}
 .contract-real-print-preview{
   position:absolute!important;
   top:0;

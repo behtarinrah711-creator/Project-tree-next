@@ -48,12 +48,20 @@ export function createContractPreviewView({documentRef=globalThis.document,windo
     const preview=documentRef.createElement('div');
     preview.className='ctf-preview contract-doc-preview contract-real-print-preview';
     const displayTitle=contractDisplayTitle(project,contract,{prefix:addendum?'الحاقیه':''});
-    preview.innerHTML=addendum?addendumDocumentMarkup(draft,addendum.parent):contractDocumentMarkup(draft,activityName,{highlightValues:true,displayTitle});
+    try{
+      preview.innerHTML=addendum?addendumDocumentMarkup(draft,addendum.parent):contractDocumentMarkup(draft,activityName,{highlightValues:true,displayTitle});
+    }catch(_error){
+      preview.textContent='پیش‌نمایش قرارداد ساخته نشد. دوباره تلاش کنید.';
+    }
     body.replaceChildren();
     page.classList.remove('hidden');
     const printBody=signedFiles?.length?documentRef.createElement('div'):body;
     if(printBody!==body)body.appendChild(printBody);
-    disposeDocuments=mountContractDocumentPreview(printBody,preview,draft,project.id,{mountPrintPage,activityName:activityName,highlightValues:true});
+    try{
+      disposeDocuments=mountContractDocumentPreview(printBody,preview,draft,project.id,{mountPrintPage,activityName:activityName,highlightValues:true});
+    }catch(_error){
+      printBody.appendChild(preview);
+    }
     if(signedFiles?.length){const attachments=documentRef.createElement('section');const title=documentRef.createElement('h3');title.textContent=addendum?'نسخه امضاشده الحاقیه':'نسخه امضاشده قرارداد';attachments.appendChild(title);body.appendChild(attachments);const uploader=mountFileUploader(attachments,{projectId:project.id,recordId:contract.id,category:'contracts',files:signedFiles,readOnly:true});disposeSigned=()=>uploader.destroy();}
     windowRef.KarhaChildHistory?.open?.('contract-preview');
     return true;

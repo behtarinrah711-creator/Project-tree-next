@@ -199,7 +199,7 @@ export function renderPendingApprovals(body,projectId,section,openSection){
     }
     for(const [id,entry] of grouped){
       const contract=(project.contracts||[]).find(record=>!record.trashed && String(record.id)===id);
-      if(contract)list.append(renderContractCard(project,contract,{approval:entry.contract||{},approvalDocuments:entry.documents}));
+      if(contract)list.append(renderContractCard(project,contract,{showDetails:true,approval:entry.contract||{},approvalDocuments:entry.documents}));
     }
   }
   body.append(list);
