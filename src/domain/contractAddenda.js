@@ -51,7 +51,8 @@ export function canEditAddendumRecord(addendum){
 }
 
 export function canDeleteAddendumRecord(addendum){
-  return canEditAddendumRecord(addendum) && !addendum.accountingPackage
+  return canEditAddendumRecord(addendum) && (!addendum.accountingPackage ||
+    (addendum.accountingStatus==='rejected' && addendum.status==='draft' && addendum.isDraft))
     && !['pending','approved'].includes(addendum.approvalStatus);
 }
 
