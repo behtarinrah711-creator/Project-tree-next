@@ -208,7 +208,7 @@ test('Work Task create, edit, connector and modes share one persisted model', as
   await sheet.locator('[name="taskType"] + .wbs-task-option-trigger').click();
   await sheet.locator('[name="taskType"] ~ .wbs-task-option-menu .wbs-task-option-item',{hasText:'خرید'}).click();
   await sheet.locator('[name="taskPriority"] + .wbs-task-option-trigger').click();
-  await sheet.locator('[name="taskPriority"] ~ .wbs-task-option-menu .wbs-task-option-item',{hasText:'زیاد'}).click();
+  await sheet.locator('[name="taskPriority"] ~ .wbs-task-option-menu .wbs-task-option-item',{hasText:'مهم'}).click();
   await sheet.locator('[name="taskAssignee"]').click();
   await page.locator('#searchTemplatePage .stpl-row[data-id="c1"]').click();
   await sheet.locator('[name="taskAmount"]').click();
@@ -238,7 +238,7 @@ test('Work Task create, edit, connector and modes share one persisted model', as
   await expect(task.locator('.wbs-check')).toHaveCount(0);
   await expect(task.locator('.wbs-task-main')).toContainText('خرید');
   await expect(task.locator('.wbs-task-secondary')).toContainText('مهندس احمدی');
-  await expect(task.locator('.wbs-task-secondary')).toContainText('زیاد');
+  await expect(task.locator('.wbs-task-secondary')).toContainText('مهم');
   await expect(task.locator('.wbs-row')).toHaveCount(0);
   expect(await task.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
   await expect.poll(() => page.evaluate(() => {
