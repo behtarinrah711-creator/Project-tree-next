@@ -225,3 +225,10 @@
 .approval-option-count.is-zero{background:#686c72;}
 .approval-queue-list{padding:0 12px 12px;}
 .approval-queue-header{position:sticky;top:0;z-index:1;}
+
+.contract-approval-controls{display:grid;gap:8px;padding:12px;}
+.contract-approval-filter-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.contract-approval-controls .contract-status-filter{width:100%;white-space:normal;}
+.contract-approval-controls [aria-pressed="true"]{background:#080c52;color:#fff;}
+.contract-approval-filters summary{padding:8px 0;cursor:pointer;}
+.contract-approval-decision{margin:0;padding:8px 12px;font-size:.85em;color:var(--text-dim);}

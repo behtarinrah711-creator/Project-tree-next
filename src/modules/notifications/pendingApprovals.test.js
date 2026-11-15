@@ -9,7 +9,7 @@ const windowFor=modules=>({firebase:{auth:()=>({currentUser:actor})},KarhaSaosaW
 const record={status:'final',approvalStatus:'pending',approvalContactIds:['me','other'],approvedContactIds:[]};
 const project={
   id:'p',contacts:[{id:'me',phones:['0912']}],
-  contracts:[{...record,id:'contract'},{...record,id:'already',approvedContactIds:['me']}],
+  contracts:[{...record,id:'contract'},{...record,id:'already',approvedContactIds:['me'],approvalHistory:[{action:'approve',at:1700000000000,actor:{contactId:'me'}}]}],
   contractAddenda:[{...record,id:'addendum',parentContractId:'contract'}],
   tasks:[{id:'work',kind:'work',workTasks:[
     {id:'buy',type:'خرید',approvalContactId:'me',completionState:'pending_approval'},
@@ -78,7 +78,7 @@ test('the approval inbox renders the original cards with only review controls',(
   const body=documentRef.createElement('div');
   try{
     renderPendingApprovals(body,'p','approvals-addenda',()=>{});
-    const contracts=body.children[1].children;
+    const contracts=body.children[2].children;
     assert.equal(contracts.length,1);
     const card=contracts[0];
     assert.equal(card.className,'contract-row');
@@ -86,6 +86,16 @@ test('the approval inbox renders the original cards with only review controls',(
     assert.equal(card.nodes().filter(node=>node.className.split(' ').includes('today-progress-circle')).length,2);
     assert.ok(card.nodes().some(node=>/^الحاقیه /.test(node.textContent)));
     assert.ok(!card.nodes().some(node=>node.className==='contract-addendum-create'));
+    const controls=body.children[1];
+    controls.nodes().find(node=>node.dataset.tab==='approved').onclick();
+    assert.equal(body.children[2].children.length,1);
+    assert.ok(body.children[2].nodes().some(node=>node.textContent?.startsWith('تأیید شما ·')));
+    assert.ok(!body.children[2].nodes().some(node=>node.textContent==='تأیید'));
+    const search=controls.nodes().find(node=>node.type==='search');
+    search.value='ناموجود';search.oninput();
+    assert.equal(body.children[2].children[0].className,'mgmt-empty');
+    search.value='';search.oninput();
+    controls.nodes().find(node=>node.dataset.tab==='pending').onclick();
     for(const [group,css,label] of [
       ['execution','wbs-costline-work','تأیید'],
       ['shopping','shopping-item-card','تأیید خرید'],
@@ -105,7 +115,7 @@ test('the approval inbox renders the original cards with only review controls',(
     }
     window.KarhaSaosaWorkspaceAccess.p.permissions.modules.contracts='view';
     renderPendingApprovals(body,'p','approvals-addenda',()=>{});
-    assert.ok(!body.children[1].nodes().some(node=>node.textContent==='تأیید'));
+    assert.ok(!body.children[2].nodes().some(node=>node.textContent==='تأیید'));
   }finally{
     [globalThis.window,globalThis.document,globalThis.Node,projectRepository.find]=old;
   }
