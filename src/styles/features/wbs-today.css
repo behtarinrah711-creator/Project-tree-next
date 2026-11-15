@@ -201,3 +201,35 @@ button.today-report-circle{cursor:pointer;}
 .daily-filter-body .filter-option-row{display:flex;justify-content:space-between;align-items:center;width:100%;padding:16px;border:0;border-bottom:1px solid #eee;background:transparent;font:inherit;text-align:right;}
 .daily-filter-body .filter-clear-btn{width:100%;padding:16px;border:0;background:transparent;color:#c62828;font-weight:600;}
 .daily-filter-body .filter-select-label{color:#1565c0;}
+
+/* Bottom activity bar on execution cards */
+.today-card-activity {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 12px 8px;
+  font-size: 11px;
+  color: #4d4741;
+  border-top: 1px solid #f0ebe5;
+  background: #faf8f6;
+}
+.today-activity-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.today-activity-thumbs {
+  display: flex;
+  gap: 3px;
+  flex-shrink: 0;
+}
+.today-activity-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  object-fit: cover;
+  background: #eee;
+}

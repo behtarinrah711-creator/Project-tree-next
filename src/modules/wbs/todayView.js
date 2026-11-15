@@ -18,6 +18,8 @@ import { openFileViewer } from '../files/fileViewer.js';
 export const TODAY_ICON = 'M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v255l-80 80v-175H200v400h248l80 80H200Zm0-560h560v-80H200v80Zm0 0v-80 80ZM662-60 520-202l56-56 85 85 170-170 56 57L662-60Z';
 const LABELS = Object.freeze({ overdue:'عقب‌افتاده', today:'امروز', future:'آینده', pending:'تکمیل', unscheduled:'بی زمان' });
 const TYPE_CLASSES = new Map([['اجرا','type-1'],['خرید','type-2'],['نیروی کار','type-3'],['پیمانکار','type-4'],['کرایه','type-5'],['خدمات','type-6'],['پیگیری','type-7'],['سایر','type-9']]);
+const PRIORITY_LABELS = Object.freeze({ low:'بحرانی', normal:'عادی', high:'مهم' });
+const PRIORITY_CLASSES = Object.freeze({ low:'priority-low', normal:'priority-normal', high:'priority-high' });
 let standaloneMode='today';
 let activeMode = 'today'; let activeProjectId = null;
 
@@ -410,7 +412,10 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   heading.className='today-card-heading today-card-summary';
   const {entity}=item;
   const titles=linkButton(documentRef,'today-card-titles','');
-  titles.innerHTML=`<strong><small class="wbs-type-chip ${TYPE_CLASSES.get(entity.type)||'type-7'}">${esc(entity.oddJobType||entity.type||item.work?.type||'کار')}</small> ${esc(entity.title||entity.text||'')}</strong><span>${esc(item.path.join(' · '))}</span>`;
+  const priority = entity.priority || 'normal';
+  const priorityLabel = PRIORITY_LABELS[priority] || PRIORITY_LABELS.normal;
+  const priorityClass = PRIORITY_CLASSES[priority] || 'priority-normal';
+  titles.innerHTML=`<strong><small class="wbs-task-priority ${priorityClass}">${esc(priorityLabel)}</small> ${esc(entity.title||entity.text||'')}</strong><span>${esc(item.path.join(' · '))}</span>`;
   const assignee=(project.contacts||[]).find(contact=>!contact.trashed && String(contact.id)===String(entity.assigneeContactId));
   const contractor=contractorForItem(project,item).contact;
   if(assignee || contractor){
@@ -484,7 +489,63 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     schedule.append(timing.bar);
     card.append(schedule);
   }
+  // Bottom activity bar: latest update + small photo thumbs
+  const activityBar = documentRef.createElement('div');
+  activityBar.className = 'today-card-activity';
+  const latest = latestActivity(entity);
+  if (latest) {
+    const textEl = documentRef.createElement('span');
+    textEl.className = 'today-activity-text';
+    textEl.textContent = latest.text;
+    activityBar.appendChild(textEl);
+  }
+  const reportWithPhotos = (entity.executionReports || []).find(r => r && !r.trashed && r.photos?.length);
+  if (reportWithPhotos) {
+    const thumbs = documentRef.createElement('span');
+    thumbs.className = 'today-activity-thumbs';
+    for (const photo of (reportWithPhotos.photos || []).slice(0, 3)) {
+      const img = documentRef.createElement('img');
+      img.className = 'today-activity-thumb';
+      img.alt = photo?.name || 'عکس';
+      img.loading = 'lazy';
+      // placeholder; real src would come from fetchFile if needed
+      img.src = photo?.thumbnailUrl || photo?.url || '';
+      thumbs.appendChild(img);
+    }
+    activityBar.appendChild(thumbs);
+  }
+  if (activityBar.childNodes.length) card.appendChild(activityBar);
   return card;
+}
+
+function latestActivity(entity) {
+  const candidates = [];
+  for (const r of entity.executionReports || []) {
+    if (r && !r.trashed && r.createdAt) candidates.push({ at: new Date(r.createdAt).getTime(), text: 'گزارش ثبت شد' });
+  }
+  for (const c of entity.executionComments || []) {
+    if (c && !c.trashed && c.createdAt) candidates.push({ at: new Date(c.createdAt).getTime(), text: 'نظر ثبت شد' });
+  }
+  for (const h of entity.executionHistory || []) {
+    if (h && h.at) candidates.push({ at: new Date(h.at).getTime(), text: 'به‌روزرسانی' });
+  }
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => b.at - a.at);
+  const top = candidates[0];
+  const ago = relativeTime(top.at);
+  return { text: `${top.text}${ago ? ' · ' + ago : ''}`, at: top.at };
+}
+
+function relativeTime(ts) {
+  if (!ts) return '';
+  const diff = Date.now() - ts;
+  const m = Math.floor(diff / 60000);
+  if (m < 1) return 'همین الان';
+  if (m < 60) return m + ' دقیقه پیش';
+  const h = Math.floor(m / 60);
+  if (h < 24) return h + ' ساعت پیش';
+  const d = Math.floor(h / 24);
+  return d + ' روز پیش';
 }
 
 export function renderTodayView(project,documentRef=document,onChanged,{standalone=false}={}){
@@ -494,7 +555,12 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
   }
   const today=tehranTodayJalali();
   const selectedMode=standalone?standaloneMode:activeMode;
-  const items=standalone?collectStandaloneWorks(project,today).filter(item=>item.mode===selectedMode):itemsForMode(project,activeMode,today);
+  let items=standalone?collectStandaloneWorks(project,today).filter(item=>item.mode===selectedMode):itemsForMode(project,activeMode,today);
+  items = items.slice().sort((a, b) => {
+    const ta = latestActivity(a.entity)?.at || 0;
+    const tb = latestActivity(b.entity)?.at || 0;
+    return tb - ta;
+  });
   const frame=documentRef.createElement('section');
   frame.className='wbs-view-frame wbs-today-frame is-today-view';
   frame.dataset.view=standalone?'oddjobs':'today';

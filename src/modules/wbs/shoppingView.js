@@ -11,7 +11,7 @@ export const SHOPPING_ICON = 'M221-120q-27 0-48-16.5T144-179L42-549q-5-19 6.5-35
 
 const ICONS=Object.freeze({overdue:'./src/assets/wbs/pending-actions.svg',today:'./src/assets/wbs/today.svg',future:'./src/assets/wbs/next-week.svg',pending:'./src/assets/wbs/pending-approval.svg',unscheduled:'./src/assets/wbs/event-busy.svg',filter:'./src/assets/wbs/filter-alt.svg'});
 const LABELS=Object.freeze({overdue:'خریدهای عقب‌افتاده',today:'خریدهای امروز',future:'خریدهای آینده',pending:'خریدهای منتظر تأیید',unscheduled:'خریدهای زمان‌بندی‌نشده'});
-const PRIORITIES=Object.freeze({low:'کم',normal:'عادی',high:'زیاد'});
+const PRIORITIES=Object.freeze({low:'بحرانی',normal:'عادی',high:'مهم'});
 let activeMode='today';let activeProjectId=null;let activeProject=null;
 
 function actor(){return currentExecutionActor(activeProject);}
