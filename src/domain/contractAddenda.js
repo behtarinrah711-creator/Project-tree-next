@@ -1,3 +1,4 @@
+import {canDeleteContractDocument} from './contractHandoff.js';
 import {contractProgressSteps} from './contractProgress.js';
 import {contractApproverIds} from './contractApproval.js';
 
@@ -51,6 +52,7 @@ export function canEditAddendumRecord(addendum){
 }
 
 export function canDeleteAddendumRecord(addendum){
+  if(addendum?.accountingStatus==='rejected')return canDeleteContractDocument(addendum) && canEditAddendumRecord(addendum);
   return canEditAddendumRecord(addendum) && !addendum.accountingPackage
     && !['pending','approved'].includes(addendum.approvalStatus);
 }

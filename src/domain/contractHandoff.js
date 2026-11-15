@@ -38,8 +38,15 @@ export function canReuseReturnedSignature(contract){
     && JSON.stringify(operationValues(contract))===JSON.stringify(operationValues(previous));
 }
 
+export function canDeleteContractDocument(document){
+  return !!document && !document.trashed && !document.signedAt && document.signatureStatus!=='signed'
+    && !document.sentToAccountingAt && !['sent','accepted'].includes(document.accountingStatus)
+    && !(Number(document.paidAmount)>0) && !['pending','approved'].includes(document.approvalStatus)
+    && (!document.accountingPackage || (document.accountingStatus==='rejected' && document.status==='draft' && document.isDraft));
+}
+
 export function canReopenSignedContract(contract){
-  return !contract?.parentContractId && !contract?.statementType && canAttachSignedContract(contract)
+  return !(Number(contract?.paidAmount)>0) && canAttachSignedContract(contract)
     && !isContractInFinance(contract) && (isContractSigned(contract) || canReuseReturnedSignature(contract));
 }
 
