@@ -25,6 +25,7 @@ import { contactApi } from '../../domain/contactApi.js';
 import { findInTree } from '../../domain/wbs/normalize.js';
 import { workPath } from '../../domain/wbs/workTaskContractSync.js';
 import { activityApi } from '../../domain/activityApi.js';
+import { contractDisplayTitle } from './contractTitle.js';
 
 function resolveProjectId(explicit=null){
   return explicit || projectContext.getProjectId?.()
@@ -87,15 +88,10 @@ export function contractRowData(projectId,c){
   return {title,meta,number,created:contractCreatedParts(c.createdAt)};
 }
 
-function contractTitleWithStage(title, path){
-  const stage=String(path||'').split('←').map(part=>part.trim()).filter(Boolean).at(-1);
-  return stage ? title+' | '+stage : title;
-}
-
 export function renderContractCardHeading(project, contract, menu, {titlePrefix="",onPreview,progress}={}){
   const {title,number,created}=contractRowData(project.id,contract);
   const path=contractProjectPath(project,contract);
-  const displayTitle=contractTitleWithStage(title, path);
+  const displayTitle=contractDisplayTitle(project, contract);
   const heading=document.createElement('div');
   heading.className='contract-card-heading';
   const main=document.createElement('div'); main.className='contract-main';

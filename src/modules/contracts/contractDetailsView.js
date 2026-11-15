@@ -3,6 +3,7 @@ import {renderContractDocuments} from './contractDocumentsView.js';
 import {openContractPreview} from './contractPreviewView.js';
 import {renderContractSignedSection} from './contractSignedView.js';
 import {renderContractFinancialSummary} from './contractStatementsView.js';
+import {contractDisplayTitle} from './contractTitle.js';
 
 export function openContractDetails(project,contract,trigger){
   const page=document.createElement('section');
@@ -23,7 +24,7 @@ export function openContractDetails(project,contract,trigger){
   const paint=(documents=null)=>{
     const source=projectRepository.find(project.id)||project;
     const current=(source.contracts||[]).find(item=>!item.trashed && String(item.id)===String(contract.id))||contract;
-    const title=document.createElement('h3');title.textContent=current.title||'قرارداد اصلی';
+    const title=document.createElement('h3');title.textContent=contractDisplayTitle(project,current);
     const number=document.createElement('p');number.textContent=current.contractNo||'';
     const preview=document.createElement('button');preview.type='button';preview.className='contract-review-action';
     preview.textContent='پیش‌نمایش قرارداد';

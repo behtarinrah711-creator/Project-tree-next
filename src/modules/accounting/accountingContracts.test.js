@@ -31,7 +31,7 @@ test('finance contracts use the report card header with only financial decision 
     const heading=report.children.find(n=>n.className==='contract-card-heading');
     const [main,progress,details,menu]=heading.children;
     assert.equal(main.className,'contract-main');
-    assert.deepEqual(main.children.map(n=>n.textContent),['قرارداد پیمانکاری جواد قریشی','CTR-1']);
+    assert.deepEqual(main.children.map(n=>n.textContent),['قرارداد پیمانکاری جواد قریشی | بستن میلگرد ستون','CTR-1']);
     assert.ok(progress.className.split(' ').includes('today-progress-circle'));
     assert.equal(details.className,'contract-heading-details');
     assert.equal(details.children[0].textContent,'سوله موجود ← اجرای ستون‌ها ← بستن میلگرد ستون');

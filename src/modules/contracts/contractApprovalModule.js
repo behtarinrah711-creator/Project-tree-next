@@ -1,6 +1,7 @@
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { getProjectContracts } from './realContractDomain.js';
+import { contractDisplayTitle } from './contractTitle.js';
 
 function project(projectId=null){
   const id=projectId || projectContext.getProjectId?.() || projectContext.getActiveProjectId?.();
@@ -36,7 +37,7 @@ export const contractApprovalModule={
       const card=document.createElement('div');card.className='contract-approval-card';
       const name=[contact?.firstName,contact?.lastName].filter(Boolean).join(' ')||contact?.name||'بدون مخاطب';
       const status=r.approvalStatus==='approved'?'تایید شده':r.approvalStatus==='rejected'?'رد شده':'در انتظار تایید';
-      card.innerHTML='<div class="contract-status-title">'+esc(c.title||'قرارداد')+'</div>'+
+      card.innerHTML='<div class="contract-status-title">'+esc(contractDisplayTitle(p,c))+'</div>'+
         '<div class="contract-status-meta">پیمانکار: '+esc(name)+' · فعالیت: '+esc(a?.name||'—')+'</div>'+
         '<div class="contract-status-meta">تاریخ: '+esc(r.date||'—')+' · درصد تجمعی: '+esc(persian(r.percent||0))+'٪ · مبلغ مرحله: '+esc(money(stage))+'</div>'+
         '<div class="contract-approval-status">وضعیت: <b>'+esc(status)+'</b></div>';

@@ -2,6 +2,7 @@ import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { contractApi } from '../../domain/contractApi.js';
 import { getProjectContracts } from './realContractDomain.js';
+import { contractDisplayTitle } from './contractTitle.js';
 
 function project(projectId=null){
   const id=projectId || projectContext.getProjectId?.() || projectContext.getActiveProjectId?.();
@@ -49,7 +50,7 @@ export const contractStatusModule={
 
     const mine=contracts.filter(c=>String(c.contactId)===String(state.contactId));
     field('قرارداد','select',state.contractId,v=>{state.contractId=v;state.percent='';},
-      '<option value="">انتخاب قرارداد…</option>'+mine.map(c=>'<option value="'+esc(c.id)+'">'+esc((c.title||'قرارداد')+' · '+(activity(p,c.activityId)?.name||'فعالیت'))+'</option>').join(''));
+      '<option value="">انتخاب قرارداد…</option>'+mine.map(c=>'<option value="'+esc(c.id)+'">'+esc(contractDisplayTitle(p,c))+'</option>').join(''));
 
     const selected=contracts.find(c=>String(c.id)===String(state.contractId));
     if(!selected){
