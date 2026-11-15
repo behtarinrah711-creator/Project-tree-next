@@ -2,7 +2,7 @@ import {mountFileUploader} from '../files/fileUploader.js';
 import { addendumDocumentMarkup, contractDocumentMarkup } from './contractDocument.js';
 import { resolveCurrentContractDocument,makeRealContractDraft } from './realContractDomain.js';
 import { mountContractPrintPage } from './contractTemplateFormModule.js';
-import {mountContractDocumentPreview} from './contractDocumentAttachments.js';
+import {contractDisplayTitle} from './contractTitle.js';
 
 let view=null;
 export function createContractPreviewView({documentRef=globalThis.document,windowRef=globalThis.window,mountPrintPage=mountContractPrintPage}={}){
@@ -39,7 +39,7 @@ export function createContractPreviewView({documentRef=globalThis.document,windo
       windowRef.KarhaChildHistory?.open?.('contract-preview');
       return true;
     }
-    title.textContent=addendum?'پیش‌نمایش الحاقیه':'پیش‌نمایش قرارداد';
+    title.textContent=contractDisplayTitle(project,contract,{prefix:addendum?'پیش‌نمایش الحاقیه':'پیش‌نمایش'});
     const current=addendum?{project,draft:contract}:frozen?{project,draft:makeRealContractDraft(contract)}:resolveCurrentContractDocument(project,contract);
     project=current.project;
     const draft=current.draft;
@@ -47,7 +47,8 @@ export function createContractPreviewView({documentRef=globalThis.document,windo
     const activityName=frozen?(draft.documentActivityName||''):(activity?.name||activity?.title||'');
     const preview=documentRef.createElement('div');
     preview.className='ctf-preview contract-doc-preview contract-real-print-preview';
-    preview.innerHTML=addendum?addendumDocumentMarkup(draft,addendum.parent):contractDocumentMarkup(draft,activityName,{highlightValues:true});
+    const displayTitle=contractDisplayTitle(project,contract,{prefix:addendum?'الحاقیه':''});
+    preview.innerHTML=addendum?addendumDocumentMarkup(draft,addendum.parent):contractDocumentMarkup(draft,activityName,{highlightValues:true,displayTitle});
     body.replaceChildren();
     page.classList.remove('hidden');
     const printBody=signedFiles?.length?documentRef.createElement('div'):body;

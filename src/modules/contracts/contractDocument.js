@@ -48,7 +48,7 @@ export function addendumDocumentMarkup(addendum,parent){
     (operations.length?'<div class="doc-pricing"><b>محاسبه مبلغ الحاقیه</b>'+quantityTable(operations,true)+'</div>':'');
 }
 
-export function contractDocumentMarkup(state,activityName='',{highlightValues=false}={}){
+export function contractDocumentMarkup(state,activityName='',{highlightValues=false,displayTitle=''}={}){
   state={...state,...(Array.isArray(state.operationRows)?{operationRows:state.operationRows.map(row=>({...row}))}:{}),...(Array.isArray(state.amountRows)?{amountRows:state.amountRows.map(row=>({...row}))}:{})};
   syncContractAmount(state);
   const retentionAmount=(Number(state.amount)||0)*(Number(state.retentionPercent)||0)/100;
@@ -134,7 +134,7 @@ export function contractDocumentMarkup(state,activityName='',{highlightValues=fa
       '<div class="contract-document-photo-grid">'+photos+'</div></section>');
   }
   return documentMeta('قرارداد',state.contractNo,state.contractDate,{renderValue:blank})+
-    '<div class="doc-title">' + escape(state.title || 'قرارداد ' + activityName) + '</div>' +
+    '<div class="doc-title">' + escape(displayTitle || state.title || 'قرارداد ' + activityName) + '</div>' +
     '<p class="doc-parties doc-introduction">این قرارداد در ' + blank(state.contractPlace) +
       ' فی‌مابین ' + blank(state.employerName) + ' به‌عنوان کارفرما و ' + blank(state.contractorName) +
       ' به‌عنوان پیمانکار در بخش ' + blank(state.projectItemPath) +

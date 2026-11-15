@@ -4,6 +4,7 @@ import { installNotebookExportView } from '../notebook/notebookExportView.js';
 import { contractDocumentMarkup } from './contractDocument.js';
 import { resolveCurrentContractDocument,makeRealContractDraft } from './realContractDomain.js';
 import {loadContractDocumentImages} from './contractDocumentAttachments.js';
+import {contractDisplayTitle} from './contractTitle.js';
 
 let view=null;
 let exportRequest=0;
@@ -19,21 +20,21 @@ export async function openContractExport(project,contract,{trigger=null,frozen=f
     view=installNotebookExportView({
       idPrefix:'contractExport',historyKey:'contract-export',
       paginateDocument:html=>paginateContractMarkup(html),
-      documentBuilder:list=>list.markup||'<section class="contract-export-document" dir="rtl">'+contractDocumentMarkup(list.contract,list.activityName)+'</section>',
+      documentBuilder:list=>list.markup||'<section class="contract-export-document" dir="rtl">'+contractDocumentMarkup(list.contract,list.activityName,{displayTitle:list.displayTitle||list.title})+'</section>',
       extraStyles:getContractPageStyles(),
     });
   }
-  if(markup)return view.open({title:contract.title+' | '+contract.contractNo,markup,items:[]},{trigger});
+  if(markup)return view.open({title:contractDisplayTitle(project,contract),markup,items:[]},{trigger});
   const current=frozen?{project,draft:makeRealContractDraft(contract)}:resolveCurrentContractDocument(project,contract);
   project=current.project;
   let draft=current.draft;
   if(draft.contractorDocuments?.length){
     window.KarhaLegacy?.showToast?.('در حال دریافت مدارک پیمانکار…');
     try{draft=await loadContractDocumentImages(draft,project.id);}
-    catch{window.KarhaLegacy?.showToast?.('دریافت مدارک پیمانکار انجام نشد؛ خروجی ناقص ساخته نمی‌شود. دوباره تلاش کنید');return false;}
+    catch{window.KarhaLegacy?.showToast?.('دریافت مدرک پیمانکار انجام نشد؛ خروجی ناقص ساخته نمی‌شود. دوباره تلاش کنید');return false;}
     if(request!==exportRequest)return false;
   }
   const activityName=frozen?(draft.documentActivityName||'بدون فعالیت'):((project.activityTemplates||[]).find(a=>String(a.id)===String(draft.activityId))?.name||'بدون فعالیت');
-  const person=draft.contractorName||'بدون پیمانکار';
-  return view.open({title:'قرارداد '+activityName+' + '+person,activityName,contract:draft,items:[]},{trigger});
+  const displayTitle=contractDisplayTitle(project,contract);
+  return view.open({title:displayTitle,activityName,contract:draft,displayTitle,items:[]},{trigger});
 }
