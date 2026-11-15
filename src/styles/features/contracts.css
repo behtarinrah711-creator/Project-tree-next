@@ -1747,9 +1747,10 @@ textarea.contract-project-item-input{
 .contract-form-body .ctf-text,
 .contract-form-body .ctf-inline-input{field-sizing:content;overflow:hidden;resize:none;}
 
-.contract-menu-wrap .nb-project-menu{right:auto;left:0;}
-.contract-menu-wrap:has(.nb-project-menu){z-index:24;}
-.contract-menu-wrap > .nb-more[aria-expanded="true"]{position:relative;z-index:22;}
+.contract-menu-wrap .nb-project-menu{right:auto;left:0;z-index:60;}
+.contract-menu-wrap:has(.nb-project-menu){z-index:50;}
+.contract-menu-wrap > .nb-more[aria-expanded="true"]{position:relative;z-index:61;}
+.contract-menu-wrap .nb-menu-dismiss{z-index:49;}
 #contractExportPage.page-overlay{z-index:70;}
 #contractExportPage [hidden]{display:none!important;}
 #contractExportPage .export-toolbar{justify-content:flex-end;}

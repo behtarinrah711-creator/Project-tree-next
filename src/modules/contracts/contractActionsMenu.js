@@ -30,6 +30,23 @@ export function contractActionsMenu({onEdit,onExport,onDelete}){
       menu.appendChild(button);
     }
     wrap.append(dismiss,menu);
+
+    // Position menu above footer if near bottom of viewport
+    requestAnimationFrame(()=>{
+      if(!menu) return;
+      const toggleRect=toggle.getBoundingClientRect();
+      const menuHeight=menu.offsetHeight || 140;
+      const bottomNav=document.getElementById('bottomNav');
+      const navHeight=bottomNav ? bottomNav.offsetHeight : 68;
+      const spaceBelow=window.innerHeight - toggleRect.bottom - navHeight - 12;
+      if(spaceBelow < menuHeight){
+        menu.style.top='auto';
+        menu.style.bottom='42px';
+      } else {
+        menu.style.top='42px';
+        menu.style.bottom='auto';
+      }
+    });
   };
   wrap.onkeydown=e=>{if(e.key==='Escape'){shut();toggle.focus();}};
   wrap.appendChild(toggle);return wrap;
