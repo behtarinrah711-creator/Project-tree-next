@@ -248,3 +248,18 @@ test('template edits affect new work contracts while existing drafts keep their 
   assert.equal(next.title,'عنوان جدید');
   assert.equal(next.items[0].text,'بند جدید');
 });
+
+test('invited contract editor can save a linked draft without changing the read-only project tree', t=>{
+  const store=installFixture();
+  const created=workTaskApi.create('p1','w1',draft({activityId:'a1',hasContract:true}),()=>100);
+  assert.equal(created.ok,true);
+  const project=store.getSnapshot().projects[0];
+  const [linked]=project.contracts;
+  const before=structuredClone(project.tasks);
+  const oldWindow=globalThis.window;
+  t.after(()=>{globalThis.window=oldWindow;});
+  globalThis.window={KarhaSaosaWorkspaceAccess:{p1:{role:'member',permissions:{modules:{contracts:'create','planning:tree':'view'}}}}};
+  assert.equal(contractApi.saveDraft('p1',{...linked,activityId:'a2'}).ok,true);
+  assert.equal(contractApi.get('p1',linked.id).activityId,'a2');
+  assert.deepEqual(store.getSnapshot().projects[0].tasks,before);
+});
