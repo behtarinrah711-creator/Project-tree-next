@@ -499,23 +499,41 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     textEl.textContent = latest.text;
     activityBar.appendChild(textEl);
   }
-  const reportWithPhotos = (entity.executionReports || []).find(r => r && !r.trashed && r.photos?.length);
-  if (reportWithPhotos) {
-    const thumbs = documentRef.createElement('span');
-    thumbs.className = 'today-activity-thumbs';
-    for (const photo of (reportWithPhotos.photos || []).slice(0, 3)) {
-      const img = documentRef.createElement('img');
-      img.className = 'today-activity-thumb';
-      img.alt = photo?.name || 'عکس';
-      img.loading = 'lazy';
-      // placeholder; real src would come from fetchFile if needed
-      img.src = photo?.thumbnailUrl || photo?.url || '';
-      thumbs.appendChild(img);
+  const reportWithPhotos=reportsOf(entity).find(report=>report.photos?.some(photo=>photo?.hasThumbnail));
+  if(reportWithPhotos){
+    const photos=reportWithPhotos.photos.filter(photo=>photo?.hasThumbnail).slice(0,3);
+    const thumbs=documentRef.createElement('span');
+    thumbs.className='today-activity-thumbs';
+    for(const photo of photos){
+      const image=documentRef.createElement('img');
+      image.className='today-activity-thumb';
+      image.alt='';
+      image.decoding='async';
+      thumbs.appendChild(image);
+      loadActivityThumbnail(documentRef,image,photo);
     }
     activityBar.appendChild(thumbs);
   }
   if (latest || reportWithPhotos) card.appendChild(activityBar);
   return card;
+}
+
+function loadActivityThumbnail(documentRef,image,photo){
+  const Observer=documentRef.defaultView?.IntersectionObserver;
+  if(!Observer)return;
+  const observer=new Observer(entries=>{
+    if(!entries.some(entry=>entry.isIntersecting))return;
+    observer.disconnect();
+    fetchFile(photo,true).then(blob=>{
+      if(!image.isConnected)return;
+      const url=URL.createObjectURL(blob);
+      const release=()=>URL.revokeObjectURL(url);
+      image.addEventListener('load',release,{once:true});
+      image.addEventListener('error',release,{once:true});
+      image.src=url;
+    }).catch(()=>{image.hidden=true;});
+  });
+  observer.observe(image);
 }
 
 function latestActivity(entity) {

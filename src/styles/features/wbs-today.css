@@ -212,7 +212,8 @@ button.today-report-circle{cursor:pointer;}
   font-size: 11px;
   color: #4d4741;
   border-top: 1px solid #f0ebe5;
-  background: #faf8f6;
+  background: #fff;
+  margin-inline: -12px;
 }
 .today-activity-text {
   flex: 1;
