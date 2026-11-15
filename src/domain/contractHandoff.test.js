@@ -1,3 +1,4 @@
+import {transitionContractHandoff} from './contractHandoff.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {transitionContractHandoff as transition,isContractSigned,isContractInFinance,preserveContractHandoff,signedContractFiles} from './contractHandoff.js';
@@ -86,4 +87,19 @@ test('returned printed copies remain editable without restoring completion or si
   const ready={...c,status:'final',isDraft:false,approvalStatus:'approved'};
   const confirmed=transition(ready,'save_signed',actor,{files:ready.signedFiles,at:60}).contract;
   assert.equal(isContractSigned(confirmed),true);assert.equal(confirmed.approvalHistory.at(-1).action,'confirm_signed');
+});
+
+test('reopening a signed contract clears active approval and signature while preserving prior files in history',()=>{
+  const file={id:'old',name:'signed.pdf'};
+  const signed={id:'c',status:'final',approvalStatus:'approved',signedAt:1,signedFiles:[file]};
+  const actor={id:'editor'};
+  const result=transitionContractHandoff(signed,'reopen_signed_contract',actor,{reason:'اصلاح متن قرارداد',at:2});
+  assert.equal(result.ok,true);
+  assert.equal(result.contract.status,'draft');
+  assert.equal(result.contract.approvalStatus,null);
+  assert.equal(result.contract.signedAt,null);
+  assert.deepEqual(result.contract.signedFiles,[]);
+  assert.deepEqual(result.contract.approvalHistory.at(-1).previousSignedFiles,[file]);
+  const sent={...signed,accountingStatus:'sent',sentToAccountingAt:1,accountingPackage:{contract:signed}};
+  assert.equal(transitionContractHandoff(sent,'reopen_signed_contract',actor,{reason:'اصلاح متن قرارداد'}).ok,false);
 });
