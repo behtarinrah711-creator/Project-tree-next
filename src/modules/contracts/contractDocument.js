@@ -56,11 +56,17 @@ export function contractDocumentMarkup(state,activityName='',{highlightValues=fa
   const highlight=html=>highlightValues ? '<span style="color:#1565c0">'+html+'</span>' : html;
   const blank=value=>esc(value).trim() ? highlight(esc(value).trim()) : '................................................';
 
+  const startDate=blank(formatJalaliDisplay(state.startDate));
+  const endDate=blank(formatJalaliDisplay(state.endDate));
+  const clauseText=text=>{
+    const duration=/^(مدت اجرای قرارداد از تاریخ\s+)[.…]+(\s+تا تاریخ\s+)[.…]+(.*)$/u.exec(text);
+    return duration ? escape(duration[1])+startDate+escape(duration[2])+endDate+escape(duration[3]) : escape(text);
+  };
   let clausesHtml = '';
   (state.items||[]).filter(item => item.included !== false).forEach((item, index) => {
     clausesHtml += '<div class="doc-clause"><b>' + persian(index + 1) + '.</b> ' + escape(item.text || '........................................................');
     (item.children || []).filter(child => child.included !== false).forEach((child, childIndex) => {
-      clausesHtml += '<div class="doc-child"><b>' + persian(`${index + 1}-${childIndex + 1}`) + '.</b> ' + escape(child.text || '........................................................') + '</div>';
+      clausesHtml += '<div class="doc-child"><b>' + persian(`${index + 1}-${childIndex + 1}`) + '.</b> ' + clauseText(child.text || '........................................................') + '</div>';
     });
     clausesHtml += '</div>';
   });
@@ -132,8 +138,8 @@ export function contractDocumentMarkup(state,activityName='',{highlightValues=fa
     '<p class="doc-parties doc-introduction">این قرارداد در ' + blank(state.contractPlace) +
       ' فی‌مابین ' + blank(state.employerName) + ' به‌عنوان کارفرما و ' + blank(state.contractorName) +
       ' به‌عنوان پیمانکار، با موضوع ' + blank(activityName) + ' در بخش ' + blank(state.projectItemPath) +
-      ' پروژه، ' + amountText + '، برای اجرا از تاریخ ' + blank(formatJalaliDisplay(state.startDate)) +
-      ' تا تاریخ ' + blank(formatJalaliDisplay(state.endDate)) + ' منعقد گردید.' + retentionText + ' طرفین متعهد به رعایت مفاد زیر هستند.' + (state.remeasurement ? ' مبلغ توافق شده جهت عملیات به شرح جدول زیر می باشد، بدیهی است مبلغ نهایی قرارداد در پایان عملیات پس از مشخص شدن مقدار هر عملیات مشخص می گردد.' : '') + '</p>' +
+      ' پروژه، ' + amountText + '، برای اجرا از تاریخ ' + startDate +
+      ' تا تاریخ ' + endDate + ' منعقد گردید.' + retentionText + ' طرفین متعهد به رعایت مفاد زیر هستند.' + (state.remeasurement ? ' مبلغ توافق شده جهت عملیات به شرح جدول زیر می باشد، بدیهی است مبلغ نهایی قرارداد در پایان عملیات پس از مشخص شدن مقدار هر عملیات مشخص می گردد.' : '') + '</p>' +
     pricingHtml +
     '<div class="doc-clauses">' + (clausesHtml || '<div class="doc-clause">........................................................</div>') + '</div>' +
     (paymentHtml ? '<div class="doc-payment"><b>مراحل پرداخت</b>' + paymentHtml + '</div>' : '') +

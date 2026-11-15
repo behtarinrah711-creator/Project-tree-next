@@ -83,7 +83,7 @@ export function paginateContract(source, documentRef=globalThis.document){
     const sheets=pages.querySelectorAll('.contract-sheet');
     sheets.forEach((sheet,i)=>{
       const signatures=documentRef.createElement('div');signatures.className='contract-sheet-signatures';
-      for(const party of ['کارفرما','پیمانکار','شاهد']){
+      for(const party of ['کارفرما','پیمانکار']){
         const box=documentRef.createElement('div');box.className='contract-sheet-signature';
         box.textContent='نام، نام خانوادگی، امضا و اثر انگشت '+party+':';
         signatures.appendChild(box);

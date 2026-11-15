@@ -30,7 +30,7 @@ test('every contract page uses the same identifying footer even without annexes'
   assert.ok(footers.length>1);
   const signatures=pages.querySelectorAll('.contract-sheet-signatures');
   assert.equal(signatures.length,footers.length);
-  signatures.forEach(row=>assert.deepEqual(row.children.map(box=>box.textContent),['کارفرما','پیمانکار','شاهد'].map(party=>'نام، نام خانوادگی، امضا و اثر انگشت '+party+':')));
+  signatures.forEach(row=>assert.deepEqual(row.children.map(box=>box.textContent),['کارفرما','پیمانکار'].map(party=>'نام، نام خانوادگی، امضا و اثر انگشت '+party+':')));
   footers.forEach((footer,index)=>assert.equal(footer.textContent,'شماره قرارداد: CTR-main — صفحه '+new Intl.NumberFormat('fa-IR').format(index+1)+' از '+new Intl.NumberFormat('fa-IR').format(footers.length)));
 });
 
