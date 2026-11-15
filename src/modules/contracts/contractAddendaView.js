@@ -245,7 +245,9 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
     onDelete:!approval && !finance && (nested || canDeleteAddendumRecord(addendum)) && canDeleteContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id])
       ? ()=>{
         if(!canDeleteAddendumRecord(latestAddendum()))return toast('الحاقیه در وضعیت فعلی قابل حذف نیست');
-        openConfirm('الحاقیه '+addendum.contractNo+' حذف شود؟',()=>review('delete_addendum'),'حذف');
+        openConfirm('آیا می‌خواهید این الحاقیه را حذف کنید؟',async()=>{
+          if(await review('delete_addendum'))toast('الحاقیه'+(addendum.contractNo?' به شماره '+addendum.contractNo:'')+' حذف شد.');
+        },'بله',{cancelLabel:'خیر'});
       } : undefined,
     onExport:trigger=>openContractExport(project,documentAddendum,{
       trigger,markup:'<section class="contract-export-document" dir="rtl">'+

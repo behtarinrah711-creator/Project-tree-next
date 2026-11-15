@@ -238,7 +238,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       const heading=renderContractCardHeading(p,c,{
         onEdit:approval || !writable?undefined:()=>{if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
         onExport:trigger=>openContractExport(p,finance?(c.accountingPackage?.contract||c):c,{trigger,frozen:finance}),
-        onDelete:approval || !writable?undefined:()=>openConfirm('آیا از حذف این قرارداد اطمینان دارید؟',()=>{
+        onDelete:approval || !writable?undefined:()=>openConfirm('آیا می‌خواهید این قرارداد را حذف کنید؟',()=>{
           const result=contractApi.trash(id,c.id);
           if(!result.ok){
             if(result.code==='in_use')window.KarhaLegacy?.showRecordDeleteBlocked?.('contract',result.refs);
@@ -246,7 +246,8 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
             return;
           }
           onChanged();
-        },'حذف'),
+          window.KarhaLegacy?.showToast?.(title+(c.contractNo?' به شماره '+c.contractNo:'')+' حذف شد.');
+        },'بله',{cancelLabel:'خیر'}),
       },{onPreview:showDetails && !finance && !approval ? trigger=>openContractDetails(p,c,trigger) : approval?preview:openPreview,progress:renderContractProgressCircle(document,c,p,openStatus)});
       row.appendChild(heading);
       if(approval){
@@ -379,7 +380,7 @@ export const contractsModule={
     const templates=list(p,'contractTemplates'),head=document.createElement('div');head.className='contract-list-head';head.innerHTML=`<span class="title">قالب‌های قرارداد این پروژه</span><span class="mgmt-count">${new Intl.NumberFormat('fa-IR').format(templates.length)}</span>`;body.appendChild(head);
     if(!templates.length){const e=document.createElement('div');e.className='contract-empty';e.textContent='هنوز قالب قراردادی ثبت نشده است.';body.appendChild(e);return;}
     const listWrap=document.createElement('div');listWrap.className='contract-template-list';const rows=[];const search=searchInput('جستجوی قالب قرارداد…',q=>{const matches=rows.filter(row=>row.dataset.searchText.includes(normalizeContractSearch(q)));listWrap.replaceChildren(...matches);if(!matches.length){const empty=document.createElement('div');empty.className='contract-empty';empty.textContent='قالب قراردادی با این جست‌وجو یافت نشد.';listWrap.appendChild(empty);}});body.append(search.wrap,listWrap);
-    templates.forEach(t=>{const title=t.title||'قرارداد',meta=[new Intl.NumberFormat('fa-IR').format(Array.isArray(t.items)?t.items.length:0)+' ماده اصلی',t.isDraft||t.status==='draft'?'پیش‌نویس':''].filter(Boolean).join(' · ');const row=document.createElement('div');row.className='contract-template-row';row.dataset.searchText=normalizeContractSearch(title+' '+meta);const main=document.createElement('div');main.className='contract-template-main';const tt=document.createElement('div');tt.className='contract-template-title';tt.textContent=title;const mm=document.createElement('div');mm.className='contract-template-meta';mm.textContent=meta;main.append(tt,mm);const actions=document.createElement('div');actions.className='contract-template-actions';const del=document.createElement('button');del.type='button';del.className='contract-template-action danger';del.title='حذف';del.textContent='×';del.onclick=e=>{e.preventDefault();e.stopPropagation();openConfirm('آیا از حذف این قالب قرارداد اطمینان دارید؟',()=>{if(softDeleteTemplate(id,t.id))this.renderTemplates(id);},'حذف');};actions.appendChild(del);row.append(main);if(writable)row.append(actions);row.onclick=()=>writable?legacy('openContractTemplateForm',t.id):openContractPreview(p,t,{trigger:row,frozen:true});rows.push(row);listWrap.appendChild(row);});
+    templates.forEach(t=>{const title=t.title||'قرارداد',meta=[new Intl.NumberFormat('fa-IR').format(Array.isArray(t.items)?t.items.length:0)+' ماده اصلی',t.isDraft||t.status==='draft'?'پیش‌نویس':''].filter(Boolean).join(' · ');const row=document.createElement('div');row.className='contract-template-row';row.dataset.searchText=normalizeContractSearch(title+' '+meta);const main=document.createElement('div');main.className='contract-template-main';const tt=document.createElement('div');tt.className='contract-template-title';tt.textContent=title;const mm=document.createElement('div');mm.className='contract-template-meta';mm.textContent=meta;main.append(tt,mm);const actions=document.createElement('div');actions.className='contract-template-actions';const del=document.createElement('button');del.type='button';del.className='contract-template-action danger';del.title='حذف';del.textContent='×';del.onclick=e=>{e.preventDefault();e.stopPropagation();openConfirm('آیا می‌خواهید این قالب قرارداد را حذف کنید؟',()=>{if(softDeleteTemplate(id,t.id)){this.renderTemplates(id);window.KarhaLegacy?.showToast?.('قالب '+title+' حذف شد.');}},'بله',{cancelLabel:'خیر'});};actions.appendChild(del);row.append(main);if(writable)row.append(actions);row.onclick=()=>writable?legacy('openContractTemplateForm',t.id):openContractPreview(p,t,{trigger:row,frozen:true});rows.push(row);listWrap.appendChild(row);});
   }
 };
 

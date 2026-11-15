@@ -2,11 +2,13 @@
 let confirmCallback = null;
 let installed = false;
 
-export function openConfirm(text, onOk, okLabel, { documentRef = document } = {}){
+export function openConfirm(text, onOk, okLabel, { documentRef = document, cancelLabel = 'انصراف' } = {}){
   const textEl = documentRef.getElementById('confirmText');
   const okBtn = documentRef.getElementById('confirmOkBtn');
   const overlay = documentRef.getElementById('confirmOverlay');
   if(textEl) textEl.textContent = text;
+  const cancelBtn = documentRef.getElementById('confirmCancelBtn');
+  if(cancelBtn) cancelBtn.textContent = cancelLabel;
   if(okBtn) okBtn.textContent = okLabel || 'تایید';
   confirmCallback = onOk;
   if(overlay) overlay.classList.remove('hidden');
