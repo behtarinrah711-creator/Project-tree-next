@@ -10,7 +10,7 @@ import {fileToken} from '../files/fileApi.js';
 import {todayApi} from '../../domain/wbs/todayApi.js';
 import {canWriteProjectModule, projectPermissionState} from '../roleManagement/permissionState.js';
 import {currentExecutionActor, isExecutionApprover} from '../wbs/executionActor.js';
-import {renderContractCard} from '../contracts/contractsModule.js';
+import {approvalByActor,renderContractApprovalLists} from './contractApprovalLists.js';
 import {renderTodayCard} from '../wbs/todayView.js';
 import {renderShoppingCard} from '../wbs/shoppingView.js';
 import {saveContractHandoff} from '../contracts/contractHandoffApi.js';
@@ -63,7 +63,7 @@ export function pendingApprovals(project,windowRef=globalThis.window){
     const mine=collection.filter(record=>record && !record.trashed && (
       contractApproverIds(record).includes(actor.contactId)
       || (record.contractApproverContactIds||[]).some(id=>String(id)===actor.contactId)));
-    assigned ||= mine.length>0;
+    assigned ||= mine.length>0 || collection.some(record=>record && !record.trashed && approvalByActor(record,actor));
     return {...group,writable,items:mine.filter(record=>canReviewContract(record,actor))};
   });
   return {assigned,actor,groups,count:groups.reduce((sum,group)=>sum+group.items.length,0)};
@@ -177,32 +177,22 @@ export function renderPendingApprovals(body,projectId,section,openSection){
     body.append(list);
     return;
   }
+  if(group && !group.collect && projectPermissionState(projectId,[group.scope]).visible){
+    renderContractApprovalLists(body,project,group,queue.actor,item=>approvalOptions(
+      documentRef,project,group,item,()=>{
+        if(header.isConnected)renderPendingApprovals(body,projectId,section,openSection);
+      }));
+    return;
+  }
   if(!group?.items.length){
     body.append(element(documentRef,'p','mgmt-empty','موردی در این دسته منتظر تأیید شما نیست.'));
     return;
   }
-  const cardScope=group.id==='shopping'?'wbs-shopping-frame':group.id==='execution'?'wbs-today-frame':'approval-queue-contracts';
+  const cardScope=group.id==='shopping'?'wbs-shopping-frame':'wbs-today-frame';
   const list=element(documentRef,'section','approval-queue-list '+cardScope);
   const refresh=()=>{if(list.isConnected)renderPendingApprovals(body,projectId,section,openSection);};
-  const options=item=>approvalOptions(documentRef,project,group,item,refresh);
-  if(group.collect){
-    const renderCard=group.id==='shopping'?renderShoppingCard:renderTodayCard;
-    for(const item of group.items)list.append(renderCard(documentRef,project,item,tehranTodayJalali(),refresh,options(item)));
-  }else{
-    const grouped=new Map();
-    for(const item of group.items){
-      const id=String(item.parentContractId || (item.statementType?item.contractId:item.id));
-      if(!grouped.has(id))grouped.set(id,{});
-      const entry=grouped.get(id);
-      if(item.parentContractId || item.statementType){
-        entry.documents ||= new Map();
-        entry.documents.set(item.id,options(item));
-      }else entry.contract=options(item);
-    }
-    for(const [id,entry] of grouped){
-      const contract=(project.contracts||[]).find(record=>!record.trashed && String(record.id)===id);
-      if(contract)list.append(renderContractCard(project,contract,{showDetails:true,approval:entry.contract||{},approvalDocuments:entry.documents}));
-    }
-  }
+  const renderCard=group.id==='shopping'?renderShoppingCard:renderTodayCard;
+  for(const item of group.items)list.append(renderCard(documentRef,project,item,tehranTodayJalali(),refresh,
+    approvalOptions(documentRef,project,group,item,refresh)));
   body.append(list);
 }
