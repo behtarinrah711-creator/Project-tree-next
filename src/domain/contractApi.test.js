@@ -95,7 +95,7 @@ test('contract template mobile styles keep row actions together and remove resiz
   assert.match(css, /\.ctf-preview\{[^}]*width:794px;min-height:1123px;height:auto[^}]*padding:53px/);
   assert.match(css, /\.contract-sheet\{[^}]*width:794px;height:1123px[^}]*padding:76px/);
   assert.match(css, /\.contract-sheet-content\{height:851px/);
-  assert.match(css, /\.contract-sheet-signatures\{[^}]*bottom:78px;height:104px[^}]*grid-template-columns:repeat\(3,minmax\(0,1fr\)\)/);
+  assert.match(css, /\.contract-sheet-signatures\{[^}]*bottom:78px;height:104px[^}]*grid-template-columns:repeat\(2,minmax\(0,1fr\)\)/);
   assert.ok(76+851 < 1123-78-104, 'content must stop before the signature frame');
   assert.match(css, /\.ctf-preview-title\{[^}]*font-size:21px/);
   assert.match(css, /\.ctf-preview-band\{[^}]*font-size:13px/);
