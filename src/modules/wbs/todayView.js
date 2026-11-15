@@ -514,7 +514,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     }
     activityBar.appendChild(thumbs);
   }
-  if (activityBar.childNodes.length) card.appendChild(activityBar);
+  if (latest || reportWithPhotos) card.appendChild(activityBar);
   return card;
 }
 
