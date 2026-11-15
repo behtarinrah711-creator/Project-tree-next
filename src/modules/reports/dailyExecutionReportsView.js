@@ -1,5 +1,6 @@
+import { renderTodayCard } from '../wbs/todayView.js';
 import { appendReportPhotos } from '../wbs/dailyExecutionReport.js';
-import { executionReportDay, jalaliDayNumber, tehranTodayJalali } from '../../domain/wbs/todayDomain.js';
+import { executionWorkKey, executionReportDay, jalaliDayNumber, tehranTodayJalali } from '../../domain/wbs/todayDomain.js';
 import { formatJalaliDisplay, openJalaliPicker } from '../../ui/jalali.js';
 import { toEnglishDigits, toPersianDigits } from '../../ui/digits.js';
 
@@ -7,9 +8,7 @@ const clock = new Intl.DateTimeFormat('fa-IR', { timeZone:'Asia/Tehran', hour:'2
 const ALL_WORKS = '';
 const kindLabel = { progress:'گزارش پیشرفت', start_delayed:'شروع نشد' };
 
-export function executionWorkKey({ kind, workId, id }){
-  return JSON.stringify([kind,String(workId),String(id)]);
-}
+export {executionWorkKey};
 
 export function collectDailyExecutionReports(project){
   const rows = [];
@@ -17,6 +16,7 @@ export function collectDailyExecutionReports(project){
     if(!entity || entity.trashed || (entity.type==='خرید' && ref.kind!=='standalone')) return;
     const work = {
       key:executionWorkKey(ref),
+      item:{...ref,entity,path},
       title:entity.title || entity.text || 'کار',
       path:path.join(' ← '),
     };
@@ -92,7 +92,7 @@ export function renderDailyExecutionReports(project, documentRef = document, req
 
   const rows = collectDailyExecutionReports(project);
   const works = new Map(rows.map(row=>[row.work.key,row.work]));
-  const frame = element('section','wbs-view-frame daily-execution-reports');
+  const frame = element('section','wbs-view-frame wbs-today-frame daily-execution-reports');
   const filters = element('div','daily-execution-filters');
   const search = element('input','wbs-input');
   search.type = 'search';
@@ -167,13 +167,11 @@ export function renderDailyExecutionReports(project, documentRef = document, req
         const stamp = new Date(row.at);
         const time = Number.isFinite(stamp.getTime()) ? clock.format(stamp) : '';
         heading.append(
-          element('strong','',row.work.title),
-          element('small','',row.work.path),
           element('small','',[kindLabel[row.kind]+progress,row.author || 'کاربر',time].filter(Boolean).join(' · ')),
         );
         card.append(heading,element('p','',row.description || '—'));
         appendReportPhotos(card,row.photos);
-        group.appendChild(card);
+        group.append(renderTodayCard(documentRef,project,row.work.item,day,undefined,{}),card);
       }
       body.appendChild(group);
     }

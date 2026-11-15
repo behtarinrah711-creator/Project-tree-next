@@ -1,3 +1,5 @@
+import { renderTodayCard } from '../wbs/todayView.js';
+import { tehranTodayJalali } from '../../domain/wbs/todayDomain.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
 import { jalaliDayNumber } from '../../domain/wbs/costline.js';
@@ -29,7 +31,7 @@ function rowOf(entity, path, ref){
   const actual = jalaliDayNumber(actualEnd);
   const delta = planned != null && actual != null ? actual - planned : null;
   return {
-    id: entity.id, ref,
+    id: entity.id, ref, item:{...ref,workId:ref.workId||ref.id,entity,path},
     executionModule:entity.type==='خرید'?'execution:shopping':'execution:today',
     title: entity.title || entity.text || '',
     path: path.join(' ← '),
@@ -51,7 +53,7 @@ function jalaliFromStamp(value){
 
 export function renderDoneWorks(project, documentRef = document, onChanged){
   const frame = documentRef.createElement('section');
-  frame.className = 'wbs-view-frame wbs-delay-frame';
+  frame.className = 'wbs-view-frame wbs-delay-frame wbs-today-frame';
   let shown = PAGE;
   let assignee = '';
   let approver = '';
@@ -87,7 +89,7 @@ export function renderDoneWorks(project, documentRef = document, onChanged){
       const card = documentRef.createElement('article');
       card.className = 'wbs-delay-row';
       const variance = row.delta == null ? '—' : row.delta > 0 ? `${row.delta} روز تأخیر` : row.delta < 0 ? `${Math.abs(row.delta)} روز زودتر` : 'به‌موقع';
-      card.innerHTML = `<strong>${escapeText(row.title)}</strong><span>${escapeText(row.path || '—')}</span><span>برنامه: ${escapeText(show(row.plannedStart))} تا ${escapeText(show(row.plannedEnd))}</span><span>واقعی: ${escapeText(show(row.actualStart))} تا ${escapeText(show(row.actualEnd))}</span><span>${escapeText(variance)}</span><span>مسئول: ${escapeText(row.assignee || '—')}</span><span>تأییدکننده: ${escapeText(row.approver || '—')}</span><span>برآورد: ${money(row.estimate)}</span><span>هزینه واقعی: ${row.actualCost == null ? '—' : money(row.actualCost)}</span>`;
+      card.innerHTML = `${row.executionModule==='execution:shopping'?'<strong>'+escapeText(row.title)+'</strong><span>'+escapeText(row.path||'—')+'</span>':''}<span>برنامه: ${escapeText(show(row.plannedStart))} تا ${escapeText(show(row.plannedEnd))}</span><span>واقعی: ${escapeText(show(row.actualStart))} تا ${escapeText(show(row.actualEnd))}</span><span>${escapeText(variance)}</span><span>مسئول: ${escapeText(row.assignee || '—')}</span><span>تأییدکننده: ${escapeText(row.approver || '—')}</span><span>برآورد: ${money(row.estimate)}</span><span>هزینه واقعی: ${row.actualCost == null ? '—' : money(row.actualCost)}</span>`;
       const cancel = documentRef.createElement('button');
       cancel.type = 'button';
       cancel.className = 'wbs-primary-action is-secondary';
@@ -101,6 +103,7 @@ export function renderDoneWorks(project, documentRef = document, onChanged){
         paint();
       });
       if(canWriteProjectModule(project.id,'reports:reports') && canWriteProjectModule(project.id,row.executionModule))card.appendChild(cancel);
+      if(row.executionModule==='execution:today')body.appendChild(renderTodayCard(documentRef,project,row.item,tehranTodayJalali(),undefined,{}));
       body.appendChild(card);
     });
     if(!rows.length) body.insertAdjacentHTML('beforeend', '<div class="empty-state">کار تأییدشده‌ای نیست.</div>');

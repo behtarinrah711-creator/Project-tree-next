@@ -37,7 +37,7 @@ test('daily reports use the Tehran day and retain progress and delay history for
 
 test('a card link opens complete report text for only that work across all dates',()=>{
   const createElement = tag=>({
-    tag,children:[],listeners:{},value:'',
+    tag,children:[],listeners:{},dataset:{},value:'',
     append(...children){ this.children.push(...children); },
     appendChild(child){ this.append(child); },
     replaceChildren(){ this.children=[]; },
@@ -51,6 +51,7 @@ test('a card link opens complete report text for only that work across all dates
   assert.equal(totals.textContent,'۲ گزارش پیشرفت · ۱ ثبت دلیل شروع نشدن');
   const cards = days.children.flatMap(day=>day.children.filter(child=>child.tag==='details'));
   assert.equal(cards.length,3);
+  assert.equal(days.children.flatMap(day=>day.children).filter(node=>node.className==='today-task-card wbs-costline-work').length,3);
   assert.ok(cards.every(card=>card.open));
   assert.deepEqual(cards.map(card=>card.children[1].textContent),
     ['نصب ردیف ۲','نصب ردیف ۱','تأمین نشدن مصالح\nسنگ نما نرسید']);

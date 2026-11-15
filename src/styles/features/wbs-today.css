@@ -161,9 +161,15 @@ button.today-report-circle{cursor:pointer;}
 .today-report-progress-compact .today-progress-input{background:none;border:0;color:#1565c0;text-align:left;min-height:32px;}
 .today-detail-schedule{display:grid;gap:8px;}
 .today-detail-schedule>strong{font-size:14px;}
-.today-detail-schedule>progress{width:100%;height:8px;appearance:none;direction:rtl;border:0;border-radius:10px;overflow:hidden;background:#eae6dc;}
-.today-detail-schedule>progress::-webkit-progress-bar{background:#eae6dc;}
-.today-detail-schedule>progress::-webkit-progress-value{background:#171a58;border-radius:10px;}
-.today-detail-schedule>progress::-moz-progress-bar{background:#171a58;border-radius:10px;}
+.today-schedule-bar{width:100%;height:8px;appearance:none;direction:rtl;border:0;border-radius:10px;overflow:hidden;background:#ddd;}
+.today-schedule-bar::-webkit-progress-bar{background:#ddd;}
+.today-schedule-bar::-webkit-progress-value{background:#171a58;border-radius:10px;}
+.today-schedule-bar::-moz-progress-bar{background:#171a58;border-radius:10px;}
 
 .today-task-toolbar .oddjobs-add:not(.active){background:#1565c0;color:#fff;border-color:#1565c0;min-width:32px;font-size:20px;}
+
+.today-card-schedule{display:grid;gap:4px;text-align:center;margin:0 10px 10px;}
+.today-card-schedule .today-schedule-bar{height:4px;}
+.today-schedule-delay{color:#b42318;}
+.today-schedule-bar.is-overdue::-webkit-progress-value{background:#b42318;}
+.today-schedule-bar.is-overdue::-moz-progress-bar{background:#b42318;}

@@ -45,9 +45,9 @@ export function renderContractFinanceReview(project,contract,{onChanged=()=>{}}=
     const revoke=action==='revoke_finance';
     const title=contract.parentContractId?'رد کردن الحاقیه':revoke?'پس‌گرفتن تأیید مالی':'رد قرارداد توسط بخش مالی';
     openContractReasonSheet({
-      title,saveLabel:contract.parentContractId?'ذخیره':revoke?'ثبت پس‌گرفتن تأیید':'ثبت رد قرارداد',
+      title,saveLabel:'ذخیره',
       historyKey:(revoke?'finance-revoke:':'finance-reject:')+contract.id,
-      fieldLabel:'دلیل رد (الزامی)',submit:reason=>run(action,{reason}),
+      fieldLabel:revoke?'دلیل پس‌گرفتن تأیید (الزامی)':'دلیل رد (الزامی)',submit:reason=>run(action,{reason}),
     });
   };
   if(contract.accountingStatus==='accepted'){
