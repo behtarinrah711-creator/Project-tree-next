@@ -4,7 +4,6 @@ import { executionWorkKey, executionReportDay, jalaliDayNumber, tehranTodayJalal
 import { formatJalaliDisplay, openJalaliPicker } from '../../ui/jalali.js';
 import { toEnglishDigits, toPersianDigits } from '../../ui/digits.js';
 import { openWbsSheet, closeWbsSheet } from '../wbs/wbsSheet.js';
-import { openContractorPicker, openActivityPicker, openContractTemplatePicker } from '../contracts/contractPickers.js';
 
 const clock = new Intl.DateTimeFormat('fa-IR', { timeZone:'Asia/Tehran', hour:'2-digit', minute:'2-digit' });
 const kindLabel = { progress:'گزارش پیشرفت', start_delayed:'شروع نشد' };
@@ -61,9 +60,9 @@ function searchable(value){
 }
 
 export function filterDailyExecutionReports(rows, filters = {}){
-  const { query, selectedWorkKeys, contractorId, activityId, templateId, fromDay, toDay } = filters;
+  const { query, work, selectedWorkKeys, contractorId, activityId, templateId, fromDay=filters.firstDay, toDay=filters.lastDay } = filters;
   const search = searchable(query);
-  const keySet = selectedWorkKeys && selectedWorkKeys.size ? selectedWorkKeys : null;
+  const keySet = selectedWorkKeys && selectedWorkKeys.size ? selectedWorkKeys : work ? new Set([work]) : null;
   return rows.filter(row=>{
     const day = jalaliDayNumber(row.day);
     if(keySet && !keySet.has(row.work.key)) return false;
@@ -150,33 +149,17 @@ export function renderDailyExecutionReports(project, documentRef = document, req
 
   const frame = element('section','wbs-view-frame wbs-today-frame daily-execution-reports');
   const filters = element('div','daily-execution-filters');
-  filters.style.display = 'flex';
-  filters.style.gap = '8px';
-  filters.style.alignItems = 'center';
 
   const search = element('input','wbs-input');
   search.type = 'search';
   search.placeholder = 'جست‌وجوی کار، مسیر یا متن گزارش';
   search.setAttribute('aria-label', search.placeholder);
-  search.style.flex = '1';
-  search.style.minWidth = '0';
 
   const filterBtn = element('button','wbs-input filter-trigger');
   filterBtn.type = 'button';
-  filterBtn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18" style="vertical-align:middle"><path fill="currentColor" d="M3 5h18v2H3V5zm4 6h10v2H7v-2zm2 6h6v2H9v-2z"/></svg> فیلتر`;
-  filterBtn.style.flex = 'none';
-  filterBtn.style.padding = '0 12px';
-  filterBtn.style.display = 'flex';
-  filterBtn.style.alignItems = 'center';
-  filterBtn.style.gap = '4px';
+  filterBtn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M3 5h18v2H3V5zm4 6h10v2H7v-2zm2 6h6v2H9v-2z"/></svg> فیلتر`;
 
   const badge = element('span','filter-badge');
-  badge.style.background = '#c62828';
-  badge.style.color = '#fff';
-  badge.style.borderRadius = '10px';
-  badge.style.padding = '1px 6px';
-  badge.style.fontSize = '11px';
-  badge.style.marginInlineStart = '4px';
   badge.hidden = true;
   filterBtn.append(badge);
 
@@ -255,25 +238,15 @@ export function renderDailyExecutionReports(project, documentRef = document, req
     let currentNodes = stageTree;
     const selected = new Set(selectedWorkKeys);
 
-    const sheetBody = documentRef.createElement('div');
-    sheetBody.style.padding = '0';
+    const sheetBody = element('div','daily-filter-body');
 
     function renderLevel(){
       sheetBody.replaceChildren();
       // breadcrumb
       const crumb = element('div','filter-breadcrumb');
-      crumb.style.padding = '12px 16px';
-      crumb.style.borderBottom = '1px solid #eee';
-      crumb.style.display = 'flex';
-      crumb.style.alignItems = 'center';
-      crumb.style.gap = '6px';
-      crumb.style.fontSize = '13px';
       if(currentPath.length){
-        const back = element('button','','←');
+        const back = element('button','filter-stage-back','←');
         back.type = 'button';
-        back.style.border = '0';
-        back.style.background = 'transparent';
-        back.style.fontSize = '18px';
         back.onclick = () => {
           currentPath.pop();
           currentNodes = currentPath.length ? currentPath[currentPath.length-1].children : stageTree;
@@ -285,31 +258,15 @@ export function renderDailyExecutionReports(project, documentRef = document, req
       sheetBody.append(crumb);
 
       // search
-      const searchIn = element('input','wbs-input');
+      const searchIn = element('input','wbs-input filter-stage-search');
       searchIn.placeholder = 'جستجو در مراحل...';
-      searchIn.style.margin = '12px 16px';
-      searchIn.style.width = 'calc(100% - 32px)';
       sheetBody.append(searchIn);
 
       const list = element('div','filter-stage-list');
-      list.style.padding = '0 8px';
 
-      const term = '';
-      const items = currentNodes.filter(n => !term || searchable(n.title).includes(searchable(term)));
-
-      items.forEach(node => {
+      currentNodes.forEach(node => {
         const row = element('button','filter-stage-row');
         row.type = 'button';
-        row.style.display = 'flex';
-        row.style.justifyContent = 'space-between';
-        row.style.alignItems = 'center';
-        row.style.width = '100%';
-        row.style.padding = '14px 12px';
-        row.style.border = '0';
-        row.style.borderBottom = '1px solid #f0f0f0';
-        row.style.background = 'transparent';
-        row.style.textAlign = 'right';
-        row.style.font = 'inherit';
         const hasChildren = (node.children && node.children.length) || (node.works && node.works.length);
         const label = element('span','', node.title);
         const right = element('span','');
@@ -330,12 +287,8 @@ export function renderDailyExecutionReports(project, documentRef = document, req
         };
         // also allow selecting the package
         if(node.isStage){
-          const selectPkg = element('button','','انتخاب پکیج');
+          const selectPkg = element('button','filter-stage-package','انتخاب پکیج');
           selectPkg.type = 'button';
-          selectPkg.style.fontSize = '11px';
-          selectPkg.style.color = '#1565c0';
-          selectPkg.style.border = '0';
-          selectPkg.style.background = 'transparent';
           selectPkg.onclick = (e) => {
             e.stopPropagation();
             const keys = collectAllWorkKeys(node);
@@ -344,26 +297,15 @@ export function renderDailyExecutionReports(project, documentRef = document, req
           };
           row.append(selectPkg);
         }
+        searchIn.addEventListener('input',()=>{row.hidden=!searchable(node.title).includes(searchable(searchIn.value));});
         list.append(row);
       });
       sheetBody.append(list);
 
       // bottom apply button (red)
       const footer = element('div','filter-apply-bar');
-      footer.style.position = 'sticky';
-      footer.style.bottom = '0';
-      footer.style.padding = '12px 16px';
-      footer.style.background = '#fff';
-      footer.style.borderTop = '1px solid #eee';
       const apply = element('button','filter-apply-btn');
       apply.type = 'button';
-      apply.style.width = '100%';
-      apply.style.padding = '12px';
-      apply.style.background = '#c62828';
-      apply.style.color = '#fff';
-      apply.style.border = '0';
-      apply.style.borderRadius = '8px';
-      apply.style.fontWeight = '600';
       function updateApplyButton(){
         const count = selected.size;
         apply.textContent = count ? `${toPersianDigits(count)} کار انتخاب شد · اعمال` : 'اعمال فیلتر مراحل';
@@ -382,28 +324,30 @@ export function renderDailyExecutionReports(project, documentRef = document, req
 
     openWbsSheet({
       title: 'مراحل و کارها',
-      body: () => sheetBody,
+      body: sheetBody,
       showSave: false,
       presentation: 'filter-sheet',
     });
   }
 
   function openFilterSheet(){
-    const bodyEl = documentRef.createElement('div');
-    bodyEl.style.padding = '0';
+    const bodyEl = element('div','daily-filter-body');
 
     const items = [
       { label: 'پیمانکار', value: () => contractorId ? 'انتخاب شده' : 'انتخاب', action: () => {
-        // simplified: open a simple list or use existing picker if possible
-        // For now, open a basic picker via search or alert for demo; in real use openContractorPicker
-        openContractorPicker(project.id, { contractorId }, (id) => { contractorId = id; closeWbsSheet(); paint(); openFilterSheet(); });
+
+
+        void import('../contracts/contractPickers.js').then(({openContractorPicker})=>
+          openContractorPicker(project.id, { contractorId }, state=>{ contractorId=state.contractorId; paint(); openFilterSheet(); }));
       }},
       { label: 'مراحل و کارها', value: () => selectedWorkKeys.size ? `${toPersianDigits(selectedWorkKeys.size)} مورد` : 'انتخاب', action: () => { closeWbsSheet(); openHierarchicalStagePicker(); }},
       { label: 'فعالیت', value: () => activityId ? 'انتخاب شده' : 'انتخاب', action: () => {
-        openActivityPicker(project.id, { activityId }, (id) => { activityId = id; closeWbsSheet(); paint(); openFilterSheet(); });
+        void import('../contracts/contractPickers.js').then(({openActivityPicker})=>
+          openActivityPicker(project.id, { activityId }, state=>{ activityId=state.activityId; paint(); openFilterSheet(); }));
       }},
       { label: 'قالب قرارداد', value: () => templateId ? 'انتخاب شده' : 'انتخاب', action: () => {
-        openContractTemplatePicker(project.id, { templateId }, (id) => { templateId = id; closeWbsSheet(); paint(); openFilterSheet(); });
+        void import('../contracts/contractPickers.js').then(({openContractTemplatePicker})=>
+          openContractTemplatePicker(project.id, { templateId }, state=>{ templateId=state.templateId; paint(); openFilterSheet(); }));
       }},
       { label: 'از تاریخ', value: () => fromDate ? formatJalaliDisplay(fromDate) : 'انتخاب', action: () => {
         openJalaliPicker(fromDate, day => { fromDate = day; if(toDate && toDate < fromDate) toDate = fromDate; paint(); openFilterSheet(); });
@@ -416,30 +360,13 @@ export function renderDailyExecutionReports(project, documentRef = document, req
     items.forEach(item => {
       const row = element('button','filter-option-row');
       row.type = 'button';
-      row.style.display = 'flex';
-      row.style.justifyContent = 'space-between';
-      row.style.alignItems = 'center';
-      row.style.width = '100%';
-      row.style.padding = '16px';
-      row.style.border = '0';
-      row.style.borderBottom = '1px solid #eee';
-      row.style.background = 'transparent';
-      row.style.font = 'inherit';
-      row.style.textAlign = 'right';
       row.append(element('span','', item.label), element('span','filter-select-label', item.value()));
-      row.querySelector('.filter-select-label').style.color = '#1565c0';
       row.onclick = item.action;
       bodyEl.append(row);
     });
 
     const clear = element('button','filter-clear-btn','پاک کردن فیلترها');
     clear.type = 'button';
-    clear.style.width = '100%';
-    clear.style.padding = '16px';
-    clear.style.border = '0';
-    clear.style.background = 'transparent';
-    clear.style.color = '#c62828';
-    clear.style.fontWeight = '600';
     clear.onclick = () => {
       selectedWorkKeys = new Set();
       contractorId = activityId = templateId = fromDate = toDate = '';
@@ -450,7 +377,7 @@ export function renderDailyExecutionReports(project, documentRef = document, req
 
     openWbsSheet({
       title: 'فیلترها',
-      body: () => bodyEl,
+      body: bodyEl,
       showSave: false,
     });
   }
