@@ -1,5 +1,7 @@
 import {openStandaloneWorkSheet} from './workTaskView.js';
-import {createStandaloneWork} from '../../domain/wbs/workTaskApi.js';
+import {createStandaloneWork,updateStandaloneWork,deleteStandaloneWork} from '../../domain/wbs/workTaskApi.js';
+import {contractActionsMenu} from '../contracts/contractActionsMenu.js';
+import {openConfirm} from '../../ui/confirm.js';
 import {openExecutionCalendar} from './executionCalendar.js';
 import {projectRepository} from '../../data/projectRepository.js';
 import { todayRepository } from '../../data/todayRepository.js';
@@ -106,7 +108,8 @@ function elapsedShare(entity,day){
   const end=jalaliDayNumber(entity.scheduleEnd);
   const now=jalaliDayNumber(day);
   if(start===null || end===null || now===null) return null;
-  if(end<=start) return now>=start ? 1 : 0;
+  if(now<=start) return 0;
+  if(end<=start) return now>start ? 1 : 0;
   return Math.min(1,Math.max(0,(now-start)/(end-start)));
 }
 function completionDay(entity){
@@ -450,6 +453,19 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   const progress=progressCircle(documentRef,entity,{summary:{}});
   progress.onclick=event=>event.stopPropagation();
   heading.append(titles,report,progress);
+  if(item.kind==='standalone' && entity.oddJobType && !approval){
+    card.classList.add('has-oddjob-menu');
+    const menu=contractActionsMenu({
+      onEdit:()=>openStandaloneWorkSheet({projectId:project.id,existing:entity,onChanged,saveStandalone:draft=>updateStandaloneWork(project.id,draft)}),
+      onDelete:()=>openConfirm('این خرده‌کار حذف شود؟',()=>{
+        const result=deleteStandaloneWork(project.id,entity.id);
+        if(!result.ok)window.KarhaLegacy?.showToast?.('حذف خرده‌کار انجام نشد');
+        else onChanged?.();
+      },'بله',{cancelLabel:'خیر'}),
+    });
+    menu.querySelector('.nb-more')?.setAttribute('aria-label','عملیات خرده‌کار');
+    heading.append(menu);
+  }
   card.appendChild(heading);
   const timing=scheduleBar(documentRef,entity,today);
   if(timing){

@@ -62,7 +62,10 @@
 .wbs-today-frame .today-history summary{min-height:40px;display:flex;align-items:center;justify-content:center;color:#033E8A;font-size:11px;font-weight:600;text-align:center}
 .wbs-today-frame .today-history div{padding:4px 0 8px}
 
-.wbs-today-frame .today-card-summary{box-sizing:border-box;display:grid;grid-template-columns:minmax(0,1fr) 62px 42px;gap:8px;direction:rtl;width:calc(100% + 24px);min-height:64px;border:0;border-radius:var(--wbs-frame-radius,5px);text-align:right;font:inherit;cursor:pointer;}
+.wbs-today-frame .today-card-summary.has-oddjob-menu,
+.wbs-today-frame .today-task-card.has-oddjob-menu .today-card-summary{grid-template-columns:minmax(0,1fr) 62px 42px 36px;}
+.wbs-today-frame .has-oddjob-menu .contract-menu-wrap{justify-self:end;align-self:center;}
+.wbs-today-frame .has-oddjob-menu .nb-more{color:#1565c0;margin:0;}
 .wbs-today-frame .today-card-summary .today-card-titles{align-items:flex-start;padding:0;overflow-wrap:anywhere;}
 .wbs-today-frame .today-card-summary .today-card-titles>*{text-align:right;}
 .today-card-people{display:inline;font-size:11px;color:#4d4741;}

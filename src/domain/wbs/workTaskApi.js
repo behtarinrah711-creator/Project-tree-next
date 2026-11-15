@@ -76,13 +76,16 @@ export function createStandaloneWork(projectId,draft,clock=Date.now){
   if(!ODD_JOB_TYPES.includes(draft.oddJobType) || !/^oddjob-[a-z0-9]+$/.test(draft.id)
     || !Number.isFinite(draft.amount) || draft.amount<0)return {ok:false,code:'invalid'};
   if(draft.expenseApproverContactId && !contactRepository.get(projectId,draft.expenseApproverContactId))return {ok:false,code:'approver'};
+  const start=draft.scheduleStart||draft.dueDate||'';
+  const end=draft.scheduleEnd||draft.dueDate||start;
   const checked=validate(projectId,null,{
     title:draft.title,type:'',weight:1,priority:draft.priority,assigneeContactId:draft.assigneeContactId,
-    scheduleStart:draft.dueDate,scheduleEnd:draft.dueDate,amount:draft.amount,
+    scheduleStart:start,scheduleEnd:end,amount:draft.amount,
   });
   if(!checked.ok)return checked;
   const now=clock();
-  const task=normalizeWorkTask({...checked.value,id:draft.id,description:String(draft.description||'').trim(),oddJobType:draft.oddJobType,dueDate:draft.dueDate,
+  const task=normalizeWorkTask({...checked.value,id:draft.id,description:String(draft.description||'').trim(),oddJobType:draft.oddJobType,
+    scheduleStart:start,scheduleEnd:end,dueDate:end,
     expenseApproverContactId:draft.expenseApproverContactId,
     expenseApprovalStatus:draft.expenseApproverContactId?'pending':null,
     invoices:(draft.invoices||[]).filter(file=>file.category==='oddjob-invoices' && file.projectId===projectId && file.recordId===draft.id),
@@ -91,6 +94,44 @@ export function createStandaloneWork(projectId,draft,clock=Date.now){
   if(!saved)return {ok:false,code:'persist'};
   publish(projectId);
   return {ok:true,task};
+}
+
+export function updateStandaloneWork(projectId,draft,clock=Date.now){
+  if(!canWriteProjectModule(projectId,'execution:today'))return {ok:false,code:'forbidden'};
+  if(!ODD_JOB_TYPES.includes(draft.oddJobType) || !/^oddjob-[a-z0-9]+$/.test(draft.id))return {ok:false,code:'invalid'};
+  const start=draft.scheduleStart||'';
+  const end=draft.scheduleEnd||start;
+  const checked=validate(projectId,null,{
+    title:draft.title,type:'',weight:1,priority:draft.priority,assigneeContactId:draft.assigneeContactId,
+    scheduleStart:start,scheduleEnd:end,amount:Number(draft.amount)||0,
+  });
+  if(!checked.ok)return checked;
+  const now=clock();
+  let found=false;
+  const saved=projectRepository.updateProject(projectId,project=>{
+    const works=project.standaloneWorks||[];
+    if(!works.some(work=>work.id===draft.id && !work.trashed))return project;
+    found=true;
+    return {...project,standaloneWorks:works.map(work=>work.id===draft.id?{...work,...checked.value,description:String(draft.description||'').trim(),oddJobType:draft.oddJobType,scheduleStart:start,scheduleEnd:end,dueDate:end,expenseApproverContactId:draft.expenseApproverContactId||'',amount:Number(draft.amount)||0,updatedAt:now}:work)};
+  });
+  if(!found || !saved)return {ok:false,code:'not_found'};
+  publish(projectId);
+  return {ok:true};
+}
+
+export function deleteStandaloneWork(projectId,id,clock=Date.now){
+  if(!canWriteProjectModule(projectId,'execution:today'))return {ok:false,code:'forbidden'};
+  const now=clock();
+  let found=false;
+  const saved=projectRepository.updateProject(projectId,project=>{
+    const works=project.standaloneWorks||[];
+    if(!works.some(work=>work.id===id && !work.trashed))return project;
+    found=true;
+    return {...project,standaloneWorks:works.map(work=>work.id===id?{...work,trashed:true,deletedAt:now,updatedAt:now}:work)};
+  });
+  if(!found || !saved)return {ok:false,code:'not_found'};
+  publish(projectId);
+  return {ok:true};
 }
 
 export const workTaskApi = {

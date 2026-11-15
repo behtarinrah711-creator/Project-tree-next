@@ -419,17 +419,29 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
   titleEditor=documentRef.createElement('span');titleEditor.className='wbs-stage-edit-title';titleEditor.contentEditable=readOnly?'false':'true';titleEditor.setAttribute('role','textbox');titleEditor.setAttribute('aria-label','عنوان کار');titleEditor.textContent=task?.title || '';titleEditor.addEventListener('keydown',event=>{if(event.key==='Enter')event.preventDefault();});overlay.querySelector('.sheet-caption').append(' ',titleEditor);
 }
 
-export async function openStandaloneWorkSheet({projectId,onChanged,saveStandalone}){
-  const id='oddjob-'+uid();
-  const invoices=[];
+export async function openStandaloneWorkSheet({projectId,onChanged,saveStandalone,existing=null}){
+  const id=existing?.id || 'oddjob-'+uid();
+  const invoices=[...(existing?.invoices||[])];
   const {ftSelectRow,ftNumberRow}=await import('../contracts/realContractFormModule.js');
   const {openStaticChoicePicker}=await import('../contracts/contractPickers.js');
-  const draft={oddJobType:ODD_JOB_TYPES[0],assigneeContactId:'',priority:'normal',dueDate:'',expenseApproverContactId:'',amount:''};
+  const draft={
+    oddJobType:existing?.oddJobType||ODD_JOB_TYPES[0],
+    assigneeContactId:existing?.assigneeContactId||'',
+    priority:existing?.priority||'normal',
+    scheduleStart:existing?.scheduleStart||existing?.dueDate||'',
+    scheduleEnd:existing?.scheduleEnd||existing?.dueDate||'',
+    expenseApproverContactId:existing?.expenseApproverContactId||'',
+    amount:existing?.amount??'',
+    title:existing?.title||'',
+    description:existing?.description||'',
+  };
   const types=ODD_JOB_TYPES;
   const toast=message=>window.KarhaUI?.showToast?.(message);
+  const invoiceTypes=new Set(['خرید فوری','خدمات و تعمیر','حمل']);
+  const photoLabel=()=>invoiceTypes.has(draft.oddJobType)?'افزودن عکس فاکتور':'اضافه کردن عکس';
   let uploader;
   const sheet=openWbsSheet({
-    title:'خرده کار',presentation:'stage-create',autoFocus:false,historyKey:'oddjob:'+projectId,
+    title:existing?'ویرایش خرده کار':'ثبت خرده کار',presentation:'stage-create',autoFocus:false,historyKey:'oddjob:'+id,
     body(root){
       root.classList.add('form-template','contract-form-body');
       const fields=document.createElement('div');
@@ -462,18 +474,22 @@ export async function openStandaloneWorkSheet({projectId,onChanged,saveStandalon
         choice('نوع کار','oddJobType',types.map(value=>({value,label:value})));
         person('مسئول پیگیری','assigneeContactId');
         choice('درجه اهمیت','priority',Object.entries(PRIORITY_LABELS).map(([value,label])=>({value,label})));
-        ftSelectRow(fields,'موعد',formatJalaliDisplay(draft.dueDate),()=>window.KarhaUI?.openJalaliPicker?.(
-          draft.dueDate,value=>update('dueDate',value)),{placeholder:'انتخاب تاریخ'});
-        person('مسئول تأیید خرید','expenseApproverContactId');
+        ftSelectRow(fields,'تاریخ شروع',formatJalaliDisplay(draft.scheduleStart),()=>window.KarhaUI?.openJalaliPicker?.(
+          draft.scheduleStart,value=>update('scheduleStart',value)),{placeholder:'انتخاب تاریخ'});
+        ftSelectRow(fields,'تاریخ پایان',formatJalaliDisplay(draft.scheduleEnd),()=>window.KarhaUI?.openJalaliPicker?.(
+          draft.scheduleEnd,value=>update('scheduleEnd',value)),{placeholder:'انتخاب تاریخ'});
+        person('مسئول تأیید','expenseApproverContactId');
         ftNumberRow(fields,'مبلغ',draft.amount,value=>{draft.amount=toEnglishDigits(String(value)).replace(/[^\d]/g,'');},
           {suffix:'تومان',onCommit:paint});
+        const action=attachment.querySelector('.filepond--label-action');
+        if(action)action.textContent=photoLabel();
       };
       paint();
-      uploader=mountFileUploader(attachment,{projectId,recordId:id,category:'oddjob-invoices',files:invoices,label:'افزودن عکس فاکتور',buttonLabel:true,onError:toast});
+      uploader=mountFileUploader(attachment,{projectId,recordId:id,category:'oddjob-invoices',files:invoices,label:photoLabel(),buttonLabel:true,onError:toast});
     },
     onSave(){
-      if(uploader?.isBusy()){toast('ابتدا بارگذاری عکس فاکتور را تمام کنید');return false;}
-      const result=saveStandalone({...draft,id,amount:Number(draft.amount),invoices});
+      if(uploader?.isBusy()){toast('ابتدا بارگذاری عکس را تمام کنید');return false;}
+      const result=saveStandalone({...draft,id,amount:Number(draft.amount)||0,invoices});
       if(!result.ok){toast('اطلاعات خرده‌کار را کامل و معتبر وارد کنید');return false;}
       onChanged?.();
       return true;
