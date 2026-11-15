@@ -654,16 +654,37 @@ function renderContractForm() {
 function saveDraft() {
   const project=activeProject(activeProjectId);
   if(!project || !state) return false;
+  const saosa=!!globalThis.window && isSaosaHost(window);
+  if(saosa && confirmingCompletion)return false;
+  const finish=()=>{
+    dirty=false;
+    realContractFormModule.close(false);
+    helper('showToast','قرارداد ذخیره شد؛ در انتظار تکمیل');
+  };
   try {
     const result=contractApi.saveDraft(project.id,state);
     if(!result.ok){
       helper('showToast',result.message || 'قرارداد ذخیره نشد');
       return false;
     }
-    dirty=false;
-    realContractFormModule.close(false);
-    helper('showToast','قرارداد ذخیره شد؛ در انتظار تکمیل');
-    return true;
+    if(!saosa){finish();return true;}
+
+    const formState=state;
+    confirmingCompletion=true;
+    helper('showToast','در حال ثبت قرارداد در سرور…');
+    void confirmSaosaWorkspaceSave().then(snapshot=>{
+      confirmingCompletion=false;
+      if(state!==formState)return;
+      const saved=snapshot?.projects?.find(row=>String(row.id)===String(project.id))?.contracts?.find(row=>
+        String(row.id)===String(result.contract.id));
+      if(!saved || saved.trashed || Number(saved.updatedAt)<Number(result.contract.updatedAt)){
+        dirty=true;
+        helper('showToast','ذخیره قرارداد در سرور تأیید نشد. دوباره تلاش کنید.');
+        return;
+      }
+      finish();
+    });
+    return false;
   } catch {
     helper('showToast','قرارداد ذخیره نشد');
     return false;
