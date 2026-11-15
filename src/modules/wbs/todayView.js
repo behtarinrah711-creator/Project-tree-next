@@ -128,7 +128,7 @@ function scheduleStatus(entity,day){
     const finished=completionDay(entity);
     const delta=Number.isFinite(finished) ? finished-end : now-end;
     if(delta<0) return {text:`${toPersianDigits(Math.abs(delta))} روز زودتر از موعد انجام شد`,tone:'early'};
-    if(delta>0) return {text:`با ${toPersianDigits(delta)} روز تأخیر انجام شد`,tone:'late'};
+    if(delta>0) return {text:`با ${toPersianDigits(delta)} روز تأخیر انجام شد`,tone:'done-late'};
     return {text:'در موعد انجام شد',tone:'done'};
   }
   const remaining=end-now;
@@ -140,9 +140,10 @@ function scheduleBar(documentRef,entity,day){
   const share=elapsedShare(entity,day);
   if(share===null)return null;
   const status=scheduleStatus(entity,day);
-  const overdue=status?.tone==='late';
+  const overdue=status?.tone==='late' || status?.tone==='done-late';
+  const complete=status?.tone==='early' || status?.tone==='done';
   const bar=documentRef.createElement('progress');
-  bar.className='today-schedule-bar'+(overdue?' is-overdue':'');
+  bar.className='today-schedule-bar'+(overdue?' is-overdue':'')+(complete?' is-complete':'');
   bar.max=1;bar.value=share;
   bar.setAttribute('aria-label',status?.text || 'زمان سپری‌شده');
   return {bar,status};
