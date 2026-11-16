@@ -37,18 +37,27 @@ async function openTaskDetails(page,card){
   return sheet;
 }
 
-test('Today toolbar shows five ordered tabs and a separate filter',async({page})=>{
+test('Today toolbar shows six ordered tabs and a separate filter row',async({page})=>{
   const header=page.locator('.wbs-today-frame .wbs-view-header');
   const tabs=header.getByRole('tab');
   await expect(header.locator('.wbs-view-title')).toHaveCount(0);
-  await expect(tabs).toHaveText(['عقب‌افتاده','امروز','آینده','تکمیل','بی زمان']);
+  await expect(tabs).toHaveText(['همه','عقب‌افتاده','امروز','آینده','تکمیل','بی زمان']);
   await expect(header.getByRole('tab',{name:'امروز',exact:true})).toHaveAttribute('aria-selected','true');
   await expect(header.getByRole('button',{name:'تقویم'})).toBeVisible();
-  const filter=header.getByRole('button',{name:'فیلتر'});
-  await expect(filter.locator('img')).toHaveAttribute('src',/filter-alt\.svg$/);
-  await expect(filter).not.toHaveAttribute('aria-expanded','true');
-  const positions=await header.locator('button').evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().left));
-  expect(positions).toEqual([...positions].sort((a,b)=>b-a));
+  const controls=header.locator('.today-task-secondary');
+  await expect(controls.getByRole('button')).toHaveText(['همه مراحل','فیلتر','تقویم']);
+  for(const row of [tabs,controls.getByRole('button')]){
+    const positions=await row.evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().left));
+    expect(positions).toEqual([...positions].sort((a,b)=>b-a));
+  }
+  await controls.getByRole('button',{name:'فیلتر',exact:true}).click();
+  const sheet=page.locator('#wbsSheetOverlay');
+  await expect(sheet.locator('.execution-details-filter-row')).toHaveText(['مسئول پیگیریانتخاب','مسئول تأییدانتخاب','پیمانکارانتخاب','اهمیتانتخاب']);
+  await expect(sheet.getByRole('button',{name:/نمایش .+ کار/})).toBeVisible();
+  await sheet.getByRole('button',{name:/نمایش .+ کار/}).click();
+  await header.getByRole('tab',{name:'همه',exact:true}).click();
+  await expect(page.locator('.today-task-card[data-entity-id="today-task"]')).toBeVisible();
+  await expect(page.locator('.today-task-card[data-entity-id="unscheduled-task"]')).toBeVisible();
   await header.getByRole('tab',{name:'بی زمان'}).click();
   await expect(page.locator('.today-task-card[data-entity-id="unscheduled-task"]')).toBeVisible();
 });
