@@ -234,3 +234,5 @@ button.today-report-circle{cursor:pointer;}
   object-fit: cover;
   background: #eee;
 }
+
+.today-previous-days-button{width:100%;cursor:pointer;}

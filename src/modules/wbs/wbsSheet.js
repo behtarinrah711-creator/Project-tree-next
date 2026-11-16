@@ -1,6 +1,7 @@
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 
 let releaseSheetViewport = null;
+let releaseSheetContent = null;
 let sheetHistoryKey = '';
 let reuseHistoryOnReplacement = false;
 
@@ -24,6 +25,9 @@ export function fitPageAboveKeyboard(page){
 
 export function closeWbsSheet(fromPopState = false){
   reuseHistoryOnReplacement = false;
+  const release = releaseSheetContent;
+  releaseSheetContent = null;
+  release?.();
   releaseSheetViewport?.();
   releaseSheetViewport = null;
   document.getElementById('wbsSheetOverlay')?.remove();
@@ -34,11 +38,12 @@ export function closeWbsSheet(fromPopState = false){
   }
 }
 
-export function openWbsSheet({ title, body, onSave, saveLabel = 'ذخیره', presentation = '', autoFocus = true, readOnly = false, showSave = true, closeOnBackdrop = true, historyKey = '', header, footer, requestClose, hasUnsavedChanges, reuseHistoryOnReplace = false } = {}){
+export function openWbsSheet({ title, body, onSave, onClose, saveLabel = 'ذخیره', presentation = '', autoFocus = true, readOnly = false, showSave = true, closeOnBackdrop = true, historyKey = '', header, footer, requestClose, hasUnsavedChanges, reuseHistoryOnReplace = false } = {}){
   const replacementKey = reuseHistoryOnReplacement && historyKey && window.KarhaChildHistory?.isOpen(sheetHistoryKey)
     ? sheetHistoryKey : '';
   if(replacementKey) sheetHistoryKey = '';
   closeWbsSheet();
+  releaseSheetContent = onClose;
   reuseHistoryOnReplacement = reuseHistoryOnReplace;
   const overlay = document.createElement('div');
   overlay.id = 'wbsSheetOverlay';
