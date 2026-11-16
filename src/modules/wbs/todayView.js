@@ -533,6 +533,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     const name=documentRef.createElement('span');
     const cName=contactName(contractor);
     const label=documentRef.createElement('span');
+    label.className='today-card-contractor-label';
     label.textContent='پیمانکار:';
     name.className='today-card-contractor-name';
     name.textContent=cName.replace(/^پیمانکار(?:\s*[:：]\s*|\s+|$)/u,'');
@@ -694,7 +695,7 @@ function latestActivity(entity) {
   candidates.sort((a, b) => b.at - a.at);
   const top = candidates[0];
   const ago = relativeTime(top.at);
-  return { text: `${top.text}${ago ? ' · ' + ago : ''}`, at: top.at };
+  return { text: ago ? `به‌روزرسانی: ${toPersianDigits(ago)}` : 'به‌روزرسانی', at: top.at };
 }
 
 function relativeTime(ts) {
