@@ -102,6 +102,10 @@ export function confirmSaosaWorkspaceSave(windowRef = window){
   return workspaceSavers.get(windowRef)?.confirm() ?? Promise.resolve(null);
 }
 
+export function saosaWorkspaceSaveDiagnostic(windowRef = window){
+  return workspaceSavers.get(windowRef)?.diagnostic() || '';
+}
+
 let persistBusy = false;
 export function isSaosaPersistBusy(){ return persistBusy; }
 
@@ -110,11 +114,13 @@ function createPersistAttach(windowRef, session, store, initialSnapshot = null){
   let queuedSnapshot = initialSnapshot;
   let inFlight;
   let acknowledgedSnapshot;
+  let diagnostic = "";
   let applyingRemote = false;
   const flush = () => {
     if(inFlight || !queuedSnapshot) return inFlight;
     (windowRef.clearTimeout || clearTimeout)(timer);
     persistBusy = true;
+    diagnostic = "";
     const next = queuedSnapshot;
     queuedSnapshot = null;
     inFlight = workspaceRequest(windowRef, session, {
@@ -135,7 +141,12 @@ function createPersistAttach(windowRef, session, store, initialSnapshot = null){
         }
       }
       return saved.snapshot;
-    }).catch(()=>{
+    }).catch(error=>{
+      const status=Number(error?.status);
+      const code=/^[a-z][a-z0-9_]{0,63}$/.test(error?.message || '') ? error.message : 'workspace_request_failed';
+      diagnostic=Number.isInteger(status) && status>=400 && status<=599
+        ? `HTTP ${status} · ${code}`
+        : 'network_error';
       if(!queuedSnapshot) queuedSnapshot = next;
       return null;
     }).finally(()=>{
@@ -152,7 +163,7 @@ function createPersistAttach(windowRef, session, store, initialSnapshot = null){
     return queuedSnapshot ? await flush() : acknowledgedSnapshot;
   };
   return () => {
-    const saver={confirm,pending:()=>Boolean(inFlight || queuedSnapshot),version:()=>version};
+    const saver={confirm,pending:()=>Boolean(inFlight || queuedSnapshot),version:()=>version,diagnostic:()=>diagnostic};
     workspaceSavers.set(windowRef,saver);
     const unsubscribe = store?.subscribePersist?.(next => {
       if(applyingRemote) return;
