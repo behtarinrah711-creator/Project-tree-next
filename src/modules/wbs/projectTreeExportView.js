@@ -50,7 +50,36 @@ function syncParents(nodes){
   }
 }
 
-function treeDocument({title,nodes,open,showProgress,showCost}){
+const diagramStyles=`
+@page project-tree-diagram{size:A4 landscape;margin:12mm}
+.project-tree-diagram{page:project-tree-diagram}
+.project-tree-diagram ul{list-style:none;margin:0;padding:0;min-width:0}
+.project-tree-diagram li{display:flex;align-items:center;min-width:0;break-inside:avoid}
+.project-tree-diagram li>ul{flex:1;padding-inline-start:12px}
+.project-tree-diagram li>ul>li{position:relative;padding:4px 12px 4px 0}
+.project-tree-diagram li>ul>li::before{content:'';position:absolute;inset-inline-start:0;top:50%;width:12px;border-top:1px solid #667785}
+.project-tree-diagram li>ul>li::after{content:'';position:absolute;inset-inline-start:0;top:0;bottom:0;border-inline-start:1px solid #667785}
+.project-tree-diagram li>ul>li:first-child::after{top:50%}
+.project-tree-diagram li>ul>li:last-child::after{bottom:50%}
+.project-tree-diagram li>ul{position:relative}
+.project-tree-diagram li>ul::before{content:'';position:absolute;inset-inline-start:0;top:50%;width:12px;border-top:1px solid #667785}
+.project-tree-diagram .tree-diagram-node{box-sizing:border-box;flex:0 1 120px;min-width:44px;padding:6px;border:1px solid #778b9a;border-radius:5px;background:#eef3f7;text-align:center;overflow-wrap:anywhere;font-size:12px}
+.project-tree-diagram .tree-diagram-root{background:#dce8f4;font-weight:700}
+.project-tree-diagram small{display:block;margin-top:3px}
+.project-tree-diagram > ul > li{break-inside:auto}
+`;
+
+export function treeDocument({title,nodes,open,showProgress,showCost,layout,projectName}){
+  if(layout==='diagram'){
+    const branches=items=>items.map(node=>{
+      const children=open.has(node.key)?branches(node.children):'';
+      if(!node.selected)return children;
+      const label=node.done?`<s>${escape(node.title)}</s>`:escape(node.title);
+      const metrics=[showProgress?number.format(node.progress)+'٪':'',showCost?number.format(node.cost)+' تومان':''].filter(Boolean);
+      return `<li><div class="tree-diagram-node">${label}${metrics.length?`<small>${metrics.join(' · ')}</small>`:''}</div>${children?`<ul>${children}</ul>`:''}</li>`;
+    }).join('');
+    return `<section class="nb-export-document project-tree-diagram" dir="rtl"><header><h1>${escape(title)}</h1></header><ul><li><div class="tree-diagram-node tree-diagram-root">${escape(projectName)}</div><ul>${branches(nodes)}</ul></li></ul></section>`;
+  }
   const rows=visibleTreeExportRows(nodes,open);
   const date=new Intl.DateTimeFormat('fa-IR',{timeZone:'Asia/Tehran'}).format(new Date());
   return `<section class="nb-export-document" dir="rtl"><header><h1>${escape(title)}</h1><time>${date}</time></header>
@@ -84,6 +113,17 @@ function renderSelection(body,state){
   };
   const options=make('div','export-options wbs-tree-export-options');
   const actions=make('div','wbs-tree-export-actions');
+  const layout=make('label','','نوع خروجی ');
+  const layoutSelect=make('select');
+  layoutSelect.setAttribute('aria-label','نوع خروجی');
+  for(const [value,label] of [['list','زیر هم'],['diagram','خروجی درختی']]){
+    const option=make('option','',label);
+    option.value=value;layoutSelect.append(option);
+  }
+  layoutSelect.value=state.layout;
+  layoutSelect.onchange=()=>{state.layout=layoutSelect.value;};
+  layout.append(layoutSelect);
+  options.append(layout);
   const tree=make('div','wbs-tree wbs-export-tree');
   const selectAll=check('انتخاب همه',false,checked=>{
     state.nodes.forEach(node=>setTreeExportSelection(node,checked));
@@ -183,7 +223,7 @@ export function openProjectTreeExport(project,{trigger,expandedIds,expandIcon,br
       idPrefix:'projectTreeExport',historyKey:'project-tree-export',documentBuilder:treeDocument,renderSelection,
       validatePrint:state=>!canViewPlanning(planningAccessLevel(state.projectId,'tree'))?'دسترسی به درخت پروژه ندارید'
         :visibleTreeExportRows(state.nodes,state.open).length?'':'حداقل یک ردیف قابل نمایش را انتخاب کنید',
-      extraStyles:`@page{size:A4;margin:14mm}@media print{body{padding:0}}tr{break-inside:avoid}${notebookPaperFrameStyles('-9mm')}`,
+      extraStyles:`${diagramStyles}@page{size:A4;margin:14mm}@media print{body{padding:0}}tr{break-inside:avoid}${notebookPaperFrameStyles('-9mm')}`,
     });
   }
   const nodes=treeExportNodes(project.tasks);
@@ -191,7 +231,7 @@ export function openProjectTreeExport(project,{trigger,expandedIds,expandIcon,br
   const expand=items=>items.forEach(node=>{if(expandedIds.has(String(node.id)))open.add(node.key);expand(node.children);});
   expand(nodes);
   const opened=view.open({projectId:project.id,title:'خروجی درخت پروژه | '+project.name,nodes,open,
-    showProgress:false,showCost:false,drag:true,expandIcon,branchIcon},{trigger});
+    projectName:project.name,layout:'list',showProgress:false,showCost:false,drag:true,expandIcon,branchIcon},{trigger});
   document.getElementById('projectTreeExportNote').closest('.export-note-wrap').hidden=true;
   return opened;
 }
