@@ -588,6 +588,15 @@ function renderContractForm() {
     });
   });
   disableRetentionRow(methodRow);
+  const advanceHeading=document.createElement('div');
+  advanceHeading.className='real-contract-section';
+  advanceHeading.textContent='پیش‌پرداخت (اختیاری)';
+  body.appendChild(advanceHeading);
+  state.advanceRows ||= [];
+  renderRows(ftCreateRoot(body),state.advanceRows,{
+    mixed:true,advance:true,newPricingMode:'agreed',highlightMissing,textRow:ftTextRow,
+  });
+
   const heading=document.createElement('div');heading.className='real-contract-section';heading.textContent='مراحل پرداخت (اختیاری)';
   body.appendChild(heading);
   const paymentForm=ftCreateRoot(body);

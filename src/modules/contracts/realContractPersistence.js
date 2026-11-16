@@ -77,6 +77,7 @@ export function saveRealContract(projectId, draft, helpers={}){
   if(Number(draft.retentionPercent)>0 && !draft.retentionDuration && !deferred('retentionDuration')){toast('مدت نگهداری حسن انجام کار را انتخاب کنید');return {ok:false,incomplete:true};}
 
   const s=JSON.parse(JSON.stringify(draft));
+  if(Array.isArray(s.advanceRows))s.advanceRows=s.advanceRows.filter(hasPaymentRowData);
   s.contactId=s.contractorId;
   if(deferred('employerId'))for(const key of ['employerName','employerNationalId','employerFatherName','employerAddress','employerPhone'])s[key]='';
 

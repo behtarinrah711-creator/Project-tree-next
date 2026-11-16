@@ -17,3 +17,5 @@
 .retention-basis-actions{display:flex;gap:12px;}
 .retention-basis-actions button{flex:1;min-height:52px;border:0;border-radius:12px;font:inherit;font-weight:700;background:#08065b;color:white;cursor:pointer;}
 .retention-basis-actions [data-cancel]{background:var(--divider,#eee);color:var(--text,#202124);}
+
+.contract-document-options .workspace-option{min-height:44px;padding-block:6px;}

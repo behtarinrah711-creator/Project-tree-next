@@ -1,7 +1,7 @@
 import {statementWorkRows,resolveStatementWork} from '../../src/domain/statementWork.js';
 import {rowAmount,numericValue} from '../../src/modules/contracts/contractPricing.js';
 import {contractApproverIds} from '../../src/domain/contractApproval.js';
-import {contractStatementTotals,accountStatements,statementsFor,statementAccount,statementAddenda,approvedStatement,statementAmounts,finalStatementSummary} from '../../src/domain/contractStatements.js';
+import {contractStatementTotals,accountStatements,statementsFor,statementAccount,statementAddenda,approvedStatement,statementAmounts,finalStatementSummary,availableContractAdvance} from '../../src/domain/contractStatements.js';
 
 const fail=message=>({ok:false,message});
 
@@ -9,14 +9,14 @@ export function saveStatement(project,parent,current,id,body,actor,at){
   if(parent?.accountingStatus!=='accepted')return fail('ابتدا قرارداد اصلی باید در مالی تأیید شود');
   if(current && (!current.statementType || current.status!=='draft'))return fail('فقط صورت‌وضعیت برگشتی قابل اصلاح است');
   const {statementType,date,note}=body;
-  if(!['interim','final','retention-release'].includes(statementType) || typeof date!=='string' || !/^\d{4}\/(?:0?[1-9]|1[0-2])\/(?:0?[1-9]|[12]\d|3[01])$/.test(date))return fail('نوع و تاریخ صورت‌وضعیت را وارد کنید');
-  const addendumId=current?current.addendumId:body.addendumId;
+  if(!['interim','final','retention-release','advance'].includes(statementType) || typeof date!=='string' || !/^\d{4}\/(?:0?[1-9]|1[0-2])\/(?:0?[1-9]|[12]\d|3[01])$/.test(date))return fail('نوع و تاریخ صورت‌وضعیت را وارد کنید');
+  const addendumId=statementType==='advance'?null:current?current.addendumId:body.addendumId;
   const addendum=addendumId && statementAddenda(project,parent).find(item=>item.id===addendumId);
   if(addendumId && !addendum)return fail('الحاقیه تأییدشده این قرارداد را انتخاب کنید');
   const account=statementAccount(parent,addendum);
   const records=accountStatements(project,account).filter(record=>record.id!==id);
-  if(statementType!=='retention-release' && records.some(record=>record.statementType==='final' && approvedStatement(record)))return fail('صورت‌وضعیت قطعی قبلاً تأیید شده است');
-  if(records.some(record=>record.statementType && !approvedStatement(record) && record.status!=='draft' && record.approvalStatus!=='rejected'))return fail('ابتدا صورت‌وضعیت در جریان را تعیین تکلیف کنید');
+  if(['interim','final'].includes(statementType) && records.some(record=>record.statementType==='final' && approvedStatement(record)))return fail('صورت‌وضعیت قطعی قبلاً تأیید شده است');
+  if(records.some(record=>record.statementType && record.statementType!=='advance' && statementType!=='advance' && !approvedStatement(record) && record.status!=='draft' && record.approvalStatus!=='rejected'))return fail('ابتدا صورت‌وضعیت در جریان را تعیین تکلیف کنید');
   const totals=contractStatementTotals(project,account);
   const final=statementType==='final'?finalStatementSummary(project,account):null;
   if(final && !final.ready)return fail('صدور صورت‌وضعیت قطعی پس از پوشش کامل مبلغ قرارداد در صورت‌وضعیت‌های موقت تأییدشده امکان‌پذیر است');
@@ -39,14 +39,20 @@ export function saveStatement(project,parent,current,id,body,actor,at){
     }
   }else if(statementType==='retention-release')return fail('عملیات آزادسازی را وارد کنید');
   const entered=final?.gross ?? (!linked && body.operations===undefined?body.amount:operations.reduce((sum,row)=>sum+rowAmount(row),0));
-  if(!Number.isSafeInteger(entered) || entered<0 || (statementType==='interim' && entered===0))return fail('مبلغ صورت‌وضعیت نامعتبر است');
+  if(!Number.isSafeInteger(entered) || entered<0 || (['interim','advance'].includes(statementType) && entered===0))return fail('مبلغ صورت‌وضعیت نامعتبر است');
   const gross=final?0:entered;
   if(statementType==='retention-release' && (entered<=0 || entered>totals.retained))return fail('مبلغ آزادسازی از مانده حسن انجام کار بیشتر است');
-  if(statementType!=='retention-release' && totals.remaining!==null && gross>totals.remaining)return fail('کارکرد از مبلغ به‌روز قرارداد بیشتر است');
+  if(statementType==='interim' && totals.remaining!==null && gross>totals.remaining)return fail('کارکرد از مبلغ به‌روز قرارداد بیشتر است');
+  const amounts=statementAmounts(totals,account,gross,statementType);
+  const advanceDeduction=statementType==='interim' && !addendumId ? body.advanceDeduction ?? 0 : 0;
+  if(!Number.isSafeInteger(advanceDeduction) || advanceDeduction<0 ||
+    advanceDeduction>availableContractAdvance(project,parent.id,id) || advanceDeduction>amounts.netAmount){
+    return fail('کسر پیش‌پرداخت باید در محدوده مانده پیش‌پرداخت و خالص صورت‌وضعیت باشد');
+  }
   const approvers=contractApproverIds(parent);
   const sequence=current?.sequence ?? Math.max(0,...statementsFor(project,parent.id).map(record=>Number(record.sequence)||0),statementsFor(project,parent.id).length)+1;
   return {ok:true,contract:{...current,id,contractId:parent.id,addendumId:addendum?.id||null,addendumNo:addendum?.contractNo||null,statementType,sequence,date,note:String(note||'').trim().slice(0,2000),
-    operations,workEntries:linked?body.workEntries:undefined,statementAmount:entered,...(final?{stageAmount:0,cumulativeAmount:final.gross,retentionAmount:0,netAmount:0,finalTotals:{gross:final.gross,retention:final.retention,net:final.net}}:statementAmounts(totals,account,gross,statementType)),status:'final',isDraft:false,approvalStatus:approvers.length?'pending':'approved',
+    operations,advanceDeduction,workEntries:linked?body.workEntries:undefined,statementAmount:entered,...(final?{stageAmount:0,cumulativeAmount:final.gross,retentionAmount:0,netAmount:0,finalTotals:{gross:final.gross,retention:final.retention,net:final.net}}:{...amounts,netAmount:amounts.netAmount-advanceDeduction}),status:'final',isDraft:false,approvalStatus:approvers.length?'pending':'approved',
     approvalContactIds:approvers,approvedContactIds:[],submittedAt:at,submittedBy:actor,
     accountingStatus:null,signedAt:null,signedBy:null,signedFiles:[],signedFilesUpdatedAt:at,createdAt:current?.createdAt ?? at,updatedAt:at}};
 }

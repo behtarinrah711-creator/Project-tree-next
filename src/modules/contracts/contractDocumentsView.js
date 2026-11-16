@@ -31,7 +31,8 @@ export function renderContractDocuments(project,contract,{onChanged=()=>{},revie
     if(list.hidden)return;
     const groups=[
       ['الحاقیه‌ها',addenda,item=>renderAddendumCard(source,item,changed,finance,reviewOnly?(approvals.get(item.id)||{}):undefined,{nested:true})],
-      ['صورت‌وضعیت‌ها',statements.filter(item=>item.statementType!=='retention-release'),item=>renderStatementCard(source,contract,item,changed,reviewOnly?(approvals.get(item.id)||{}):undefined)],
+      ['صورت‌وضعیت‌ها',statements.filter(item=>!['retention-release','advance'].includes(item.statementType)),item=>renderStatementCard(source,contract,item,changed,reviewOnly?(approvals.get(item.id)||{}):undefined)],
+      ['پیش‌پرداخت‌ها',statements.filter(item=>item.statementType==='advance'),item=>renderStatementCard(source,contract,item,changed,reviewOnly?(approvals.get(item.id)||{}):undefined)],
       ['آزادسازی حسن انجام کار',statements.filter(item=>item.statementType==='retention-release'),item=>renderStatementCard(source,contract,item,changed,reviewOnly?(approvals.get(item.id)||{}):undefined)],
     ];
     list.replaceChildren();
@@ -55,12 +56,12 @@ export function renderContractDocuments(project,contract,{onChanged=()=>{},revie
     const options=[];
     if(canCreateAddendumFromContract(latest,source))options.push(['الحاقیه',()=>openAddendumForContract(project.id,contract.id,created)]);
     if(latest.accountingStatus==='accepted')for(const [type,label] of statementTypes){
-      options.push([type==='retention-release'?label:'صورت‌وضعیت '+label,()=>openStatementForm(source,latest,created,null,type)]);
+      options.push([['retention-release','advance'].includes(type)?label:'صورت‌وضعیت '+label,()=>openStatementForm(source,latest,created,null,type)]);
     }
     openWbsSheet({title:'انتخاب نوع سند',showSave:false,reuseHistoryOnReplace:true,historyKey:'contract-document-type:'+contract.id,
       body(root){
         root.classList.add('contract-status-sheet');
-        const choices=document.createElement('div');choices.className='workspace-option-list';
+        const choices=document.createElement('div');choices.className='workspace-option-list contract-document-options';
         choices.append(...options.map(([label,action])=>button(label,'workspace-option',action)));
         root.append(choices);
       },

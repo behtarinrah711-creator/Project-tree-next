@@ -18,6 +18,16 @@ export function statementAccount(contract,addendum){
 export const accountStatements=(project,contract)=>statementsFor(project,contract.id)
   .filter(record=>(record.addendumId||null)===(contract.statementAddendumId||null));
 
+export function availableContractAdvance(project,contractId,excludeId){
+  const records=statementsFor(project,contractId).filter(record=>record.id!==excludeId);
+  const paid=records.filter(record=>record.statementType==='advance' && approvedStatement(record))
+    .reduce((sum,record)=>sum+amount(record.paidAmount),0);
+  const committed=records.filter(record=>record.status!=='draft' &&
+    record.approvalStatus!=='rejected' && !['rejected','withdrawn'].includes(record.accountingStatus))
+    .reduce((sum,record)=>sum+amount(record.advanceDeduction),0);
+  return Math.max(0,paid-committed);
+}
+
 export function contractStatementTotals(project,contract,{combined=false}={}){
   const original=contract.amount==null || contract.amount===''?null:amount(contract.amount);
   const adjustments=combined?statementAddenda(project,contract)
@@ -35,6 +45,7 @@ export function contractStatementTotals(project,contract,{combined=false}={}){
 }
 
 export function statementAmounts(totals,contract,gross,type){
+  if(type==='advance')return {stageAmount:0,cumulativeAmount:totals.gross,retentionAmount:0,netAmount:gross};
   if(type==='retention-release')return {stageAmount:0,cumulativeAmount:totals.gross,retentionAmount:-gross,netAmount:gross};
   const nextGross=totals.gross+gross;
   const target=contract.retentionMethod==='first' && totals.estimatedRetention!==null
