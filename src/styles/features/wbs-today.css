@@ -312,3 +312,5 @@ body:has(.wbs-home-root .is-today-view) .content,
 .wbs-today-frame .today-task-card .today-card-heading,
 .wbs-today-frame .today-task-card > .today-card-activity,
 .wbs-today-frame .today-task-card > .today-card-approval-actions{background:#fff;}
+
+.wbs-home-root .is-today-view .wbs-today-body{background:var(--bg,#f0f1f2);}
