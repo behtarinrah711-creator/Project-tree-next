@@ -523,30 +523,11 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   titles.innerHTML=`<strong><small class="wbs-task-priority ${priorityClass}">${esc(priorityLabel)}</small> ${esc(entity.title||entity.text||'')}</strong><span>${esc(item.path.join(' · '))}</span>`;
   const assignee=(project.contacts||[]).find(contact=>!contact.trashed && String(contact.id)===String(entity.assigneeContactId));
   const contractor=contractorForItem(project,item).contact;
-  if(assignee || contractor){
-    const people=documentRef.createElement('span');
-    people.className='today-card-people';
-    if(assignee){
-      const person=documentRef.createElement('span');
-      person.className='today-card-person';
-      const avatar=documentRef.createElement('span');
-      avatar.className='today-card-avatar';
-      avatar.setAttribute('aria-hidden','true');
-      avatar.innerHTML='<svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 18.5c1.2-2.8 3.4-4.2 6.5-4.2s5.3 1.4 6.5 4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
-      const name=documentRef.createElement('span');
-      name.textContent='مسئول '+contactName(assignee);
-      person.append(avatar,name);
-      people.append(person);
-    }
-    if(contractor){
-      if(assignee) people.append(' | ');
-      const name=documentRef.createElement('span');
-      const cName = contactName(contractor);
-      // Avoid doubling "پیمانکار" when contact type is already پیمانکار
-      name.textContent = cName.startsWith('پیمانکار') ? cName : 'پیمانکار ' + cName;
-      people.append(name);
-    }
-    titles.append(people);
+  if(contractor){
+    const name=documentRef.createElement('span');
+    const cName=contactName(contractor);
+    name.textContent=cName.startsWith('پیمانکار') ? cName : 'پیمانکار: '+cName;
+    titles.append(name);
   }
   const openDetails=()=>openTodayDetails(documentRef,project,item,today,onChanged,returnToCalendar,approval);
   heading.onclick=openDetails;
@@ -557,7 +538,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     && isExecutionAssignee(entity,currentExecutionActor(project)) && !['approved','pending_approval'].includes(executionStatus(entity));
   const report=documentRef.createElement(canReport?'button':'span');
   report.className='today-report-circle is-'+status+(saved?' is-saved':'');
-  report.textContent='گزارش';
+  report.innerHTML='گزارش <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6m-6 4h6"/></svg>';
   report.setAttribute('aria-label',(status==='holiday'?'تعطیل رسمی':DAILY_EXECUTION_LABELS[status])+'، '+(saved?'گزارش ثبت شده':'بدون گزارش'));
   report.onclick=event=>{
     event.stopPropagation();
@@ -567,7 +548,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   if(canReport)report.type='button';
   const progress=progressCircle(documentRef,entity,{summary:{}});
   progress.onclick=event=>event.stopPropagation();
-  heading.append(titles,report,progress);
+  heading.append(titles,progress);
   if(item.kind==='standalone' && entity.oddJobType && !approval && canWriteProjectModule(project.id,'execution:today')){
     heading.classList.add('has-oddjob-menu');
     const canDelete=projectPermissionState(project.id,['execution:today']).levels['execution:today']==='full';
@@ -599,7 +580,10 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     if(timing.status?.text){
       const label=documentRef.createElement('small');
       label.className='today-schedule-status is-'+timing.status.tone;
-      label.textContent=timing.status.text;
+      if(timing.status.tone==='remaining'){
+        label.innerHTML='<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>';
+      }
+      label.append(timing.status.text);
       schedule.append(label);
     }
     schedule.append(timing.bar);
@@ -608,12 +592,31 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   // Bottom activity bar: latest update + small photo thumbs
   const activityBar = documentRef.createElement('div');
   activityBar.className = 'today-card-activity';
+  if(assignee){
+    const person=documentRef.createElement('div');
+    person.className='today-card-person';
+    const avatar=documentRef.createElement('span');
+    avatar.className='today-card-avatar';
+    avatar.setAttribute('aria-hidden','true');
+    avatar.innerHTML='<svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 18.5c1.2-2.8 3.4-4.2 6.5-4.2s5.3 1.4 6.5 4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+    const identity=documentRef.createElement('div');
+    const role=documentRef.createElement('span');
+    role.textContent='مسئول پیگیری:';
+    const name=documentRef.createElement('strong');
+    name.textContent=contactName(assignee);
+    identity.append(role,name);
+    person.append(avatar,identity);
+    activityBar.append(person);
+  }
+  const reportMeta=documentRef.createElement('div');
+  reportMeta.className='today-card-report-meta';
+  if(!approval)reportMeta.append(report);
   const latest = latestActivity(entity);
   if (latest) {
     const textEl = documentRef.createElement('span');
     textEl.className = 'today-activity-text';
     textEl.textContent = latest.text;
-    activityBar.appendChild(textEl);
+    reportMeta.append(textEl);
   }
   const reportWithPhotos=reportsOf(entity).find(report=>report.photos?.some(photo=>photo?.hasThumbnail));
   if(reportWithPhotos){
@@ -630,7 +633,8 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     }
     activityBar.appendChild(thumbs);
   }
-  if (latest || reportWithPhotos) card.appendChild(activityBar);
+  if(reportMeta.childElementCount)activityBar.append(reportMeta);
+  if(activityBar.childElementCount)card.append(activityBar);
   if(approval?.action){
     const actions=documentRef.createElement('div');
     actions.className='today-card-approval-actions';
