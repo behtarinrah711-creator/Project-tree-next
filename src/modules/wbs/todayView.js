@@ -538,7 +538,9 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     if(contractor){
       if(assignee) people.append(' | ');
       const name=documentRef.createElement('span');
-      name.textContent='پیمانکار '+contactName(contractor);
+      const cName = contactName(contractor);
+      // Avoid doubling "پیمانکار" when contact type is already پیمانکار
+      name.textContent = cName.startsWith('پیمانکار') ? cName : 'پیمانکار ' + cName;
       people.append(name);
     }
     titles.append(people);
