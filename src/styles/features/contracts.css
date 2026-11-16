@@ -1806,6 +1806,12 @@ textarea.contract-project-item-input{
 .contract-pages .contract-document-quantity th:nth-child(4){width:10%}
 .contract-pages .contract-document-quantity th:nth-child(5),.contract-pages .contract-document-quantity th:nth-child(6){width:16%}
 .contract-pages .contract-document-quantities td:last-child{text-align:center;direction:ltr}
+.contract-pages .contract-document-advance th:first-child{width:16%;white-space:normal}
+.contract-pages .contract-document-advance th:nth-child(2){width:42%}
+.contract-pages .contract-document-advance th:nth-child(3){width:16%}
+.contract-pages .contract-document-advance th:nth-child(4){width:26%}
+.contract-pages .contract-document-advance td:nth-child(3){text-align:center}
+.contract-pages .contract-document-advance td:last-child{text-align:right;direction:rtl}
 .contract-pages .contract-document-quantity td:nth-child(4):not([colspan]),.contract-pages .contract-document-quantity td:nth-child(5):not([colspan]){text-align:left;direction:ltr}
 
 /* Read-only totals use the same right-label/left-value layout as other fields. */

@@ -74,7 +74,7 @@ export function contractDocumentMarkup(state,activityName='',{highlightValues=fa
   const pricingHtml=Array.isArray(state.operationRows) ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.operationRows,true,state)+'</div>' : state.amountMethod==='quantity' ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.amountRows,true,state)+'</div>' : (state.amountMethod==='agreed' && Array.isArray(state.agreedRows) ? '<div class="doc-pricing"><b>محاسبه مبلغ کل قرارداد</b>'+agreedTable(state.agreedRows)+'</div>' : state.amountDescription?'<p>'+escape(state.amountDescription)+'</p>':'');
   const advances=(state.advanceRows||[]).filter(hasPaymentRowData);
   const advanceHtml=advances.length
-    ? '<table class="contract-document-quantities contract-document-agreed"><thead><tr>'+
+    ? '<table class="contract-document-quantities contract-document-advance"><thead><tr>'+
       '<th>ردیف</th><th>شرح پیش‌پرداخت</th><th>مبلغ (تومان)</th><th>موعد پرداخت</th>'+
       '</tr></thead><tbody>'+advances.map((row,index)=>
         '<tr><td>پیش‌پرداخت '+persian(index+1)+'</td><td>'+esc(row.description)+'</td>'+
@@ -156,8 +156,8 @@ export function contractDocumentMarkup(state,activityName='',{highlightValues=fa
       ' پروژه، ' + amountText + '، برای اجرا از تاریخ ' + startDate +
       ' تا تاریخ ' + endDate + ' منعقد گردید.' + retentionText + ' طرفین متعهد به رعایت مفاد زیر هستند.' + (state.remeasurement ? ' مبلغ توافق شده جهت عملیات به شرح جدول زیر می باشد، بدیهی است مبلغ نهایی قرارداد در پایان عملیات پس از مشخص شدن مقدار هر عملیات مشخص می گردد.' : '') + '</p>' +
     pricingHtml +
+    (advanceHtml ? '<div class="doc-pricing"><b>مبلغ پیش‌پرداخت جهت شروع عملیات:</b>'+advanceHtml+'</div>' : '') +
     '<div class="doc-clauses">' + (clausesHtml || '<div class="doc-clause">........................................................</div>') + '</div>' +
-    (advanceHtml ? '<div class="doc-payment"><b>پیش‌پرداخت</b>'+advanceHtml+'</div>' : '') +
     (paymentHtml ? '<div class="doc-payment"><b>مراحل پرداخت</b>' + paymentHtml + '</div>' : '') +
     annexPages.join('');
 }
