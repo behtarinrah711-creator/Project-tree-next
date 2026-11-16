@@ -47,35 +47,33 @@ export function openExecutionBranchFilter(project,tree,onSelect){
     list.replaceChildren();
     const buttons=document.createElement('div');
     buttons.className='execution-branch-filter-options'+(direction?' is-'+direction:'');
-    const add=(label,icon,detail,action,hasNext=false)=>{
+    const add=(label,detail,action,{hasNext=false,all=false}={})=>{
       const button=document.createElement('button');
-      button.type='button';button.className='execution-branch-filter-choice';
-      const symbol=document.createElement('span');symbol.className='execution-branch-symbol';
-      symbol.textContent=icon;symbol.setAttribute('aria-hidden','true');
+      button.type='button';button.className='execution-branch-filter-choice'+(all?' is-all':'');
       const text=document.createElement('span');text.textContent=label;
       if(detail){
         const path=document.createElement('small');path.textContent=detail;
         text.append(path);
       }
-      button.append(symbol,text);
+      button.append(text);
       if(hasNext){
-        const arrow=document.createElement('span');arrow.className='execution-branch-arrow';
-        arrow.textContent='‹';arrow.setAttribute('aria-hidden','true');button.append(arrow);
+        const arrow=document.createElement('span');arrow.className='workspace-option-arrow';
+        arrow.innerHTML='<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 6-6 6 6 6"/></svg>';arrow.setAttribute('aria-hidden','true');button.append(arrow);
       }
       button.onclick=action;
       buttons.append(button);
     };
     const query=search.value.trim();
     const rows=query?searchExecutionBranches(current,query):current.children.map(node=>({node,path:[]}));
+    if(!query)add(current.id?'همهٔ '+current.title:'همهٔ مراحل و کارها','',()=>select(current),{all:true});
     for(const {node,path} of rows){
       const nested=node.children.length>0;
-      add(node.title,nested?'▤':'✓',path.slice(0,-1).join(' · '),()=>{
+      add(node.title,path.slice(0,-1).join(' · '),()=>{
         if(!nested){select(node);return;}
         stack.push(node);search.value='';list.scrollTop=0;paint('forward');
-      },nested);
+      },{hasNext:nested});
     }
-    if(!query)add(current.id?'همهٔ '+current.title:'همهٔ مراحل و کارها','…','',()=>select(current));
-    else if(!rows.length){
+    if(query && !rows.length){
       const empty=document.createElement('p');empty.className='empty-state';empty.textContent='موردی پیدا نشد.';
       buttons.append(empty);
     }
