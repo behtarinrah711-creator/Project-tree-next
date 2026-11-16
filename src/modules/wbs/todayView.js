@@ -532,8 +532,11 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   if(contractor){
     const name=documentRef.createElement('span');
     const cName=contactName(contractor);
-    name.textContent='پیمانکار: '+cName.replace(/^پیمانکار(?:\s*[:：]\s*|\s+|$)/u,'');
-    titles.append(name);
+    const label=documentRef.createElement('span');
+    label.textContent='پیمانکار:';
+    name.className='today-card-contractor-name';
+    name.textContent=cName.replace(/^پیمانکار(?:\s*[:：]\s*|\s+|$)/u,'');
+    titles.append(label,name);
   }
   const openDetails=()=>openTodayDetails(documentRef,project,item,today,onChanged,returnToCalendar,approval);
   heading.onclick=openDetails;
