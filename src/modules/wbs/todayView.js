@@ -362,7 +362,6 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
   if(contractor)summary.append(detailRow(documentRef,'پیمانکار',contactName(contractor)));
   if(current.reason)summary.append(detailRow(documentRef,'دلیل',[current.reason,current.description].filter(Boolean).join(' · ')));
   root.append(schedule,progress,summary);
-  if(approval?.action)root.append(detailRow(documentRef,'',approval.action));
   if(item.kind==='standalone' && entity.oddJobType){
     const expense=detailCard(documentRef);
     if(entity.description)expense.append(detailRow(documentRef,'شرح کوتاه',entity.description));
@@ -376,7 +375,7 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
     root.appendChild(expense);
   }
 
-  if(executionStatus(entity)==='pending_approval'){
+  if(!approval && executionStatus(entity)==='pending_approval'){
     const pending=detailCard(documentRef,'today-detail-pending');
     pending.textContent='در انتظار تأیید';
     root.appendChild(pending);
@@ -628,6 +627,13 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     activityBar.appendChild(thumbs);
   }
   if (latest || reportWithPhotos) card.appendChild(activityBar);
+  if(approval?.action){
+    const actions=documentRef.createElement('div');
+    actions.className='today-card-approval-actions';
+    actions.append(approval.action);
+    if(approval.rejectAction)actions.append(approval.rejectAction);
+    card.append(actions);
+  }
   return card;
 }
 
