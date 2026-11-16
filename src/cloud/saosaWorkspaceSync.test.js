@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createAppDataStore, APP_DATA_STORAGE_KEY} from '../data/appDataStore.js';
-import {activateAcceptedProject, confirmSaosaWorkspaceSave, prepareSaosaWorkspace, refreshSaosaWorkspace, SAOSA_SESSION_KEY, clearSaosaWorkspaceSession} from './saosaWorkspaceSync.js';
+import {activateAcceptedProject, confirmSaosaWorkspaceSave, prepareSaosaWorkspace, saosaWorkspaceSaveDiagnostic, refreshSaosaWorkspace, SAOSA_SESSION_KEY, clearSaosaWorkspaceSession} from './saosaWorkspaceSync.js';
 
 function storage(initial = {}){
   const values = new Map(Object.entries(initial));
@@ -208,5 +208,31 @@ test('explicit save confirmation sends the latest queued snapshot and waits for 
     assert.equal(uploaded.projects[0].contracts[0].completionDeclarationId,'d');
     finish();
     assert.equal((await confirmation).projects[0].contracts[0].id,'c');
+  }finally{detach();}
+});
+
+test('refresh does not replace a work edit when the queued upload fails',async()=>{
+  const local=storage({[SAOSA_SESSION_KEY]:session});
+  const initial={schemaVersion:8,projects:[{id:'p',tasks:[{id:'w',text:'old'}]}],activeTab:'p',viewMode:'simple',starredOrder:[]};
+  let reads=0;
+  let writes=0;
+  const win=windowWith({localStorage:local,fetch:async(_url,options={})=>{
+    if(options.method==='PUT'){writes++;return response(403,{error:'forbidden_costline_write'});}
+    reads++;
+    return response(200,{accountId:'a',snapshot:structuredClone(initial)});
+  }});
+  const store=createAppDataStore({storage:local});
+  const prepared=await prepareSaosaWorkspace({windowRef:win,store});
+  const detach=prepared.attach();
+  try{
+    store.getProjects()[0].tasks[0].text='edited';
+    store.persistLocal();
+    const before=reads;
+    const refreshed=await refreshSaosaWorkspace({windowRef:win,store});
+    assert.equal(writes,1);
+    assert.equal(saosaWorkspaceSaveDiagnostic(win),'HTTP 403 · forbidden_costline_write');
+    assert.equal(reads,before);
+    assert.equal(refreshed.changed,false);
+    assert.equal(store.getProjects()[0].tasks[0].text,'edited');
   }finally{detach();}
 });

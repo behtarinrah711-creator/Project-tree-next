@@ -1,9 +1,11 @@
+import {confirmSaosaWorkspaceSave,isSaosaHost,saosaWorkspaceSaveDiagnostic} from '../../cloud/saosaWorkspaceSync.js';
+import {findInTree} from '../../domain/wbs/normalize.js';
 import { wbsApi } from '../../domain/wbs/wbsApi.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { lineTotal, progressWeightOf } from '../../domain/wbs/normalize.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
-import { fieldRow, openWbsSheet } from './wbsSheet.js';
+import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
 
 function numericRow(root, name, label, value, money=false){
   const control=document.createElement('button');
@@ -33,6 +35,7 @@ function numericRow(root, name, label, value, money=false){
 
 export function openStageEditSheet({projectId,stage,onChanged,onDelete,readOnly=false}={}){
   let titleEditor;
+  let saving=false;
   const overlay=openWbsSheet({
     title:'مرحله:',presentation:'stage-create',autoFocus:false,readOnly,
     body(root){
@@ -55,6 +58,7 @@ export function openStageEditSheet({projectId,stage,onChanged,onDelete,readOnly=
       }
     },
     onSave(root){
+      if(saving)return false;
       const title=(titleEditor.textContent || '').trim();
       const weight=Number(root.querySelector('[name="progressWeight"]').dataset.value);
       const cost=root.querySelector('[name="manualCost"]');
@@ -62,9 +66,31 @@ export function openStageEditSheet({projectId,stage,onChanged,onDelete,readOnly=
       if(!title || !Number.isFinite(weight) || weight<=0 || (cost && (!Number.isFinite(amount)||amount<0))) return false;
       const latest=wbsApi.get(projectId,stage.id);
       const costPatch=cost && !activeWorkTasks(latest).length?{manualCost:amount}:{};
-      if(!wbsApi.updateItem(projectId,stage.id,{
+      const saved=wbsApi.updateItem(projectId,stage.id,{
         text:title,progressWeight:weight,description:root.querySelector('[name="description"]').value.trim(),...costPatch,
-      })) return false;
+      });
+      if(!saved)return false;
+      if(isSaosaHost()){
+        saving=true;
+        const button=overlay.querySelector('.wbs-sheet-save');
+        button.disabled=true;
+        button.textContent='در حال ذخیره…';
+        void confirmSaosaWorkspaceSave().then(snapshot=>{
+          if(!snapshot)throw new Error(saosaWorkspaceSaveDiagnostic() || 'save_response_unavailable');
+          const project=snapshot?.projects?.find(row=>String(row.id)===String(projectId));
+          const confirmed=findInTree(project?.tasks||[],stage.id)?.item;
+          if(!confirmed || confirmed.updatedAt!==saved.updatedAt)throw new Error('HTTP 200 · work_edit_not_confirmed');
+          if(overlay.isConnected)closeWbsSheet();
+          onChanged?.();
+        }).catch(error=>{
+          window.KarhaUI?.showToast?.('ذخیره در سرور تأیید نشد ('+error.message+'). دوباره تلاش کنید.');
+        }).finally(()=>{
+          saving=false;
+          button.disabled=false;
+          button.textContent='ذخیره';
+        });
+        return false;
+      }
       onChanged?.();
       return true;
     },

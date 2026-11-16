@@ -117,11 +117,15 @@ export function itemsForMode(project, mode, today = tehranTodayJalali()){
 
 export function contractorForItem(project, item){
   const contract = (project?.contracts || []).find(candidate => (
-    candidate && !candidate.trashed && String(candidate.projectItemId || '') === String(item.workId)
+    candidate && !candidate.trashed && item.kind!=='standalone'
+    && String(candidate.projectItemId || '') === String(item.workId)
+    && (item.kind==='task' ? String(candidate.workTaskId || '')===String(item.id) : !candidate.workTaskId)
   ));
   const contactId = contract
     ? (contract.contractorId || contract.contactId || '')
-    : (item.entity?.contractorContactId || '');
+    : (item.entity?.type === 'پیمانکار'
+      ? (item.entity.counterpartyContactId ?? item.entity.contractorContactId ?? '')
+      : (item.entity?.contractorContactId || ''));
   const contact = (project?.contacts || []).find(candidate => candidate && !candidate.trashed && String(candidate.id) === String(contactId));
   return { contract:contract || null, contact:contact || null };
 }

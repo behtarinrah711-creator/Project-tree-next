@@ -5,7 +5,7 @@ const today = tehranTodayJalali();
 const todayShort = new Intl.NumberFormat('fa-IR').format(Number(today.split('/')[1]))
   + '/' + new Intl.NumberFormat('fa-IR').format(Number(today.split('/')[2]));
 
-const project={id:'e2e-today',name:'پروژه امروز',location:'تهران',contacts:[{id:'a',name:'مهندس احمدی',phone:'09120000000'},{id:'c',name:'پیمانکار قرارداد'}],contracts:[{id:'contract',projectItemId:'w1',contractorId:'c'}],tasks:[{id:'s1',kind:'stage',text:'سازه',subtasks:[
+const project={id:'e2e-today',name:'پروژه امروز',location:'تهران',contacts:[{id:'a',name:'مهندس احمدی',phone:'09120000000'},{id:'c',name:'پیمانکار قرارداد'}],contracts:[{id:'contract',projectItemId:'w1',workTaskId:'today-task',contractorId:'c'}],tasks:[{id:'s1',kind:'stage',text:'سازه',subtasks:[
   {id:'w1',kind:'work',text:'فونداسیون',type:'اجرا',scheduleStart:'1405/06/01',scheduleEnd:'1405/06/30',workTasks:[
     {id:'today-task',workId:'w1',title:'قالب‌بندی',type:'اجرا',scheduleStart:today,scheduleEnd:today,priority:'high',assigneeContactId:'a',approvalContactId:'a',weight:1,executionComments:[
       {id:'c1',text:'نظر اول',createdBy:{id:'a',name:'الف'},createdAt:1},{id:'c2',text:'نظر دوم',createdBy:{id:'a',name:'الف'},createdAt:2},{id:'c3',text:'نظر سوم',createdBy:{id:'a',name:'الف'},createdAt:3},

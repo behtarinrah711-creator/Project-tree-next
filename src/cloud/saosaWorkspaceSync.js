@@ -67,7 +67,11 @@ export async function refreshSaosaWorkspace({windowRef = window, store} = {}){
   if(!isSaosaHost(windowRef)) return {enabled:false,changed:false};
   const session=readSaosaSession(windowRef);
   if(!session) return {enabled:true,authenticated:false,changed:false};
+  const saver=workspaceSavers.get(windowRef);
+  if(saver?.pending() && !await saver.confirm())return {enabled:true,authenticated:true,changed:false};
+  const version=saver?.version();
   const remote=await workspaceRequest(windowRef,session);
+  if(saver && (saver.pending() || saver.version()!==version))return {enabled:true,authenticated:true,changed:false};
   const next=remote.snapshot || createEmptySnapshot();
   const current=store?.getSnapshot?.() || createEmptySnapshot();
   const changed=JSON.stringify(current.projects || [])!==JSON.stringify(next.projects || [])
@@ -95,7 +99,11 @@ export async function activateAcceptedProject({windowRef = window, store, projec
 const workspaceSavers = new WeakMap();
 
 export function confirmSaosaWorkspaceSave(windowRef = window){
-  return workspaceSavers.get(windowRef)?.() ?? Promise.resolve(null);
+  return workspaceSavers.get(windowRef)?.confirm() ?? Promise.resolve(null);
+}
+
+export function saosaWorkspaceSaveDiagnostic(windowRef = window){
+  return workspaceSavers.get(windowRef)?.diagnostic() || '';
 }
 
 let persistBusy = false;
@@ -106,11 +114,13 @@ function createPersistAttach(windowRef, session, store, initialSnapshot = null){
   let queuedSnapshot = initialSnapshot;
   let inFlight;
   let acknowledgedSnapshot;
+  let diagnostic = "";
   let applyingRemote = false;
   const flush = () => {
     if(inFlight || !queuedSnapshot) return inFlight;
     (windowRef.clearTimeout || clearTimeout)(timer);
     persistBusy = true;
+    diagnostic = "";
     const next = queuedSnapshot;
     queuedSnapshot = null;
     inFlight = workspaceRequest(windowRef, session, {
@@ -131,7 +141,12 @@ function createPersistAttach(windowRef, session, store, initialSnapshot = null){
         }
       }
       return saved.snapshot;
-    }).catch(()=>{
+    }).catch(error=>{
+      const status=Number(error?.status);
+      const code=/^[a-z][a-z0-9_]{0,63}$/.test(error?.message || '') ? error.message : 'workspace_request_failed';
+      diagnostic=Number.isInteger(status) && status>=400 && status<=599
+        ? `HTTP ${status} · ${code}`
+        : 'network_error';
       if(!queuedSnapshot) queuedSnapshot = next;
       return null;
     }).finally(()=>{
@@ -141,15 +156,18 @@ function createPersistAttach(windowRef, session, store, initialSnapshot = null){
     });
     return inFlight;
   };
+  let version = 0;
   const confirm = async () => {
     const saving = inFlight;
     if(saving && !await saving)return null;
     return queuedSnapshot ? await flush() : acknowledgedSnapshot;
   };
   return () => {
-    workspaceSavers.set(windowRef,confirm);
+    const saver={confirm,pending:()=>Boolean(inFlight || queuedSnapshot),version:()=>version,diagnostic:()=>diagnostic};
+    workspaceSavers.set(windowRef,saver);
     const unsubscribe = store?.subscribePersist?.(next => {
       if(applyingRemote) return;
+      version++;
       queuedSnapshot = JSON.parse(JSON.stringify(next));
       (windowRef.clearTimeout || clearTimeout)(timer);
       timer = (windowRef.setTimeout || setTimeout)(flush, 250);
@@ -157,7 +175,8 @@ function createPersistAttach(windowRef, session, store, initialSnapshot = null){
     if(queuedSnapshot) timer = (windowRef.setTimeout || setTimeout)(flush, 250);
     return () => {
       unsubscribe?.();
-      if(workspaceSavers.get(windowRef)===confirm)workspaceSavers.delete(windowRef);
+      (windowRef.clearTimeout || clearTimeout)(timer);
+      if(workspaceSavers.get(windowRef)===saver)workspaceSavers.delete(windowRef);
     };
   };
 }

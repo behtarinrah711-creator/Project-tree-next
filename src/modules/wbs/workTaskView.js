@@ -1,3 +1,5 @@
+import {confirmSaosaWorkspaceSave,isSaosaHost,saosaWorkspaceSaveDiagnostic} from '../../cloud/saosaWorkspaceSync.js';
+import {findInTree} from '../../domain/wbs/normalize.js';
 import {mountFileUploader} from '../files/fileUploader.js';
 import {uid} from '../../data/projectFactories.js';
 import { approvalLabels, contractApprovalState } from '../../domain/contractApproval.js';
@@ -190,6 +192,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
   const linkedContract=task ? linkedContractForWork(projectId,work.id,task.id) : null;
   const contractor=linkedContract ? contactRepository.get(projectId,linkedContract.contractorId || linkedContract.contactId) : null;
   let titleEditor;
+  let saving=false;
   const overlay=openWbsSheet({
     title:'کار:', presentation:'stage-create', autoFocus:false,
     historyKey:`wbs-work-task:${projectId}:${task?.id || work.id}`,
@@ -361,6 +364,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       }
     },
     onSave(root){
+      if(saving)return false;
       const dependencyCheck = root._taskDependency?.validate();
       if(dependencyCheck && !dependencyCheck.ok){
         documentRef.defaultView?.KarhaUI?.showToast?.(dependencyCheck.code === 'cycle' ? 'وابستگی دوری مجاز نیست' : 'انتخاب پیش‌نیاز تکراری یا نامعتبر است');
@@ -399,6 +403,27 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
           : result.code === 'contract_locked' ? 'برای برداشتن تیک قرارداد، ابتدا خود قرارداد را حذف کنید'
           : result.code === 'approver' ? 'مسئول تأیید را انتخاب کنید'
           : 'اطلاعات کار را کامل و معتبر وارد کنید');
+        return false;
+      }
+      if(editing && !saveStandalone && isSaosaHost()){
+        saving=true;
+        const button=overlay.querySelector('.wbs-sheet-save');
+        button.disabled=true;
+        button.textContent='در حال ذخیره…';
+        void confirmSaosaWorkspaceSave().then(snapshot=>{
+          if(!snapshot)throw new Error(saosaWorkspaceSaveDiagnostic() || 'save_response_unavailable');
+          const project=snapshot?.projects?.find(row=>String(row.id)===String(projectId));
+          const confirmed=findInTree(project?.tasks||[],work.id)?.item.workTasks?.find(row=>String(row.id)===String(task.id));
+          if(!confirmed || confirmed.updatedAt!==result.task.updatedAt)throw new Error('HTTP 200 · work_edit_not_confirmed');
+          if(overlay.isConnected)closeWbsSheet();
+          onChanged?.();
+        }).catch(error=>{
+          window.KarhaUI?.showToast?.('ذخیره در سرور تأیید نشد ('+error.message+'). دوباره تلاش کنید.');
+        }).finally(()=>{
+          saving=false;
+          button.disabled=false;
+          button.textContent='ذخیره';
+        });
         return false;
       }
       if(!saveStandalone && !editing && !isExpanded(projectId, work.id)) toggleExpanded(projectId, work.id);
