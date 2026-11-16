@@ -1,5 +1,9 @@
 import {gregorianToJalali} from '../../ui/jalali.js';
-import {openStandaloneWorkSheet} from './workTaskView.js';
+import {canDeletePlanning,canWritePlanning,planningAccessLevel} from '../roleManagement/planningAccess.js';
+import {wbsApi} from '../../domain/wbs/wbsApi.js';
+import {openStageEditSheet} from './stageEditSheet.js';
+import {requestPlanningItemDelete} from './planningItemDelete.js';
+import {openCreateWorkTaskSheet,openStandaloneWorkSheet,requestPlanningTaskDelete} from './workTaskView.js';
 import {createStandaloneWork,updateStandaloneWork,deleteStandaloneWork} from '../../domain/wbs/workTaskApi.js';
 import {contractActionsMenu} from '../contracts/contractActionsMenu.js';
 import {openConfirm} from '../../ui/confirm.js';
@@ -483,6 +487,24 @@ function openTodayDetails(documentRef,project,item,today,onChanged,returnToCalen
   if(path.textContent)sheet.querySelector('.sheet-caption').appendChild(path);
 }
 
+function planningTaskActions(documentRef,project,item,onChanged){
+  const level=planningAccessLevel(project.id,'tree',documentRef.defaultView);
+  if(!canWritePlanning(level) || item.entity.completed || item.entity.completionState==='approved' ||
+    executionStatus(item.entity)==='approved')return null;
+  const projectId=project.id;
+  const canDelete=canDeletePlanning(level);
+  const deleteItem=()=>item.kind==='task'
+    ? requestPlanningTaskDelete({documentRef,projectId,workId:item.workId,taskId:item.id,onChanged})
+    : requestPlanningItemDelete(projectId,item.entity,onChanged);
+  return {
+    onEdit:()=>item.kind==='task'
+      ? openCreateWorkTaskSheet({projectId,work:item.work,task:item.entity,onChanged,canDelete})
+      : openStageEditSheet({projectId,stage:wbsApi.get(projectId,item.id)||item.entity,onChanged,
+        onDelete:canDelete?()=>requestPlanningItemDelete(projectId,item.entity,()=>{closeWbsSheet();onChanged?.();}):null}),
+    onDelete:canDelete?deleteItem:undefined,
+  };
+}
+
 function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCalendar,approval){
   const card=documentRef.createElement('article');
   card.className='today-task-card wbs-costline-work';
@@ -554,6 +576,15 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     });
     menu.querySelector?.('.nb-more')?.setAttribute('aria-label','عملیات خرده‌کار');
     heading.append(menu);
+  }
+  if(!approval && (item.kind==='task' || item.kind==='work')){
+    const actions=planningTaskActions(documentRef,project,item,onChanged);
+    if(actions){
+      heading.classList.add('has-oddjob-menu');
+      const menu=contractActionsMenu(actions);
+      menu.querySelector('.nb-more')?.setAttribute('aria-label','عملیات کار برنامه');
+      heading.append(menu);
+    }
   }
   card.appendChild(heading);
   const timing=scheduleBar(documentRef,entity,today);

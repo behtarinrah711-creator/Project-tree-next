@@ -1,3 +1,4 @@
+import {requestPlanningItemDelete} from './planningItemDelete.js';
 import { canWriteProjectModule, projectPermissionState } from '../roleManagement/permissionState.js';
 import { buildTimelineRows } from './timelineRows.js';
 import { openWorkCreationSheet } from './workCreationSheet.js';
@@ -189,28 +190,7 @@ function descendantSummary(stage){
 
 function requestDelete(item){
   if(!canDeletePlanning(activePlanningLevel)) return;
-  const located = locateUiItem(item.id);
-  if(!located) return;
-  const stage = isStage(item);
-  const perform = () => {
-    const type = located.parent ? 'sub' : 'task';
-    const sid = located.parent ? item.id : null;
-    const label = stage ? 'مرحله حذف شد' : 'کار حذف شد';
-    const softDelete = window.KarhaSoftDelete?.softDelete;
-    if(typeof softDelete !== 'function') return;
-    if(softDelete(type, projectIdOf(), located.rootId, sid, label, { undo:false })){
-      closeWbsSheet();
-      render();
-    }
-  };
-  const message = stage
-    ? 'این مرحله و تمام زیرمجموعه‌های آن حذف شوند؟'
-    : 'این کار حذف شود؟';
-  if(typeof window.KarhaUI?.openConfirm === 'function'){
-    window.KarhaUI.openConfirm(message, perform, 'حذف');
-  }else if(window.confirm(message)){
-    perform();
-  }
+  requestPlanningItemDelete(projectIdOf(),item,()=>{closeWbsSheet();render();});
 }
 
 function escapeHtml(value){
