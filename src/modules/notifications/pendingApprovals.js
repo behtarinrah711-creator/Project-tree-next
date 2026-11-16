@@ -5,7 +5,7 @@ import {contractApi} from '../../domain/contractApi.js';
 import {isSaosaHost} from '../../cloud/saosaWorkspaceSync.js';
 import {collectStandaloneWorks,collectTodayItems, tehranTodayJalali} from '../../domain/wbs/todayDomain.js';
 import {collectShoppingItems} from '../../domain/wbs/shoppingDomain.js';
-import {applyExecutionApproval,executionApprovalItem} from '../../domain/wbs/executionApproval.js';
+import {applyExecutionApproval,executionApprovalItem,rejectExecutionEntity} from '../../domain/wbs/executionApproval.js';
 import {fileToken} from '../files/fileApi.js';
 import {todayApi} from '../../domain/wbs/todayApi.js';
 import {canWriteProjectModule, projectPermissionState} from '../roleManagement/permissionState.js';
@@ -14,6 +14,7 @@ import {approvalByActor,renderContractApprovalLists} from './contractApprovalLis
 import {renderTodayCard} from '../wbs/todayView.js';
 import {renderShoppingCard} from '../wbs/shoppingView.js';
 import {saveContractHandoff} from '../contracts/contractHandoffApi.js';
+import {openContractReasonSheet} from '../contracts/contractReasonSheet.js';
 import {openConfirm} from '../../ui/confirm.js';
 
 export const approvalGroups=[
@@ -25,15 +26,20 @@ export const approvalGroups=[
 const number=value=>Number(value).toLocaleString('fa-IR');
 const emptyQueue=()=>({assigned:false,groups:[],count:0});
 
-async function approveExecution(projectId,scope,item,actor){
+async function submitExecutionDecision(projectId,scope,item,actor,reason){
   const {kind,id,workId}=item;
   if(!isSaosaHost()){
+    if(reason){
+      projectRepository.updateProject(projectId,project=>
+        applyExecutionApproval(project,item,rejectExecutionEntity(item.entity,kind,reason,actor,Date.now())));
+      return;
+    }
     if(!todayApi.approve(projectId,{kind,id,workId},actor).ok)throw new Error('ثبت تأیید انجام نشد.');
     return;
   }
   const response=await fetch('/api/v1/projects/'+encodeURIComponent(projectId)+'/execution-approvals/'+encodeURIComponent(id)+'/handoff',{
     method:'POST',headers:{authorization:'Bearer '+fileToken(),'content-type':'application/json'},
-    body:JSON.stringify({action:'approve_execution',scope,kind,workId,updatedAt:item.entity.updatedAt||0}),
+    body:JSON.stringify({action:reason?'reject_execution':'approve_execution',scope,kind,workId,reason,updatedAt:item.entity.updatedAt||0}),
   });
   const result=await response.json().catch(()=>({}));
   if(!response.ok || !result.entity)throw new Error(result.message || 'ثبت تأیید انجام نشد.');
@@ -103,6 +109,28 @@ function approvalOptions(documentRef,project,group,item,onChanged){
   const action=item.statementType?'approve_statement':item.parentContractId?'approve_addendum':'approve_contract';
   const approval={};
   if(group.writable){
+    const currentExecution=()=>{
+      const queue=pendingApprovals(projectRepository.find(project.id));
+      const currentGroup=queue.groups.find(candidate=>candidate.id===group.id);
+      const current=currentGroup?.items.find(candidate=>String(candidate.id)===String(item.id)
+        && String(candidate.workId)===String(item.workId) && candidate.kind===item.kind);
+      if(!current || !currentGroup.writable)throw new Error('این مورد دیگر در انتظار تأیید شما نیست.');
+      return {current,actor:queue.actor};
+    };
+    if(group.id==='execution'){
+      const reject=button(documentRef,'رد کردن',()=>openContractReasonSheet({
+        title:'رد کردن کار اجرایی',fieldLabel:'دلیل رد',historyKey:'reject-execution:'+item.id,minLength:5,
+        async submit(reason){
+          try{
+            const {current,actor}=currentExecution();
+            await submitExecutionDecision(project.id,group.scope,current,actor,reason);
+            onChanged();
+            return true;
+          }catch(error){window.KarhaUI?.showToast?.(error.message);return false;}
+        },
+      }),'contract-review-action danger');
+      approval.rejectAction=reject;
+    }
     const approve=button(documentRef,item.entity?.oddJobType?'تأیید خرج':shopping?'تأیید خرید':'تأیید',()=>openConfirm('این مورد تأیید شود؟',async()=>{
       approve.disabled=true;
       try{
@@ -115,7 +143,7 @@ function approvalOptions(documentRef,project,group,item,onChanged){
             : Boolean(candidate.parentContractId)===Boolean(item.parentContractId) && candidate.statementType===item.statementType));
         if(!current || !currentGroup.writable)throw new Error('این مورد دیگر در انتظار تأیید شما نیست.');
         if(execution){
-          await approveExecution(project.id,group.scope,current,queue.actor);
+          await submitExecutionDecision(project.id,group.scope,current,queue.actor);
         }else if(action!=='approve_contract' || isSaosaHost()){
           await saveContractHandoff(project.id,current,action);
         }else{
@@ -128,7 +156,7 @@ function approvalOptions(documentRef,project,group,item,onChanged){
         window.KarhaUI?.showToast?.(error.message);
         approve.disabled=false;
       }
-    },'تأیید'),execution ? (shopping ? '' : 'wbs-costline-manual') : 'contract-review-action');
+    },'تأیید'),execution && shopping ? '' : 'contract-review-action');
     if(execution || canReviewContract(item,currentExecutionActor(project)))approval.action=approve;
     else if(action==='approve_contract' && canRevokeContractApproval(item,currentExecutionActor(project))){
       approve.disabled=true;

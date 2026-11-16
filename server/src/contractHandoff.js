@@ -2,7 +2,7 @@ import {canDeleteContractDocument} from '../../src/domain/contractHandoff.js';
 import {acceptedMembership} from './acceptedMembership.js';
 import {availableContractAdvance,contractStatementTotals} from '../../src/domain/contractStatements.js';
 import {saveStatement,recordStatementPayment} from './contractStatement.js';
-import {applyExecutionApproval,approveExecutionEntity,executionApprovalItem} from '../../src/domain/wbs/executionApproval.js';
+import {applyExecutionApproval,approveExecutionEntity,executionApprovalItem,rejectExecutionEntity} from '../../src/domain/wbs/executionApproval.js';
 import {saveAddendumDraft} from './contractAddendum.js';
 import {canDeleteAddendumRecord,canDeleteContractAddenda,parentContractOf} from '../../src/domain/contractAddenda.js';
 import {saveContractReviewEdit,transitionContractApproval} from '../../src/domain/contractApproval.js';
@@ -39,7 +39,10 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       const actor={id:String(accountId),contactId:String(person?.id || memberContact || ''),name:[person?.firstName,person?.lastName].filter(Boolean).join(' ')||person?.name||row.phone||'کاربر'};
       if(kind==='execution-approvals'){
         const scope=body.scope;
-        if(body.action!=='approve_execution' || !['execution:today','execution:shopping'].includes(scope)){
+        const rejecting=body.action==='reject_execution';
+        const reason=typeof body.reason==='string'?body.reason.trim():'';
+        if((rejecting ? scope!=='execution:today' || reason.length<5 : body.action!=='approve_execution')
+          || !['execution:today','execution:shopping'].includes(scope)){
           sendJson(response,400,{message:'عملیات نامعتبر است'});return true;
         }
         if(!canAccessFiles(row,accountId,true,scope)){
@@ -53,7 +56,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         if(scope!==actualScope || !actor.contactId || String(item.entity.oddJobType?item.entity.expenseApproverContactId:item.entity.approvalContactId)!==actor.contactId){
           sendJson(response,403,{message:'این مورد در انتظار تأیید شما نیست'});return true;
         }
-        const entity={...approveExecutionEntity(item.entity,item.kind,actor,Date.now()),...(item.entity.oddJobType?{}:{progress:100})};
+        const entity=rejecting?rejectExecutionEntity(item.entity,item.kind,reason,actor,Date.now()):{...approveExecutionEntity(item.entity,item.kind,actor,Date.now()),...(item.entity.oddJobType?{}:{progress:100})};
         const project=applyExecutionApproval(row.payload,item,entity);
         await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[projectId,JSON.stringify(project)]);
         await client.query('COMMIT');committed=true;sendJson(response,200,{entity});

@@ -21,6 +21,21 @@ export function approveExecutionEntity(entity,kind,actor,at){
   };
 }
 
+export function rejectExecutionEntity(entity,kind,reason,actor,at){
+  const commentId=uid();
+  const rejection={
+    executionComments:[...(entity.executionComments||[]),{id:commentId,text:reason,createdBy:actor,createdAt:at,type:'approval_rejected'}],
+    executionHistory:[...(entity.executionHistory||[]),{id:uid(),type:'approval_rejected',actor,at,commentId}],
+    updatedAt:at,
+  };
+  if(kind==='standalone' && entity.oddJobType)return {...entity,...rejection,expenseApprovalStatus:'rejected'};
+  rejection.executionHistory.push({id:uid(),type:'returned_to_active',actor,at});
+  return {...entity,...rejection,completed:false,done:false,completionState:'incomplete',workflowStatus:'in_progress',
+    completedAt:null,completionSubmittedAt:null,actualFinishDay:null,approvedAt:null,
+    returnedToTodayOn:tehranTodayJalali(new Date(at)),
+    ...(kind==='work'?{progress:Number(entity.progressBeforeApproval)||0,status:'in_progress'}:{})};
+}
+
 export function applyExecutionApproval(project,item,approved){
   if(item.kind==='standalone')return {...project,standaloneWorks:project.standaloneWorks.map(work=>work.id===item.id?approved:work)};
   const update=nodes=>(nodes||[]).map(node=>{
