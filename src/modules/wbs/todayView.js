@@ -832,6 +832,25 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
     const detailsFilter=linkButton(documentRef,'wbs-tree-mode-tab today-task-filter'+(Object.keys(activeDetails).length?' active':''),'فیلتر');
     detailsFilter.onclick=()=>openExecutionDetailsFilter(documentRef,project,statusAndBranchItems,filters=>{activeDetails=filters;onChanged?.();});
     tools.append(filter,detailsFilter,calendar);
+    const appendTag=(label,value,clear)=>{
+      const tag=linkButton(documentRef,'today-active-filter-tag','', 'حذف فیلتر '+label+' '+value);
+      const text=documentRef.createElement('span');
+      text.textContent=label+': '+value;
+      const close=documentRef.createElement('span');
+      close.textContent='×';
+      close.setAttribute('aria-hidden','true');
+      tag.append(text,close);
+      tag.onclick=()=>{clear();onChanged?.();};
+      tools.append(tag);
+    };
+    if(selectedBranch)appendTag(selectedBranch.children.length?'مرحله':'کار',selectedBranch.title,()=>{activeBranch='';});
+    for(const [key,label] of executionFilterFields){
+      const id=activeDetails[key];
+      if(!id)continue;
+      const contact=(project.contacts||[]).find(row=>row && !row.trashed && String(row.id)===id);
+      const value=key==='priority'?PRIORITY_LABELS[id]:contact && contactName(contact);
+      appendTag(label,value || 'انتخاب‌شده',()=>{delete activeDetails[key];});
+    }
     header.append(tools);
   }
   const body=documentRef.createElement('div');
