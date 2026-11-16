@@ -723,7 +723,7 @@ function openExecutionDetailsFilter(documentRef,project,items,onApply){
         const picker=linkButton(documentRef,'execution-details-filter-picker','');
         const name=documentRef.createElement('span');name.textContent=label;
         const selection=documentRef.createElement('span');
-        const clear=linkButton(documentRef,'execution-details-filter-clear','×','حذف '+label);
+        const clear=linkButton(documentRef,'execution-details-filter-clear','','حذف '+label);
         clear.onclick=()=>{
           delete draft[key];
           paint();updateCount();
@@ -735,6 +735,7 @@ function openExecutionDetailsFilter(documentRef,project,items,onApply){
           selection.className=selected?'execution-details-filter-value':'is-placeholder';
           row.classList.toggle('has-selection',Boolean(selected));
           clear.hidden=!selected;
+          clear.textContent=selected?'×':'';
         };
         picker.append(name,selection);
         row.append(picker,clear);
