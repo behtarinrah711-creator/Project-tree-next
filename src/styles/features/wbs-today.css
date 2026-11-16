@@ -304,10 +304,13 @@ button.today-report-circle{cursor:pointer;}
 .today-active-filter-tag span:last-child{flex:none;font-size:16px;}
 
 /* Execution cards sit on the same neutral surface as workspace settings. */
-body:has(.wbs-home-root .is-today-view),
-body:has(.wbs-home-root .is-today-view) .content,
-.wbs-home-root:has(.is-today-view),
-.wbs-home-root .is-today-view{background:var(--bg,#f0f1f2);}
+body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)),
+body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
+.wbs-home-root:has(.is-today-view,.is-shopping-view),
+.wbs-home-root :is(.is-today-view,.is-shopping-view){background:var(--bg,#f0f1f2);}
+.wbs-home-root .is-today-view .wbs-today-body,
+.wbs-home-root .is-shopping-view .wbs-shopping-body{background:var(--bg,#f0f1f2);}
+.wbs-shopping-frame .shopping-item-card .shopping-card-heading,
 .wbs-today-frame .today-task-card.wbs-costline-work,
 .wbs-today-frame .today-task-card .today-card-heading,
 .wbs-today-frame .today-task-card > .today-card-activity,
