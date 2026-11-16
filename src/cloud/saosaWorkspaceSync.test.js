@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createAppDataStore, APP_DATA_STORAGE_KEY} from '../data/appDataStore.js';
-import {activateAcceptedProject, confirmSaosaWorkspaceSave, prepareSaosaWorkspace, refreshSaosaWorkspace, SAOSA_SESSION_KEY, clearSaosaWorkspaceSession} from './saosaWorkspaceSync.js';
+import {activateAcceptedProject, confirmSaosaWorkspaceSave, prepareSaosaWorkspace, saosaWorkspaceSaveDiagnostic, refreshSaosaWorkspace, SAOSA_SESSION_KEY, clearSaosaWorkspaceSession} from './saosaWorkspaceSync.js';
 
 function storage(initial = {}){
   const values = new Map(Object.entries(initial));
@@ -217,7 +217,7 @@ test('refresh does not replace a work edit when the queued upload fails',async()
   let reads=0;
   let writes=0;
   const win=windowWith({localStorage:local,fetch:async(_url,options={})=>{
-    if(options.method==='PUT'){writes++;return response(503,{});}
+    if(options.method==='PUT'){writes++;return response(403,{error:'forbidden_costline_write'});}
     reads++;
     return response(200,{accountId:'a',snapshot:structuredClone(initial)});
   }});
@@ -230,6 +230,7 @@ test('refresh does not replace a work edit when the queued upload fails',async()
     const before=reads;
     const refreshed=await refreshSaosaWorkspace({windowRef:win,store});
     assert.equal(writes,1);
+    assert.equal(saosaWorkspaceSaveDiagnostic(win),'HTTP 403 · forbidden_costline_write');
     assert.equal(reads,before);
     assert.equal(refreshed.changed,false);
     assert.equal(store.getProjects()[0].tasks[0].text,'edited');
