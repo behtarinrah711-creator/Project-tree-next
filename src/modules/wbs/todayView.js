@@ -610,7 +610,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   }
   const reportMeta=documentRef.createElement('div');
   reportMeta.className='today-card-report-meta';
-  if(!approval)reportMeta.append(report);
+  reportMeta.append(report);
   const latest = latestActivity(entity);
   if (latest) {
     const textEl = documentRef.createElement('span');
