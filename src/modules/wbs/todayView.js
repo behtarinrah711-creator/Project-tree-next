@@ -807,7 +807,7 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
   if(selectedBranch){
     filter.classList.add('active');
   }
-  filter.onclick=()=>openExecutionBranchFilter(project,tree,id=>{activeBranch=id;onChanged?.();});
+  filter.onclick=()=>openExecutionBranchFilter(project,tree,id=>{activeBranch=id;onChanged?.();},selectedBranch);
   const showCalendar=options=>openExecutionCalendar(projectRepository.find(project.id)||project,
     (source,item,day,selection)=>renderTodaySummary(documentRef,source,item,day,onChanged,()=>showCalendar(selection)),options);
   const calendar=linkButton(documentRef,'wbs-tree-mode-tab today-task-filter','تقویم');
