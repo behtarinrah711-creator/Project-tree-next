@@ -718,15 +718,28 @@ function openExecutionDetailsFilter(documentRef,project,items,onApply){
         const choices=key==='priority'
           ? Object.entries(PRIORITY_LABELS).map(([id,name])=>({id,name}))
           : contacts.map(contact=>({id:String(contact.id),name:contactName(contact)}));
-        const row=linkButton(documentRef,'execution-details-filter-row','');
+        const row=documentRef.createElement('div');
+        row.className='execution-details-filter-row';
+        const picker=linkButton(documentRef,'execution-details-filter-picker','');
         const name=documentRef.createElement('span');name.textContent=label;
         const selection=documentRef.createElement('span');
-        const paint=()=>{
-          selection.textContent=choices.find(choice=>choice.id===draft[key])?.name || 'انتخاب';
-          selection.className=draft[key]?'':'is-placeholder';
+        const clear=linkButton(documentRef,'execution-details-filter-clear','','حذف '+label);
+        clear.onclick=()=>{
+          delete draft[key];
+          paint();updateCount();
+          picker.focus();
         };
-        row.append(name,selection);
-        row.onclick=()=>openSearchPicker({
+        const paint=()=>{
+          const selected=choices.find(choice=>choice.id===draft[key]);
+          selection.textContent=selected?.name || 'انتخاب';
+          selection.className=selected?'execution-details-filter-value':'is-placeholder';
+          row.classList.toggle('has-selection',Boolean(selected));
+          clear.hidden=!selected;
+          clear.textContent=selected?'×':'';
+        };
+        picker.append(name,selection);
+        row.append(picker,clear);
+        picker.onclick=()=>openSearchPicker({
           title:'انتخاب '+label,listTitle:key==='priority'?'درجه‌های اهمیت':'مخاطبین',
           contextKey:'execution-details-filter:'+project.id+':'+key,showStar:false,showAdd:false,
           items:[{id:'__all__',name:'همه'},...choices],
@@ -795,7 +808,7 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
   if(selectedBranch){
     filter.classList.add('active');
   }
-  filter.onclick=()=>openExecutionBranchFilter(project,tree,id=>{activeBranch=id;onChanged?.();});
+  filter.onclick=()=>openExecutionBranchFilter(project,tree,id=>{activeBranch=id;onChanged?.();},selectedBranch);
   const showCalendar=options=>openExecutionCalendar(projectRepository.find(project.id)||project,
     (source,item,day,selection)=>renderTodaySummary(documentRef,source,item,day,onChanged,()=>showCalendar(selection)),options);
   const calendar=linkButton(documentRef,'wbs-tree-mode-tab today-task-filter','تقویم');
