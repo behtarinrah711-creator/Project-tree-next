@@ -1,3 +1,5 @@
+import {createExportButton} from './viewHeader.js';
+import {openProjectTreeExport} from './projectTreeExportView.js';
 import {requestPlanningItemDelete} from './planningItemDelete.js';
 import { canWriteProjectModule, projectPermissionState } from '../roleManagement/permissionState.js';
 import { buildTimelineRows } from './timelineRows.js';
@@ -708,6 +710,15 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   });
   if(scope!=='planning'||canWritePlanning(activePlanningLevel)) toolbar.appendChild(addRoot);
   toolbar.appendChild(treeToggle);
+  if(currentView==='tree'){
+    const exportButton=createExportButton(document);
+    exportButton.classList.add('wbs-tree-export-tool');
+    exportButton.onclick=()=>openProjectTreeExport(project,{
+      trigger:exportButton,expandedIds:getExpandedIds(project.id),
+      expandIcon:materialIcon(EXPAND_ICON),branchIcon:materialIcon(BRANCH_ARROW_ICON),
+    });
+    toolbar.appendChild(exportButton);
+  }
   if(currentView !== 'timeline' && currentView !== 'costline') root.appendChild(toolbar);
 
   if(currentView === 'tree'){
