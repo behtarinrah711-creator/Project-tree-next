@@ -1,8 +1,4 @@
-const EXPORT_ICON = 'M160-120q-33 0-56.5-23.5T80-200v-120h80v120h640v-120h80v120q0 33-23.5 56.5T800-120H160Zm280-160v-326L336-402l-56-58 200-200 200 200-56 58-104-104v326h-80Zm-280-40v-400q0-33 23.5-56.5T240-680h120v80H240v280h480v-280H600v-80h120q33 0 56.5 23.5T800-600v400H160Z';
-
-function materialIcon(path){
-  return `<svg viewBox="0 -960 960 960" aria-hidden="true" focusable="false"><path d="${path}"/></svg>`;
-}
+const EXPORT_ICON = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" height="24px" width="24px" fill="currentColor" aria-hidden="true" focusable="false"><path d="M16.2,20.5L19,17.7V20h1V16H16v1h2.3l-2.8,2.8l0.7,0.7ZM5,21q-0.83,0-1.41-0.59T3,19V5Q3,4.17 3.59,3.59T5,3H19q0.83,0 1.41,0.59T21,5v6.7q-0.47-0.22-0.97-0.39T19,11.08V5H5V19h6.05q0.07,0.55 0.24,1.05T11.68,21H5Zm0-3q0,0.27 0,0.51T5,19V5v6.07q0-0.05 0-0.06T5,11t0,2.05T5,18Zm2-1h4.08q0.07-0.52 0.24-1.03q0.16-0.5 0.36-0.97H7v2Zm0-4h6.1q0.8-0.75 1.79-1.25T17,11.08V11H7v2ZM7,9H17V7H7V9ZM18,23q-2.07,0-3.54-1.46T13,18t1.46-3.54T18,13t3.54,1.46T23,18t-1.46,3.54T18,23Z"/></svg>';
 
 export function createExportButton(documentRef){
   const button = documentRef.createElement('button');
@@ -10,7 +6,7 @@ export function createExportButton(documentRef){
   button.className = 'wbs-view-tool wbs-export-tool';
   button.setAttribute('aria-label', 'خروجی گرفتن');
   button.setAttribute('title', 'خروجی گرفتن');
-  button.innerHTML = materialIcon(EXPORT_ICON);
+  button.innerHTML = EXPORT_ICON;
   return button;
 }
 
