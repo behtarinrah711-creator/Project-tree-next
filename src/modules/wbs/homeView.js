@@ -712,7 +712,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   toolbar.appendChild(treeToggle);
   if(currentView==='tree'){
     const exportButton=createExportButton(document);
-    exportButton.classList.add('wbs-tree-export-tool');
+    exportButton.className += ' wbs-tree-export-tool';
     exportButton.onclick=()=>openProjectTreeExport(project,{
       trigger:exportButton,expandedIds:getExpandedIds(project.id),
       expandIcon:materialIcon(EXPAND_ICON),branchIcon:materialIcon(BRANCH_ARROW_ICON),
