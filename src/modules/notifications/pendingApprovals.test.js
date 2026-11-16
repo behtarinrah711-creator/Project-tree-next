@@ -107,7 +107,10 @@ test('the approval inbox renders the original cards with only review controls',(
       if(group==='execution'){
         assert.ok(card.nodes().some(node=>node.className==='today-card-heading today-card-summary'));
         assert.ok(card.nodes().some(node=>node.tag==='span' && node.className.startsWith('today-report-circle')));
-        assert.deepEqual(buttons.map(node=>node.className),['today-card-titles']);
+        const actions=card.children.at(-1);
+        assert.equal(actions.className,'today-card-approval-actions');
+        assert.deepEqual(actions.children.map(node=>node.textContent),['تأیید','رد کردن']);
+        assert.deepEqual(buttons,[buttons[0],...actions.children]);
       }else{
         assert.deepEqual(buttons.map(node=>node.textContent),[undefined,label]);
         assert.equal(buttons[0].disabled,true);
