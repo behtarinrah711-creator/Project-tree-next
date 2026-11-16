@@ -40,6 +40,12 @@ function formatDate(value){
   if(parts.length !== 3) return toPersianDigits(String(value || ''));
   return `${toPersianDigits(Number(parts[0]))}/${toPersianDigits(Number(parts[1]))}/${toPersianDigits(Number(parts[2]))}`;
 }
+const JALALI_MONTH_NAMES=['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'];
+function formatScheduleEndpoint(value){
+  const [,month,day]=String(value || '').split('/');
+  const monthName=JALALI_MONTH_NAMES[Number(month)-1];
+  return monthName && Number(day)>0 ? `${toPersianDigits(Number(day))} ${monthName}` : '';
+}
 function formatMoment(value){ return value ? new Intl.DateTimeFormat('fa-IR-u-ca-persian', { timeZone:'Asia/Tehran', year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }).format(new Date(value)) : ''; }
 function reportsOf(entity){ return (entity.executionReports || []).filter(report => report && !report.trashed).slice().reverse(); }
 function commentsOf(entity){ return (entity.executionComments || []).filter(comment => comment && !comment.trashed).slice().sort((a,b) => Number(b.createdAt) - Number(a.createdAt)); }
@@ -520,13 +526,13 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   const priority = entity.priority || 'normal';
   const priorityLabel = PRIORITY_LABELS[priority] || PRIORITY_LABELS.normal;
   const priorityClass = PRIORITY_CLASSES[priority] || 'priority-normal';
-  titles.innerHTML=`<strong><small class="wbs-task-priority ${priorityClass}">${esc(priorityLabel)}</small> ${esc(entity.title||entity.text||'')}</strong><span>${esc(item.path.join(' · '))}</span>`;
+  titles.innerHTML=`<strong>${esc(entity.title||entity.text||'')} <small class="wbs-task-priority ${priorityClass}">${esc(priorityLabel)}</small></strong><span>${esc(item.path.join(' · '))}</span>`;
   const assignee=(project.contacts||[]).find(contact=>!contact.trashed && String(contact.id)===String(entity.assigneeContactId));
   const contractor=contractorForItem(project,item).contact;
   if(contractor){
     const name=documentRef.createElement('span');
     const cName=contactName(contractor);
-    name.textContent=cName.startsWith('پیمانکار') ? cName : 'پیمانکار: '+cName;
+    name.textContent='پیمانکار: '+cName.replace(/^پیمانکار(?:\s*[:：]\s*|\s+|$)/u,'');
     titles.append(name);
   }
   const openDetails=()=>openTodayDetails(documentRef,project,item,today,onChanged,returnToCalendar,approval);
@@ -586,7 +592,14 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
       label.append(timing.status.text);
       schedule.append(label);
     }
-    schedule.append(timing.bar);
+    const dates=documentRef.createElement('div');
+    dates.className='today-schedule-dates';
+    const start=documentRef.createElement('span');
+    start.textContent=formatScheduleEndpoint(entity.scheduleStart);
+    const end=documentRef.createElement('span');
+    end.textContent=formatScheduleEndpoint(entity.scheduleEnd);
+    dates.append(start,end);
+    schedule.append(timing.bar,dates);
     card.append(schedule);
   }
   // Bottom activity bar: latest update + small photo thumbs
