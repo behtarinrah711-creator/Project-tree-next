@@ -633,8 +633,8 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     }
     activityBar.appendChild(thumbs);
   }
-  if(reportMeta.childElementCount)activityBar.append(reportMeta);
-  if(activityBar.childElementCount)card.append(activityBar);
+  activityBar.append(reportMeta);
+  card.append(activityBar);
   if(approval?.action){
     const actions=documentRef.createElement('div');
     actions.className='today-card-approval-actions';
