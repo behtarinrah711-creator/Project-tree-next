@@ -1,6 +1,6 @@
 import {canDeleteContractDocument} from '../../src/domain/contractHandoff.js';
 import {acceptedMembership} from './acceptedMembership.js';
-import {contractStatementTotals} from '../../src/domain/contractStatements.js';
+import {availableContractAdvance,contractStatementTotals} from '../../src/domain/contractStatements.js';
 import {saveStatement,recordStatementPayment} from './contractStatement.js';
 import {applyExecutionApproval,approveExecutionEntity,executionApprovalItem} from '../../src/domain/wbs/executionApproval.js';
 import {saveAddendumDraft} from './contractAddendum.js';
@@ -142,6 +142,9 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       }else{
         let source=contract;
         if(body.action==='send_finance'){
+          if(statement && contract.advanceDeduction>availableContractAdvance(row.payload,statementParent.id,contract.id)){
+            sendJson(response,409,{message:'مانده پیش‌پرداخت برای کسر این صورت‌وضعیت کافی نیست'});return true;
+          }
           if(addendum){
             const parent=parentContractOf(row.payload,contract);
             if(!parent){sendJson(response,409,{message:'قرارداد اصلی پیدا نشد'});return true;}

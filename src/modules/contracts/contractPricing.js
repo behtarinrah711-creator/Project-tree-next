@@ -58,7 +58,7 @@ export function makeQuantityRow(){
 }
 
 // Same row editor for pricing and payment quantities; arrays remain independent.
-export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,onDirty,operations=false,agreed=false,mixed=false,allowRemeasurement=true,highlightMissing=false,newPricingMode='quantity'}){
+export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,onDirty,operations=false,agreed=false,mixed=false,allowRemeasurement=true,highlightMissing=false,newPricingMode='quantity',advance=false,textRow}){
   const money=value=>new Intl.NumberFormat('fa-IR').format(value)+' تومان';
   const list=document.createElement('div');
   list.className='contract-quantity-list';
@@ -68,7 +68,7 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
     const header=document.createElement('div');
     header.className='contract-quantity-heading';
     const label=document.createElement('span');
-    label.textContent=(operations?'عملیات ':'مرحله ')+new Intl.NumberFormat('fa-IR').format(index+1)+(operations?'':' پرداخت');
+    label.textContent=advance?'پیش‌پرداخت '+new Intl.NumberFormat('fa-IR').format(index+1):(operations?'عملیات ':'مرحله ')+new Intl.NumberFormat('fa-IR').format(index+1)+(operations?'':' پرداخت');
     const remove=document.createElement('button');
     remove.type='button';remove.textContent='حذف';remove.setAttribute('aria-label',(operations?'حذف عملیات ':'حذف ردیف ')+(index+1));
     remove.onclick=()=>{rows.splice(index,1);onChange();};
@@ -127,9 +127,10 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
       total.append(totalLabel,totalValue);
       card.appendChild(total);
     }
+    if(advance)textRow(card,'موعد پرداخت',row.dueText||'',value=>{row.dueText=value;onDirty();});
     list.appendChild(card);
   });
-  const add=document.createElement('button');add.type='button';add.className='ctf-add-material contract-quantity-add';add.textContent=operations?'+ افزودن عملیات':'+ افزودن مرحله';
+  const add=document.createElement('button');add.type='button';add.className='ctf-add-material contract-quantity-add';add.textContent=advance?'+ افزودن پیش‌پرداخت':operations?'+ افزودن عملیات':'+ افزودن مرحله';
   add.onclick=()=>{rows.push({...makeQuantityRow(),...(mixed?{pricingMode:newPricingMode,agreedPrice:''}:{})});onChange();};
   list.appendChild(add);
   root.appendChild(list);

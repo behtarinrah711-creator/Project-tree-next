@@ -72,6 +72,10 @@ export function contractDocumentMarkup(state,activityName='',{highlightValues=fa
   });
 
   const pricingHtml=Array.isArray(state.operationRows) ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.operationRows,true,state)+'</div>' : state.amountMethod==='quantity' ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.amountRows,true,state)+'</div>' : (state.amountMethod==='agreed' && Array.isArray(state.agreedRows) ? '<div class="doc-pricing"><b>محاسبه مبلغ کل قرارداد</b>'+agreedTable(state.agreedRows)+'</div>' : state.amountDescription?'<p>'+escape(state.amountDescription)+'</p>':'');
+  const advances=(state.advanceRows||[]).filter(hasPaymentRowData);
+  const advanceHtml=advances.map((row,index)=>
+    '<div><b>پیش‌پرداخت '+persian(index+1)+'</b>'+quantityTable([row],false,state)+
+    (String(row.dueText||'').trim()?'<p>موعد پرداخت: '+escape(row.dueText)+'</p>':'')+'</div>').join('');
   let paymentHtml = '';
   const stages=state.paymentMethod ? [] : state.paymentStageCount ? calculatePaymentStages(state) : (state.paymentStages || []);
   stages.forEach((stage, index) => {
@@ -148,6 +152,7 @@ export function contractDocumentMarkup(state,activityName='',{highlightValues=fa
       ' تا تاریخ ' + endDate + ' منعقد گردید.' + retentionText + ' طرفین متعهد به رعایت مفاد زیر هستند.' + (state.remeasurement ? ' مبلغ توافق شده جهت عملیات به شرح جدول زیر می باشد، بدیهی است مبلغ نهایی قرارداد در پایان عملیات پس از مشخص شدن مقدار هر عملیات مشخص می گردد.' : '') + '</p>' +
     pricingHtml +
     '<div class="doc-clauses">' + (clausesHtml || '<div class="doc-clause">........................................................</div>') + '</div>' +
+    (advanceHtml ? '<div class="doc-payment"><b>پیش‌پرداخت</b>'+advanceHtml+'</div>' : '') +
     (paymentHtml ? '<div class="doc-payment"><b>مراحل پرداخت</b>' + paymentHtml + '</div>' : '') +
     annexPages.join('');
 }
