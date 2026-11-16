@@ -96,8 +96,11 @@
 .wbs-today-frame .today-card-summary button.today-progress-circle{cursor:pointer;}
 .today-task-tabs button[data-mode="overdue"]{white-space:normal;line-height:1.15;}
 .execution-calendar .jalali-days,.execution-calendar .jalali-week{direction:rtl;}
-.execution-calendar .jalali-days button{height:auto;min-height:42px;}
-.execution-calendar .jalali-days small{display:block;font-size:10px;}
+.execution-calendar .jalali-days button{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;height:auto;min-height:48px;padding:0;}
+.execution-calendar .jalali-days button.selected{background:transparent;color:inherit;}
+.execution-calendar .execution-calendar-day-number{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;}
+.execution-calendar .jalali-days button.selected .execution-calendar-day-number{background:#080c61;color:#fff;}
+.execution-calendar .jalali-days small{display:block;font-size:10px;color:var(--text);}
 .execution-calendar .jalali-days button.is-holiday{text-decoration:underline dotted;}
 
 .today-detail-overlay > .wbs-sheet,.today-detail-overlay .sheet-body{background:#fff;color:var(--text);}
@@ -274,7 +277,8 @@ button.today-report-circle{cursor:pointer;}
   .execution-branch-filter-options.is-forward,.execution-branch-filter-options.is-backward{animation:none;}
 }
 
-.today-task-toolbar.today-task-toolbar-stacked{display:flex;flex-direction:column;align-items:stretch;gap:8px;}
+.today-task-toolbar.today-task-toolbar-stacked{display:flex;flex-direction:column;align-items:stretch;height:auto;flex-shrink:0;gap:0;padding-block:6px;background:#fff;}
+.today-task-toolbar-stacked .today-task-secondary{margin-top:6px;padding-top:6px;border-top:1px solid var(--wbs-frame-border);}
 .today-task-tabs.today-task-tabs-all{grid-template-columns:repeat(6,minmax(0,1fr));}
 .today-task-secondary{display:flex;direction:rtl;align-items:center;gap:6px;}
 .today-task-toolbar .today-task-secondary .today-task-filter{padding-inline:10px;max-width:55%;overflow:hidden;text-overflow:ellipsis;}
