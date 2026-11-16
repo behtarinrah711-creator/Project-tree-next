@@ -139,7 +139,7 @@ function renderSelection(body,state){
   };
   const options=make('div','export-options wbs-tree-export-options');
   const actions=make('div','wbs-tree-export-actions');
-  const layout=make('label','','نوع خروجی ');
+  const layout=make('label','wbs-tree-export-layout');
   const layoutSelect=make('select');
   layoutSelect.setAttribute('aria-label','نوع خروجی');
   for(const [value,label] of [['list','زیر هم'],['diagram','درختی عمودی'],['horizontal','درختی افقی']]){
