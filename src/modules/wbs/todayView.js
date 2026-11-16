@@ -1,3 +1,4 @@
+import {executionFilterTree,openExecutionBranchFilter} from './executionBranchFilter.js';
 import {gregorianToJalali} from '../../ui/jalali.js';
 import {canDeletePlanning,canWritePlanning,planningAccessLevel} from '../roleManagement/planningAccess.js';
 import {wbsApi} from '../../domain/wbs/wbsApi.js';
@@ -26,6 +27,7 @@ const TYPE_CLASSES = new Map([['اجرا','type-1'],['خرید','type-2'],['نی
 const PRIORITY_LABELS = Object.freeze({ low:'بحرانی', normal:'عادی', high:'مهم' });
 const PRIORITY_CLASSES = Object.freeze({ low:'priority-low', normal:'priority-normal', high:'priority-high' });
 let standaloneMode='today';
+let activeBranch='';
 let activeMode = 'today'; let activeProjectId = null;
 
 function esc(value){ return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])); }
@@ -688,11 +690,18 @@ function relativeTime(ts) {
 export function renderTodayView(project,documentRef=document,onChanged,{standalone=false}={}){
   if(activeProjectId!==String(project?.id||'')){
     activeProjectId=String(project?.id||'');
-    activeMode='today';standaloneMode='today';
+    activeMode='today';standaloneMode='today';activeBranch='';
   }
   const today=tehranTodayJalali();
   const selectedMode=standalone?standaloneMode:activeMode;
   let items=standalone?collectStandaloneWorks(project,today).filter(item=>item.mode===selectedMode):itemsForMode(project,activeMode,today);
+  const tree=standalone?null:executionFilterTree(project,today);
+  const findBranch=node=>node.id===activeBranch?node:node.children.map(findBranch).find(Boolean);
+  const selectedBranch=tree && activeBranch?findBranch(tree):null;
+  if(selectedBranch){
+    const keys=new Set(selectedBranch.keys);
+    items=items.filter(item=>keys.has(executionWorkKey(item)));
+  }
   items = items.slice().sort((a, b) => {
     const ta = latestActivity(a.entity)?.at || 0;
     const tb = latestActivity(b.entity)?.at || 0;
@@ -724,11 +733,17 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
   filter.type='button';
   filter.className='wbs-tree-mode-tab today-task-filter';
   filter.innerHTML='<img src="./src/assets/wbs/filter-alt.svg" alt="">فیلتر';
+  if(selectedBranch){
+    filter.classList.add('active');
+    filter.append(' · '+selectedBranch.title);
+  }
+  filter.onclick=()=>openExecutionBranchFilter(project,tree,id=>{activeBranch=id;onChanged?.();});
   const showCalendar=options=>openExecutionCalendar(projectRepository.find(project.id)||project,
     (source,item,day,selection)=>renderTodaySummary(documentRef,source,item,day,onChanged,()=>showCalendar(selection)),options);
   const calendar=linkButton(documentRef,'wbs-tree-mode-tab today-task-filter','تقویم');
   calendar.onclick=()=>showCalendar();
-  header.append(tabs,filter);
+  header.append(tabs);
+  if(!standalone)header.append(filter);
   if(standalone){
     if(canWriteProjectModule(project.id,'execution:today')){
       const add=linkButton(documentRef,'wbs-tree-mode-tab today-task-filter oddjobs-add','+','افزودن خرده‌کار');
