@@ -157,7 +157,7 @@ export function renderDailyExecutionReports(project, documentRef = document, req
 
   const filterBtn = element('button','wbs-input filter-trigger');
   filterBtn.type = 'button';
-  filterBtn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M3 5h18v2H3V5zm4 6h10v2H7v-2zm2 6h6v2H9v-2z"/></svg> فیلتر`;
+  filterBtn.innerHTML = `<svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M3 5h18v2H3V5zm4 6h10v2H7v-2zm2 6h6v2H9v-2z"/></svg>`;
 
   const badge = element('span','filter-badge');
   badge.hidden = true;
@@ -330,22 +330,40 @@ export function renderDailyExecutionReports(project, documentRef = document, req
     });
   }
 
+
+  function contactName(id){
+    if(!id) return '';
+    const c = (project.contacts||[]).find(x => String(x.id)===String(id) && !x.trashed);
+    if(!c) return '';
+    return [c.type, c.firstName, c.lastName].filter(Boolean).join(' ').trim() || c.name || '';
+  }
+  function activityName(id){
+    if(!id) return '';
+    const a = (project.activityTemplates||[]).find(x => String(x.id)===String(id) && !x.trashed);
+    return a ? (a.name || a.title || '') : '';
+  }
+  function templateName(id){
+    if(!id) return '';
+    const t = (project.contractTemplates||[]).find(x => String(x.id)===String(id) && !x.trashed);
+    return t ? (t.name || t.title || '') : '';
+  }
+
   function openFilterSheet(){
     const bodyEl = element('div','daily-filter-body');
 
     const items = [
-      { label: 'پیمانکار', value: () => contractorId ? 'انتخاب شده' : 'انتخاب', action: () => {
+      { label: 'پیمانکار', value: () => contactName(contractorId) || 'انتخاب', action: () => {
 
 
         void import('../contracts/contractPickers.js').then(({openContractorPicker})=>
           openContractorPicker(project.id, { contractorId }, state=>{ contractorId=state.contractorId; paint(); openFilterSheet(); }));
       }},
-      { label: 'مراحل و کارها', value: () => selectedWorkKeys.size ? `${toPersianDigits(selectedWorkKeys.size)} مورد` : 'انتخاب', action: () => { closeWbsSheet(); openHierarchicalStagePicker(); }},
-      { label: 'فعالیت', value: () => activityId ? 'انتخاب شده' : 'انتخاب', action: () => {
+      { label: 'مراحل و کارها', value: () => selectedWorkKeys.size ? `${toPersianDigits(selectedWorkKeys.size)} کار` : 'انتخاب', action: () => { closeWbsSheet(); openHierarchicalStagePicker(); }},
+      { label: 'فعالیت', value: () => activityName(activityId) || 'انتخاب', action: () => {
         void import('../contracts/contractPickers.js').then(({openActivityPicker})=>
           openActivityPicker(project.id, { activityId }, state=>{ activityId=state.activityId; paint(); openFilterSheet(); }));
       }},
-      { label: 'قالب قرارداد', value: () => templateId ? 'انتخاب شده' : 'انتخاب', action: () => {
+      { label: 'قالب قرارداد', value: () => templateName(templateId) || 'انتخاب', action: () => {
         void import('../contracts/contractPickers.js').then(({openContractTemplatePicker})=>
           openContractTemplatePicker(project.id, { templateId }, state=>{ templateId=state.templateId; paint(); openFilterSheet(); }));
       }},
@@ -374,6 +392,29 @@ export function renderDailyExecutionReports(project, documentRef = document, req
       paint();
     };
     bodyEl.append(clear);
+
+    const footer = element('div','filter-apply-bar');
+    const apply = element('button','filter-apply-btn');
+    apply.type = 'button';
+    function updateApply(){
+      const fromDay = fromDate ? jalaliDayNumber(fromDate) : null;
+      const toDay = toDate ? jalaliDayNumber(toDate) : null;
+      const filtered = filterDailyExecutionReports(rows, {
+        query: search.value,
+        selectedWorkKeys,
+        contractorId,
+        activityId,
+        templateId,
+        fromDay,
+        toDay,
+      });
+      const n = filtered.length;
+      apply.textContent = n ? toPersianDigits(n) + ' گزارش · اعمال فیلتر' : 'اعمال فیلتر';
+    }
+    updateApply();
+    apply.onclick = () => { closeWbsSheet(); paint(); };
+    footer.append(apply);
+    bodyEl.append(footer);
 
     openWbsSheet({
       title: 'فیلترها',
