@@ -20,7 +20,7 @@ function activeViewId(root){
 }
 
 function createHeader(documentRef){
-  return createViewToolbar(documentRef);
+  return createViewToolbar(documentRef,{includeExport:false});
 }
 
 function ensureActionSeparator(actions){
@@ -41,6 +41,8 @@ function syncTreeHeaderActions(root, frame){
   if(modeTabs) actions.appendChild(modeTabs);
 
   const toolbar = root.querySelector(':scope > .wbs-toolbar');
+  const exportButton=toolbar?.querySelector('.wbs-tree-export-tool');
+  if(exportButton)actions.insertBefore(exportButton,actions.firstChild);
   const expand = toolbar?.querySelector('.wbs-tree-toggle');
   const addRoot = toolbar?.querySelector('.wbs-root-add');
   if(!expand && !addRoot) return;
