@@ -31,7 +31,7 @@ export const notebookPaperFrameStyles = (inset = '-5mm') => `@media print{
   body::before{content:'';position:fixed;inset:${inset};border:1px solid #333;pointer-events:none}
 }`;
 
-export function installNotebookExportView({documentRef=globalThis.document,windowRef=globalThis.window,idPrefix='notebookExport',historyKey='notebook-export',documentBuilder=null,extraStyles='',paginateDocument=null,onNoteChange=null,pdfOnly=false,preparePrint=null,validatePrint=null}={}){
+export function installNotebookExportView({documentRef=globalThis.document,windowRef=globalThis.window,idPrefix='notebookExport',historyKey='notebook-export',documentBuilder=null,extraStyles='',paginateDocument=null,onNoteChange=null,pdfOnly=false,preparePrint=null,validatePrint=null,renderSelection=null}={}){
   const get=id=>documentRef.getElementById(id.replace('notebookExport',idPrefix));
   const page=get('notebookExportPage');
   if(!page) return {open(){return false;}};
@@ -80,6 +80,8 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
     popup.document.close();
   }
   async function saveJpeg(){
+    const validationMessage=validatePrint?.(list);
+    if(validationMessage){notify(validationMessage);return;}
     if(!documentBuilder&&!selected.size){notify('حداقل یک مورد را انتخاب کنید');return;}
     if(typeof windowRef.html2canvas!=='function'){notify('ابزار ساخت تصویر آماده نیست');return;}
     const capture=documentRef.createElement('div');
@@ -113,6 +115,7 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
     const noteValue=e.note?.value||'';
     const note=e.note?.closest?.('.export-note-wrap')?.outerHTML||'';
     e.body.innerHTML=`${note}${documentBuilder?'':all.length?all.map(row=>`<label class="export-row ${row.depth?'sub':''}" style="--export-depth:${row.depth}"><input type="checkbox" data-export-key="${esc(row.key)}" ${selected.has(row.key)?'checked':''}><span class="export-title">${esc(row.item.text)}</span>${e.cost.checked?`<span class="row-cost"><b>${money(notebookItemCost(row.item))}</b><small>تومان</small></span>`:'<span class="row-cost"></span>'}</label>`).join(''):'<div class="mgmt-empty">مورد بازی برای خروجی وجود ندارد.</div>'}`;
+    renderSelection?.(e.body,list);
     const noteInput=get('notebookExportNote');
     if(noteInput){
       noteInput.value=noteValue;
