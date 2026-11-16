@@ -337,7 +337,7 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
   --divider:#d6d9dd;
 }
 :is(.wbs-today-frame,.wbs-shopping-frame) :is(.today-task-card.wbs-costline-work,.shopping-item-card){border-color:#d6d9dd;}
-.wbs-today-frame .today-card-summary .today-card-titles strong{font-size:18px;}
+.wbs-today-frame .today-card-summary .today-card-titles strong{font-size:16px;}
 .today-card-summary .wbs-task-priority{display:inline-block;vertical-align:middle;font-size:12px;}
 .wbs-today-frame .today-card-summary .today-progress-circle{width:61.425px;height:61.425px;}
 .wbs-today-frame .today-card-summary .today-progress-ring{width:100%;height:100%;}
@@ -354,3 +354,5 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
 .today-card-schedule .today-schedule-bar:not(.is-overdue,.is-complete)::-moz-progress-bar{background:#6e6e6e;}
 
 .wbs-today-frame .today-card-summary .today-card-titles > .today-card-contractor-name{font-size:12px;font-weight:bold;}
+
+.today-card-summary .today-card-contractor-label{margin-block-start:4px;}
