@@ -445,6 +445,26 @@ test('the inbox approves only assigned execution items under the matching module
   assert.equal((await approve('buy','execution:shopping',1)).status,409);
 });
 
+test('execution rejection requires write access, assignment and a reason',async()=>{
+  const f=fixture();
+  f.payload.contacts=[{id:'reviewer',phones:['0912']}];
+  const task={id:'exec',type:'اجرا',approvalContactId:'reviewer',completionState:'pending_approval',updatedAt:2};
+  f.payload.tasks=[{id:'w',kind:'work',workTasks:[task]}];
+  const path='/api/v1/projects/p/execution-approvals/exec/handoff';
+  const reject=reason=>f.call({action:'reject_execution',scope:'execution:today',kind:'task',workId:'w',updatedAt:2,reason},path);
+  f.setPermissions({modules:{'execution:today':'view',contracts:'full'}});
+  assert.equal((await reject('نیاز به اصلاح')).status,403);
+  f.setPermissions({modules:{'execution:today':'create'}});
+  assert.equal((await reject('کم')).status,400);
+  task.approvalContactId='other';
+  assert.equal((await reject('نیاز به اصلاح')).status,403);
+  task.approvalContactId='reviewer';
+  const result=await reject('نیاز به اصلاح');
+  assert.equal(result.status,200);
+  assert.equal(result.result.entity.completionState,'incomplete');
+  assert.equal(result.result.entity.executionComments.at(-1).text,'نیاز به اصلاح');
+});
+
 test('the inbox approves contracts with an authenticated assigned reviewer',async()=>{
   const f=fixture();
   f.payload.contacts=[{id:'reviewer',phones:['0912']}];
