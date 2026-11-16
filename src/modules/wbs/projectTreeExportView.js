@@ -50,7 +50,29 @@ function syncParents(nodes){
   }
 }
 
-const diagramStyles=`
+const plotSizes={A3:[420,297],A2:[594,420],A1:[841,594]};
+const plotStyles=Object.entries(plotSizes).map(([size,[width,height]])=>
+  `@page tree-plot-${size}{size:${width}mm ${height}mm;margin:12mm}
+  .tree-plot-${size}{page:tree-plot-${size};min-width:${width-24}mm;min-height:${height-24}mm}`).join('');
+const diagramStyles=`${plotStyles}
+.project-tree-horizontal{text-align:center}
+.project-tree-horizontal ul{display:flex;align-items:flex-start;justify-content:center;list-style:none;margin:0;padding:0}
+.project-tree-horizontal li{position:relative;display:flex;flex-direction:column;align-items:center;padding:0 5px;min-width:0}
+.project-tree-horizontal li>ul{position:relative;padding-top:16px}
+.project-tree-horizontal li>ul::before{content:'';position:absolute;top:0;left:50%;height:8px;border-left:1px solid #465763}
+.project-tree-horizontal li>ul>li::before{content:'';position:absolute;top:-8px;left:0;right:0;border-top:1px solid #465763}
+.project-tree-horizontal li>ul>li:first-child::before{left:50%}
+.project-tree-horizontal li>ul>li:last-child::before{right:50%}
+.project-tree-horizontal li>ul>li:only-child::before{border:0}
+.project-tree-horizontal li>ul>li::after{content:'';position:absolute;left:50%;top:-8px;height:8px;border-left:1px solid #465763}
+.project-tree-horizontal .tree-diagram-node{box-sizing:border-box;width:104px;padding:6px;border:1px solid #7892a4;border-radius:4px;background:var(--tree-branch-color,#e8f0f6);font-size:12px;overflow-wrap:anywhere}
+.project-tree-horizontal .tree-diagram-root{background:#e2efd5;font-weight:700}
+.project-tree-horizontal .tree-plot-root>ul>li:nth-child(3n+1){--tree-branch-color:#f9e8d5}
+.project-tree-horizontal .tree-plot-root>ul>li:nth-child(3n+2){--tree-branch-color:#dfebff}
+.project-tree-horizontal .tree-plot-root>ul>li:nth-child(3n){--tree-branch-color:#ebdef4}
+.project-tree-horizontal small{display:block;margin-top:3px}
+@media print{.project-tree-horizontal{min-width:0;min-height:0}}
+
 @page project-tree-diagram{size:A4 landscape;margin:12mm}
 .project-tree-diagram{page:project-tree-diagram}
 .project-tree-diagram ul{list-style:none;margin:0;padding:0;min-width:0}
@@ -69,8 +91,8 @@ const diagramStyles=`
 .project-tree-diagram > ul > li{break-inside:auto}
 `;
 
-export function treeDocument({title,nodes,open,showProgress,showCost,layout,projectName}){
-  if(layout==='diagram'){
+export function treeDocument({title,nodes,open,showProgress,showCost,layout,projectName,plotSize='A3'}){
+  if(layout==='diagram' || layout==='horizontal'){
     const branches=items=>items.map(node=>{
       const children=open.has(node.key)?branches(node.children):'';
       if(!node.selected)return children;
@@ -78,6 +100,10 @@ export function treeDocument({title,nodes,open,showProgress,showCost,layout,proj
       const metrics=[showProgress?number.format(node.progress)+'٪':'',showCost?number.format(node.cost)+' تومان':''].filter(Boolean);
       return `<li><div class="tree-diagram-node">${label}${metrics.length?`<small>${metrics.join(' · ')}</small>`:''}</div>${children?`<ul>${children}</ul>`:''}</li>`;
     }).join('');
+    if(layout==='horizontal'){
+      const size=Object.hasOwn(plotSizes,plotSize)?plotSize:'A3';
+      return `<section class="nb-export-document project-tree-horizontal tree-plot-${size}" dir="rtl"><ul><li class="tree-plot-root"><div class="tree-diagram-node tree-diagram-root">${escape(projectName)}</div><ul>${branches(nodes)}</ul></li></ul></section>`;
+    }
     return `<section class="nb-export-document project-tree-diagram" dir="rtl"><header><h1>${escape(title)}</h1></header><ul><li><div class="tree-diagram-node tree-diagram-root">${escape(projectName)}</div><ul>${branches(nodes)}</ul></li></ul></section>`;
   }
   const rows=visibleTreeExportRows(nodes,open);
@@ -116,14 +142,26 @@ function renderSelection(body,state){
   const layout=make('label','','نوع خروجی ');
   const layoutSelect=make('select');
   layoutSelect.setAttribute('aria-label','نوع خروجی');
-  for(const [value,label] of [['list','زیر هم'],['diagram','خروجی درختی']]){
+  for(const [value,label] of [['list','زیر هم'],['diagram','درختی عمودی'],['horizontal','درختی افقی']]){
     const option=make('option','',label);
     option.value=value;layoutSelect.append(option);
   }
   layoutSelect.value=state.layout;
-  layoutSelect.onchange=()=>{state.layout=layoutSelect.value;};
+  const paper=make('label','','اندازهٔ پلات ');
+  const paperSelect=make('select');
+  paperSelect.setAttribute('aria-label','اندازهٔ پلات');
+  for(const size of Object.keys(plotSizes)){
+    const option=make('option','',size);option.value=size;paperSelect.append(option);
+  }
+  paperSelect.value=state.plotSize;
+  paperSelect.onchange=()=>{state.plotSize=paperSelect.value;};
+  paper.append(paperSelect);
+  paper.hidden=state.layout!=='horizontal';
+  layoutSelect.onchange=()=>{
+    state.layout=layoutSelect.value;
+    paper.hidden=state.layout!=='horizontal';
+  };
   layout.append(layoutSelect);
-  options.append(layout);
   const tree=make('div','wbs-tree wbs-export-tree');
   const selectAll=check('انتخاب همه',false,checked=>{
     state.nodes.forEach(node=>setTreeExportSelection(node,checked));
@@ -147,9 +185,9 @@ function renderSelection(body,state){
   const dragToggle=button('جابجایی','wbs-tree-export-drag',()=>{state.drag=!state.drag;paint();});
   options.append(check('میزان پیشرفت',state.showProgress,value=>{state.showProgress=value;paint();}),
     check('قیمت',state.showCost,value=>{state.showCost=value;paint();}));
-  actions.append(selectAll,dragToggle,toggle);
+  actions.append(selectAll,dragToggle,toggle,layout);
   doc.getElementById('projectTreeExportToolbar').prepend(options);
-  body.append(actions,tree);
+  body.append(actions,paper,tree);
 
   function paint(){
     const all=state.nodes.map(selectionState);
@@ -231,7 +269,7 @@ export function openProjectTreeExport(project,{trigger,expandedIds,expandIcon,br
   const expand=items=>items.forEach(node=>{if(expandedIds.has(String(node.id)))open.add(node.key);expand(node.children);});
   expand(nodes);
   const opened=view.open({projectId:project.id,title:'خروجی درخت پروژه | '+project.name,nodes,open,
-    projectName:project.name,layout:'list',showProgress:false,showCost:false,drag:true,expandIcon,branchIcon},{trigger});
+    projectName:project.name,layout:'list',plotSize:'A3',showProgress:false,showCost:false,drag:true,expandIcon,branchIcon},{trigger});
   document.getElementById('projectTreeExportNote').closest('.export-note-wrap').hidden=true;
   return opened;
 }
