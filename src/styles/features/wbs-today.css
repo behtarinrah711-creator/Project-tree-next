@@ -146,7 +146,7 @@ button.today-detail-pill{cursor:pointer;}
 .today-detail-reason{padding:4px 0 12px;}
 
 
-.wbs-today-frame .today-card-summary{display:grid;direction:rtl;grid-template-columns:minmax(0,1fr) 42px 42px;align-items:center;gap:6px;cursor:pointer;}
+.wbs-today-frame .today-card-summary{display:grid;direction:rtl;grid-template-columns:minmax(0,1fr) 42px;align-items:center;gap:6px;cursor:pointer;}
 .today-card-summary .today-card-titles{border:0;background:none;font:inherit;cursor:pointer;}
 .today-card-summary .today-card-titles .wbs-type-chip{position:static;inset:auto;display:inline-block;margin-inline-end:4px;vertical-align:middle;font-size:9px;}
 .today-card-summary .today-progress-circle,.today-detail-progress .today-progress-circle{--today-ring:#16763e;color:#16763e;}
@@ -183,7 +183,7 @@ button.today-report-circle{cursor:pointer;}
 .today-schedule-bar.is-complete::-moz-progress-bar{background:#16763e;}
 
 .wbs-today-frame .today-card-summary.has-oddjob-menu{
-  grid-template-columns:minmax(0,1fr) 42px 42px 30px;
+  grid-template-columns:minmax(0,1fr) 42px 30px;
 }
 .wbs-today-frame .today-card-summary.has-oddjob-menu > .today-progress-circle{position:relative;inset:auto;}
 .wbs-today-frame .today-card-summary.has-oddjob-menu > .nb-project-menu-wrap{justify-self:end;align-self:center;}
@@ -317,3 +317,17 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
 .wbs-today-frame .today-task-card > .today-card-approval-actions{background:#fff;}
 
 .wbs-home-root .is-today-view .wbs-today-body{background:var(--bg,#f0f1f2);}
+
+.wbs-today-frame .today-card-summary.has-oddjob-menu > .today-progress-circle{grid-column:2;grid-row:2;}
+.wbs-today-frame .today-card-summary.has-oddjob-menu > .today-card-titles{grid-row:1 / span 2;align-self:start;}
+.wbs-today-frame .today-card-summary.has-oddjob-menu > .nb-project-menu-wrap{grid-column:3;grid-row:1;}
+.wbs-today-frame .today-card-schedule .today-schedule-status{display:inline-flex;align-items:center;justify-content:center;gap:4px;direction:rtl;}
+.today-card-activity{direction:rtl;flex-wrap:wrap;}
+.today-card-activity .today-card-person{flex:1 1 120px;min-width:0;overflow-wrap:anywhere;}
+.today-card-activity .today-card-avatar{width:24px;height:24px;}
+.today-card-activity .today-card-avatar svg{width:16px;height:16px;}
+.today-card-activity .today-card-person strong{display:block;font-size:12px;}
+.today-card-report-meta{display:grid;justify-items:end;gap:3px;margin-inline-start:auto;min-width:0;}
+.today-card-report-meta .today-report-circle{width:auto;min-height:30px;height:auto;padding:3px 10px;border-width:1px;border-radius:6px;font-size:11px;}
+.today-card-report-meta .today-activity-text{white-space:normal;text-align:left;}
+.today-card-report-meta .today-report-circle{display:inline-flex;align-items:center;gap:4px;}
