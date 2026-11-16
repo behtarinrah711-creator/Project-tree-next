@@ -179,3 +179,21 @@
 .wbs-delay-body{
   min-height:1px;
 }
+
+.wbs-toolbar .wbs-tree-export-tool{margin-inline-start:auto;}
+#projectTreeExportPage .wbs-export-tree{padding:0 12px;}
+#projectTreeExportPage .wbs-export-row{
+  display:flex;align-items:center;gap:8px;padding-inline-start:calc(8px + var(--export-depth,0)*14px);
+  padding-inline-end:10px;min-height:46px;
+}
+#projectTreeExportPage .wbs-export-row .wbs-title-text{flex:1;min-width:0;overflow-wrap:anywhere;}
+#projectTreeExportPage .wbs-export-values{font-size:11px;}
+#projectTreeExportPage .wbs-export-row.is-done .wbs-title-text{text-decoration:line-through;}
+#projectTreeExportPage .wbs-export-row .wbs-grip{position:static;touch-action:none;}
+#projectTreeExportPage .wbs-export-row .wbs-chev svg{width:22px;height:22px;}
+#projectTreeExportPage .export-depth-1{--export-depth:1;}
+#projectTreeExportPage .export-depth-2{--export-depth:2;}
+#projectTreeExportPage .export-depth-3{--export-depth:3;}
+#projectTreeExportPage .export-depth-4{--export-depth:4;}
+#projectTreeExportPage .export-depth-5{--export-depth:5;}
+#projectTreeExportPage .export-depth-6{--export-depth:6;}
