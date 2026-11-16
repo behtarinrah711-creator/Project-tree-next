@@ -35,6 +35,15 @@ test('same-day work is rendered once and contract contractor overrides manual fa
   assert.equal(contractorForItem(withoutContract, item).contact.id, 'manual');
 });
 
+test('execution card reads the manual contractor selected in the work form', () => {
+  const source=project();
+  const item=collectTodayItems(source,'1405/06/18').find(entry=>entry.id==='t2');
+  Object.assign(item.entity,{type:'پیمانکار',counterpartyContactId:'manual',contractorContactId:''});
+  assert.equal(contractorForItem(source,item).contact.id,'manual');
+  item.entity.counterpartyContactId='';
+  assert.equal(contractorForItem(source,item).contact,null);
+});
+
 test('purchase label stays out of the work list and returns to its schedule when changed', () => {
   const source = project();
   const task = source.tasks[0].subtasks[0].workTasks[0];
