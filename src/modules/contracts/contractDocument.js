@@ -73,9 +73,14 @@ export function contractDocumentMarkup(state,activityName='',{highlightValues=fa
 
   const pricingHtml=Array.isArray(state.operationRows) ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.operationRows,true,state)+'</div>' : state.amountMethod==='quantity' ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.amountRows,true,state)+'</div>' : (state.amountMethod==='agreed' && Array.isArray(state.agreedRows) ? '<div class="doc-pricing"><b>محاسبه مبلغ کل قرارداد</b>'+agreedTable(state.agreedRows)+'</div>' : state.amountDescription?'<p>'+escape(state.amountDescription)+'</p>':'');
   const advances=(state.advanceRows||[]).filter(hasPaymentRowData);
-  const advanceHtml=advances.map((row,index)=>
-    '<div><b>پیش‌پرداخت '+persian(index+1)+'</b>'+quantityTable([row],false,state)+
-    (String(row.dueText||'').trim()?'<p>موعد پرداخت: '+escape(row.dueText)+'</p>':'')+'</div>').join('');
+  const advanceHtml=advances.length
+    ? '<table class="contract-document-quantities contract-document-agreed"><thead><tr>'+
+      '<th>ردیف</th><th>شرح پیش‌پرداخت</th><th>مبلغ (تومان)</th><th>موعد پرداخت</th>'+
+      '</tr></thead><tbody>'+advances.map((row,index)=>
+        '<tr><td>پیش‌پرداخت '+persian(index+1)+'</td><td>'+esc(row.description)+'</td>'+
+        '<td>'+formatCost(rowAmount(row))+'</td><td>'+esc(row.dueText)+'</td></tr>'
+      ).join('')+'</tbody></table>'
+    : '';
   let paymentHtml = '';
   const stages=state.paymentMethod ? [] : state.paymentStageCount ? calculatePaymentStages(state) : (state.paymentStages || []);
   stages.forEach((stage, index) => {
