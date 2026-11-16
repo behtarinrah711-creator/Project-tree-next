@@ -113,7 +113,7 @@ function renderSelection(body,state){
   };
   const options=make('div','export-options wbs-tree-export-options');
   const actions=make('div','wbs-tree-export-actions');
-  const layout=make('label','','نوع خروجی ');
+  const layout=make('label','wbs-tree-export-layout');
   const layoutSelect=make('select');
   layoutSelect.setAttribute('aria-label','نوع خروجی');
   for(const [value,label] of [['list','زیر هم'],['diagram','خروجی درختی']]){
@@ -123,7 +123,6 @@ function renderSelection(body,state){
   layoutSelect.value=state.layout;
   layoutSelect.onchange=()=>{state.layout=layoutSelect.value;};
   layout.append(layoutSelect);
-  options.append(layout);
   const tree=make('div','wbs-tree wbs-export-tree');
   const selectAll=check('انتخاب همه',false,checked=>{
     state.nodes.forEach(node=>setTreeExportSelection(node,checked));
@@ -147,7 +146,7 @@ function renderSelection(body,state){
   const dragToggle=button('جابجایی','wbs-tree-export-drag',()=>{state.drag=!state.drag;paint();});
   options.append(check('میزان پیشرفت',state.showProgress,value=>{state.showProgress=value;paint();}),
     check('قیمت',state.showCost,value=>{state.showCost=value;paint();}));
-  actions.append(selectAll,dragToggle,toggle);
+  actions.append(selectAll,dragToggle,toggle,layout);
   doc.getElementById('projectTreeExportToolbar').prepend(options);
   body.append(actions,tree);
 
