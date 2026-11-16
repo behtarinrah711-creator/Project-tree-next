@@ -296,7 +296,8 @@ button.today-report-circle{cursor:pointer;}
 
 .execution-branch-selection{display:flex;align-items:center;padding-bottom:12px;border-bottom:1px solid var(--wbs-frame-border,#ddd);}
 
-.today-task-secondary{min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;}
+.today-task-secondary{min-width:0;overflow-x:auto;overflow-y:hidden;scrollbar-width:none;}
+.today-task-secondary::-webkit-scrollbar{display:none;}
 .today-task-secondary > *{flex:none;}
 .today-active-filter-tag{display:inline-flex;align-items:center;gap:6px;min-height:32px;max-width:100%;padding:0 8px;border:1px solid #a65858;border-radius:7px;background:#fff;color:#a13e3e;font:inherit;font-size:11px;cursor:pointer;white-space:nowrap;}
 .today-active-filter-tag span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis;}
