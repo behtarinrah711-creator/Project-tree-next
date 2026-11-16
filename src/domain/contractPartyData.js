@@ -9,16 +9,23 @@ export function syncContractPartyData(state, project){
   const e=find(state.employerId), c=find(state.contractorId);
   state.contractorDocuments=contractorDocumentImages(state,project).map(file=>typeof file==='string'?file:{...file});
   state.contractorDocumentsContactId=String(state.contractorId || '');
+  const idOf = contact => {
+    if (!contact) return '';
+    const isForeign = contact.nationalityType && contact.nationalityType !== 'ایرانی';
+    return isForeign ? (contact.foreignId || '') : (contact.nationalId || '');
+  };
   if(e){
     state.employerName=name(e);
-    state.employerNationalId=e.nationalId||'';
+    state.employerNationalId=idOf(e);
+    state.employerIsForeign=!!(e.nationalityType && e.nationalityType !== 'ایرانی');
     state.employerFatherName=e.fatherName||'';
     state.employerAddress=e.address||'';
     state.employerPhone=(e.phones&&e.phones[0])||e.phone||'';
   }
   if(c){
     state.contractorName=name(c);
-    state.contractorNationalId=c.nationalId||'';
+    state.contractorNationalId=idOf(c);
+    state.contractorIsForeign=!!(c.nationalityType && c.nationalityType !== 'ایرانی');
     state.contractorFatherName=c.fatherName||'';
     state.contractorAddress=c.address||'';
     state.contractorPhone=(c.phones&&c.phones[0])||c.phone||'';
