@@ -1,4 +1,4 @@
-import {confirmSaosaWorkspaceSave,isSaosaHost} from '../../cloud/saosaWorkspaceSync.js';
+import {confirmSaosaWorkspaceSave,isSaosaHost,saosaWorkspaceSaveDiagnostic} from '../../cloud/saosaWorkspaceSync.js';
 import {findInTree} from '../../domain/wbs/normalize.js';
 import {mountFileUploader} from '../files/fileUploader.js';
 import {uid} from '../../data/projectFactories.js';
@@ -411,13 +411,14 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         button.disabled=true;
         button.textContent='در حال ذخیره…';
         void confirmSaosaWorkspaceSave().then(snapshot=>{
+          if(!snapshot)throw new Error(saosaWorkspaceSaveDiagnostic() || 'save_response_unavailable');
           const project=snapshot?.projects?.find(row=>String(row.id)===String(projectId));
           const confirmed=findInTree(project?.tasks||[],work.id)?.item.workTasks?.find(row=>String(row.id)===String(task.id));
-          if(!confirmed || confirmed.updatedAt!==result.task.updatedAt)throw new Error('save_not_confirmed');
+          if(!confirmed || confirmed.updatedAt!==result.task.updatedAt)throw new Error('HTTP 200 · work_edit_not_confirmed');
           if(overlay.isConnected)closeWbsSheet();
           onChanged?.();
-        }).catch(()=>{
-          window.KarhaUI?.showToast?.('ذخیره در سرور تأیید نشد. دوباره تلاش کنید.');
+        }).catch(error=>{
+          window.KarhaUI?.showToast?.('ذخیره در سرور تأیید نشد ('+error.message+'). دوباره تلاش کنید.');
         }).finally(()=>{
           saving=false;
           button.disabled=false;
