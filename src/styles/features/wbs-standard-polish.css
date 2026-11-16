@@ -180,7 +180,12 @@
   min-height:1px;
 }
 
-.wbs-toolbar .wbs-tree-export-tool{margin-inline-start:auto;}
+#projectTreeExportPage .wbs-tree-export-legacy-options{display:none;}
+#projectTreeExportPage .wbs-tree-export-actions{display:flex;direction:rtl;align-items:center;gap:12px;padding:8px 12px;background:#fff;}
+#projectTreeExportPage .wbs-tree-export-actions label{display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+#projectTreeExportPage .wbs-tree-export-actions .wbs-tree-toggle{flex:0 0 42px;width:42px;height:42px;min-width:0;min-height:0;padding:0;}
+#projectTreeExportPage .wbs-tree-export-drag{min-height:42px;padding:0 10px;border:1px solid var(--divider);border-radius:6px;background:#fff;color:var(--text);font:inherit;}
+#projectTreeExportPage .wbs-tree-export-drag[aria-pressed=true]{background:var(--text);color:#fff;}
 #projectTreeExportPage .wbs-export-tree{padding:0 12px;}
 #projectTreeExportPage .wbs-export-row{
   display:flex;align-items:center;gap:8px;padding-inline-start:calc(8px + var(--export-depth,0)*14px);
