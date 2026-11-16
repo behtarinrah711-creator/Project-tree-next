@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { collectTodayItems, contractorForItem, itemsForMode, remainingLabel, tehranTodayJalali } from './todayDomain.js';
 
 function project(){
-  return { contacts:[{ id:'contractor', name:'قراردادی' },{ id:'manual', name:'دستی' }], contracts:[{ id:'c1', projectItemId:'w1', contractorId:'contractor' }], tasks:[
+  return { contacts:[{ id:'contractor', name:'قراردادی' },{ id:'manual', name:'دستی' }], contracts:[{ id:'c1', projectItemId:'w1', workTaskId:'t1', contractorId:'contractor' }], tasks:[
     { id:'s1', kind:'stage', text:'سازه', subtasks:[
       { id:'w1', kind:'work', text:'فونداسیون', scheduleStart:'1405/06/01', scheduleEnd:'1405/06/20', contractorContactId:'manual', workTasks:[
         { id:'t1', workId:'w1', title:'قالب‌بندی', type:'اجرا', scheduleStart:'1405/06/18', scheduleEnd:'1405/06/18' },
@@ -27,6 +27,8 @@ test('same-day work is rendered once and contract contractor overrides manual fa
   const item = collectTodayItems(project(), '1405/06/18')[0];
   assert.equal(remainingLabel(item.entity, '1405/06/18'), 'امروز');
   assert.equal(contractorForItem(project(), item).contact.id, 'contractor');
+  const sameParent=collectTodayItems(project(), '1405/06/18').find(entry=>entry.id==='t2');
+  assert.equal(contractorForItem(project(),sameParent).contact,null);
   const withoutContract = project();
   withoutContract.contracts = [];
   item.entity.contractorContactId = 'manual';
