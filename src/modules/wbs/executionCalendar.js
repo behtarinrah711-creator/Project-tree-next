@@ -40,7 +40,11 @@ export function openExecutionCalendar(project,renderCard,{day=tehranTodayJalali(
           const date=month+'/'+String(i).padStart(2,'0');
           const scheduled=executionItemsOnDay(items,date);
           const reported=scheduled.filter(({entity})=>todayReportOf(entity,date)).length;
-          const cell=button(toPersianDigits(i),()=>{day=date;paint();});
+          const cell=button('',()=>{day=date;paint();});
+          const number=document.createElement('span');
+          number.className='execution-calendar-day-number';
+          number.textContent=toPersianDigits(i);
+          cell.append(number);
           cell.classList.toggle('selected',date===day);
           cell.classList.toggle('today',date===today);
           cell.setAttribute('aria-pressed',String(date===day));
