@@ -123,7 +123,9 @@ export function contractorForItem(project, item){
   ));
   const contactId = contract
     ? (contract.contractorId || contract.contactId || '')
-    : (item.entity?.contractorContactId || '');
+    : (item.entity?.type === 'پیمانکار'
+      ? (item.entity.counterpartyContactId ?? item.entity.contractorContactId ?? '')
+      : (item.entity?.contractorContactId || ''));
   const contact = (project?.contacts || []).find(candidate => candidate && !candidate.trashed && String(candidate.id) === String(contactId));
   return { contract:contract || null, contact:contact || null };
 }
