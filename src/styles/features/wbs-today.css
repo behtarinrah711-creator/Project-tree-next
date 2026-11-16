@@ -171,7 +171,7 @@ button.today-report-circle{cursor:pointer;}
 .today-task-toolbar .oddjobs-add:not(.active){background:#1565c0;color:#fff;border-color:#1565c0;min-width:32px;font-size:20px;}
 
 .today-card-schedule{display:grid;gap:4px;margin:12px 10px 5px;}
-.today-card-schedule .today-schedule-bar{width:100%;height:4px;}
+.today-card-schedule .today-schedule-bar{width:100%;height:4px;order:1;}
 .today-schedule-status{text-align:center;font-size:9px;line-height:1.3;font-weight:600;}
 .today-schedule-status.is-late{color:#b42318;}
 .today-schedule-status.is-remaining{color:#4a4a4a;}
@@ -324,9 +324,9 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
 .wbs-today-frame .today-card-schedule .today-schedule-status{display:inline-flex;align-items:center;justify-content:center;gap:4px;direction:rtl;}
 .today-card-activity{direction:rtl;flex-wrap:wrap;}
 .today-card-activity .today-card-person{flex:1 1 120px;min-width:0;overflow-wrap:anywhere;}
-.today-card-activity .today-card-avatar{width:24px;height:24px;}
-.today-card-activity .today-card-avatar svg{width:16px;height:16px;}
-.today-card-activity .today-card-person strong{display:block;font-size:12px;}
+.today-card-activity .today-card-avatar{width:30px;height:30px;}
+.today-card-activity .today-card-avatar svg{width:20px;height:20px;}
+.today-card-activity .today-card-person strong{display:block;font-size:10px;}
 .today-card-report-meta{display:grid;justify-items:end;gap:3px;margin-inline-start:auto;min-width:0;}
 .today-card-report-meta .today-report-circle{width:auto;min-height:30px;height:auto;padding:3px 10px;border-width:1px;border-radius:6px;font-size:11px;}
 .today-card-report-meta .today-activity-text{white-space:normal;text-align:left;}
@@ -337,8 +337,8 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
   --divider:#d6d9dd;
 }
 :is(.wbs-today-frame,.wbs-shopping-frame) :is(.today-task-card.wbs-costline-work,.shopping-item-card){border-color:#d6d9dd;}
-.wbs-today-frame .today-card-summary .today-card-titles strong{font-size:17px;}
-.today-card-summary .wbs-task-priority{display:inline-block;vertical-align:middle;}
+.wbs-today-frame .today-card-summary .today-card-titles strong{font-size:20px;}
+.today-card-summary .wbs-task-priority{display:inline-block;vertical-align:middle;font-size:12px;}
 .wbs-today-frame .today-card-summary .today-progress-circle{width:52.5px;height:52.5px;}
 .wbs-today-frame .today-card-summary .today-progress-ring{width:100%;height:100%;}
 .today-schedule-dates{display:flex;justify-content:space-between;direction:rtl;font-size:10px;color:#4a4a4a;}
