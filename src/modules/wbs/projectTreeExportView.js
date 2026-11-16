@@ -108,7 +108,8 @@ function renderSelection(body,state){
   options.append(check('میزان پیشرفت',state.showProgress,value=>{state.showProgress=value;paint();}),
     check('قیمت',state.showCost,value=>{state.showCost=value;paint();}));
   actions.append(selectAll,dragToggle,toggle);
-  body.append(options,actions,tree);
+  doc.getElementById('projectTreeExportToolbar').prepend(options);
+  body.append(actions,tree);
 
   function paint(){
     const all=state.nodes.map(selectionState);
@@ -174,7 +175,7 @@ export function openProjectTreeExport(project,{trigger,expandedIds,expandIcon,br
     page.innerHTML=page.innerHTML.replaceAll('notebookExport','projectTreeExport');
     page.querySelector('.export-options').classList.add('wbs-tree-export-legacy-options');
     const back=document.createElement('button');
-    back.type='button';back.className='inner-section-back';back.textContent='بازگشت';
+    back.type='button';back.className='wbs-tree-export-back';back.textContent='بازگشت';
     back.onclick=()=>view.close();
     page.querySelector('.page-head').prepend(back);
     document.body.append(page);
