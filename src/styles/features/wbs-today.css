@@ -324,7 +324,7 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
 .wbs-today-frame .today-card-schedule .today-schedule-status{display:inline-flex;align-items:center;justify-content:center;gap:4px;direction:rtl;}
 .today-card-activity{direction:rtl;flex-wrap:wrap;}
 .today-card-activity .today-card-person{flex:1 1 120px;min-width:0;overflow-wrap:anywhere;}
-.today-card-activity .today-card-avatar{width:36px;height:36px;background:transparent;}
+.today-card-activity .today-card-avatar{width:36px;height:36px;box-sizing:border-box;background:transparent;border:1px solid currentColor;}
 .today-card-activity .today-card-avatar svg{width:24px;height:24px;}
 .today-card-activity .today-card-person strong{display:block;font-size:12px;}
 .today-card-report-meta{display:grid;justify-items:end;gap:3px;margin-inline-start:auto;min-width:0;}
