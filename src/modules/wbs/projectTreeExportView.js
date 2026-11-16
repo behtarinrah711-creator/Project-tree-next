@@ -111,7 +111,8 @@ function renderSelection(body,state){
     control.type='button';control.onclick=action;
     return control;
   };
-  const options=make('div','export-options');
+  const options=make('div','export-options wbs-tree-export-options');
+  const actions=make('div','wbs-tree-export-actions');
   const layout=make('label','','نوع خروجی ');
   const layoutSelect=make('select');
   layoutSelect.setAttribute('aria-label','نوع خروجی');
@@ -143,10 +144,11 @@ function renderSelection(body,state){
   });
   toggle.innerHTML=state.expandIcon;
   toggle.setAttribute('aria-label','تغییر سطح نمایش نمودار');
-  const dragToggle=button('','wbs-view-tool',()=>{state.drag=!state.drag;paint();});
-  options.append(selectAll,check('میزان پیشرفت',state.showProgress,value=>{state.showProgress=value;paint();}),
-    check('قیمت',state.showCost,value=>{state.showCost=value;paint();}),toggle,dragToggle);
-  body.append(options,tree);
+  const dragToggle=button('جابجایی','wbs-tree-export-drag',()=>{state.drag=!state.drag;paint();});
+  options.append(check('میزان پیشرفت',state.showProgress,value=>{state.showProgress=value;paint();}),
+    check('قیمت',state.showCost,value=>{state.showCost=value;paint();}));
+  actions.append(selectAll,dragToggle,toggle);
+  body.append(options,actions,tree);
 
   function paint(){
     const all=state.nodes.map(selectionState);
@@ -154,7 +156,6 @@ function renderSelection(body,state){
     input.checked=all.length>0 && all.every(status=>status==='all');
     input.indeterminate=!input.checked && all.some(status=>status!=='none');
     toggle.setAttribute('aria-pressed',String(state.open.size>0));
-    dragToggle.textContent=state.drag?'خاموش کردن جابه‌جایی':'روشن کردن جابه‌جایی';
     dragToggle.setAttribute('aria-pressed',String(state.drag));
     tree.replaceChildren();
     const append=(nodes,container,depth)=>{
@@ -211,7 +212,7 @@ export function openProjectTreeExport(project,{trigger,expandedIds,expandIcon,br
     const page=source.cloneNode(true);
     page.id='projectTreeExportPage';
     page.innerHTML=page.innerHTML.replaceAll('notebookExport','projectTreeExport');
-    page.querySelector('.export-options').hidden=true;
+    page.querySelector('.export-options').classList.add('wbs-tree-export-legacy-options');
     const back=document.createElement('button');
     back.type='button';back.className='inner-section-back';back.textContent='بازگشت';
     back.onclick=()=>view.close();
