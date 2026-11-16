@@ -215,6 +215,17 @@ button.today-report-circle{cursor:pointer;}
   background: #fff;
   margin-inline: -12px;
 }
+.today-card-approval-actions {
+  display: flex;
+  justify-content: end;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  border-top: 1px solid #f0ebe5;
+  background: #fff;
+  margin-inline: -12px;
+  direction: rtl;
+}
 .today-activity-text {
   flex: 1;
   min-width: 0;
