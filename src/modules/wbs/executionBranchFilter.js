@@ -35,7 +35,7 @@ export function searchExecutionBranches(node,query){
   return matches;
 }
 
-export function openExecutionBranchFilter(project,tree,onSelect){
+export function openExecutionBranchFilter(project,tree,onSelect,selectedBranch=null){
   const stack=[tree];
   let caption,back,search,list;
   const select=node=>{closeWbsSheet();onSelect(node.id);};
@@ -93,6 +93,21 @@ export function openExecutionBranchFilter(project,tree,onSelect){
       search.setAttribute('aria-label','جست‌وجو در مراحل و کارها');
       search.oninput=()=>{list.scrollTop=0;paint();};
       list=document.createElement('div');list.className='execution-branch-filter-list';
+      if(selectedBranch){
+        const selected=document.createElement('div');
+        selected.className='execution-branch-selection';
+        const value=document.createElement('span');
+        value.className='execution-details-filter-value';
+        value.textContent=selectedBranch.title;
+        const clear=document.createElement('button');
+        clear.type='button';
+        clear.className='execution-details-filter-clear';
+        clear.textContent='×';
+        clear.setAttribute('aria-label','پاک کردن فیلتر '+selectedBranch.title);
+        clear.onclick=()=>{selected.remove();onSelect(tree.id);};
+        selected.append(value,clear);
+        root.append(selected);
+      }
       root.append(search,list);
     },
   });
