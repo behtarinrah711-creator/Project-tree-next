@@ -146,7 +146,7 @@ button.today-detail-pill{cursor:pointer;}
 .today-detail-reason{padding:4px 0 12px;}
 
 
-.wbs-today-frame .today-card-summary{display:grid;direction:rtl;grid-template-columns:minmax(0,1fr) 68.25px;align-items:center;gap:6px;cursor:pointer;}
+.wbs-today-frame .today-card-summary{display:grid;direction:rtl;grid-template-columns:minmax(0,1fr) 61.425px;align-items:center;gap:6px;cursor:pointer;}
 .today-card-summary .today-card-titles{border:0;background:none;font:inherit;cursor:pointer;}
 .today-card-summary .today-card-titles .wbs-type-chip{position:static;inset:auto;display:inline-block;margin-inline-end:4px;vertical-align:middle;font-size:9px;}
 .today-card-summary .today-progress-circle,.today-detail-progress .today-progress-circle{--today-ring:#16763e;color:#16763e;}
@@ -183,7 +183,7 @@ button.today-report-circle{cursor:pointer;}
 .today-schedule-bar.is-complete::-moz-progress-bar{background:#16763e;}
 
 .wbs-today-frame .today-card-summary.has-oddjob-menu{
-  grid-template-columns:minmax(0,1fr) 68.25px 30px;
+  grid-template-columns:minmax(0,1fr) 61.425px 30px;
 }
 .wbs-today-frame .today-card-summary.has-oddjob-menu > .today-progress-circle{position:relative;inset:auto;}
 .wbs-today-frame .today-card-summary.has-oddjob-menu > .nb-project-menu-wrap{justify-self:end;align-self:center;}
@@ -339,7 +339,7 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
 :is(.wbs-today-frame,.wbs-shopping-frame) :is(.today-task-card.wbs-costline-work,.shopping-item-card){border-color:#d6d9dd;}
 .wbs-today-frame .today-card-summary .today-card-titles strong{font-size:20px;}
 .today-card-summary .wbs-task-priority{display:inline-block;vertical-align:middle;font-size:12px;}
-.wbs-today-frame .today-card-summary .today-progress-circle{width:68.25px;height:68.25px;}
+.wbs-today-frame .today-card-summary .today-progress-circle{width:61.425px;height:61.425px;}
 .wbs-today-frame .today-card-summary .today-progress-ring{width:100%;height:100%;}
 .today-schedule-dates{display:flex;justify-content:space-between;direction:rtl;font-size:12px;color:#4a4a4a;}
 .today-card-activity,.today-card-approval-actions{border-top-color:#e2e4e7;}
@@ -352,3 +352,5 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
 
 .today-card-schedule .today-schedule-bar:not(.is-overdue,.is-complete)::-webkit-progress-value{background:#6e6e6e;}
 .today-card-schedule .today-schedule-bar:not(.is-overdue,.is-complete)::-moz-progress-bar{background:#6e6e6e;}
+
+.wbs-today-frame .today-card-summary .today-card-titles > .today-card-contractor-name{font-size:12px;font-weight:bold;}
