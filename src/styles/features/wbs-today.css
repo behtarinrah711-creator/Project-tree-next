@@ -146,7 +146,7 @@ button.today-detail-pill{cursor:pointer;}
 .today-detail-reason{padding:4px 0 12px;}
 
 
-.wbs-today-frame .today-card-summary{display:grid;direction:rtl;grid-template-columns:minmax(0,1fr) 52.5px;align-items:center;gap:6px;cursor:pointer;}
+.wbs-today-frame .today-card-summary{display:grid;direction:rtl;grid-template-columns:minmax(0,1fr) 68.25px;align-items:center;gap:6px;cursor:pointer;}
 .today-card-summary .today-card-titles{border:0;background:none;font:inherit;cursor:pointer;}
 .today-card-summary .today-card-titles .wbs-type-chip{position:static;inset:auto;display:inline-block;margin-inline-end:4px;vertical-align:middle;font-size:9px;}
 .today-card-summary .today-progress-circle,.today-detail-progress .today-progress-circle{--today-ring:#16763e;color:#16763e;}
@@ -172,7 +172,7 @@ button.today-report-circle{cursor:pointer;}
 
 .today-card-schedule{display:grid;gap:4px;margin:12px 10px 5px;}
 .today-card-schedule .today-schedule-bar{width:100%;height:4px;order:1;}
-.today-schedule-status{text-align:center;font-size:9px;line-height:1.3;font-weight:600;}
+.today-schedule-status{text-align:center;font-size:11px;line-height:1.3;font-weight:600;}
 .today-schedule-status.is-late{color:#b42318;}
 .today-schedule-status.is-remaining{color:#4a4a4a;}
 .today-schedule-status.is-early,.today-schedule-status.is-done,.today-schedule-status.is-done-late{color:#16763e;}
@@ -183,7 +183,7 @@ button.today-report-circle{cursor:pointer;}
 .today-schedule-bar.is-complete::-moz-progress-bar{background:#16763e;}
 
 .wbs-today-frame .today-card-summary.has-oddjob-menu{
-  grid-template-columns:minmax(0,1fr) 52.5px 30px;
+  grid-template-columns:minmax(0,1fr) 68.25px 30px;
 }
 .wbs-today-frame .today-card-summary.has-oddjob-menu > .today-progress-circle{position:relative;inset:auto;}
 .wbs-today-frame .today-card-summary.has-oddjob-menu > .nb-project-menu-wrap{justify-self:end;align-self:center;}
@@ -324,9 +324,9 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
 .wbs-today-frame .today-card-schedule .today-schedule-status{display:inline-flex;align-items:center;justify-content:center;gap:4px;direction:rtl;}
 .today-card-activity{direction:rtl;flex-wrap:wrap;}
 .today-card-activity .today-card-person{flex:1 1 120px;min-width:0;overflow-wrap:anywhere;}
-.today-card-activity .today-card-avatar{width:30px;height:30px;}
-.today-card-activity .today-card-avatar svg{width:20px;height:20px;}
-.today-card-activity .today-card-person strong{display:block;font-size:10px;}
+.today-card-activity .today-card-avatar{width:36px;height:36px;}
+.today-card-activity .today-card-avatar svg{width:24px;height:24px;}
+.today-card-activity .today-card-person strong{display:block;font-size:12px;}
 .today-card-report-meta{display:grid;justify-items:end;gap:3px;margin-inline-start:auto;min-width:0;}
 .today-card-report-meta .today-report-circle{width:auto;min-height:30px;height:auto;padding:3px 10px;border-width:1px;border-radius:6px;font-size:11px;}
 .today-card-report-meta .today-activity-text{white-space:normal;text-align:left;}
@@ -339,7 +339,7 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
 :is(.wbs-today-frame,.wbs-shopping-frame) :is(.today-task-card.wbs-costline-work,.shopping-item-card){border-color:#d6d9dd;}
 .wbs-today-frame .today-card-summary .today-card-titles strong{font-size:20px;}
 .today-card-summary .wbs-task-priority{display:inline-block;vertical-align:middle;font-size:12px;}
-.wbs-today-frame .today-card-summary .today-progress-circle{width:52.5px;height:52.5px;}
+.wbs-today-frame .today-card-summary .today-progress-circle{width:68.25px;height:68.25px;}
 .wbs-today-frame .today-card-summary .today-progress-ring{width:100%;height:100%;}
 .today-schedule-dates{display:flex;justify-content:space-between;direction:rtl;font-size:12px;color:#4a4a4a;}
 .today-card-activity,.today-card-approval-actions{border-top-color:#e2e4e7;}
@@ -349,3 +349,6 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
 .wbs-today-frame .today-task-toolbar.wbs-view-header{border-radius:var(--wbs-frame-radius,5px);}
 .wbs-today-frame .today-card-summary .today-card-titles > span{font-size:13px;}
 .today-card-activity .today-card-person > div > span{font-size:13px;}
+
+.today-card-schedule .today-schedule-bar:not(.is-overdue,.is-complete)::-webkit-progress-value{background:#6e6e6e;}
+.today-card-schedule .today-schedule-bar:not(.is-overdue,.is-complete)::-moz-progress-bar{background:#6e6e6e;}
