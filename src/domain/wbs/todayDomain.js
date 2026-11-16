@@ -117,7 +117,9 @@ export function itemsForMode(project, mode, today = tehranTodayJalali()){
 
 export function contractorForItem(project, item){
   const contract = (project?.contracts || []).find(candidate => (
-    candidate && !candidate.trashed && String(candidate.projectItemId || '') === String(item.workId)
+    candidate && !candidate.trashed && item.kind!=='standalone'
+    && String(candidate.projectItemId || '') === String(item.workId)
+    && (item.kind==='task' ? String(candidate.workTaskId || '')===String(item.id) : !candidate.workTaskId)
   ));
   const contactId = contract
     ? (contract.contractorId || contract.contactId || '')
