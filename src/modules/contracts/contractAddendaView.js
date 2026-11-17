@@ -20,8 +20,8 @@ import { openContractPreview } from './contractPreviewView.js';
 import { openContractExport } from './contractExportView.js';
 import { renderContractFinanceReview } from './contractFinanceReviewView.js';
 import { canCreateAddendumFromContract } from '../../domain/contractAddenda.js';
-import { renderContractHistory } from './contractHistoryView.js';
-import { renderContractWorkflowPanel, renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
+import { openContractHistory, renderContractHistory } from './contractHistoryView.js';
+import { contractProgressSteps, renderContractWorkflowPanel, renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
 import { renderContractSignedSection } from './contractSignedView.js';
 import { openContractReasonSheet } from './contractReasonSheet.js';
 import { saveContractHandoff } from './contractHandoffApi.js';
@@ -222,17 +222,31 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
     catch(error){toast(error.message);return false;}finally{busy=false;}
   };
   const latestAddendum=()=>projectRepository.find(project.id)?.contractAddenda?.find(record=>record.id===addendum.id) || addendum;
-  const openProgress=(event,step)=>{
+  const openProgress=(event,selected)=>{
     event?.stopPropagation();
     const record=latestAddendum();
-    openWbsSheet({title:'وضعیت الحاقیه',showSave:false,reuseHistoryOnReplace:true,historyKey:'addendum-status:'+addendum.id,
+    const step=contractProgressSteps(record,project).find(item=>!item.done);
+    if(!step || (selected && selected.id!==step.id))return;
+    openWbsSheet({title:step.label,showSave:false,reuseHistoryOnReplace:true,historyKey:'addendum-status:'+addendum.id,
       body(root){
         root.classList.add('contract-status-sheet');
-        if(step){const caption=document.createElement('h3');caption.textContent=step.label;root.append(caption);}
-        if(approval)root.append(renderContractReviewRow(record,{
-          ...(record.approvalStatus==='pending'?approval:{}),onRejected:()=>openProgress(),
-        }),renderContractProgress(document,record,project),renderContractHistory(document,record,{finance}));
-        else renderDetails(root,latestAddendum());
+        if(step.id==='completed'){
+          if(!approval && !finance && parent && writable(project) && canEditAddendumRecord(record))root.append(button('ویرایش و تکمیل الحاقیه',()=>openAddendumForm(project,parent,record,onChanged)));
+          return;
+        }
+        if(step.id==='approved'){
+          if(approval)root.append(renderContractReviewRow(record,{...approval,showBadge:false,onRejected:()=>openProgress()}));
+          else if(!finance && writable(project) && record.approvalStatus==='pending' && record.submittedBy?.id===actor.id)root.append(button('پس گرفتن از مسئول تأیید',()=>openContractReasonSheet({
+            title:'پس گرفتن الحاقیه از مسئول تأیید',historyKey:'withdraw-addendum-review:'+record.id,
+            fieldLabel:'دلیل پس گرفتن از مسئول تأیید (الزامی)',minLength:REJECTION_MIN_LENGTH,submit:reason=>review('withdraw_submission',reason),
+          }),'contract-review-action danger'));
+          return;
+        }
+        if(finance && step.id==='finance-approved')root.append(renderContractFinanceReview(project,record,{onChanged}));
+        else if(!approval){
+          const signed=renderContractSignedSection(project,record,{stage:step.id,finance,onChanged,onReturn:()=>openProgress()});
+          if(signed)root.append(signed);
+        }
       },
     });
   };
@@ -257,6 +271,7 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
   },{
     titlePrefix:'الحاقیه',
     onPreview:preview,
+    onHistory:()=>openContractHistory(latestAddendum(),{finance}),
     progress:nested?renderContractProgressCircle(document,addendum,project,openProgress):null,
   });
   if(nested){

@@ -14,8 +14,8 @@ import { ftAmountSummary, ftNumberRow, ftSelectRow } from './realContractFormMod
 import { openStaticChoicePicker } from './contractPickers.js';
 import { saveContractHandoff } from './contractHandoffApi.js';
 import { contractRowData, renderContractCardHeading } from './contractsModule.js';
-import { renderContractWorkflowPanel, renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
-import { renderContractHistory } from './contractHistoryView.js';
+import { contractProgressSteps, renderContractWorkflowPanel, renderContractProgressCircle } from './contractProgressView.js';
+import { openContractHistory } from './contractHistoryView.js';
 import { openContractExport } from './contractExportView.js';
 import { openConfirm } from '../../ui/confirm.js';
 import { canDeleteContractAddenda } from '../../domain/contractAddenda.js';
@@ -297,7 +297,7 @@ function openStatement(project,contract,record,onChanged,{finance=false,approval
         if(previous.length)root.append(element('h3','','صورت‌وضعیت‌های موقت تأییدشده'),table(previous.map(item=>[statementTitle(item),money(item.approvedAmount??item.stageAmount??0)])));
       }
       }else root.append(element('p','contract-meta','وضعیت: '+status));
-      if(record.statementType)root.append(renderContractProgress(document,record,project),renderContractHistory(document,record,{finance}));
+      if(record.statementType)root.append(button('تاریخچه',()=>openContractHistory(record,{finance})));
       if(record.note)root.append(element('p','',record.note));
       if(record.financeRejection?.reason)root.append(element('p','contract-rejection-reason',record.financeRejection.reason));
       if(approval?.action && record.approvalStatus==='pending'){
@@ -330,10 +330,36 @@ function openStatement(project,contract,record,onChanged,{finance=false,approval
   });
 }
 
+export function openStatementAction(project,contract,record,onChanged,{approval,step,openSheet=openWbsSheet}={}){
+  const active=contractProgressSteps(record,project).find(item=>!item.done);
+  if(!active || (step && step.id!==active.id))return;
+  const reopen=()=>{
+    const source=currentProject(project);
+    const latest=statementsFor(source,contract.id).find(item=>item.id===record.id)||record;
+    openStatementAction(source,contract,latest,onChanged,{approval,openSheet});
+  };
+  openSheet({title:active.label,showSave:false,historyKey:'statement:'+record.id,reuseHistoryOnReplace:true,
+    body(root){
+      root.classList.add('contract-status-sheet');
+      if(active.id==='completed'){
+        if(!approval && canWriteProjectModule(project.id,'contracts') && record.status==='draft')root.append(button('ویرایش و تکمیل صورت‌وضعیت',()=>openStatementForm(project,contract,onChanged,record)));
+      }else if(active.id==='approved'){
+        if(approval?.action && record.approvalStatus==='pending'){
+          const actions=element('div','contract-addendum-toolbar');actions.append(approval.action);
+          if(approval.reject)actions.append(renderInlineContractReject(approval.reject,reopen));root.append(actions);
+        }
+      }else if(!approval){
+        const signed=renderContractSignedSection(project,record,{stage:active.id,onChanged,onReturn:reopen,label:'صورت‌وضعیت'});
+        if(signed)root.append(signed);
+      }
+    },
+  });
+}
+
 export function renderStatementCard(project,contract,record,onChanged,approval){
   const row=element('article','contract-row');
   const title=statementTitle(record);
-  const open=()=>openStatement(project,contract,record,onChanged,{approval});
+  const open=(event,step)=>openStatementAction(project,contract,record,onChanged,{approval,step});
   const progress=renderContractProgressCircle(document,record,project,event=>{event.stopPropagation();open();});
   const writable=!approval && record.statementType && canWriteProjectModule(project.id,'contracts');
   const deletable=writable && canDeleteContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id]);
@@ -351,7 +377,7 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
         .then(()=>{onChanged();toast(title+(record.addendumNo?' ('+record.addendumNo+')':'')+' حذف شد.');})
         .catch(error=>toast(error.message)),'بله',{cancelLabel:'خیر'});
     }:undefined,
-  },{onPreview:trigger=>openContractPreview(project,contract,{trigger,documentPreview:{title:'پیش‌نمایش '+title,content:buildDocument()}}),progress});
+  },{onHistory:()=>openContractHistory(record),onPreview:trigger=>openContractPreview(project,contract,{trigger,documentPreview:{title:'پیش‌نمایش '+title,content:buildDocument()}}),progress});
   heading.className+=' contract-card-heading--nested-addendum';
   const main=heading.children[0];
   main.children[0].textContent=title;

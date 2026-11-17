@@ -54,3 +54,17 @@ test('recompleted contracts can resend the same signed copy when their content i
     assert.deepEqual(labels(renderContractSignedSection(project,returned)),['نسخه امضاشده قرارداد']);
   }finally{delete window.KarhaSaosaWorkspaceAccess;}
 });
+
+test('stage-scoped actions keep upload, send and withdrawal separate',()=>{
+ globalThis.document=documentRef;
+ const signed={id:'c',status:'final',approvalStatus:'approved',signedAt:1,signedFiles:[file]};
+ assert.deepEqual(labels(renderContractSignedSection(project,signed,{stage:'signed'})),['نسخه امضاشده قرارداد','بازگشت برای ویرایش']);
+ assert.deepEqual(labels(renderContractSignedSection(project,signed,{stage:'finance'})),['ارسال به واحد مالی']);
+ const sent={...signed,accountingStatus:'sent',sentToAccountingAt:2,accountingPackage:{contract:signed,signedFiles:[file]}};
+ assert.deepEqual(labels(renderContractSignedSection(project,sent,{stage:'finance-approved'})),['پس‌گرفتن از مالی']);
+ window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'view',accounting:'full'}}}};
+ try{
+   assert.equal(renderContractSignedSection(project,signed,{stage:'finance'}),null);
+   assert.equal(renderContractSignedSection(project,sent,{stage:'finance-approved'}),null);
+ }finally{delete window.KarhaSaosaWorkspaceAccess;}
+});

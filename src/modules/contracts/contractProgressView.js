@@ -48,8 +48,10 @@ export function renderContractProgress(documentRef,contract,project,onOpen){
     const dot=documentRef.createElement('span');dot.className='contract-progress-dot';dot.setAttribute('aria-hidden','true');
     if(onOpen){
       const button=documentRef.createElement('button');button.type='button';button.className='contract-stage-button';
-      button.setAttribute('aria-label',step.label+'؛ '+(step.rejected?'رد شده':step.done?'انجام شده':'انجام نشده')+'؛ جزئیات و اقدامات');
-      button.append(label,dot);button.onclick=event=>{event.stopPropagation();onOpen(event,step);};item.append(button);
+      button.setAttribute('aria-label',step.label+'؛ '+(step.rejected?'رد شده':step.done?'انجام شده':'انجام نشده')+(index===current?'؛ انجام اقدام':''));
+      button.append(label,dot);button.disabled=index!==current;
+      if(index===current)button.onclick=event=>{event.stopPropagation();onOpen(event,step);};
+      item.append(button);
     }else item.append(label,dot);
     list.appendChild(item);
   });
@@ -62,19 +64,11 @@ export function renderContractProgress(documentRef,contract,project,onOpen){
 // Cards and inbox documents share the same named workflow and status entry point.
 export function renderContractWorkflowPanel(documentRef,record,project,{onOpen,expanded=true,heading}={}){
   const panel=documentRef.createElement('section');panel.className='contract-workflow-panel';
-  const toggle=documentRef.createElement('button');toggle.type='button';toggle.className='contract-workflow-toggle';
   const body=documentRef.createElement('div');body.className='contract-workflow-body';
-  const steps=contractProgressSteps(record,project);
-  const next=steps.find(step=>!step.done);
   const state=contractApprovalState(record);
   const reason=record.accountingStatus==='rejected'?record.financeRejection?.reason:['incomplete','unapproved','returned'].includes(state)?record.approvalRejectionReason:null;
-  const rejected=record.accountingStatus==='rejected' || !!reason;
-  const status=record.accountingStatus==='rejected'?'برگشت از مالی':reason?'برگشت برای اصلاح':record.accountingStatus==='accepted'?'تکمیل و ثبت مالی شد':record.accountingStatus==='sent'?'در انتظار تأیید مالی':record.approvalStatus==='pending'?'در انتظار تأیید':next?'مرحلهٔ بعد: '+next.label:'تکمیل شد';
-  toggle.textContent=status;
-  if(rejected)panel.className+=' is-rejected';
-  toggle.setAttribute('aria-label',status+'؛ نمایش یا بستن مراحل');
-  const paint=()=>{body.hidden=!expanded;toggle.setAttribute('aria-expanded',String(expanded));};
-  toggle.onclick=event=>{event.stopPropagation();expanded=!expanded;paint();};
+  if(reason)panel.className+=' is-rejected';
+  const paint=()=>{body.hidden=!expanded;heading?.children[0]?.setAttribute('aria-expanded',String(expanded));};
   if(heading){
     heading.onclick=()=>{expanded=!expanded;paint();};
     const main=heading.children[0];
@@ -84,10 +78,5 @@ export function renderContractWorkflowPanel(documentRef,record,project,{onOpen,e
   const list=renderContractProgress(documentRef,record,project,onOpen);
   body.append(list);
   if(reason){const message=documentRef.createElement('p');message.className='contract-rejection-reason';message.textContent='دلیل برگشت: '+reason;body.append(message);}
-  if(next){
-    const action=documentRef.createElement('button');action.type='button';action.className='contract-workflow-next';
-    action.textContent=rejected?'اصلاح و ارسال مجدد':record.approvalStatus==='pending'?'مشاهده مسئولان تأیید':record.accountingStatus==='sent'?'مشاهده وضعیت مالی':'ادامهٔ '+next.label;
-    action.onclick=event=>{event.stopPropagation();onOpen?.(event,next);};body.append(action);
-  }
-  panel.append(toggle,body);paint();return panel;
+  panel.append(body);paint();return panel;
 }
