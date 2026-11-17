@@ -63,7 +63,7 @@ export function openContractSignedUpload(project,contract,{onChanged=()=>{},fina
   if(!existing.length && !editable)return null;
   const files=JSON.parse(JSON.stringify(existing));
   let uploader,saving=false;
-  const sheet=openSheet({title:'نسخه امضاشده '+label,saveLabel:'ذخیره',autoFocus:false,showSave:editable,reuseHistoryOnReplace:true,historyKey:'contract-signed:'+contract.id,
+  const sheet=openSheet({title:(editable?'بارگذاری نسخه امضاشده ':'نسخه امضاشده ')+label,saveLabel:'ذخیره',autoFocus:false,showSave:editable,reuseHistoryOnReplace:true,historyKey:'contract-signed:'+contract.id,
     body(root){
       uploader=mountUploader(root,{projectId:project.id,recordId:contract.id,category:'contracts',files,readOnly:!editable,label:'افزودن عکس یا PDF '+label,buttonLabel:true,onError:toast,
         confirmRemove:remove=>{if(!saving)openConfirm('این فایل حذف شود؟',()=>{if(!saving)remove();},'حذف');}});
