@@ -37,7 +37,7 @@
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-workflow-panel .contract-progress{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;list-style:none;border:0;margin:8px 0;padding:0;}
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-workflow-panel .contract-progress-step{display:block;min-width:0;}
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-workflow-panel .contract-progress-step::after{display:none;}
-.contract-stage-button{display:flex;flex-direction:row;direction:rtl;align-items:center;justify-content:center;gap:5px;width:100%;min-height:46px;padding:6px 3px;border:1px solid #d6d9dd;border-radius:6px;background:#f7f8fa;color:inherit;font:inherit;cursor:pointer;}
+.contract-stage-button{display:flex;flex-direction:row;direction:rtl;align-items:center;justify-content:center;gap:5px;width:100%;min-height:31px;padding:0 3px;border:1px solid #d6d9dd;border-radius:6px;background:#f7f8fa;color:inherit;font:inherit;cursor:pointer;}
 .contract-stage-button .contract-progress-label{min-width:0;text-align:right;font-size:12px;line-height:1.6;overflow-wrap:anywhere;}
 .contract-stage-button .contract-progress-dot{display:grid;place-items:center;width:16px;height:16px;border-radius:50%;background:#d6d9dd;}
 .contract-workflow-panel .is-complete .contract-stage-button{color:#6b7280;border-color:#d6d9dd;background:#f7f8fa;}
