@@ -130,19 +130,20 @@ test('active contract sheets contain only stage actions and history opens separa
   const nodes=root=>[root,...root.children.flatMap(nodes)];
   function render(record){
     let opened;
-    const card=renderContractCard(project,{...base,...record},{openStatusSheet:options=>{const root=make('div');root.classList={add(){}};options.body(root);opened={title:options.title,root};}});
+    const card=renderContractCard(project,{...base,...record},{openSignedSheet:(source,record,options)=>{opened={upload:true,record,options};},openStatusSheet:options=>{const root=make('div');root.classList={add(){}};options.body(root);opened={title:options.title,root};}});
     return {card,openStage(){const stage=nodes(card).find(n=>n.className==='contract-stage-button' && !n.disabled);stage?.onclick({stopPropagation(){}});return opened;},get opened(){return opened;}};
   }
   const labels=sheet=>nodes(sheet.root).filter(n=>n.tag==='button').map(n=>n.textContent);
   try{
     assert.deepEqual(labels(render({status:'draft',isDraft:true}).openStage()),['ویرایش و تکمیل قرارداد']);
     const upload=render({}).openStage();
-    assert.deepEqual(labels(upload),['افزودن عکس یا PDF قرارداد']);
+    assert.equal(upload.upload,true);
+    assert.equal(upload.record.id,'c');
     const signed={signedAt:1,signedFiles:[file]};
     assert.deepEqual(labels(render(signed).openStage()),['ارسال به واحد مالی']);
     const sent={...signed,accountingStatus:'sent',sentToAccountingAt:2,accountingPackage:{contract:base,signedFiles:[file]}};
     assert.deepEqual(labels(render(sent).openStage()),['پس‌گرفتن از مالی']);
-    for(const record of [{status:'draft',isDraft:true},{},signed,sent]){
+    for(const record of [{status:'draft',isDraft:true},signed,sent]){
       const sheet=render(record).openStage();
       assert.ok(!nodes(sheet.root).some(n=>['contract-progress','contract-history','contract-status-badge'].includes(n.className)));
     }

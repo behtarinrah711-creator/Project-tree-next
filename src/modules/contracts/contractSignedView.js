@@ -6,7 +6,7 @@ import {openContractReasonSheet} from './contractReasonSheet.js';
 import {openConfirm} from '../../ui/confirm.js';
 import {saveContractHandoff} from './contractHandoffApi.js';
 const toast=message=>window.KarhaLegacy?.showToast?.(message);
-export function renderContractSignedSection(project,contract,{onChanged=()=>{},finance=false,inlineActions=null,attachmentActions=null,onReturn=null,stage=null,label=contract.parentContractId?'الحاقیه':'قرارداد'}={}){
+export function renderContractSignedSection(project,contract,{onChanged=()=>{},finance=false,inlineActions=null,attachmentActions=null,stage=null,label=contract.parentContractId?'الحاقیه':'قرارداد'}={}){
   const existing=finance && inlineActions ? contract.accountingPackage?.signedFiles || [] : signedContractFiles(contract);
   const ready=canAttachSignedContract(contract),returned=canReviseReturnedSignedContract(contract);
   const sent=isContractInFinance(contract),writable=canWriteProjectModule(project.id,'contracts');
@@ -24,28 +24,7 @@ export function renderContractSignedSection(project,contract,{onChanged=()=>{},f
     try{await saveContractHandoff(project.id,contract,action,options);onChanged();return true;}
     catch(error){toast(error.message);return false;}finally{busy=false;}
   };
-  const openAttachments=()=>{
-    const files=JSON.parse(JSON.stringify(existing));let uploader,saving=false;
-    const sheet=openWbsSheet({title:'نسخه امضاشده '+label,saveLabel:'ذخیره',autoFocus:false,showSave:editable,reuseHistoryOnReplace:!!onReturn,historyKey:'contract-signed:'+contract.id,
-      body(root){
-        if(onReturn){
-          const back=button('بازگشت به وضعیت '+label,()=>{if(!saving)onReturn();},root);
-          back.className+=' contract-signed-trigger';
-        }
-        uploader=mountFileUploader(root,{projectId:project.id,recordId:contract.id,category:'contracts',files,readOnly:!editable,label:'افزودن عکس یا PDF '+label,buttonLabel:true,onError:toast,
-        confirmRemove:remove=>{if(!saving)openConfirm('این فایل حذف شود؟',()=>{if(!saving)remove();},'حذف');}});},
-      onSave(){
-        if(saving)return false;
-        if(uploader.isBusy()){toast('ابتدا بارگذاری فایل‌ها را کامل کنید');return false;}
-        saving=true;
-        run('save_signed',{files}).then(ok=>{saving=false;if(ok && sheet.isConnected){if(onReturn)onReturn();else closeWbsSheet();}});
-        return false;
-      }
-    });
-    sheet.classList.add('contract-signed-overlay');
-    const observer=new MutationObserver(()=>{if(!sheet.isConnected){uploader.destroy();observer.disconnect();}});
-    observer.observe(document.body,{childList:true});
-  };
+  const openAttachments=()=>openContractSignedUpload(project,contract,{onChanged,finance,label});
   if(inlineActions){
     button('نسخه امضا شده '+label,openAttachments);
     return section;
@@ -75,4 +54,33 @@ export function renderContractSignedSection(project,contract,{onChanged=()=>{},f
     submit:reason=>run('reopen_signed_contract',{reason}),
   })).className+=' danger';
   return section.children.length ? section : null;
+}
+
+export function openContractSignedUpload(project,contract,{onChanged=()=>{},finance=false,label=contract.parentContractId?'الحاقیه':'قرارداد',openSheet=openWbsSheet,mountUploader=mountFileUploader}={}){
+  const existing=finance?(contract.accountingPackage?.signedFiles || signedContractFiles(contract)):signedContractFiles(contract);
+  const writable=canWriteProjectModule(project.id,'contracts');
+  const editable=writable && (canAttachSignedContract(contract) || canReviseReturnedSignedContract(contract)) && !isContractInFinance(contract) && !finance;
+  if(!existing.length && !editable)return null;
+  const files=JSON.parse(JSON.stringify(existing));
+  let uploader,saving=false;
+  const sheet=openSheet({title:(editable?'بارگذاری نسخه امضاشده ':'نسخه امضاشده ')+label,saveLabel:'ذخیره',autoFocus:false,showSave:editable,reuseHistoryOnReplace:true,historyKey:'contract-signed:'+contract.id,
+    body(root){
+      uploader=mountUploader(root,{projectId:project.id,recordId:contract.id,category:'contracts',files,readOnly:!editable,label:'افزودن عکس یا PDF '+label,buttonLabel:true,onError:toast,
+        confirmRemove:remove=>{if(!saving)openConfirm('این فایل حذف شود؟',()=>{if(!saving)remove();},'حذف');}});
+    },
+    onSave(){
+      if(!editable || saving)return false;
+      if(uploader.isBusy()){toast('ابتدا بارگذاری فایل‌ها را کامل کنید');return false;}
+      saving=true;
+      saveContractHandoff(project.id,contract,'save_signed',{files}).then(()=>{
+        onChanged();
+        if(sheet.isConnected)closeWbsSheet();
+      }).catch(error=>toast(error.message)).finally(()=>{saving=false;});
+      return false;
+    },
+  });
+  sheet.classList.add('contract-signed-overlay');
+  const observer=new MutationObserver(()=>{if(!sheet.isConnected){uploader.destroy();observer.disconnect();}});
+  observer.observe(document.body,{childList:true});
+  return sheet;
 }

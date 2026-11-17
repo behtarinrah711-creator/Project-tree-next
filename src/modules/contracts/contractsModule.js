@@ -5,7 +5,7 @@ import {renderContractDocuments} from './contractDocumentsView.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { renderContractAddendaRow } from './contractAddendaView.js';
 import {renderContractFinanceReview} from './contractFinanceReviewView.js';
-import {renderContractSignedSection} from './contractSignedView.js';
+import {openContractSignedUpload,renderContractSignedSection} from './contractSignedView.js';
 import { contractProgressSteps, renderContractWorkflowPanel, renderContractProgressCircle } from './contractProgressView.js';
 import { openContractHistory } from './contractHistoryView.js';
 import { approvalLabels, contractApprovalState } from '../../domain/contractApproval.js';
@@ -200,7 +200,7 @@ export function renderContractReviewRow(contract,{action,reject,edit,onEdited,on
   return row;
 }
 
-export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,approvalDocuments,openStatusSheet=openWbsSheet,showDetails=false}={}){
+export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,approvalDocuments,openStatusSheet=openWbsSheet,openSignedSheet=openContractSignedUpload,showDetails=false}={}){
   const preview=trigger=>openContractPreview(p,c,{trigger});
   const id=p.id,actor=currentExecutionActor(p);
   const writable=!finance && canWriteProjectModule(id,'contracts');
@@ -216,6 +216,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
         event?.stopPropagation();
         const active=contractProgressSteps(statusRecord,p).find(item=>!item.done);
         if(!active || (step && step.id!==active.id))return;
+        if(active.id==='signed')return openSignedSheet(p,statusRecord,{onChanged,finance:finance||!!approval});
         openStatusSheet({title:active.label,showSave:false,reuseHistoryOnReplace:true,historyKey:'contract-status:'+c.id,
           body(root){root.classList.add('contract-status-sheet');statusSheetBody(root,active);}});
       };

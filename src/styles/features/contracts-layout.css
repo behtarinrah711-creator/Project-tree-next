@@ -37,10 +37,10 @@
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-workflow-panel .contract-progress{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;list-style:none;border:0;margin:8px 0;padding:0;}
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-workflow-panel .contract-progress-step{display:block;min-width:0;}
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-workflow-panel .contract-progress-step::after{display:none;}
-.contract-stage-button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:100%;min-height:56px;padding:6px 3px;border:1px solid #d6d9dd;border-radius:6px;background:#f7f8fa;color:inherit;font:inherit;cursor:pointer;}
-.contract-stage-button .contract-progress-label{font-size:12px;line-height:1.6;overflow-wrap:anywhere;}
+.contract-stage-button{display:flex;flex-direction:row;direction:rtl;align-items:center;justify-content:center;gap:5px;width:100%;min-height:36px;padding:0 3px;border:1px solid #d6d9dd;border-radius:6px;background:#f7f8fa;color:inherit;font:inherit;cursor:pointer;}
+.contract-stage-button .contract-progress-label{min-width:0;text-align:right;font-size:12px;line-height:1.6;overflow-wrap:anywhere;}
 .contract-stage-button .contract-progress-dot{display:grid;place-items:center;width:16px;height:16px;border-radius:50%;background:#d6d9dd;}
-.contract-workflow-panel .is-complete .contract-stage-button{color:#166534;border-color:#afd2bd;background:#eff8f2;}
+.contract-workflow-panel .is-complete .contract-stage-button{color:#6b7280;border-color:#d6d9dd;background:#f7f8fa;}
 .contract-workflow-panel .is-complete .contract-progress-dot::after{content:'✓';font-size:11px;color:#fff;}
 .contract-workflow-panel [aria-current=step] .contract-stage-button{border-color:#1565c0;color:#124d8f;background:#edf4ff;}
 .contract-workflow-panel .is-rejected .contract-stage-button{border-color:#bb3931;color:#a02722;background:#fff1f0;}
@@ -55,6 +55,13 @@
 .contract-workflow-panel .contract-stage-button:disabled{cursor:default;opacity:1;}
 .contract-history-sheet > .contract-history{display:block;border:0;margin:0;padding:0;}
 .contract-history-sheet > .contract-history > summary{display:none;}
+
+.contract-stage-button .contract-progress-dot{order:-1;flex-shrink:0;}
+
+/* Keep mixed Persian/PDF upload text in one RTL inline formatting context. */
+.contract-signed-overlay .filepond--drop-label .filepond--label-action{display:inline-block;direction:rtl;unicode-bidi:plaintext;line-height:1.7;max-width:100%;box-sizing:border-box;}
+.contract-signed-overlay .filepond--root,.contract-signed-overlay .filepond--panel-root{border:0;box-shadow:none;}
+.contract-signed-overlay .filepond--panel-root{background:transparent;}
 
 /* Compact event rows inside the standalone history sheet. */
 .contract-history-sheet .contract-history-entry{box-sizing:border-box;min-width:0;margin:6px 0;padding:8px 10px;border:1px solid #d6d9dd;border-radius:6px;background:#fff;text-align:right;direction:rtl;overflow-wrap:anywhere;}

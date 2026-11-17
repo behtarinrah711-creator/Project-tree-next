@@ -24,7 +24,7 @@ export function contractProgressSteps(contract,project){
     {id:'completed',label:'تکمیل '+label,done:complete},
   ];
   if(reviewers.filter(Boolean).length)steps.push({id:'approved',label:'تأیید '+label,done:complete && contractApprovalState(contract)==='approved'});
-  steps.push({id:'signed',label:'امضا و بارگذاری '+label,done:complete && contract.approvalStatus==='approved' && (isContractSigned(contract) || canReuseReturnedSignature(contract))},{id:'finance',label:'ارسال به مالی',done:isContractInFinance(contract)});
+  steps.push({id:'signed',label:'بارگذاری '+label,done:complete && contract.approvalStatus==='approved' && (isContractSigned(contract) || canReuseReturnedSignature(contract))},{id:'finance',label:'ارسال به مالی',done:isContractInFinance(contract)});
   const rejected=!!(contract.parentContractId || contract.statementType) && contract.accountingStatus==='rejected';
   steps.push({id:'finance-approved',label:rejected?'توسط مالی رد شد':'تأیید بخش مالی',rejected,done:isContractInFinance(contract) && contract.accountingStatus==='accepted'});
   return steps;
