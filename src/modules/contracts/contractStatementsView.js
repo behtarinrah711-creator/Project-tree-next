@@ -19,7 +19,7 @@ import { openContractHistory } from './contractHistoryView.js';
 import { openContractExport } from './contractExportView.js';
 import { openConfirm } from '../../ui/confirm.js';
 import { canDeleteContractAddenda } from '../../domain/contractAddenda.js';
-import { renderContractSignedSection } from './contractSignedView.js';
+import { openContractSignedUpload, renderContractSignedSection } from './contractSignedView.js';
 
 const format=new Intl.NumberFormat('fa-IR');
 const money=value=>value===null?'تعیین نشده':format.format(value)+' تومان';
@@ -333,6 +333,7 @@ function openStatement(project,contract,record,onChanged,{finance=false,approval
 export function openStatementAction(project,contract,record,onChanged,{approval,step,openSheet=openWbsSheet}={}){
   const active=contractProgressSteps(record,project).find(item=>!item.done);
   if(!active || (step && step.id!==active.id))return;
+  if(active.id==='signed')return openContractSignedUpload(project,record,{onChanged,finance:!!approval,label:'صورت‌وضعیت'});
   const reopen=()=>{
     const source=currentProject(project);
     const latest=statementsFor(source,contract.id).find(item=>item.id===record.id)||record;
