@@ -72,7 +72,7 @@ function readStatusSheet(render,make){
   return root.children[0];
 }
 
-test('only contract writers see the addendum shortcut on completed report cards',async()=>{
+test('only contract writers can register documents and linked records remain visible to readers',async()=>{
   const {renderContractCard}=await import('./contractsModule.js');
   const previousWindow=globalThis.window,previousDocument=globalThis.document;
   const make=()=>({children:[],dataset:{},append(...nodes){this.children.push(...nodes);},
@@ -84,11 +84,11 @@ test('only contract writers see the addendum shortcut on completed report cards'
   const contract={id:'c',contractNo:'CTR-1',status:'final',isDraft:false,approvalStatus:'approved',contractApproverContactIds:[],signedAt:1,signedFiles:[{id:'signed'}],sentToAccountingAt:2,accountingStatus:'accepted',accountingPackage:{contract:{id:'c'},signedFiles:[{id:'signed'}]}};
   const addendaRow=card=>card.children.find(node=>node.className==='contract-addenda-row');
   const shortcut=record=>addendaRow(renderContractCard(project,record))?.children[0].children
-    .find(node=>node.textContent==='ایجاد الحاقیه');
+    .find(node=>node.textContent==='ثبت سند');
   try{
     assert.equal(shortcut(contract).type,'button');
-    assert.equal(shortcut({...contract,status:'draft',isDraft:true}),undefined);
-    assert.equal(shortcut({...contract,contractNo:''}),undefined);
+    assert.equal(shortcut({...contract,status:'draft',isDraft:true,accountingStatus:null}),undefined);
+    assert.equal(shortcut({...contract,contractNo:'',accountingStatus:null}),undefined);
     window.firebase={auth:()=>({currentUser:{uid:'reviewer',phoneNumber:'0912'}})};
     project.contacts=[{id:'me',phone:'0912'}];
     const pending={...contract,accountingStatus:null,sentToAccountingAt:null,accountingPackage:null,signedAt:null,signedFiles:[],approvalStatus:'pending',approvalContactIds:['me','other'],
@@ -106,13 +106,15 @@ test('only contract writers see the addendum shortcut on completed report cards'
     ];
     const card=renderContractCard(project,contract);
     assert.deepEqual(card.children.map(node=>node.className),
-      ['contract-card-heading','contract-addenda-row']);
+      ['contract-card-heading','contract-workflow-panel','contract-addenda-row']);
     const [toolbar,list]=addendaRow(card).children;
-    assert.deepEqual(toolbar.children.map(node=>node.textContent),['الحاقیه‌ها (۱)']);
-    toolbar.children[0].onclick();
-    assert.equal(list.children.length,1);
-    assert.equal(list.children[0].children.length,1);
-    assert.equal(list.children[0].children[0].children[0].children[0].textContent,'الحاقیه شماره ۱');
+    assert.deepEqual(toolbar.children.map(node=>node.textContent),['اسناد (۱)']);
+    assert.equal(list.hidden,false);
+    const nested=list.children.find(node=>node.className==='contract-row');
+    assert.equal(nested.children[0].children[0].children[0].textContent,'الحاقیه شماره ۱');
+    assert.ok(!nested.children[0].children.find(node=>node.className==='contract-card-visible-actions').children.some(node=>['ویرایش','حذف'].includes(node.textContent)));
+    toolbar.children[0].onclick({stopPropagation(){}});
+    assert.equal(list.hidden,true);
   }finally{globalThis.window=previousWindow;globalThis.document=previousDocument;}
 });
 
