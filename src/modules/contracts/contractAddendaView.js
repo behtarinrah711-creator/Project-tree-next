@@ -22,7 +22,7 @@ import { renderContractFinanceReview } from './contractFinanceReviewView.js';
 import { canCreateAddendumFromContract } from '../../domain/contractAddenda.js';
 import { openContractHistory, renderContractHistory } from './contractHistoryView.js';
 import { contractProgressSteps, renderContractWorkflowPanel, renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
-import { renderContractSignedSection } from './contractSignedView.js';
+import { openContractSignedUpload, renderContractSignedSection } from './contractSignedView.js';
 import { openContractReasonSheet } from './contractReasonSheet.js';
 import { saveContractHandoff } from './contractHandoffApi.js';
 
@@ -227,6 +227,7 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
     const record=latestAddendum();
     const step=contractProgressSteps(record,project).find(item=>!item.done);
     if(!step || (selected && selected.id!==step.id))return;
+    if(step.id==='signed')return openContractSignedUpload(project,record,{onChanged,finance:finance||!!approval,label:'الحاقیه'});
     openWbsSheet({title:step.label,showSave:false,reuseHistoryOnReplace:true,historyKey:'addendum-status:'+addendum.id,
       body(root){
         root.classList.add('contract-status-sheet');
