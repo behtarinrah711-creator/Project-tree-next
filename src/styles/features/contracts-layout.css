@@ -48,3 +48,5 @@
 .contract-workflow-next{background:#fff;color:#1565c0;font-size:12px;}
 .contract-workflow-body[hidden],.contract-addenda-children[hidden]{display:none;}
 .contract-addenda-children{min-width:0;}
+
+.contract-card-heading > .contract-card-visible-actions{grid-column:1 / -1;grid-row:auto;}
