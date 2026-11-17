@@ -70,3 +70,23 @@
 .contract-history-sheet .contract-history-actor{font-size:12px;font-weight:400;line-height:1.6;color:var(--text-dim,#626870);}
 .contract-history-sheet .contract-history-stamp{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;margin-top:4px;padding-top:4px;border-top:1px solid #e7e9ec;font-size:11px;font-weight:400;line-height:1.5;color:var(--text-dim,#626870);}
 .contract-history-sheet .contract-history-entry p{margin:4px 0 0;font-size:12px;font-weight:400;line-height:1.6;white-space:pre-wrap;}
+
+/* Compact card metadata and unboxed tools, distinct from workflow stages. */
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading{row-gap:4px;padding-block:10px 4px;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-card-heading .contract-title{font-size:15px;line-height:1.7;margin:0;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-card-heading :is(.contract-number,.contract-project-path,.contract-heading-stamp){margin-block:2px;line-height:1.6;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-card-heading > .contract-actions:empty{display:none;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-card-heading > .contract-card-visible-actions{display:flex;align-items:center;justify-content:flex-start;gap:4px 10px;margin:2px 0 0;padding:0;min-width:0;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-card-visible-actions > .contract-review-action{display:inline-flex;direction:rtl;align-items:center;justify-content:center;gap:4px;min-height:44px;margin:0;padding:4px 0;border:0;border-radius:0;background:transparent;font-size:12px;font-weight:600;line-height:1.5;white-space:nowrap;}
+.contract-card-visible-actions .contract-tool-icon{display:inline-flex;order:-1;flex:none;width:16px;height:16px;}
+.contract-tool-icon svg{display:block;width:16px;height:16px;fill:currentColor;}
+.contract-card-visible-actions > .contract-menu-wrap{margin-inline-start:auto;}
+
+/* Full-width heading; number and registration time share the second row. */
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading > :is(.contract-main,.contract-heading-details){display:contents;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading .contract-title{grid-area:1/1/2/-1;text-align:right;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading .contract-number{grid-area:2/1;text-align:right;min-width:0;overflow-wrap:anywhere;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading :is(.contract-heading-stamp,.contract-created){grid-area:2/2;display:flex;flex-direction:row;justify-content:flex-end;align-items:center;gap:4px;margin:2px 0;text-align:left;white-space:normal;flex-wrap:wrap;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading .contract-project-path{grid-area:3/1/4/-1;text-align:right;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading > .contract-card-visible-actions{grid-area:4/1/5/-1;}

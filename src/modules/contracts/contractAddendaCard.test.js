@@ -45,7 +45,7 @@ test('saved addenda use the contract card layout and their own status, number an
       assert.ok(menuClickStopped);
       assert.deepEqual(heading.children.map(node=>node.className),['contract-main','contract-created','contract-actions','contract-card-visible-actions']);
       assert.deepEqual(heading.children[0].children.map(node=>node.textContent),
-        ['الحاقیه قرارداد پیمانکاری جواد قریشی | فونداسیون','CTR-1-A01','تصفیه خانه ← فونداسیون']);
+        ['الحاقیه قرارداد پیمانکاری جواد قریشی | فونداسیون','CTR-1-A01','تصفیه خانه']);
       assert.equal(status.children[0].textContent,finance?'وضعیت: تأیید شده توسط بخش مالی':'وضعیت: ناقص');
       assert.equal(status.children.at(-1).textContent,'مشاهده قرارداد اصلی');
       const progress=card.children.find(node=>node.className==='contract-progress');
@@ -110,9 +110,10 @@ test('saved addenda use the contract card layout and their own status, number an
     const legacyCard=list.children[0];
     assert.ok(!legacyCard.children.some(row=>row.children.some(node=>['اعلام تکمیل','تأیید الحاقیه'].includes(node.textContent))));
     const menuActions=card=>{
-      const wrap=card.children[0].children[2].children[0];
+      const toolbar=card.children[0].children.find(node=>node.className==='contract-card-visible-actions');
+      const wrap=toolbar.children.at(-1);
       wrap.children[0].onclick({stopPropagation(){}});
-      return wrap.children.find(node=>node.className==='nb-project-menu').children.map(node=>node.title);
+      return [...toolbar.children.filter(node=>node.textContent==='ویرایش').map(node=>node.textContent), ...wrap.children.find(node=>node.className==='nb-project-menu').children.map(node=>node.title)];
     };
     assert.deepEqual(menuActions(legacyCard),['ویرایش','خروجی','حذف']);
     assert.deepEqual(menuActions(list.children[1]),['خروجی']);
