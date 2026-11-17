@@ -6,7 +6,7 @@ import {openContractReasonSheet} from './contractReasonSheet.js';
 import {openConfirm} from '../../ui/confirm.js';
 import {saveContractHandoff} from './contractHandoffApi.js';
 const toast=message=>window.KarhaLegacy?.showToast?.(message);
-export function renderContractSignedSection(project,contract,{onChanged=()=>{},finance=false,inlineActions=null,attachmentActions=null,onReturn=null,label=contract.parentContractId?'الحاقیه':'قرارداد'}={}){
+export function renderContractSignedSection(project,contract,{onChanged=()=>{},finance=false,inlineActions=null,attachmentActions=null,onReturn=null,stage=null,label=contract.parentContractId?'الحاقیه':'قرارداد'}={}){
   const existing=finance && inlineActions ? contract.accountingPackage?.signedFiles || [] : signedContractFiles(contract);
   const ready=canAttachSignedContract(contract),returned=canReviseReturnedSignedContract(contract);
   const sent=isContractInFinance(contract),writable=canWriteProjectModule(project.id,'contracts');
@@ -50,7 +50,7 @@ export function renderContractSignedSection(project,contract,{onChanged=()=>{},f
     button('نسخه امضا شده '+label,openAttachments);
     return section;
   }
-  if(sent){
+  if(sent && (!stage || stage==='finance-approved')){
     section.className+=' contract-signed-section--sent';
     if(writable && !finance){
       const withdraw=button(attachmentActions?'× پس گرفتن از مالی':'پس‌گرفتن از مالی',()=>openContractReasonSheet({
@@ -62,13 +62,13 @@ export function renderContractSignedSection(project,contract,{onChanged=()=>{},f
       if(attachmentActions)withdraw.className+=' danger';
     }
   }
-  if(ready || returned || existing.length){
+  if((!stage || stage==='signed') && (ready || returned || existing.length)){
     const trigger=button((existing.length?'نسخه امضاشده ':'افزودن عکس یا PDF ')+label,openAttachments,attachmentActions || section);
     trigger.className+=' contract-signed-trigger';
     if(attachmentActions)attachmentActions.prepend(trigger);
   }
-  if(!sent && writable && ready && (isContractSigned(contract) || canReuseReturnedSignature(contract)))button('ارسال به واحد مالی',()=>openConfirm((contract.parentContractId?label:'قرارداد تنظیم‌شده')+' به همراه نسخه امضاشده به واحد مالی ارسال شود؟',()=>run('send_finance'),'ارسال'));
-  if(writable && !finance && canReopenSignedContract(contract))button('بازگشت برای ویرایش',()=>openContractReasonSheet({
+  if((!stage || stage==='finance') && !sent && writable && ready && (isContractSigned(contract) || canReuseReturnedSignature(contract)))button('ارسال به واحد مالی',()=>openConfirm((contract.parentContractId?label:'قرارداد تنظیم‌شده')+' به همراه نسخه امضاشده به واحد مالی ارسال شود؟',()=>run('send_finance'),'ارسال'));
+  if((!stage || stage==='signed') && writable && !finance && canReopenSignedContract(contract))button('بازگشت برای ویرایش',()=>openContractReasonSheet({
     title:'بازگشت قرارداد برای ویرایش',
     historyKey:'reopen-signed-contract:'+contract.id,
     fieldLabel:'دلیل بازگشت (الزامی)',

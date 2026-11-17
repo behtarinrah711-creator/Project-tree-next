@@ -50,3 +50,13 @@
 .contract-addenda-children{min-width:0;}
 
 .contract-card-heading > .contract-card-visible-actions{grid-column:1 / -1;grid-row:auto;}
+
+/* Only the current stage opens an action sheet. Completed stages stay compact. */
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-workflow-panel .contract-progress-step[aria-current=step]{grid-column:1 / -1;}
+.contract-workflow-panel .contract-stage-button{min-height:44px;flex-direction:row;gap:6px;}
+.contract-workflow-panel [aria-current=step] .contract-stage-button{min-height:54px;justify-content:space-between;padding-inline:12px;}
+.contract-workflow-panel [aria-current=step] .contract-stage-button::after{content:'‹';}
+.contract-workflow-panel .contract-stage-button:disabled{cursor:default;opacity:1;}
+.contract-workflow-panel .is-complete .contract-stage-button:disabled{background:transparent;border-color:transparent;}
+.contract-history-sheet > .contract-history{display:block;border:0;margin:0;padding:0;}
+.contract-history-sheet > .contract-history > summary{display:none;}

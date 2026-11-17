@@ -43,21 +43,25 @@ test('finance contracts use the report card header with only financial decision 
     for(const name of ['contract-card-heading']){
       assert.deepEqual(shape({...finance.children.find(n=>n.className===name),children:finance.children.find(n=>n.className===name).children.filter(n=>n.className!=='contract-card-visible-actions')}),shape({...report.children.find(n=>n.className===name),children:report.children.find(n=>n.className===name).children.filter(n=>n.className!=='contract-card-visible-actions')}));
     }
-    assert.deepEqual(finance.children[0].children.find(n=>n.className==='contract-card-visible-actions').children.map(n=>n.textContent),['پیش‌نمایش']);
+    assert.deepEqual(finance.children[0].children.find(n=>n.className==='contract-card-visible-actions').children.map(n=>n.textContent),['پیش‌نمایش','تاریخچه']);
     assert.equal(finance.children.some(n=>n.className==='contract-progress' || n.className==='contract-workflow-row' || n.className==='contract-signed-section'),false);
     const actions=statusSheet(c,true).children.find(n=>n.className.includes('contract-finance-actions')).children.map(n=>n.textContent);
     assert.deepEqual(actions,['تأیید قرارداد','رد قرارداد']);
-    const history=statusSheet(c,true).children.find(n=>n.className==='contract-history');assert.equal(history.children.filter(n=>n.className==='contract-history-entry').length,1);
+    const historyRoot=make('div');
+    const historyCard=renderContractCard(p,c,{finance:true,openStatusSheet:options=>options.body(historyRoot)});
+    const historyAction=historyCard.children[0].children.find(n=>n.className==='contract-card-visible-actions').children.find(n=>n.textContent==='تاریخچه');
+    historyAction.onclick({stopPropagation(){}});
+    const history=historyRoot.children[0];assert.equal(historyRoot.children.length,1);assert.equal(history.className,'contract-history');assert.equal(history.children.filter(n=>n.className==='contract-history-entry').length,1);
     const menuWrap=finance.children[0].children.find(n=>n.className==='contract-actions').children[0];
     menuWrap.children[0].onclick({stopPropagation(){}});
     assert.deepEqual(menuWrap.children.find(n=>n.className==='nb-project-menu').children.map(n=>n.title),['خروجی']);
     const accepted={...c,accountingStatus:'accepted',accountingDecision:{actor:{id:'guest'}}};
     const acceptedReport=statusSheet(accepted);
-    assert.equal(acceptedReport.children.find(n=>n.className==='contract-workflow-row').children[0].textContent,'وضعیت: تکمیل، امضا، بارگذاری و ثبت مالی شد');
+    assert.equal(acceptedReport.children.length,0);
     const acceptedFinance=statusSheet(accepted,true);
-    assert.deepEqual(acceptedFinance.children.find(n=>n.className.includes('contract-finance-actions')).children.map(n=>n.textContent),['پس‌گرفتن تأیید مالی']);
+    assert.equal(acceptedFinance.children.length,0);
     const rejected=statusSheet({...c,status:'draft',isDraft:true,approvalStatus:null,accountingStatus:'rejected',signedAt:null,signedFiles:[],financeRejection:{reason:'صفحه ناقص است'}});
-    assert.ok(rejected.children.find(n=>n.className==='contract-workflow-row').children.some(n=>n.textContent==='دلیل رد توسط بخش مالی: صفحه ناقص است'));
+    assert.deepEqual(rejected.children.map(n=>n.textContent),['ویرایش و تکمیل قرارداد']);
     const css=readFileSync(new URL('../../styles/features/contracts.css',import.meta.url),'utf8');
     assert.match(css,/:is\(#contractsPageBody,#accountingPageBody\) \.contract-row\{display:block/);
     assert.match(css,/:is\(#contractsPageBody,#accountingPageBody\) \.contract-card-heading\{display:grid/);
