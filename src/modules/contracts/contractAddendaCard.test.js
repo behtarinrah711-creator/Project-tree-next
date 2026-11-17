@@ -43,7 +43,7 @@ test('saved addenda use the contract card layout and their own status, number an
       let menuClickStopped=false;
       heading.children[2].onclick({stopPropagation(){menuClickStopped=true;}});
       assert.ok(menuClickStopped);
-      assert.deepEqual(heading.children.map(node=>node.className),['contract-main','contract-created','contract-actions']);
+      assert.deepEqual(heading.children.map(node=>node.className),['contract-main','contract-created','contract-actions','contract-card-visible-actions']);
       assert.deepEqual(heading.children[0].children.map(node=>node.textContent),
         ['الحاقیه قرارداد پیمانکاری جواد قریشی | فونداسیون','CTR-1-A01','تصفیه خانه ← فونداسیون']);
       assert.equal(status.children[0].textContent,finance?'وضعیت: تأیید شده توسط بخش مالی':'وضعیت: ناقص');
@@ -181,9 +181,9 @@ test('finance approval shows a failed save on the card and rerenders an accepted
   const body=make('div');
   renderAccountingContracts(body,'p');
   assert.equal(body.children.length,1);
-  const documents=body.children[0].children[0].children[1];
+  const documents=body.children[0].children[0].children.find(node=>node.className==='contract-addenda-row');
   assert.equal(documents.children[1].hidden,false);
-  assert.equal(documents.children[1].children.at(-1).children.length,1);
+  assert.equal(documents.children[1].children.at(-1).className,'contract-row');
   const {renderAddendumCard}=await import('./contractAddendaView.js');
   const card=()=>renderAddendumCard(projects[0],projects[0].contractAddenda[0],()=>renderAccountingContracts(body,'p'),true);
   let detail=card();

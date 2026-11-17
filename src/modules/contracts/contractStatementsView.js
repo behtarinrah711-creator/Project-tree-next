@@ -14,7 +14,7 @@ import { ftAmountSummary, ftNumberRow, ftSelectRow } from './realContractFormMod
 import { openStaticChoicePicker } from './contractPickers.js';
 import { saveContractHandoff } from './contractHandoffApi.js';
 import { contractRowData, renderContractCardHeading } from './contractsModule.js';
-import { renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
+import { renderContractWorkflowPanel, renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
 import { renderContractHistory } from './contractHistoryView.js';
 import { openContractExport } from './contractExportView.js';
 import { openConfirm } from '../../ui/confirm.js';
@@ -255,6 +255,15 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
   sheet.classList.add('contract-addendum-form');
 }
 
+function statementPreviewContent(contract,record){
+  const title=statementTitle(record);
+    const documentNode=element('section','contract-export-document');
+    documentNode.dir='rtl';
+    documentNode.append(element('h2','',title),element('p','',contract.contractNo||''),element('p','',formatJalaliDisplay(record.date)||''),
+      operationSummary(record.operations||[]),table([['کارکرد این سند',money(record.statementAmount??record.stageAmount??0)],['کارکرد تجمعی',money(record.cumulativeAmount||0)],['حسن انجام کار',money(record.retentionAmount||0)],['کسر پیش‌پرداخت',money(record.advanceDeduction||0)],['خالص قابل پرداخت',money(record.netAmount??record.approvedAmount??record.stageAmount??0)],['پرداخت‌شده',money(record.paidAmount||0)]]));
+    return documentNode;
+  }
+
 function openStatement(project,contract,record,onChanged,{finance=false,approval}={}){
   let pending=false;
   const reopen=()=>{
@@ -273,6 +282,8 @@ function openStatement(project,contract,record,onChanged,{finance=false,approval
     body(root){
       root.classList.add('contract-status-sheet');
       const status=approvedStatement(record)?'تأیید مالی شده':record.accountingStatus==='sent'?'در انتظار تأیید مالی':record.status==='draft'?'برگشت برای اصلاح':record.approvalStatus==='pending'?'در انتظار تأیید':'در انتظار امضا یا ارسال به مالی';
+      root.append(button('پیش‌نمایش صورت‌وضعیت',trigger=>openContractPreview(project,contract,{trigger,documentPreview:{title:'پیش‌نمایش '+statementTitle(record),content:statementPreviewContent(contract,record)}})));
+      if(finance){
       root.append(table([
         ['شماره قرارداد',contract.contractNo||'—'],['مربوط به',record.addendumNo||'قرارداد اصلی'],['تاریخ',formatJalaliDisplay(record.date)||record.date||'—'],
         ['وضعیت',status],...(record.advanceDeduction?[['کسر بابت پیش‌پرداخت',money(record.advanceDeduction)]]:[]),['کارکرد این سند',money(record.stageAmount||0)],['کارکرد تجمعی',money(record.cumulativeAmount||0)],
@@ -285,6 +296,7 @@ function openStatement(project,contract,record,onChanged,{finance=false,approval
         const previous=statementsFor(project,contract.id).filter(item=>item.id!==record.id && (item.addendumId||null)===(record.addendumId||null) && (!item.statementType || item.statementType==='interim') && approvedStatement(item));
         if(previous.length)root.append(element('h3','','صورت‌وضعیت‌های موقت تأییدشده'),table(previous.map(item=>[statementTitle(item),money(item.approvedAmount??item.stageAmount??0)])));
       }
+      }else root.append(element('p','contract-meta','وضعیت: '+status));
       if(record.statementType)root.append(renderContractProgress(document,record,project),renderContractHistory(document,record,{finance}));
       if(record.note)root.append(element('p','',record.note));
       if(record.financeRejection?.reason)root.append(element('p','contract-rejection-reason',record.financeRejection.reason));
@@ -326,13 +338,7 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
   const writable=!approval && record.statementType && canWriteProjectModule(project.id,'contracts');
   const deletable=writable && canDeleteContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id]);
   const editable=record.status==='draft';
-  const buildDocument=()=>{
-    const documentNode=element('section','contract-export-document');
-    documentNode.dir='rtl';
-    documentNode.append(element('h2','',title),element('p','',contract.contractNo||''),element('p','',formatJalaliDisplay(record.date)||''),
-      operationSummary(record.operations||[]),table([['مبلغ سند',money(record.statementAmount??record.stageAmount??0)]]));
-    return documentNode;
-  };
+  const buildDocument=()=>statementPreviewContent(contract,record);
   const heading=renderContractCardHeading(project,contract,{
     onEdit:writable?()=>editable?openStatementForm(project,contract,onChanged,record):toast('صورت‌وضعیت در وضعیت فعلی قابل ویرایش نیست'):undefined,
     onExport:trigger=>{
@@ -353,7 +359,13 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
   main.children[1].textContent=[record.addendumNo,Number(record.statementAmount??record.stageAmount)?money(record.statementAmount??record.stageAmount):'',formatJalaliDisplay(record.date)].filter(Boolean).join(' | ');
 
   heading.children[2].hidden=true;
-  row.append(heading);
+  row.append(heading,renderContractWorkflowPanel(document,record,project,{onOpen:open,expanded:!!approval,heading}));
+  if(approval?.action && record.approvalStatus==='pending'){
+    const actions=element('div','contract-addendum-toolbar');
+    actions.append(button(approval.action.textContent,()=>approval.action.click()));
+    if(approval.reject)actions.append(renderInlineContractReject(approval.reject,onChanged));
+    row.append(actions);
+  }
   return row;
 }
 
@@ -368,3 +380,4 @@ export function renderAccountingStatements(body,projectId){
   }
   if(!body.children.length)body.append(element('p','contract-empty','صورت‌وضعیتی به مالی ارسال نشده است.'));
 }
+

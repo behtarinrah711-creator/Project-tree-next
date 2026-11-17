@@ -1,5 +1,6 @@
 import {progressCircle} from '../wbs/dailyExecutionReport.js';
 import {contractProgressSteps} from '../../domain/contractProgress.js';
+import {contractApprovalState} from '../../domain/contractApproval.js';
 export {contractProgressSteps};
 
 const progressRecords=new WeakMap();
@@ -32,7 +33,7 @@ export function renderContractProgressCircle(documentRef,contract,project,onClic
   return circle;
 }
 
-export function renderContractProgress(documentRef,contract,project){
+export function renderContractProgress(documentRef,contract,project,onOpen){
   const steps=contractProgressSteps(contract,project);
   const list=documentRef.createElement('ol');list.className='contract-progress';list.dir='rtl';
   list.setAttribute('aria-label',contract.statementType?'مراحل صورت‌وضعیت':contract.parentContractId?'مراحل الحاقیه':'مراحل قرارداد');
@@ -45,9 +46,48 @@ export function renderContractProgress(documentRef,contract,project){
     if(index===current)item.setAttribute('aria-current','step');
     const label=documentRef.createElement('span');label.className='contract-progress-label';label.textContent=step.label;
     const dot=documentRef.createElement('span');dot.className='contract-progress-dot';dot.setAttribute('aria-hidden','true');
-    item.append(label,dot);list.appendChild(item);
+    if(onOpen){
+      const button=documentRef.createElement('button');button.type='button';button.className='contract-stage-button';
+      button.setAttribute('aria-label',step.label+'؛ '+(step.rejected?'رد شده':step.done?'انجام شده':'انجام نشده')+'؛ جزئیات و اقدامات');
+      button.append(label,dot);button.onclick=event=>{event.stopPropagation();onOpen(event,step);};item.append(button);
+    }else item.append(label,dot);
+    list.appendChild(item);
   });
   if(project)progressRecords.set(list,{projectId:project.id,recordId:contract.id,kind:recordKind(contract)});
   list.onclick=event=>event.stopPropagation();
   return list;
+}
+
+
+// Cards and inbox documents share the same named workflow and status entry point.
+export function renderContractWorkflowPanel(documentRef,record,project,{onOpen,expanded=true,heading}={}){
+  const panel=documentRef.createElement('section');panel.className='contract-workflow-panel';
+  const toggle=documentRef.createElement('button');toggle.type='button';toggle.className='contract-workflow-toggle';
+  const body=documentRef.createElement('div');body.className='contract-workflow-body';
+  const steps=contractProgressSteps(record,project);
+  const next=steps.find(step=>!step.done);
+  const state=contractApprovalState(record);
+  const reason=record.accountingStatus==='rejected'?record.financeRejection?.reason:['incomplete','unapproved','returned'].includes(state)?record.approvalRejectionReason:null;
+  const rejected=record.accountingStatus==='rejected' || !!reason;
+  const status=record.accountingStatus==='rejected'?'برگشت از مالی':reason?'برگشت برای اصلاح':record.accountingStatus==='accepted'?'تکمیل و ثبت مالی شد':record.accountingStatus==='sent'?'در انتظار تأیید مالی':record.approvalStatus==='pending'?'در انتظار تأیید':next?'مرحلهٔ بعد: '+next.label:'تکمیل شد';
+  toggle.textContent=status;
+  if(rejected)panel.className+=' is-rejected';
+  toggle.setAttribute('aria-label',status+'؛ نمایش یا بستن مراحل');
+  const paint=()=>{body.hidden=!expanded;toggle.setAttribute('aria-expanded',String(expanded));};
+  toggle.onclick=event=>{event.stopPropagation();expanded=!expanded;paint();};
+  if(heading){
+    heading.onclick=()=>{expanded=!expanded;paint();};
+    const main=heading.children[0];
+    main.setAttribute('aria-label','نمایش یا بستن مراحل سند');
+    main.onkeydown=event=>{if(event.target && event.target!==main)return;if(event.key==='Enter' || event.key===' '){event.preventDefault();expanded=!expanded;paint();}};
+  }
+  const list=renderContractProgress(documentRef,record,project,onOpen);
+  body.append(list);
+  if(reason){const message=documentRef.createElement('p');message.className='contract-rejection-reason';message.textContent='دلیل برگشت: '+reason;body.append(message);}
+  if(next){
+    const action=documentRef.createElement('button');action.type='button';action.className='contract-workflow-next';
+    action.textContent=rejected?'اصلاح و ارسال مجدد':record.approvalStatus==='pending'?'مشاهده مسئولان تأیید':record.accountingStatus==='sent'?'مشاهده وضعیت مالی':'ادامهٔ '+next.label;
+    action.onclick=event=>{event.stopPropagation();onOpen?.(event,next);};body.append(action);
+  }
+  panel.append(toggle,body);paint();return panel;
 }

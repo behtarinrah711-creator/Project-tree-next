@@ -49,7 +49,7 @@ test('contract list removes the return action, shows a red reason and leaves res
   assert.equal(nodes.filter(n=>n.textContent==='اسناد (۰)').length,1);
   assert.ok(!nodes.some(n=>['الحاقیه‌ها (۰)','صورت‌وضعیت‌ها (۰)'].includes(n.textContent)));
   assert.ok(!nodes.some(n=>['ارسال برای تأیید','ارسال مجدد برای تأیید'].includes(n.textContent)));
-  assert.ok(!nodes.some(n=>n.className==='contract-rejection-reason'));
+  assert.ok(nodes.some(n=>n.className==='contract-rejection-reason' && n.textContent.includes('مبلغ باید اصلاح شود')));
   c={...c,title:'قرارداد اصلاح‌شده'};nodes=render();
   assert.ok(!nodes.some(n=>['ارسال برای تأیید','ارسال مجدد برای تأیید'].includes(n.textContent)));
  }finally{[globalThis.document,globalThis.window,projectRepository.getActiveProject,contractApi.listPage]=previous;}

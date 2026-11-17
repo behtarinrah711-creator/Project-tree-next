@@ -21,7 +21,7 @@ import { openContractExport } from './contractExportView.js';
 import { renderContractFinanceReview } from './contractFinanceReviewView.js';
 import { canCreateAddendumFromContract } from '../../domain/contractAddenda.js';
 import { renderContractHistory } from './contractHistoryView.js';
-import { renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
+import { renderContractWorkflowPanel, renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
 import { renderContractSignedSection } from './contractSignedView.js';
 import { openContractReasonSheet } from './contractReasonSheet.js';
 import { saveContractHandoff } from './contractHandoffApi.js';
@@ -222,12 +222,13 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
     catch(error){toast(error.message);return false;}finally{busy=false;}
   };
   const latestAddendum=()=>projectRepository.find(project.id)?.contractAddenda?.find(record=>record.id===addendum.id) || addendum;
-  const openProgress=event=>{
+  const openProgress=(event,step)=>{
     event?.stopPropagation();
     const record=latestAddendum();
     openWbsSheet({title:'وضعیت الحاقیه',showSave:false,reuseHistoryOnReplace:true,historyKey:'addendum-status:'+addendum.id,
       body(root){
         root.classList.add('contract-status-sheet');
+        if(step){const caption=document.createElement('h3');caption.textContent=step.label;root.append(caption);}
         if(approval)root.append(renderContractReviewRow(record,{
           ...(record.approvalStatus==='pending'?approval:{}),onRejected:()=>openProgress(),
         }),renderContractProgress(document,record,project),renderContractHistory(document,record,{finance}));
@@ -274,8 +275,11 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
     heading.children[2].hidden=true;
   }
   row.append(heading);
+  if(nested)row.append(renderContractWorkflowPanel(document,addendum,project,{onOpen:openProgress,expanded:!!approval,heading}));
   if(approval){
-    if(!nested)row.append(renderContractReviewRow(addendum,approval),renderContractProgress(document,addendum,project));
+    const action=approval.action && button(approval.action.textContent,()=>approval.action.click());
+    row.append(renderContractReviewRow(addendum,{...approval,action}));
+    if(!nested)row.append(renderContractProgress(document,addendum,project));
     return row;
   }
   function renderDetails(root,addendum){
@@ -423,3 +427,4 @@ export function renderContractAddenda(body,projectId,{finance=false,onChanged}={
   for(const record of [...records].sort((a,b)=>b.createdAt-a.createdAt))section.append(renderAddendumCard(project,record,refresh,finance));
   body.append(section);
 }
+

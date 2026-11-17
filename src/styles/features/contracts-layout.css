@@ -19,3 +19,34 @@
 .retention-basis-actions [data-cancel]{background:var(--divider,#eee);color:var(--text,#202124);}
 
 .contract-document-options .workspace-option{min-height:44px;padding-block:6px;}
+
+
+/* Shared contract and document cards, including the approval inbox. */
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row{display:block;border-color:#d6d9dd;background:#fff;min-width:0;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading{grid-template-columns:minmax(0,1fr) 34px;background:#fff;direction:rtl;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading > .contract-main{grid-area:1/1;text-align:right;min-width:0;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading > .contract-actions{grid-area:1/2;align-self:start;}
+.contract-row > .contract-card-heading > .today-progress-circle{display:none;}
+.contract-card-visible-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.contract-card-visible-actions .contract-review-action{min-height:44px;border:1px solid #d6d9dd;border-radius:6px;}
+.contract-workflow-panel{margin:0 0 10px;direction:rtl;}
+.contract-workflow-toggle,.contract-workflow-next{box-sizing:border-box;display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:44px;border:1px solid #d6d9dd;border-radius:6px;padding:8px;background:#f7f8fa;color:inherit;font:inherit;text-align:right;cursor:pointer;}
+.contract-workflow-toggle::after{content:'⌄';}
+.contract-workflow-toggle[aria-expanded=true]::after{content:'⌃';}
+.contract-workflow-panel.is-rejected .contract-workflow-toggle{color:#a02722;background:#fff1f0;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-workflow-panel .contract-progress{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;list-style:none;border:0;margin:8px 0;padding:0;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-workflow-panel .contract-progress-step{display:block;min-width:0;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-workflow-panel .contract-progress-step::after{display:none;}
+.contract-stage-button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;width:100%;min-height:68px;padding:6px 3px;border:1px solid #d6d9dd;border-radius:6px;background:#f7f8fa;color:inherit;font:inherit;cursor:pointer;}
+.contract-stage-button .contract-progress-label{font-size:12px;line-height:1.6;overflow-wrap:anywhere;}
+.contract-stage-button .contract-progress-dot{display:grid;place-items:center;width:16px;height:16px;border-radius:50%;background:#d6d9dd;}
+.contract-workflow-panel .is-complete .contract-stage-button{color:#166534;border-color:#afd2bd;background:#eff8f2;}
+.contract-workflow-panel .is-complete .contract-progress-dot::after{content:'✓';font-size:11px;color:#fff;}
+.contract-workflow-panel [aria-current=step] .contract-stage-button{border-color:#1565c0;color:#124d8f;background:#edf4ff;}
+.contract-workflow-panel .is-rejected .contract-stage-button{border-color:#bb3931;color:#a02722;background:#fff1f0;}
+.contract-workflow-panel .contract-rejection-reason{margin:8px 0;padding:8px;border-radius:6px;background:#fff1f0;overflow-wrap:anywhere;}
+.contract-workflow-next{background:#fff;color:#1565c0;font-size:12px;}
+.contract-workflow-body[hidden],.contract-addenda-children[hidden]{display:none;}
+.contract-addenda-children{min-width:0;}
+
+.contract-card-heading > .contract-card-visible-actions{grid-column:1 / -1;grid-row:auto;}

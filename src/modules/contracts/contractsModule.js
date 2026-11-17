@@ -6,7 +6,7 @@ import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { renderContractAddendaRow } from './contractAddendaView.js';
 import {renderContractFinanceReview} from './contractFinanceReviewView.js';
 import {renderContractSignedSection} from './contractSignedView.js';
-import { renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
+import { renderContractWorkflowPanel, renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
 import { renderContractHistory } from './contractHistoryView.js';
 import { approvalLabels, contractApprovalState, contractApproverIds, canCancelContractCompletion } from '../../domain/contractApproval.js';
 import { isContractSigned } from '../../domain/contractHandoff.js';
@@ -89,7 +89,7 @@ export function contractRowData(projectId,c){
   return {title,meta,number,created:contractCreatedParts(c.createdAt)};
 }
 
-export function renderContractCardHeading(project, contract, menu, {titlePrefix="",onPreview,progress}={}){
+export function renderContractCardHeading(project, contract, menu, {titlePrefix="",onPreview,onDocumentPreview,progress}={}){
   const {title,number,created}=contractRowData(project.id,contract);
   const path=contractProjectPath(project,contract);
   const displayTitle=contractDisplayTitle(project, contract);
@@ -105,12 +105,20 @@ export function renderContractCardHeading(project, contract, menu, {titlePrefix=
   }
   const actions=document.createElement('div'); actions.className='contract-actions';
   if(menu!==null)actions.appendChild(contractActionsMenu(menu));
+  const visibleActions=document.createElement('div');visibleActions.className='contract-card-visible-actions';
+  for(const [label,handler] of [['پیش‌نمایش',onDocumentPreview||onPreview],['ویرایش',menu?.onEdit],['حذف',menu?.onDelete]]){
+    if(!handler)continue;
+    const button=document.createElement('button');button.type='button';button.className='contract-review-action';button.textContent=label;
+    button.onclick=event=>{event.stopPropagation();handler(button);};visibleActions.append(button);
+  }
+
   if(onPreview){
     heading.onclick=()=>onPreview(main);
     actions.onclick=event=>event.stopPropagation();
     main.tabIndex=0;
     main.setAttribute('role','button');
     main.onkeydown=event=>{
+      if(event.target && event.target!==main)return;
       if(event.key!=='Enter' && event.key!==' ')return;
       event.preventDefault();
       onPreview(main);
@@ -130,7 +138,7 @@ export function renderContractCardHeading(project, contract, menu, {titlePrefix=
       }
       details.appendChild(stamp);
     }
-    heading.append(main,progress,details,actions);
+    heading.append(main,progress,details,actions,visibleActions);
     return heading;
   }
   if(pathRow)main.appendChild(pathRow);
@@ -139,9 +147,9 @@ export function renderContractCardHeading(project, contract, menu, {titlePrefix=
     const date=document.createElement('div'); date.className='contract-created-date'; date.textContent=created.date;
     const time=document.createElement('div'); time.className='contract-created-time'; time.textContent=created.time;
     createdBox.append(date,time);
-    heading.append(main,createdBox,actions);
+    heading.append(main,createdBox,actions,visibleActions);
   }else{
-    heading.append(main,actions);
+    heading.append(main,actions,visibleActions);
   }
   return heading;
 }
@@ -249,10 +257,10 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       const openPreview=()=>openContractPreview(p,finance?(c.accountingPackage?.contract||c):c,{trigger:heading.querySelector('.contract-main'),frozen:finance,signedFiles:finance?c.accountingPackage?.signedFiles:null});
       let statusSheetBody;
       let statusRecord=c;
-      const openStatus=event=>{
+      const openStatus=(event,step)=>{
         event?.stopPropagation();
         openStatusSheet({title:'وضعیت قرارداد',showSave:false,reuseHistoryOnReplace:true,historyKey:'contract-status:'+c.id,
-          body(root){root.classList.add('contract-status-sheet');statusSheetBody(root);root.appendChild(renderContractHistory(document,statusRecord,{finance}));}});
+          body(root){root.classList.add('contract-status-sheet');if(step){const caption=document.createElement('h3');caption.textContent=step.label;root.append(caption);}statusSheetBody(root);root.appendChild(renderContractHistory(document,statusRecord,{finance}));}});
       };
       const heading=renderContractCardHeading(p,c,{
         onEdit:approval || !writable?undefined:()=>{if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
@@ -267,9 +275,16 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
           onChanged();
           window.KarhaLegacy?.showToast?.(title+(c.contractNo?' به شماره '+c.contractNo:'')+' حذف شد.');
         },'بله',{cancelLabel:'خیر'}),
-      },{onPreview:showDetails && !finance && !approval ? trigger=>openContractDetails(p,c,trigger) : approval?preview:openPreview,progress:renderContractProgressCircle(document,c,p,openStatus)});
+      },{onPreview:showDetails && !finance && !approval ? trigger=>openContractDetails(p,c,trigger) : approval?preview:openPreview,onDocumentPreview:openPreview,progress:renderContractProgressCircle(document,c,p,openStatus)});
+      const history=document.createElement('button');history.type='button';history.className='contract-review-action';history.textContent='تاریخچه';
+      history.onclick=event=>{event.stopPropagation();openStatus(event);};
+      heading.querySelector?.('.contract-card-visible-actions')?.append(history);
       row.appendChild(heading);
+      row.append(renderContractWorkflowPanel(document,c,p,{onOpen:openStatus}));
       if(approval){
+        const reviewAction=approval.action && !approval.action.disabled && document.createElement('button');
+        if(reviewAction){reviewAction.type='button';reviewAction.className='contract-review-action';reviewAction.textContent=approval.action.textContent;reviewAction.onclick=event=>{event.stopPropagation();approval.action.click();};}
+        row.append(renderContractReviewRow(c,{...approval,action:reviewAction,onEdited:onChanged,onRejected:onChanged}));
         row.appendChild(renderContractDocuments(p,c,{reviewOnly:true,approvals:approvalDocuments}));
         statusSheetBody=root=>root.append(renderContractReviewRow(statusRecord,{
           ...(statusRecord===c?approval:approval.refresh?.(statusRecord)||{}),
@@ -307,7 +322,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
         const signedSection=renderContractSignedSection(p,statusRecord,{onChanged,onReturn:()=>{statusRecord=contractApi.get(id,c.id)||statusRecord;openStatus();}});
         if(signedSection)root.appendChild(signedSection);
       };
-      const documents=showDetails?renderContractDocuments(p,c):renderContractAddendaRow(p,c);
+      const documents=renderContractDocuments(p,c,{onChanged});
       if(documents)row.appendChild(documents);
       }else{
         row.appendChild(renderContractDocuments(p,c,{finance:true,onChanged}));
@@ -406,3 +421,4 @@ export const contractsModule={
 };
 
 export default contractsModule;
+
