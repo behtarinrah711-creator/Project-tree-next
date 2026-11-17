@@ -74,3 +74,24 @@ test('contract place uses project details and new contracts have no contractor',
  assert.equal(projectContractPlace({}),'');
  assert.equal(makeRealContractDraft().contractorId,'');
 });
+
+test('management template renders selected parties and the actual-cost fee in the document',async()=>{
+  const {ensureDefaultProjectCatalogue,MANAGEMENT_CONTRACT_TEMPLATE_ID}=await import('../../data/defaultProjectCatalogue.js');
+  const project=ensureDefaultProjectCatalogue({contacts:[
+    {id:'employer',firstName:'فرهاد',lastName:'کارفرما',nationalId:'1234567890',address:'نشانی کارفرما'},
+    {id:'manager',firstName:'سیامند',lastName:'احمدی',phone:'09121234567',address:'نشانی مدیر پیمان'},
+  ]});
+  const management=project.contractTemplates.find(item=>item.id===MANAGEMENT_CONTRACT_TEMPLATE_ID);
+  const draft=resolveContractDocumentDraft({
+    templateId:management.id,title:management.title,items:management.items,
+    employerId:'employer',contractorId:'manager',amount:'1000000',
+    operationRows:[{description:'گچ‌کاری'},{description:' <نقاشی> '},{description:' '}],
+  },project);
+  const html=contractDocumentMarkup(draft,'بازسازی',{displayTitle:'عنوان کارت'});
+  assert.match(html,/<div class="doc-title">قرارداد مدیریت پیمان<\/div>/);
+  assert.match(html,/فرهاد کارفرما.*نشانی کارفرما.*به‌عنوان کارفرما/);
+  assert.match(html,/سیامند احمدی.*09121234567.*نشانی مدیر پیمان.*به‌عنوان مدیر پیمان/);
+  assert.match(html,/۱۵ درصد مجموع همین هزینه‌ها/);
+  assert.match(html,/کارهای تحت مدیریت پیمان.*<li>گچ‌کاری<\/li><li>&lt;نقاشی&gt;<\/li><\/ol>/);
+  assert.doesNotMatch(html,/به مبلغ کل|بهای واحد/);
+});

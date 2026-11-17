@@ -22,7 +22,7 @@ test('existing project defaults preserve edits, trash and existing activity link
   ensureDefaultProjectCatalogue(p);
   assert.equal(p.activityTemplates.length,1);
   assert.equal(p.contractTemplates[0].activityId,undefined);
-  assert.equal(p.contractTemplates.length,2);
+  assert.equal(p.contractTemplates.length,3);
   p.contractTemplates[0].items[0].text='edited';
   p.contractTemplates[0].trashed=true;
   const once=JSON.stringify(p);

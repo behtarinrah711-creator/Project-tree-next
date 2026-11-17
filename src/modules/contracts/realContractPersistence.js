@@ -1,3 +1,4 @@
+import { MANAGEMENT_CONTRACT_TEMPLATE_ID } from '../../data/defaultProjectCatalogue.js';
 import { syncContractAmount, numericValue, ensureAgreedRows, hasPaymentRowData, isUnmeasuredRow } from './contractPricing.js';
 import { syncPaymentStages } from './paymentStagesModule.js';
 import { contractApi } from '../../domain/contractApi.js';
@@ -35,8 +36,13 @@ export function saveRealContract(projectId, draft, helpers={}){
   if(draft.endDate && draft.startDate && draft.endDate<draft.startDate){
     toast('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد');return {ok:false,incomplete:true};
   }
+  const isManagement=draft.templateId===MANAGEMENT_CONTRACT_TEMPLATE_ID;
   syncContractAmount(draft);
-  if(!allowEmpty && Array.isArray(draft.operationRows)){
+  if(isManagement && !allowEmpty && (!draft.operationRows?.length ||
+    draft.operationRows.some(row=>!String(row.description||'').trim()))){
+    toast('عنوان کارهای تحت مدیریت پیمان را وارد کنید');return {ok:false,incomplete:true};
+  }
+  if(!isManagement && !allowEmpty && Array.isArray(draft.operationRows)){
     if(!draft.operationRows.length || draft.operationRows.some(row=>
       !String(row.description||'').trim() ||
       (row.pricingMode==='quantity'
@@ -45,7 +51,7 @@ export function saveRealContract(projectId, draft, helpers={}){
       toast('شرح و بهای عملیات‌ها و در حالت مقداری، واحد و مقدار را کامل کنید');return {ok:false,incomplete:true};
     }
   }
-  if(!allowEmpty && !Array.isArray(draft.operationRows) && draft.amountMethod==='agreed'){
+  if(!isManagement && !allowEmpty && !Array.isArray(draft.operationRows) && draft.amountMethod==='agreed'){
     const rows=ensureAgreedRows(draft);
     if(!rows.length || rows.some(row=>!String(row.description||'').trim() || numericValue(row.agreedPrice)<=0)){
       toast('شرح عملیات و بهای توافقی عملیات‌ها را کامل کنید');return {ok:false,incomplete:true};
@@ -53,7 +59,7 @@ export function saveRealContract(projectId, draft, helpers={}){
   }
   syncContractAmount(draft);
   if(Array.isArray(draft.paymentRows))draft.paymentRows=draft.paymentRows.filter(hasPaymentRowData);
-  if(!allowEmpty && draft.paymentMethod==='quantity' && draft.paymentRows?.length){
+  if(!isManagement && !allowEmpty && draft.paymentMethod==='quantity' && draft.paymentRows?.length){
     const rows=draft.paymentRows;
     if(!Array.isArray(rows) || !rows.length || rows.some(row=>
       !String(row.description||'').trim() || (row.pricingMode==='agreed'
@@ -62,19 +68,19 @@ export function saveRealContract(projectId, draft, helpers={}){
       toast('شرح و بهای مراحل پرداخت و در حالت مقداری، واحد و مقدار را کامل کنید');return {ok:false,incomplete:true};
     }
   }
-  for(const rows of [!allowEmpty && !Array.isArray(draft.operationRows) && draft.amountMethod==='quantity'?draft.amountRows:null].filter(rows=>rows!==null)){
+  for(const rows of [!isManagement && !allowEmpty && !Array.isArray(draft.operationRows) && draft.amountMethod==='quantity'?draft.amountRows:null].filter(rows=>rows!==null)){
     if(!Array.isArray(rows) || !rows.length){toast('حداقل یک ردیف وارد کنید');return {ok:false,incomplete:true};}
     if(rows.some(row=>!String(row.description||'').trim() || !row.unit || (!isUnmeasuredRow(row,draft) && numericValue(row.quantity)<=0) || numericValue(row.unitPrice)<=0)){
       toast('شرح عملیات، واحد، مقدار و بهای واحد ردیف‌ها را کامل کنید');return {ok:false,incomplete:true};
     }
   }
-  if(!allowEmpty && !draft.remeasurement && (!String(draft.amount||'').trim()||Number(draft.amount)<=0)){
+  if(!isManagement && !allowEmpty && !draft.remeasurement && (!String(draft.amount||'').trim()||Number(draft.amount)<=0)){
     toast('مبلغ کل قرارداد را وارد کنید');return {ok:false,incomplete:true};
   }
-  if(Number(draft.retentionPercent)<0||Number(draft.retentionPercent)>100){
+  if(!isManagement && (Number(draft.retentionPercent)<0||Number(draft.retentionPercent)>100)){
     toast('درصد حسن انجام کار باید بین صفر تا صد باشد');return {ok:false,incomplete:true};
   }
-  if(Number(draft.retentionPercent)>0 && !draft.retentionDuration && !deferred('retentionDuration')){toast('مدت نگهداری حسن انجام کار را انتخاب کنید');return {ok:false,incomplete:true};}
+  if(!isManagement && Number(draft.retentionPercent)>0 && !draft.retentionDuration && !deferred('retentionDuration')){toast('مدت نگهداری حسن انجام کار را انتخاب کنید');return {ok:false,incomplete:true};}
 
   const s=JSON.parse(JSON.stringify(draft));
   if(Array.isArray(s.advanceRows))s.advanceRows=s.advanceRows.filter(hasPaymentRowData);
@@ -90,7 +96,14 @@ export function saveRealContract(projectId, draft, helpers={}){
   realContractDomain.renumberRealContractItems(s.items);
 
   const toEnglish=helpers.toEnglishDigits || (v=>String(v??''));
-  s.amount=s.remeasurement ? null : toEnglish(s.amount||'').replace(/[^\d]/g,'');
+  if(isManagement){
+    s.operationRows=(s.operationRows||[]).filter(row=>String(row.description||'').trim())
+      .map(({id,description})=>({id,description:description.trim()}));
+    s.retentionPercent='';
+    s.paymentRows=[];
+    s.paymentMethod='';
+  }
+  s.amount=isManagement || s.remeasurement ? null : toEnglish(s.amount||'').replace(/[^\d]/g,'');
   s.retentionPercent=toEnglish(s.retentionPercent||'').replace(/[^\d]/g,'');
   const finalRetention=(Number(s.amount)||0)*(Number(s.retentionPercent)||0)/100;
   s.retentionAmount=String(Math.round(finalRetention));

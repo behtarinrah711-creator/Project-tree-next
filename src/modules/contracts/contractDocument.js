@@ -1,3 +1,4 @@
+import { MANAGEMENT_CONTRACT_TEMPLATE_ID } from '../../data/defaultProjectCatalogue.js';
 import { rowAmount, syncContractAmount, numericValue, hasPaymentRowData, isUnmeasuredRow } from './contractPricing.js';
 import { calculatePaymentStages } from './paymentStagesModule.js';
 import { toPersianDigits } from '../../ui/digits.js';
@@ -51,6 +52,7 @@ export function addendumDocumentMarkup(addendum,parent){
 export function contractDocumentMarkup(state,activityName='',{highlightValues=false,displayTitle=''}={}){
   state={...state,...(Array.isArray(state.operationRows)?{operationRows:state.operationRows.map(row=>({...row}))}:{}),...(Array.isArray(state.amountRows)?{amountRows:state.amountRows.map(row=>({...row}))}:{})};
   syncContractAmount(state);
+  const isManagement=state.templateId===MANAGEMENT_CONTRACT_TEMPLATE_ID;
   const retentionAmount=(Number(state.amount)||0)*(Number(state.retentionPercent)||0)/100;
   const escape=esc;
   const highlight=html=>highlightValues ? '<span style="color:#1565c0">'+html+'</span>' : html;
@@ -71,6 +73,9 @@ export function contractDocumentMarkup(state,activityName='',{highlightValues=fa
     clausesHtml += '</div>';
   });
 
+  const scopeItems=isManagement ? (state.operationRows||[]).map(row=>String(row.description||'').trim()).filter(Boolean) : [];
+  const scopeHtml=scopeItems.length ? '<div class="doc-pricing"><b>کارهای تحت مدیریت پیمان</b><ol>'+
+    scopeItems.map(description=>'<li>'+escape(description)+'</li>').join('')+'</ol></div>' : '';
   const pricingHtml=Array.isArray(state.operationRows) ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.operationRows,true,state)+'</div>' : state.amountMethod==='quantity' ? '<div class="doc-pricing"><b>محاسبه مبلغ قرارداد</b>'+quantityTable(state.amountRows,true,state)+'</div>' : (state.amountMethod==='agreed' && Array.isArray(state.agreedRows) ? '<div class="doc-pricing"><b>محاسبه مبلغ کل قرارداد</b>'+agreedTable(state.agreedRows)+'</div>' : state.amountDescription?'<p>'+escape(state.amountDescription)+'</p>':'');
   const advances=(state.advanceRows||[]).filter(hasPaymentRowData);
   const advanceHtml=advances.length
@@ -142,22 +147,22 @@ export function contractDocumentMarkup(state,activityName='',{highlightValues=fa
       '<div class="contract-document-annex-subject">موضوع / فعالیت: '+detail(activityName)+'</div></div></header>'+
       '<div class="contract-document-photo-grid">'+photos+'</div></section>');
   }
-  const party=(name,father,nationalId,phone,isForeign)=>
+  const party=(name,father,nationalId,phone,isForeign,address)=>
     blank(name)+
     '، فرزندِ '+blank(father)+
     '، به '+(isForeign?'کد اختصاصی':'کد ملی')+' '+blank(nationalId)+
-    ' و شماره تماس '+blank(phone);
+    ' و شماره تماس '+blank(phone)+(isManagement && address ? '، به نشانی '+blank(address) : '');
   return documentMeta('قرارداد',state.contractNo,state.contractDate,{renderValue:blank})+
-    '<div class="doc-title">' + escape(displayTitle || state.title || 'قرارداد ' + activityName) + '</div>' +
+    '<div class="doc-title">' + escape((isManagement && state.title) || displayTitle || state.title || 'قرارداد ' + activityName) + '</div>' +
     '<p class="doc-parties doc-introduction">این قرارداد در ' + blank(state.contractPlace) +
-      ' فی‌مابین ' + party(state.employerName,state.employerFatherName,state.employerNationalId,state.employerPhone,state.employerIsForeign) +
-      ' به‌عنوان کارفرما و ' + party(state.contractorName,state.contractorFatherName,state.contractorNationalId,state.contractorPhone,state.contractorIsForeign) +
-      ' به‌عنوان پیمانکار در بخش ' + blank(state.projectItemPath) +
-      ' پروژه، ' + amountText + '، برای اجرا از تاریخ ' + startDate +
-      ' تا تاریخ ' + endDate + ' منعقد گردید.' + retentionText + ' طرفین متعهد به رعایت مفاد زیر هستند.' + (state.remeasurement ? ' مبلغ توافق شده جهت عملیات به شرح جدول زیر می باشد، بدیهی است مبلغ نهایی قرارداد در پایان عملیات پس از مشخص شدن مقدار هر عملیات مشخص می گردد.' : '') + '</p>' +
-    pricingHtml +
+      ' فی‌مابین ' + party(state.employerName,state.employerFatherName,state.employerNationalId,state.employerPhone,state.employerIsForeign,state.employerAddress) +
+      ' به‌عنوان کارفرما و ' + party(state.contractorName,state.contractorFatherName,state.contractorNationalId,state.contractorPhone,state.contractorIsForeign,state.contractorAddress) +
+      (isManagement ? ' به‌عنوان مدیر پیمان در بخش ' : ' به‌عنوان پیمانکار در بخش ') + blank(state.projectItemPath) +
+      ' پروژه، ' + (isManagement ? '' : amountText + '، ') + 'برای اجرا از تاریخ ' + startDate +
+      ' تا تاریخ ' + endDate + ' منعقد گردید.' + (isManagement ? '' : retentionText) + ' طرفین متعهد به رعایت مفاد زیر هستند.' + (!isManagement && state.remeasurement ? ' مبلغ توافق شده جهت عملیات به شرح جدول زیر می باشد، بدیهی است مبلغ نهایی قرارداد در پایان عملیات پس از مشخص شدن مقدار هر عملیات مشخص می گردد.' : '') + '</p>' +
+    (isManagement ? scopeHtml : pricingHtml) +
     (advanceHtml ? '<div class="doc-pricing"><b>مبلغ پیش‌پرداخت جهت شروع عملیات:</b>'+advanceHtml+'</div>' : '') +
     '<div class="doc-clauses">' + (clausesHtml || '<div class="doc-clause">........................................................</div>') + '</div>' +
-    (paymentHtml ? '<div class="doc-payment"><b>مراحل پرداخت</b>' + paymentHtml + '</div>' : '') +
+    (!isManagement && paymentHtml ? '<div class="doc-payment"><b>مراحل پرداخت</b>' + paymentHtml + '</div>' : '') +
     annexPages.join('');
 }
