@@ -1,3 +1,4 @@
+import { MANAGEMENT_CONTRACT_TEMPLATE_ID } from '../../data/defaultProjectCatalogue.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 
 export const amountMethods = [
@@ -38,6 +39,12 @@ export function hasUnmeasuredOperations(state){
   return Array.isArray(rows) ? rows.some(row=>isUnmeasuredRow(row,state)) : !!state.remeasurement;
 }
 export function syncContractAmount(state){
+  if(state.templateId===MANAGEMENT_CONTRACT_TEMPLATE_ID){
+    state.remeasurement=false;
+    state.knownAmount=null;
+    state.amount=null;
+    return null;
+  }
   const rows=state.operationRows ?? (state.amountMethod==='quantity'?state.amountRows:null);
   if(Array.isArray(rows)){
     rows.forEach(row=>{if(row.remeasurement==null)row.remeasurement=isUnmeasuredRow(row,state);});
@@ -58,7 +65,7 @@ export function makeQuantityRow(){
 }
 
 // Same row editor for pricing and payment quantities; arrays remain independent.
-export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,onDirty,operations=false,agreed=false,mixed=false,allowRemeasurement=true,highlightMissing=false,newPricingMode='quantity',advance=false,textRow}){
+export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,onDirty,operations=false,agreed=false,mixed=false,allowRemeasurement=true,highlightMissing=false,newPricingMode='quantity',advance=false,scopeOnly=false,textRow}){
   const money=value=>new Intl.NumberFormat('fa-IR').format(value)+' تومان';
   const list=document.createElement('div');
   list.className='contract-quantity-list';
@@ -68,7 +75,7 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
     const header=document.createElement('div');
     header.className='contract-quantity-heading';
     const label=document.createElement('span');
-    label.textContent=advance?'پیش‌پرداخت '+new Intl.NumberFormat('fa-IR').format(index+1):(operations?'عملیات ':'مرحله ')+new Intl.NumberFormat('fa-IR').format(index+1)+(operations?'':' پرداخت');
+    label.textContent=advance?'پیش‌پرداخت '+new Intl.NumberFormat('fa-IR').format(index+1):(scopeOnly?'کار ':operations?'عملیات ':'مرحله ')+new Intl.NumberFormat('fa-IR').format(index+1)+(operations?'':' پرداخت');
     const remove=document.createElement('button');
     remove.type='button';remove.textContent='حذف';remove.setAttribute('aria-label',(operations?'حذف عملیات ':'حذف ردیف ')+(index+1));
     remove.onclick=()=>{rows.splice(index,1);onChange();};
@@ -77,10 +84,10 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
     card.appendChild(header);
     const descLabel=document.createElement('label');
     descLabel.className='contract-quantity-description';
-    const title=document.createElement('span');title.textContent='شرح عملیات';
+    const title=document.createElement('span');title.textContent=scopeOnly?'عنوان کار':'شرح عملیات';
     const description=document.createElement('textarea');
     description.rows=2;description.value=row.description||'';
-    description.setAttribute('aria-label',(operations?'شرح عملیات ':'شرح عملیات ردیف ')+(index+1));
+    description.setAttribute('aria-label',(scopeOnly?'عنوان کار ':operations?'شرح عملیات ':'شرح عملیات ردیف ')+(index+1));
     // Mirror wraps in normal document flow, so all text stays visible without timers.
     const wrap=document.createElement('div');wrap.className='contract-growing-text';
     wrap.dataset.value=description.value+' ';
@@ -91,6 +98,8 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
     updateDescription();
     description.oninput=()=>{row.description=description.value;wrap.dataset.value=description.value+' ';updateDescription();onDirty();};
     wrap.appendChild(description);descLabel.append(title,wrap);card.appendChild(descLabel);
+    list.appendChild(card);
+    if(scopeOnly)return;
     if(mixed){
       const choices=document.createElement('div');
       choices.className='ft-row contract-operation-method';
@@ -128,9 +137,8 @@ export function renderQuantityRows(root,rows,{numberRow,selectRow,pick,onChange,
       card.appendChild(total);
     }
     if(advance)textRow(card,'موعد پرداخت',row.dueText||'',value=>{row.dueText=value;onDirty();});
-    list.appendChild(card);
   });
-  const add=document.createElement('button');add.type='button';add.className='ctf-add-material contract-quantity-add';add.textContent=advance?'+ افزودن پیش‌پرداخت':operations?'+ افزودن عملیات':'+ افزودن مرحله';
+  const add=document.createElement('button');add.type='button';add.className='ctf-add-material contract-quantity-add';add.textContent=scopeOnly?'+ افزودن کار':advance?'+ افزودن پیش‌پرداخت':operations?'+ افزودن عملیات':'+ افزودن مرحله';
   add.onclick=()=>{rows.push({...makeQuantityRow(),...(mixed?{pricingMode:newPricingMode,agreedPrice:''}:{})});onChange();};
   list.appendChild(add);
   root.appendChild(list);

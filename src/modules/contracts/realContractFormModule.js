@@ -1,3 +1,4 @@
+import { MANAGEMENT_CONTRACT_TEMPLATE_ID } from '../../data/defaultProjectCatalogue.js';
 import { confirmSaosaWorkspaceSave, isSaosaHost } from '../../cloud/saosaWorkspaceSync.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
@@ -539,55 +540,65 @@ function renderContractForm() {
     selectRow:ftSelectRow,pick:pickFixed,onDirty:()=>{dirty=true;},onChange:pickerChanged,
     numberRow:(parent,label,value,onChange,opts)=>ftNumberRow(parent,label,value,onChange,opts)
   });
+  const isManagement=state.templateId===MANAGEMENT_CONTRACT_TEMPLATE_ID;
   const operationRows=ensureOperationRows(state);
   syncContractAmount(state);
-  renderRows(form,operationRows,{operations:true,mixed:true,highlightMissing});
-  if(state.remeasurement)ftAmountSummary(form,'جمع ردیف‌های با مبلغ مشخص',state.knownAmount);
-  if(state.remeasurement)ftTextRow(form,'مبلغ کل قرارداد','پس از متره مشخص می‌شود',null,{readonly:true});
-  else ftAmountSummary(form,'مبلغ کل قرارداد',state.amount);
-  ftNumberRow(form, 'درصد حسن انجام کار', state.retentionPercent, value => {
-    const normalized = helper('toEnglishDigits', String(value)) ?? value;
-    state.retentionPercent = String(normalized).replace(/[^\d]/g, '');
-  }, { prefix: '٪', maxLen: 3, group: false, placeholder: 'وارد کنید' });
+  if(isManagement){
+    const scopeHeading=document.createElement('div');
+    scopeHeading.className='real-contract-section';
+    scopeHeading.textContent='کارهای تحت مدیریت پیمان';
+    form.appendChild(scopeHeading);
+    renderRows(form,operationRows,{operations:true,scopeOnly:true,highlightMissing});
+    ftTextRow(form,'مبلغ قرارداد','بر اساس هزینه‌های واقعی بعداً مشخص می‌شود',null,{readonly:true});
+  }else{
+    renderRows(form,operationRows,{operations:true,mixed:true,highlightMissing});
+    if(state.remeasurement)ftAmountSummary(form,'جمع ردیف‌های با مبلغ مشخص',state.knownAmount);
+    if(state.remeasurement)ftTextRow(form,'مبلغ کل قرارداد','پس از متره مشخص می‌شود',null,{readonly:true});
+    else ftAmountSummary(form,'مبلغ کل قرارداد',state.amount);
+    ftNumberRow(form, 'درصد حسن انجام کار', state.retentionPercent, value => {
+      const normalized = helper('toEnglishDigits', String(value)) ?? value;
+      state.retentionPercent = String(normalized).replace(/[^\d]/g, '');
+    }, { prefix: '٪', maxLen: 3, group: false, placeholder: 'وارد کنید' });
 
-  const retentionAmount = (Number(state.amount) || 0) * (Number(state.retentionPercent) || 0) / 100;
-  const netAmount = Math.max(0, (Number(state.amount) || 0) - retentionAmount);
-  state.retentionAmount = state.remeasurement ? null : String(Math.round(retentionAmount || 0));
-  state.amountAfterRetention = state.remeasurement ? null : String(Math.round(netAmount || 0));
-  if(state.remeasurement)ftTextRow(form,'مبلغ حسن انجام کار','بر اساس صورت‌وضعیت تأییدشده محاسبه می‌شود',null,{readonly:true});
-  else ftAmountSummary(form,'مبلغ حسن انجام کار',retentionAmount);
+    const retentionAmount = (Number(state.amount) || 0) * (Number(state.retentionPercent) || 0) / 100;
+    const netAmount = Math.max(0, (Number(state.amount) || 0) - retentionAmount);
+    state.retentionAmount = state.remeasurement ? null : String(Math.round(retentionAmount || 0));
+    state.amountAfterRetention = state.remeasurement ? null : String(Math.round(netAmount || 0));
+    if(state.remeasurement)ftTextRow(form,'مبلغ حسن انجام کار','بر اساس صورت‌وضعیت تأییدشده محاسبه می‌شود',null,{readonly:true});
+    else ftAmountSummary(form,'مبلغ حسن انجام کار',retentionAmount);
 
-  const durationOptions = ['یک هفته', 'دو هفته', 'سه هفته', 'چهار هفته', 'یک ماه', 'یک ماه و نیم', 'دو ماه', 'دو ماه و نیم', 'سه ماه', 'چهار ماه', 'پنج ماه', 'شش ماه']
-    .map(value => ({ value, label: value }));
-  const durationRow=ftSelectRow(form, 'مدت نگهداری حسن انجام کار', state.retentionDuration || '', () => {
-    contractPickers.openStaticChoicePicker('مدت نگهداری', 'مدت‌ها', durationOptions, state.retentionDuration, value => {
-      state.retentionDuration = value;
-      dirty = true;
-      renderContractForm();
+    const durationOptions = ['یک هفته', 'دو هفته', 'سه هفته', 'چهار هفته', 'یک ماه', 'یک ماه و نیم', 'دو ماه', 'دو ماه و نیم', 'سه ماه', 'چهار ماه', 'پنج ماه', 'شش ماه']
+      .map(value => ({ value, label: value }));
+    const durationRow=ftSelectRow(form, 'مدت نگهداری حسن انجام کار', state.retentionDuration || '', () => {
+      contractPickers.openStaticChoicePicker('مدت نگهداری', 'مدت‌ها', durationOptions, state.retentionDuration, value => {
+        state.retentionDuration = value;
+        dirty = true;
+        renderContractForm();
+      });
+    }, { placeholder: 'انتخاب' });
+
+    disableRetentionRow(durationRow);
+
+    const basisRow=ftSelectRow(form, 'مبنای شروع مدت نگهداری حسن انجام کار', state.retentionBasis || '', () => {
+      openRetentionBasisPicker(activeProjectId, state.retentionBasis, value => {
+        state.retentionBasis = value;
+        dirty = true;
+        renderContractForm();
+      });
+    }, { placeholder: 'انتخاب' });
+
+
+    disableRetentionRow(basisRow);
+    const methods = paymentStagesModule.retentionMethods.filter(method=>!state.remeasurement || method.value==='all');
+    if(state.remeasurement)state.retentionMethod='all';
+    const methodRow=ftSelectRow(form, 'نحوه کسر حسن انجام کار', methods.find(x=>x.value===(state.retentionMethod||'first')).label, () => {
+      contractPickers.openStaticChoicePicker('نحوه کسر حسن انجام کار', 'روش‌ها', methods, state.retentionMethod||'first', value => {
+        state.retentionMethod=value;
+        pickerChanged();
+      });
     });
-  }, { placeholder: 'انتخاب' });
-
-  disableRetentionRow(durationRow);
-
-  const basisRow=ftSelectRow(form, 'مبنای شروع مدت نگهداری حسن انجام کار', state.retentionBasis || '', () => {
-    openRetentionBasisPicker(activeProjectId, state.retentionBasis, value => {
-      state.retentionBasis = value;
-      dirty = true;
-      renderContractForm();
-    });
-  }, { placeholder: 'انتخاب' });
-
-
-  disableRetentionRow(basisRow);
-  const methods = paymentStagesModule.retentionMethods.filter(method=>!state.remeasurement || method.value==='all');
-  if(state.remeasurement)state.retentionMethod='all';
-  const methodRow=ftSelectRow(form, 'نحوه کسر حسن انجام کار', methods.find(x=>x.value===(state.retentionMethod||'first')).label, () => {
-    contractPickers.openStaticChoicePicker('نحوه کسر حسن انجام کار', 'روش‌ها', methods, state.retentionMethod||'first', value => {
-      state.retentionMethod=value;
-      pickerChanged();
-    });
-  });
-  disableRetentionRow(methodRow);
+    disableRetentionRow(methodRow);
+  }
   const advanceHeading=document.createElement('div');
   advanceHeading.className='real-contract-section';
   advanceHeading.textContent='پیش‌پرداخت (اختیاری)';
@@ -597,20 +608,22 @@ function renderContractForm() {
     mixed:true,advance:true,newPricingMode:'agreed',highlightMissing,textRow:ftTextRow,
   });
 
-  const heading=document.createElement('div');heading.className='real-contract-section';heading.textContent='مراحل پرداخت (اختیاری)';
-  body.appendChild(heading);
-  const paymentForm=ftCreateRoot(body);
-  const paymentRows=paymentStagesModule.ensurePaymentRows(state);
-  renderRows(paymentForm,paymentRows,{mixed:true,highlightMissing});
-  if(!state.remeasurement){
-  const paymentSummary=paymentStagesModule.paymentBalanceSummary(state);
-  ftAmountSummary(paymentForm,'مبلغ قرارداد پس از کسر حسن انجام کار',paymentSummary.netAmount);
-  paymentSummary.payments.forEach(payment=>{
-    const number=helper('toPersianDigits',String(payment.number)) ?? payment.number;
-    ftAmountSummary(paymentForm,'مرحله '+number+' پرداخت',payment.amount);
-  });
-  ftAmountSummary(paymentForm,'مانده مبلغ قرارداد',paymentSummary.remaining).classList.add('contract-payment-balance');
+  if(!isManagement){
+    const heading=document.createElement('div');heading.className='real-contract-section';heading.textContent='مراحل پرداخت (اختیاری)';
+    body.appendChild(heading);
+    const paymentForm=ftCreateRoot(body);
+    const paymentRows=paymentStagesModule.ensurePaymentRows(state);
+    renderRows(paymentForm,paymentRows,{mixed:true,highlightMissing});
+    if(!state.remeasurement){
+    const paymentSummary=paymentStagesModule.paymentBalanceSummary(state);
+    ftAmountSummary(paymentForm,'مبلغ قرارداد پس از کسر حسن انجام کار',paymentSummary.netAmount);
+    paymentSummary.payments.forEach(payment=>{
+      const number=helper('toPersianDigits',String(payment.number)) ?? payment.number;
+      ftAmountSummary(paymentForm,'مرحله '+number+' پرداخت',payment.amount);
+    });
+    ftAmountSummary(paymentForm,'مانده مبلغ قرارداد',paymentSummary.remaining).classList.add('contract-payment-balance');
 
+    }
   }
 
   const clausesHeading = document.createElement('div');
@@ -781,8 +794,9 @@ export const realContractFormModule = {
           return section ? section.textContent+' — '+label : label;
         })
       : manualFields.map(([,label])=>label);
-    if(!state.operationRows?.length)labels.push('ردیف عملیات');
-    if(retentionEmpty){
+    const isManagement=state.templateId===MANAGEMENT_CONTRACT_TEMPLATE_ID;
+    if(!state.operationRows?.length)labels.push(isManagement?'کارهای تحت مدیریت پیمان':'ردیف عملیات');
+    if(!isManagement && retentionEmpty){
       for(const label of ['درصد حسن انجام کار','مدت نگهداری حسن انجام کار','مبنای شروع مدت نگهداری حسن انجام کار','نحوه کسر حسن انجام کار']){
         if(!labels.includes(label))labels.push(label);
       }
