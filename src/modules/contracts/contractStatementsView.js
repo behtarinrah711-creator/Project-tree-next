@@ -14,7 +14,7 @@ import { ftAmountSummary, ftNumberRow, ftSelectRow } from './realContractFormMod
 import { openStaticChoicePicker } from './contractPickers.js';
 import { saveContractHandoff } from './contractHandoffApi.js';
 import { contractRowData, renderContractCardHeading } from './contractsModule.js';
-import { renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
+import { renderContractWorkflowPanel, renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
 import { renderContractHistory } from './contractHistoryView.js';
 import { openContractExport } from './contractExportView.js';
 import { openConfirm } from '../../ui/confirm.js';
@@ -330,7 +330,7 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
     const documentNode=element('section','contract-export-document');
     documentNode.dir='rtl';
     documentNode.append(element('h2','',title),element('p','',contract.contractNo||''),element('p','',formatJalaliDisplay(record.date)||''),
-      operationSummary(record.operations||[]),table([['مبلغ سند',money(record.statementAmount??record.stageAmount??0)]]));
+      operationSummary(record.operations||[]),table([['کارکرد این سند',money(record.statementAmount??record.stageAmount??0)],['کارکرد تجمعی',money(record.cumulativeAmount||0)],['حسن انجام کار',money(record.retentionAmount||0)],['کسر پیش‌پرداخت',money(record.advanceDeduction||0)],['خالص قابل پرداخت',money(record.netAmount??record.approvedAmount??record.stageAmount??0)],['پرداخت‌شده',money(record.paidAmount||0)]]));
     return documentNode;
   };
   const heading=renderContractCardHeading(project,contract,{
@@ -353,7 +353,13 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
   main.children[1].textContent=[record.addendumNo,Number(record.statementAmount??record.stageAmount)?money(record.statementAmount??record.stageAmount):'',formatJalaliDisplay(record.date)].filter(Boolean).join(' | ');
 
   heading.children[2].hidden=true;
-  row.append(heading);
+  row.append(heading,renderContractWorkflowPanel(document,record,project,{onOpen:open,expanded:!!approval,heading}));
+  if(approval?.action && record.approvalStatus==='pending'){
+    const actions=element('div','contract-addendum-toolbar');
+    actions.append(button(approval.action.textContent,()=>approval.action.click()));
+    if(approval.reject)actions.append(renderInlineContractReject(approval.reject,onChanged));
+    row.append(actions);
+  }
   return row;
 }
 
@@ -368,3 +374,4 @@ export function renderAccountingStatements(body,projectId){
   }
   if(!body.children.length)body.append(element('p','contract-empty','صورت‌وضعیتی به مالی ارسال نشده است.'));
 }
+
