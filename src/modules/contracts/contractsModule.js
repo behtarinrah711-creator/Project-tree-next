@@ -111,7 +111,7 @@ export function renderContractCardHeading(project, contract, menu, {titlePrefix=
     const button=document.createElement('button');button.type='button';button.className='contract-review-action';button.textContent=label;
     button.onclick=event=>{event.stopPropagation();handler(button);};visibleActions.append(button);
   }
-  main.append(visibleActions);
+
   if(onPreview){
     heading.onclick=()=>onPreview(main);
     actions.onclick=event=>event.stopPropagation();
@@ -138,7 +138,7 @@ export function renderContractCardHeading(project, contract, menu, {titlePrefix=
       }
       details.appendChild(stamp);
     }
-    heading.append(main,progress,details,actions);
+    heading.append(main,progress,details,actions,visibleActions);
     return heading;
   }
   if(pathRow)main.appendChild(pathRow);
@@ -147,9 +147,9 @@ export function renderContractCardHeading(project, contract, menu, {titlePrefix=
     const date=document.createElement('div'); date.className='contract-created-date'; date.textContent=created.date;
     const time=document.createElement('div'); time.className='contract-created-time'; time.textContent=created.time;
     createdBox.append(date,time);
-    heading.append(main,createdBox,actions);
+    heading.append(main,createdBox,actions,visibleActions);
   }else{
-    heading.append(main,actions);
+    heading.append(main,actions,visibleActions);
   }
   return heading;
 }
@@ -282,7 +282,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       row.appendChild(heading);
       row.append(renderContractWorkflowPanel(document,c,p,{onOpen:openStatus}));
       if(approval){
-        const reviewAction=approval.action && document.createElement('button');
+        const reviewAction=approval.action && !approval.action.disabled && document.createElement('button');
         if(reviewAction){reviewAction.type='button';reviewAction.className='contract-review-action';reviewAction.textContent=approval.action.textContent;reviewAction.onclick=event=>{event.stopPropagation();approval.action.click();};}
         row.append(renderContractReviewRow(c,{...approval,action:reviewAction,onEdited:onChanged,onRejected:onChanged}));
         row.appendChild(renderContractDocuments(p,c,{reviewOnly:true,approvals:approvalDocuments}));
