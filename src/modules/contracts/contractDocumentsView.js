@@ -18,7 +18,7 @@ function button(label,classes,action){
 export function renderContractDocuments(project,contract,{onChanged=()=>{},reviewOnly=false,finance=false,approvals=new Map()}={}){
   const row=document.createElement('section');row.className='contract-addenda-row';
   const toolbar=document.createElement('div');toolbar.className='contract-addenda-row-toolbar';
-  const list=document.createElement('div');list.className='contract-addenda-children';list.hidden=finance?!((project.contractAddenda||[]).some(item=>String(item.parentContractId)===String(contract.id) && item.accountingStatus==='sent' && isAddendumVisibleInFinance(item))):!approvals.size;
+  const list=document.createElement('div');list.className='contract-addenda-children';list.hidden=false;
   const current=()=>projectRepository.find(project.id)||project;
   const toggle=button('','contract-addenda-toggle',()=>{list.hidden=!list.hidden;paint(current());});
   const changed=()=>{if(row.isConnected)paint(current());onChanged();};
@@ -26,7 +26,7 @@ export function renderContractDocuments(project,contract,{onChanged=()=>{},revie
   function paint(source){
     const addenda=(source.contractAddenda||[]).filter(item=>!item.trashed && (!finance || isAddendumVisibleInFinance(item)) && String(item.parentContractId)===String(contract.id));
     const statements=finance?[]:statementsFor(source,contract.id);
-    toggle.textContent='اسناد ('+number.format(addenda.length+statements.length)+')';
+    toggle.textContent='اسناد قرارداد ('+number.format(addenda.length+statements.length)+') '+(list.hidden?'⌄':'⌃');
     toggle.setAttribute('aria-expanded',String(!list.hidden));
     if(list.hidden)return;
     const groups=[
@@ -71,3 +71,4 @@ export function renderContractDocuments(project,contract,{onChanged=()=>{},revie
   paint(project);
   return row;
 }
+
