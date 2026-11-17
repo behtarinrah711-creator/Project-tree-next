@@ -82,7 +82,7 @@ test('signed upload opens one sheet with the uploader and no return or status co
  try{
    openContractSignedUpload(project,{id:'c',status:'final',approvalStatus:'approved'},{openSheet,mountUploader});
    assert.equal(opened,1);assert.equal(options.showSave,true);
-   assert.equal(options.title,'نسخه امضاشده قرارداد');
+   assert.equal(options.title,'بارگذاری نسخه امضاشده قرارداد');
    assert.deepEqual(root.children.map(node=>node.tag),['uploader']);
    assert.equal(uploadOptions.readOnly,false);
    assert.equal(options.onSave(),false);

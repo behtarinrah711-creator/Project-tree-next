@@ -34,7 +34,7 @@ test('finance contracts use the report card header with only financial decision 
     assert.deepEqual(main.children.map(n=>n.textContent),['قرارداد پیمانکاری جواد قریشی | بستن میلگرد ستون','CTR-1']);
     assert.ok(progress.className.split(' ').includes('today-progress-circle'));
     assert.equal(details.className,'contract-heading-details');
-    assert.equal(details.children[0].textContent,'سوله موجود ← اجرای ستون‌ها ← بستن میلگرد ستون');
+    assert.equal(details.children[0].textContent,'سوله موجود ← اجرای ستون‌ها');
     const {time,date}=contractCreatedParts(c.createdAt);
     assert.equal(details.children[1].dir,'rtl');
     assert.deepEqual(details.children[1].children.map(part=>part.textContent),[time,'|',date]);
@@ -43,7 +43,7 @@ test('finance contracts use the report card header with only financial decision 
     for(const name of ['contract-card-heading']){
       assert.deepEqual(shape({...finance.children.find(n=>n.className===name),children:finance.children.find(n=>n.className===name).children.filter(n=>n.className!=='contract-card-visible-actions')}),shape({...report.children.find(n=>n.className===name),children:report.children.find(n=>n.className===name).children.filter(n=>n.className!=='contract-card-visible-actions')}));
     }
-    assert.deepEqual(finance.children[0].children.find(n=>n.className==='contract-card-visible-actions').children.map(n=>n.textContent),['پیش‌نمایش','تاریخچه']);
+    assert.deepEqual(finance.children[0].children.find(n=>n.className==='contract-card-visible-actions').children.filter(n=>n.className==='contract-review-action').map(n=>n.textContent),['پیش‌نمایش قرارداد','تاریخچه']);
     assert.equal(finance.children.some(n=>n.className==='contract-progress' || n.className==='contract-workflow-row' || n.className==='contract-signed-section'),false);
     const actions=statusSheet(c,true).children.find(n=>n.className.includes('contract-finance-actions')).children.map(n=>n.textContent);
     assert.deepEqual(actions,['تأیید قرارداد','رد قرارداد']);
@@ -52,7 +52,7 @@ test('finance contracts use the report card header with only financial decision 
     const historyAction=historyCard.children[0].children.find(n=>n.className==='contract-card-visible-actions').children.find(n=>n.textContent==='تاریخچه');
     historyAction.onclick({stopPropagation(){}});
     const history=historyRoot.children[0];assert.equal(historyRoot.children.length,1);assert.equal(history.className,'contract-history');assert.equal(history.children.filter(n=>n.className==='contract-history-entry').length,1);
-    const menuWrap=finance.children[0].children.find(n=>n.className==='contract-actions').children[0];
+    const menuWrap=finance.children[0].children.find(n=>n.className==='contract-card-visible-actions').children.at(-1);
     menuWrap.children[0].onclick({stopPropagation(){}});
     assert.deepEqual(menuWrap.children.find(n=>n.className==='nb-project-menu').children.map(n=>n.title),['خروجی']);
     const accepted={...c,accountingStatus:'accepted',accountingDecision:{actor:{id:'guest'}}};
