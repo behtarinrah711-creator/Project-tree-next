@@ -46,3 +46,23 @@ test('rejected contracts use the red ring until completion is declared again',()
  assert.match(ring({...draft,accountingStatus:'rejected'}),/rejected/);
  assert.doesNotMatch(ring({...draft,status:'final',isDraft:false,accountingStatus:'rejected'}),/rejected/);
 });
+
+
+test('document workflow discloses named stages and preserves stage action ownership',async()=>{
+ const {renderContractWorkflowPanel}=await import('./contractProgressView.js');
+ const make=tag=>({tag,className:'',attrs:{},dataset:{},children:[],setAttribute(k,v){this.attrs[k]=v;},append(...nodes){this.children.push(...nodes);},appendChild(node){this.children.push(node);}});
+ const record={id:'s',statementType:'interim',status:'final',approvalStatus:'pending',contractApproverContactIds:['r']};
+ let selected;
+ const panel=renderContractWorkflowPanel({createElement:make},record,{id:'p'},{expanded:true,onOpen:(event,step)=>{selected=step.id;}});
+ const [toggle,body]=panel.children;
+ assert.equal(toggle.textContent,'در انتظار تأیید');
+ assert.equal(body.hidden,false);
+ const approval=body.children[0].children.find(item=>item.dataset.step==='approved');
+ approval.children[0].onclick({stopPropagation(){}});
+ assert.equal(selected,'approved');
+ toggle.onclick({stopPropagation(){}});assert.equal(body.hidden,true);
+ toggle.onclick({stopPropagation(){}});assert.equal(body.hidden,false);
+ const returned=renderContractWorkflowPanel({createElement:make},{...record,accountingStatus:'rejected',financeRejection:{reason:'نسخه ناقص'}},{id:'p'},{onOpen(){}});
+ assert.match(returned.children[1].children[1].textContent,/نسخه ناقص/);
+ assert.equal(returned.children[1].children[2].textContent,'اصلاح و ارسال مجدد');
+});
