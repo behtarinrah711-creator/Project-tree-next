@@ -73,3 +73,12 @@
 .contract-card-visible-actions .contract-tool-icon{display:inline-flex;order:-1;flex:none;width:16px;height:16px;}
 .contract-tool-icon svg{display:block;width:16px;height:16px;fill:currentColor;}
 .contract-card-visible-actions > .contract-menu-wrap{margin-inline-start:auto;}
+
+/* Full-width heading; number and registration time share the second row. */
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading{grid-template-columns:minmax(0,1fr) minmax(0,1fr);}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading > :is(.contract-main,.contract-heading-details){display:contents;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading .contract-title{grid-area:1/1/2/-1;text-align:right;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading .contract-number{grid-area:2/1;text-align:right;min-width:0;overflow-wrap:anywhere;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading :is(.contract-heading-stamp,.contract-created){grid-area:2/2;display:flex;flex-direction:row;justify-content:flex-end;align-items:center;gap:4px;margin:2px 0;text-align:left;white-space:normal;flex-wrap:wrap;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading .contract-project-path{grid-area:3/1/4/-1;text-align:right;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading > .contract-card-visible-actions{grid-area:4/1/5/-1;}
