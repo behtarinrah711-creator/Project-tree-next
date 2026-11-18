@@ -43,7 +43,7 @@ test('finance contracts use the report card header with only financial decision 
     for(const name of ['contract-card-heading']){
       assert.deepEqual(shape({...finance.children.find(n=>n.className===name),children:finance.children.find(n=>n.className===name).children.filter(n=>n.className!=='contract-card-visible-actions')}),shape({...report.children.find(n=>n.className===name),children:report.children.find(n=>n.className===name).children.filter(n=>n.className!=='contract-card-visible-actions')}));
     }
-    assert.deepEqual(finance.children[0].children.find(n=>n.className==='contract-card-visible-actions').children.filter(n=>n.className==='contract-review-action').map(n=>n.textContent),['پیش‌نمایش','تاریخچه']);
+    assert.deepEqual(finance.children[0].children.find(n=>n.className==='contract-card-visible-actions').children.filter(n=>n.className==='contract-review-action').map(n=>n.textContent),['پیش‌نمایش','خلاصه مالی','تاریخچه']);
     assert.equal(finance.children.some(n=>n.className==='contract-progress' || n.className==='contract-workflow-row' || n.className==='contract-signed-section'),false);
     const actions=statusSheet(c,true).children.find(n=>n.className.includes('contract-finance-actions')).children.map(n=>n.textContent);
     assert.deepEqual(actions,['تأیید قرارداد','رد قرارداد']);

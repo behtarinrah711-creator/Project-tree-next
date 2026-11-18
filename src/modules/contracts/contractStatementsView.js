@@ -59,12 +59,20 @@ function table(rows){
 
 export function renderContractFinancialSummary(project,contract){
   const totals=contractStatementTotals(project,contract,{combined:true});
-  return table([
+  const summary=element('div','contract-financial-groups');
+  function group(title,rows){
+    const card=element('section','contract-financial-group');
+    card.append(element('h3','',title),table(rows));
+    summary.append(card);
+  }
+  group('خلاصه مالی',[
+    ['مبلغ به‌روز قرارداد',money(totals.total)],
     ['مبلغ اولیه قرارداد',money(totals.original)],
     ['جمع الحاقیه‌های نهایی‌شده',money(totals.adjustments)],
-    ['مبلغ به‌روز قرارداد',money(totals.total)],
     ['حسن انجام کار کل با احتساب الحاقیه‌ها',money(totals.estimatedRetention)],
     ['خالص کل در صورت تکمیل',money(totals.total===null?null:totals.total-totals.estimatedRetention)],
+  ]);
+  group('صورت‌وضعیت‌ها و پرداخت‌ها',[
     ['کارکرد تأییدشده',money(totals.gross)],
     ['مانده حسن انجام کار',money(totals.retained)],
     ['حسن انجام کار آزادشده',money(totals.released)],
@@ -72,6 +80,7 @@ export function renderContractFinancialSummary(project,contract){
     ['مانده برای صورت‌وضعیت',money(totals.remaining)],
     ['مانده پرداخت پیمانکار',money(totals.payable)],
   ]);
+  return summary;
 }
 
 function input(label,type,value=''){

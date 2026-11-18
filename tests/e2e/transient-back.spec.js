@@ -32,7 +32,7 @@ async function openContractsList(page, project = baseProject){
 
 async function previewThenEdit(page, contractRow, title){
   await contractRow.locator('.contract-main').click();
-  const details = page.locator('.workspace-page').filter({ has: page.getByRole('heading', { name: 'جزئیات قرارداد', exact: true }) });
+  const details = page.locator('.workspace-page').filter({ has: page.getByRole('heading', { level: 2, name: 'خلاصه مالی', exact: true }) });
   await expect(details).toBeVisible();
   await details.getByRole('button', { name: 'بازگشت', exact: true }).click();
   await expect(details).toBeHidden();
