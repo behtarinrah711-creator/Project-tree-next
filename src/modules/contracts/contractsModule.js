@@ -108,7 +108,7 @@ export function renderContractCardHeading(project, contract, menu, {titlePrefix=
   const actions=document.createElement('div'); actions.className='contract-actions';
 
   const visibleActions=document.createElement('div');visibleActions.className='contract-card-visible-actions';
-  for(const [label,handler,iconName] of [['پیش‌نمایش قرارداد',onDocumentPreview||onPreview,'visibility'],['تاریخچه',onHistory,'history'],['ویرایش',menu?.onEdit,'edit_square']]){
+  for(const [label,handler,iconName] of [['پیش‌نمایش',onDocumentPreview||onPreview,'visibility'],['تاریخچه',onHistory,'history'],['ویرایش',menu?.onEdit,'edit_square']]){
     if(!handler)continue;
     const button=document.createElement('button');button.type='button';button.className='contract-review-action';button.textContent=label;
     const icon=document.createElement('span');icon.className='contract-tool-icon';icon.setAttribute('aria-hidden','true');icon.innerHTML=contractToolbarIcons[iconName];button.appendChild(icon);

@@ -1,7 +1,5 @@
 import {projectRepository} from '../../data/projectRepository.js';
 import {renderContractDocuments} from './contractDocumentsView.js';
-import {openContractPreview} from './contractPreviewView.js';
-import {renderContractSignedSection} from './contractSignedView.js';
 import {renderContractFinancialSummary} from './contractStatementsView.js';
 import {contractDisplayTitle} from './contractTitle.js';
 
@@ -26,13 +24,8 @@ export function openContractDetails(project,contract,trigger){
     const current=(source.contracts||[]).find(item=>!item.trashed && String(item.id)===String(contract.id))||contract;
     const title=document.createElement('h3');title.textContent=contractDisplayTitle(project,current);
     const number=document.createElement('p');number.textContent=current.contractNo||'';
-    const preview=document.createElement('button');preview.type='button';preview.className='contract-review-action';
-    preview.textContent='پیش‌نمایش قرارداد';
-    preview.onclick=()=>openContractPreview(source,current,{trigger:preview});
     const summary=document.createElement('h3');summary.textContent='خلاصه مالی';
-    body.replaceChildren(title,number,preview);
-    const signed=renderContractSignedSection(source,current,{onChanged:paint});
-    if(signed)body.append(signed);
+    body.replaceChildren(title,number);
     body.append(summary,renderContractFinancialSummary(source,current));
     const section=documents||renderContractDocuments(source,current,{onChanged:()=>paint(section)});
     body.append(section);

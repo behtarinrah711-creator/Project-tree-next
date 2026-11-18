@@ -34,7 +34,9 @@ async function previewThenEdit(page, contractRow, title){
   await contractRow.locator('.contract-main').click();
   const details = page.locator('.workspace-page').filter({ has: page.getByRole('heading', { name: 'جزئیات قرارداد', exact: true }) });
   await expect(details).toBeVisible();
-  await details.getByRole('button', { name: 'پیش‌نمایش قرارداد', exact: true }).click();
+  await details.getByRole('button', { name: 'بازگشت', exact: true }).click();
+  await expect(details).toBeHidden();
+  await contractRow.getByRole('button', { name: 'پیش‌نمایش', exact: true }).click();
   const preview = page.locator('#contractPreviewPage');
   await expect(preview).toBeVisible();
   await expect(preview.locator('h2')).toHaveText('پیش‌نمایش '+title);
@@ -42,9 +44,7 @@ async function previewThenEdit(page, contractRow, title){
   await expect(preview.locator('input, textarea, [contenteditable="true"]')).toHaveCount(0);
   await preview.getByRole('button', { name: 'بازگشت', exact: true }).click();
   await expect(preview).toBeHidden();
-  await expect(details).toBeVisible();
-  await details.getByRole('button', { name: 'بازگشت', exact: true }).click();
-  await expect(details).toBeHidden();
+
   await contractRow.getByRole('button', { name: 'ویرایش', exact: true }).click();
 }
 
