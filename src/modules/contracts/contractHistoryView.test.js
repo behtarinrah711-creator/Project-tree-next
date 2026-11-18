@@ -42,3 +42,20 @@ test('legacy addendum history shows its own known times and financial decisions 
  const financial=renderContractHistory(documentRef,addendum,{finance:true});
  assert.equal(financial.children.length,2);
 });
+
+test('compact history keeps event, actor and Persian date/time in separate rows',()=>{
+ const event={action:'approve',at:Date.UTC(2026,10,17,13,46),actor:{name:'سروش یوسفی'},reason:'<script>توضیح</script>'};
+ const view=renderContractHistory(documentRef,{approvalHistory:[event]},{compact:true});
+ const row=view.children[1],heading=row.children[0];
+ assert.equal(row.className,'contract-history-entry');
+ assert.deepEqual(heading.children.slice(0,2).map(node=>node.textContent),['تأیید شد','سروش یوسفی']);
+ assert.equal(heading.children[0].className,'contract-history-event');
+ assert.equal(heading.children[1].className,'contract-history-actor');
+ const [date,time]=heading.children[2].children;
+ assert.match(date.textContent,/[۰-۹]/);assert.match(time.textContent,/^[۰-۹]{2}:[۰-۹]{2}$/);
+ assert.equal(time.dir,'ltr');
+ assert.equal(row.children[1].textContent,event.reason);
+ const legacy=renderContractHistory(documentRef,{approvalHistory:[{action:'create',at:'invalid'}]},{compact:true});
+ assert.equal(legacy.children[1].children[0].children[1].textContent,'کاربر');
+ assert.equal(legacy.children[1].children[0].children[2].children[0].textContent,'زمان نامشخص');
+});

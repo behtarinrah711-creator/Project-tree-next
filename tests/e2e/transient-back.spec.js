@@ -45,8 +45,7 @@ async function previewThenEdit(page, contractRow, title){
   await expect(details).toBeVisible();
   await details.getByRole('button', { name: 'بازگشت', exact: true }).click();
   await expect(details).toBeHidden();
-  await contractRow.getByRole('button', { name: 'عملیات قرارداد', exact: true }).click();
-  await contractRow.getByRole('menuitem', { name: 'ویرایش', exact: true }).click();
+  await contractRow.getByRole('button', { name: 'ویرایش', exact: true }).click();
 }
 
 async function openDirtyNewContract(page){
