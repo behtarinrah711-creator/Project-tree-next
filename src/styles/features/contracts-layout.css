@@ -90,3 +90,45 @@
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading :is(.contract-heading-stamp,.contract-created){grid-area:2/2;justify-self:end;align-self:baseline;display:flex;flex-flow:row nowrap;width:max-content;max-width:none;align-items:baseline;gap:4px;margin:2px 0;text-align:left;white-space:nowrap;}
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading .contract-project-path{grid-area:3/1/4/-1;text-align:right;}
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading > .contract-card-visible-actions{grid-area:4/1/5/-1;}
+
+/* Finance decision buttons inside the action sheet. */
+.contract-status-sheet .contract-finance-actions:has(> button + button) {
+  display: grid;
+  direction: rtl;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  align-content: center;
+  min-height: clamp(120px, 23dvh, 205px);
+  border: 0;
+}
+.contract-status-sheet .contract-finance-actions:has(> button + button) > button.contract-review-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 46px;
+  margin: 0;
+  border: 1px solid #1565c0;
+  border-radius: 10px;
+  background: #1565c0;
+  color: white;
+  font-size: 14px;
+  font-weight: 600;
+}
+.contract-status-sheet .contract-finance-actions:has(> button + button) > button.contract-review-action.danger {
+  border-color: #c74343;
+  background: #fff2f2;
+  color: #a52626;
+}
+.contract-status-sheet .contract-finance-actions:has(> button + button) > button::before {
+  content: "✓" / "";
+  display: grid;
+  place-items: center;
+  width: 17px;
+  height: 17px;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+  line-height: 1;
+}
+.contract-status-sheet .contract-finance-actions:has(> button + button) > button.danger::before { content: "−" / ""; }
+.contract-status-sheet .contract-finance-actions > [role="alert"] { grid-column: 1 / -1; }
