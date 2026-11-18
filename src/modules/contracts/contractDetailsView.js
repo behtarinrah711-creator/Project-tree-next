@@ -3,7 +3,7 @@ import {renderContractDocuments} from './contractDocumentsView.js';
 import {renderContractFinancialSummary} from './contractStatementsView.js';
 import {contractDisplayTitle} from './contractTitle.js';
 
-export function openContractDetails(project,contract,trigger){
+export function openContractDetails(project,contract,trigger,{showDocuments=true}={}){
   const page=document.createElement('section');
   page.className='page-overlay workspace-page workspace-page--own-section-bar';
   const key='contract-details:'+contract.id;
@@ -15,7 +15,7 @@ export function openContractDetails(project,contract,trigger){
   const header=document.createElement('div');header.className='inner-section-bar';
   const back=document.createElement('button');back.type='button';back.className='inner-section-back';
   back.textContent='‹';back.setAttribute('aria-label','بازگشت');back.onclick=()=>close();
-  const heading=document.createElement('h2');heading.textContent='جزئیات قرارداد';
+  const heading=document.createElement('h2');heading.textContent='خلاصه مالی';
   const spacer=document.createElement('span');spacer.className='inner-section-spacer';
   header.append(back,heading,spacer);
   const body=document.createElement('div');body.className='page-body contract-details-body';
@@ -24,9 +24,11 @@ export function openContractDetails(project,contract,trigger){
     const current=(source.contracts||[]).find(item=>!item.trashed && String(item.id)===String(contract.id))||contract;
     const title=document.createElement('h3');title.textContent=contractDisplayTitle(project,current);
     const number=document.createElement('p');number.textContent=current.contractNo||'';
-    const summary=document.createElement('h3');summary.textContent='خلاصه مالی';
+    title.className='financial-contract-title';
+    number.className='financial-contract-number';
     body.replaceChildren(title,number);
-    body.append(summary,renderContractFinancialSummary(source,current));
+    body.append(renderContractFinancialSummary(source,current));
+    if(!showDocuments)return;
     const section=documents||renderContractDocuments(source,current,{onChanged:()=>paint(section)});
     body.append(section);
   };

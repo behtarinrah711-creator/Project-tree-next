@@ -93,13 +93,13 @@
 
 /* Finance decision buttons inside the action sheet. */
 .contract-status-sheet .contract-finance-actions:has(> button + button) {
-  display: grid;
+  display: grid !important;
   direction: rtl;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
   align-content: center;
   min-height: clamp(120px, 23dvh, 205px);
-  border: 0;
+  border: 0 !important;
 }
 .contract-status-sheet .contract-finance-actions:has(> button + button) > button.contract-review-action {
   display: flex;
@@ -110,15 +110,17 @@
   margin: 0;
   border: 1px solid #1565c0;
   border-radius: 10px;
-  background: #1565c0;
-  color: white;
+  width: 100%;
+  box-sizing: border-box;
+  background: #1565c0 !important;
+  color: white !important;
   font-size: 14px;
   font-weight: 600;
 }
 .contract-status-sheet .contract-finance-actions:has(> button + button) > button.contract-review-action.danger {
   border-color: #c74343;
-  background: #fff2f2;
-  color: #a52626;
+  background: #b53434 !important;
+  color: white !important;
 }
 .contract-status-sheet .contract-finance-actions:has(> button + button) > button::before {
   content: "✓" / "";
@@ -132,3 +134,15 @@
 }
 .contract-status-sheet .contract-finance-actions:has(> button + button) > button.danger::before { content: "−" / ""; }
 .contract-status-sheet .contract-finance-actions > [role="alert"] { grid-column: 1 / -1; }
+
+.contract-details-body .financial-contract-title{font-size:16px;line-height:1.55;margin:4px 0 0;font-weight:600;}
+.contract-details-body .financial-contract-number{font-size:12px;color:#57606b;margin:2px 0 12px;text-align:right;direction:ltr;}
+.contract-financial-groups{display:grid;gap:12px;}
+.contract-financial-group{background:#fff;border:1px solid #dde0e5;border-radius:12px;padding:12px;}
+.contract-financial-group h3{margin:0 0 8px;font-size:15px;}
+.contract-financial-group .contract-financial-table{width:100%;margin:0;border:0;border-collapse:collapse;font-size:13px;}
+.contract-financial-group .contract-financial-table :is(th,td){border:0;border-bottom:1px solid #e5e7eb;padding:9px 6px;background:transparent;}
+.contract-financial-group th{text-align:start;font-weight:500;}
+.contract-financial-group td{text-align:end;font-variant-numeric:tabular-nums;}
+.contract-financial-group .contract-financial-table tr:last-child > *{border-bottom:0;}
+.contract-financial-group:first-child .contract-financial-table tr:first-child > *{background:#101651;color:#fff;font-weight:600;}
