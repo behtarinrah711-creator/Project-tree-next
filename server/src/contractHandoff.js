@@ -1,3 +1,4 @@
+import {hasPaidContractDocument,reviseContract} from '../../src/domain/contractRevision.js';
 import {canDeleteContractDocument} from '../../src/domain/contractHandoff.js';
 import {acceptedMembership} from './acceptedMembership.js';
 import {availableContractAdvance,contractStatementTotals} from '../../src/domain/contractStatements.js';
@@ -113,6 +114,9 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         transition={ok:true,contract:{...contract,trashed:true,deletedAt:at,deletedBy:actor.id,updatedAt:at}};
       }else if(statement && saveDraft) transition=saveStatement(row.payload,statementParent,contract,contractId,body,actor,Date.now());
       else if(statement && body.action==='record_payment'){
+        if(statementParent.accountingStatus!=='accepted' && statementParent.approvalHistory?.some(event=>event.action==='edit_contract')){
+          sendJson(response,409,{message:'قرارداد ویرایش شده است؛ ابتدا تأیید مالی قرارداد را تکمیل کنید'});return true;
+        }
         const original=contractStatementTotals(row.payload,statementParent);
         if(contract.addendumId && (original.payable!==0 || original.remaining>0)){
           sendJson(response,409,{message:'ابتدا کارکرد و پرداخت قرارداد اصلی را تکمیل کنید'});return true;
@@ -120,8 +124,11 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         transition=recordStatementPayment(contract,body.amount,actor,Date.now());
       }
       else if(saveDraft) transition=saveAddendumDraft(row.payload,contract,body,actor,contractId,Date.now());
-      else if(!addendum && !statement && body.action==='edit_contract_review'){
-        transition=saveContractReviewEdit(contract,actor,body.changes);
+      else if(!addendum && !statement && ['edit_contract_review','edit_contract'].includes(body.action)){
+        if(hasPaidContractDocument(row.payload,contract)){sendJson(response,409,{message:'این قرارداد سند پرداخت‌شده دارد و قابل ویرایش نیست'});return true;}
+        transition=body.action==='edit_contract'
+          ? reviseContract(row.payload,contract,body.changes,body.reason,actor)
+          : saveContractReviewEdit(contract,actor,body.changes);
         if(transition.ok && transition.contract!==contract){
           const revised=transition.contract;
           const references=[['employerId','contacts'],['contractorId','contacts'],['activityId','activityTemplates'],['templateId','contractTemplates']];
@@ -171,3 +178,4 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
     return true;
   };
 }
+

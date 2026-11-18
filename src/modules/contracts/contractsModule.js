@@ -1,5 +1,6 @@
 import {closeWbsSheet} from '../wbs/wbsSheet.js';
 import {renderInlineContractReject} from './contractReasonSheet.js';
+import {hasPaidContractDocument} from '../../domain/contractRevision.js';
 import {openContractDetails} from './contractDetailsView.js';
 import {renderContractDocuments} from './contractDocumentsView.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
@@ -108,11 +109,13 @@ export function renderContractCardHeading(project, contract, menu, {titlePrefix=
   const actions=document.createElement('div'); actions.className='contract-actions';
 
   const visibleActions=document.createElement('div');visibleActions.className='contract-card-visible-actions';
+  const strip=document.createElement('div');strip.className='contract-action-strip';
+  visibleActions.appendChild(strip);
   for(const [label,handler,iconName] of [['پیش‌نمایش',onDocumentPreview||onPreview,'visibility'],['خلاصه مالی',onSummary,'receipt'],['تاریخچه',onHistory,'history'],['ویرایش',menu?.onEdit,'edit_square']]){
     if(!handler)continue;
     const button=document.createElement('button');button.type='button';button.className='contract-review-action';button.textContent=label;
     const icon=document.createElement('span');icon.className='contract-tool-icon';icon.setAttribute('aria-hidden','true');icon.innerHTML=contractToolbarIcons[iconName];button.appendChild(icon);
-    button.onclick=event=>{event.stopPropagation();handler(button);};visibleActions.append(button);
+    button.onclick=event=>{event.stopPropagation();handler(button);};strip.append(button);
   }
 
   if(menu?.onDelete || menu?.onExport)visibleActions.appendChild(contractActionsMenu({onDelete:menu.onDelete,onExport:menu.onExport}));
@@ -227,7 +230,12 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
           body(root){root.classList.add('contract-status-sheet');statusSheetBody(root,active);}});
       };
       const heading=renderContractCardHeading(p,c,{
-        onEdit:approval || !writable?undefined:()=>{if(['pending','approved'].includes(contractApprovalState(c)))window.KarhaLegacy?.showToast?.('قرارداد ارسال‌شده یا تأییدشده قابل ویرایش نیست');else legacy('openContractForm',c.id);},
+        onEdit:approval || !writable?undefined:()=>{
+          if(hasPaidContractDocument(p,c))return window.KarhaLegacy?.showToast?.('این قرارداد سند پرداخت‌شده دارد و قابل ویرایش نیست');
+          const edit=()=>legacy('openContractForm',c.id);
+          if(contractApprovalState(c)==='incomplete')return edit();
+          openConfirm('با ویرایش کردن قرارداد به مرحله نخست باز می‌گردید. ادامه می‌دهید؟',edit,'بله',{cancelLabel:'خیر'});
+        },
         onExport:trigger=>openContractExport(p,finance?(c.accountingPackage?.contract||c):c,{trigger,frozen:finance}),
         onDelete:approval || !writable?undefined:()=>openConfirm('آیا می‌خواهید این قرارداد را حذف کنید؟',()=>{
           const result=contractApi.trash(id,c.id);
@@ -380,4 +388,5 @@ export const contractsModule={
 };
 
 export default contractsModule;
+
 

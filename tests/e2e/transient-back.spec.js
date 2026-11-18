@@ -166,6 +166,7 @@ test('saved contract and draft contract share History ownership but keep differe
   };
   await openContractsList(page, project);
   await previewThenEdit(page, page.locator('.contract-row').filter({ hasText: 'قرارداد ذخیره‌شده' }), 'قرارداد ذخیره‌شده بدون پیمانکار');
+  await page.locator('#confirmOkBtn').click();
   await expect(page.locator('#contractFormPage')).toBeVisible();
   await expect.poll(() => page.evaluate(() => window.KarhaRealContractForm?.getLifecycleMode?.()))
     .toBe('saved');
@@ -183,3 +184,4 @@ test('saved contract and draft contract share History ownership but keep differe
   await expect(page.locator('#contractFormPage')).toBeHidden();
   await expect(page.locator('#contractsPage')).toBeVisible();
 });
+

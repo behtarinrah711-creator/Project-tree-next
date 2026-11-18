@@ -77,7 +77,7 @@
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-card-heading :is(.contract-number,.contract-project-path,.contract-heading-stamp){margin-block:2px;line-height:1.6;}
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-card-heading > .contract-actions:empty{display:none;}
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-card-heading > .contract-card-visible-actions{display:flex;align-items:center;justify-content:flex-start;gap:4px 10px;margin:2px 0 0;padding:0;min-width:0;}
-:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-card-visible-actions > .contract-review-action{display:inline-flex;direction:rtl;align-items:center;justify-content:center;gap:4px;min-height:44px;margin:0;padding:4px 0;border:0;border-radius:0;background:transparent;font-size:12px;font-weight:600;line-height:1.5;white-space:nowrap;}
+:is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-action-strip > .contract-review-action{display:inline-flex;direction:rtl;align-items:center;justify-content:center;gap:4px;min-height:44px;margin:0;padding:4px 0;border:0;border-radius:0;background:transparent;font-size:12px;font-weight:600;line-height:1.5;white-space:nowrap;}
 .contract-card-visible-actions .contract-tool-icon{display:inline-flex;order:-1;flex:none;width:16px;height:16px;}
 .contract-tool-icon svg{display:block;width:16px;height:16px;fill:currentColor;}
 .contract-card-visible-actions > .contract-menu-wrap{margin-inline-start:auto;}
@@ -146,3 +146,14 @@
 .contract-financial-group td{text-align:end;font-variant-numeric:tabular-nums;}
 .contract-financial-group .contract-financial-table tr:last-child > *{border-bottom:0;}
 .contract-financial-group:first-child .contract-financial-table tr:first-child > *{background:#101651;color:#fff;font-weight:600;}
+
+
+.contract-card-heading > .contract-card-visible-actions{flex-flow:row nowrap;direction:rtl;}
+.contract-action-strip{display:flex;flex:1 1 0;min-width:0;gap:8px;overflow-x:auto;scrollbar-width:none;align-items:center;}
+.contract-action-strip::-webkit-scrollbar{display:none;}
+.contract-action-strip > button,.contract-card-visible-actions > .contract-menu-wrap{flex:none;}
+/* The local layer covers the edge hint when the last action scrolls into view. */
+.contract-action-strip{
+  background:linear-gradient(to right,#fff 65%,transparent) left center/14px 100% local no-repeat,
+             linear-gradient(to right,#dde2e9,transparent) left center/7px 70% scroll no-repeat;
+}
