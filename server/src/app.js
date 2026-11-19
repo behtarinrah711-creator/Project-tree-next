@@ -334,6 +334,7 @@ export function hasDeniedExecutionChanges(current,incoming,permissions,phone,acc
         if(entry.type==='planned_pause' && (!date(entry.resumeOn)||entry.resumeOn<=entry.day))return true;
         if(entry.type==='execution_obstacle' && !['unknown','external'].includes(entry.role)
           && !(current?.contacts||[]).some(contact=>contact && String(contact.id)===entry.contactId))return true;
+        if(entry.eligibility!=null && (entry.type!=='execution_obstacle'||!['pending','eligible','ineligible'].includes(entry.eligibility)))return true;
         return entry.reviewed===true && (!Number.isInteger(entry.impactDays)||entry.impactDays<0);
       }
       if(entry.day!==tehranTodayJalali(at))return true;

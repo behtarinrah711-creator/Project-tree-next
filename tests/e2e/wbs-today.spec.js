@@ -37,11 +37,11 @@ async function openTaskDetails(page,card){
   return sheet;
 }
 
-test('Today toolbar shows seven ordered tabs and a separate filter row',async({page})=>{
+test('Today toolbar shows eight ordered tabs and a separate filter row',async({page})=>{
   const header=page.locator('.wbs-today-frame .wbs-view-header');
   const tabs=header.getByRole('tab');
   await expect(header.locator('.wbs-view-title')).toHaveCount(0);
-  await expect(tabs).toHaveText(['همه','عقب‌افتاده','امروز','آینده','تکمیل','بی زمان','متوقف']);
+  await expect(tabs).toHaveText(['همه','عقب‌افتاده','امروز','آینده','تکمیل','بی زمان','انتظار','متوقف']);
   await expect(header.getByRole('tab',{name:'امروز',exact:true})).toHaveAttribute('aria-selected','true');
   await expect(header.getByRole('button',{name:'تقویم'})).toBeVisible();
   const controls=header.locator('.today-task-secondary');
@@ -79,6 +79,8 @@ test('Today shows Tasks instead of their Work, formats one-day dates once, and e
   const contractor=details.locator('.wbs-costline-detail-row').filter({has:page.getByText('پیمانکار',{exact:true})});
   await expect(contractor.getByText('پیمانکار قرارداد',{exact:true})).toBeVisible();
   const visible=details.locator('.today-comment');
+  await expect(visible).toHaveCount(0);
+  await details.getByRole('button',{name:'مشاهدهٔ سابقه'}).click();
   await expect(visible).toHaveCount(2);
   await expect(visible.first()).toContainText('نظر سوم');
   await details.locator('.today-show-comments').click();
@@ -143,6 +145,7 @@ test('completion enters pending approval, rejection returns Today with typed new
   });
   await list.getByRole('tab',{name:'امروز',exact:true}).click();
   await openTaskDetails(page,card);
+  await sheet.getByRole('button',{name:'مشاهدهٔ سابقه'}).click();
   await expect(sheet.locator('.today-comment').first()).toContainText('نیاز به اصلاح');
   await sheet.getByRole('button',{name:'بستن'}).click();
   await card.locator('.today-progress-circle').click();

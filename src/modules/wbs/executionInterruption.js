@@ -7,6 +7,7 @@ import {contractorForItem,tehranTodayJalali} from '../../domain/wbs/todayDomain.
 import {mountFileUploader} from '../files/fileUploader.js';
 import {fieldRow,openWbsSheet} from './wbsSheet.js';
 
+export const INTERRUPTION_ELIGIBILITY={pending:'در دست بررسی',eligible:'مجاز',ineligible:'غیرمجاز'};
 const roles={contractor:'پیمانکار',assignee:'مسئول پیگیری',approver:'مسئول تأیید',client:'کارفرما',supplier:'تأمین‌کننده',other:'مخاطب دیگر',external:'عامل بیرونی',unknown:'در دست بررسی'};
 const name=contact=>contact?.name||contact?.title||'';
 const id=contact=>String(contact?.id||'');
@@ -28,7 +29,7 @@ export function openExecutionInterruption(project,item,actor,refresh,{type='exec
   };
   const sheet=openWbsSheet({
     title:planned?'ثبت وقفهٔ برنامه‌ریزی‌شده':draft.multiday?'ثبت توقف چندروزه':'ثبت مانع امروز',
-    historyKey:'execution-interruption:'+item.id,
+    historyKey:'execution-interruption:'+item.id,autoFocus:false,
     body(root){
       const field=(label,key,tag)=>{
         const input=documentRef.createElement(tag);
@@ -118,7 +119,7 @@ export function openExecutionDelayReport(project,items,{actor,canReview,refresh}
   const rows=items.flatMap(item=>(item.entity.executionHistory||[])
     .filter(entry=>entry.type==='execution_obstacle')
     .map(entry=>({entry,source:item,path:[...(item.path||[]),item.entity.title||item.entity.text].filter(Boolean).join(' / ')})));
-  const filters={role:'',contactId:'',from:'',to:'',cause:'',review:''};
+  const filters={role:'',contactId:'',from:'',to:'',cause:'',review:'',eligibility:''};
   openWbsSheet({
     title:'گزارش موانع و تأخیرات',saveLabel:'خروجی CSV',historyKey:'execution-delay-report:'+project.id,
     body(root){
@@ -134,6 +135,7 @@ export function openExecutionDelayReport(project,items,{actor,canReview,refresh}
       pick('شخص یا شرکت','contactId',[...new Map(rows.filter(({entry})=>entry.contactId)
         .map(({entry})=>[entry.contactId,{id:entry.contactId,name:entry.contactName}])).values()]);
       pick('علت','cause',[...new Set(rows.map(({entry})=>entry.reason))].map(name=>({id:name,name})));
+      pick('وضعیت توقف','eligibility',Object.entries(INTERRUPTION_ELIGIBILITY).map(([id,name])=>({id,name})));
       pick('وضعیت بررسی','review',[{id:'pending',name:'در دست بررسی'},{id:'confirmed',name:'بررسی‌شده'}]);
       for(const [key,label] of [['from','از تاریخ'],['to','تا تاریخ']]){
         const button=document.createElement('button');
@@ -154,7 +156,8 @@ export function openExecutionDelayReport(project,items,{actor,canReview,refresh}
           summary.textContent=[formatJalaliDisplay(entry.day),entry.reason,obstacleRole(entry.role),entry.contactName,
             entry.resumedOn?'رفع مانع '+formatJalaliDisplay(entry.resumedOn):'',
             entry.multiday?'چندروزه':entry.durationHours==null?'تمام‌روز':entry.durationHours+' ساعت',
-            entry.reviewed?'اثر بر موعد: '+entry.impactDays+' روز':'در دست بررسی'].filter(Boolean).join(' · ');
+            INTERRUPTION_ELIGIBILITY[entry.eligibility]||INTERRUPTION_ELIGIBILITY.pending,
+            entry.reviewed?'اثر بر موعد: '+entry.impactDays+' روز':''].filter(Boolean).join(' · ');
           item.append(title,summary);
           appendReportPhotos(item,entry.photos);
           if(canReview && actor?.contactId && String(source.entity.assigneeContactId)===actor.contactId){
@@ -168,7 +171,17 @@ export function openExecutionDelayReport(project,items,{actor,canReview,refresh}
               row.entry=result.entity.executionHistory.find(value=>value.id===entry.id);
               refresh?.();paint();
             },{suffix:' روز',group:false,maxLen:4,validate:value=>/^\d+$/.test(value)?'':'تعداد روز را وارد کنید'});
-            item.append(review,error);
+            const eligibility=document.createElement('button');
+            eligibility.type='button';eligibility.className='today-report-link';eligibility.textContent='تعیین وضعیت توقف';
+            eligibility.onclick=()=>openSearchPicker({title:'وضعیت توقف',contextKey:'execution-stop-eligibility',
+              items:Object.entries(INTERRUPTION_ELIGIBILITY).map(([id,name])=>({id,name})),onSelect:selected=>{
+                const result=todayApi.saveInterruption(project.id,{kind:source.kind,id:source.id,workId:source.workId},
+                  {id:entry.id,eligibility:selected.id},actor);
+                if(!result.ok){error.textContent='وضعیت توقف ذخیره نشد.';return;}
+                row.entry=result.entity.executionHistory.find(value=>value.id===entry.id);
+                refresh?.();paint();
+              }});
+            item.append(review,eligibility,error);
           }
           results.append(item);
         }
@@ -178,10 +191,10 @@ export function openExecutionDelayReport(project,items,{actor,canReview,refresh}
     },
     onSave(){
       const escape=value=>'"'+String(value??'').replace(/^[=+@\-\t\r\n]/,first=>"'"+first).replaceAll('"','""')+'"';
-      const data=[['مسیر کار','تاریخ شروع','تاریخ ادامهٔ پیش‌بینی‌شده','تاریخ رفع مانع','علت','شرح','نقش','مخاطب','نوع بازه','ساعت','اثر بر موعد (روز)','وضعیت بررسی'],
+      const data=[['مسیر کار','تاریخ شروع','تاریخ ادامهٔ پیش‌بینی‌شده','تاریخ رفع مانع','علت','شرح','نقش','مخاطب','نوع بازه','ساعت','اثر بر موعد (روز)','وضعیت توقف','وضعیت بررسی'],
         ...filtered().map(({entry,path})=>[path,entry.day,entry.resumeOn,entry.resumedOn,entry.reason,entry.description,
           obstacleRole(entry.role),entry.contactName,entry.multiday?'چندروزه':entry.durationHours==null?'تمام‌روز':'ساعتی',
-          entry.durationHours,entry.impactDays,entry.reviewed?'بررسی‌شده':'در دست بررسی'])];
+          entry.durationHours,entry.impactDays,INTERRUPTION_ELIGIBILITY[entry.eligibility]||INTERRUPTION_ELIGIBILITY.pending,entry.reviewed?'بررسی‌شده':'در دست بررسی'])];
       const url=URL.createObjectURL(new Blob(['\uFEFF',data.map(row=>row.map(escape).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));
       const link=document.createElement('a');link.href=url;link.download='execution-delays.csv';link.click();
       setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -192,6 +205,7 @@ export function openExecutionDelayReport(project,items,{actor,canReview,refresh}
     return rows.filter(({entry})=>(!filters.role||entry.role===filters.role)
       && (!filters.contactId||entry.contactId===filters.contactId)
       && (!filters.cause||entry.reason===filters.cause)
+      && (!filters.eligibility||(entry.eligibility||'pending')===filters.eligibility)
       && (!filters.review||(entry.reviewed?'confirmed':'pending')===filters.review)
       && (!filters.from||(entry.resumedOn||(entry.multiday?tehranTodayJalali():entry.day))>=filters.from)
       && (!filters.to||entry.day<=filters.to)).sort((a,b)=>b.entry.day.localeCompare(a.entry.day));

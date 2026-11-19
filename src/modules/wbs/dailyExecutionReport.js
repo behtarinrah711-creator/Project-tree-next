@@ -118,7 +118,8 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
     title:statusControls?`ثبت گزارش ${item.entity.title || item.entity.text || subject}`:`ثبت گزارش:\n${item.entity.title || item.entity.text || subject}`,
     saveLabel:'ذخیره', presentation:'stage-create', autoFocus:false,
     historyKey:`execution-report:${projectId}:${item.id}:${day}`,
-    ...(onReturn?{requestClose:onReturn,reuseHistoryOnReplace:true}:{}),
+    reuseHistoryOnReplace:true,
+    ...(onReturn?{requestClose:onReturn}:{}),
     body(root){
       if(statusControls){
         const project=projectRepository.find(projectId);
@@ -171,8 +172,8 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
         if(!reason){toast('دلیل غیرفعال بودن را انتخاب کنید');return false;}
         const project=projectRepository.find(projectId);
         if(!project)return false;
-        requestAnimationFrame(()=>openExecutionInterruption(project,item,actor,onChanged,{existing:{reason,description,photos}}));
-        return true;
+        openExecutionInterruption(project,item,actor,onChanged,{existing:{reason,description,photos}});
+        return false;
       }
       const statusOnly=statusControls && !current && !description.trim() && !photos.length;
       const result=statusOnly
