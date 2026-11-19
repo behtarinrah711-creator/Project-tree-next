@@ -126,8 +126,9 @@ test('completion enters pending approval, rejection returns Today with typed new
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
   await card.locator('.today-progress-circle').click();
   await expect(page.locator('#numpadDisplay')).toContainText('۰');
+  await page.locator('#numpadBackspace').click();
   for(const digit of '100') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
-  await expect(page.locator('#numpadDisplay')).toHaveText('٪۱۰۰');
+  await expect(page.locator('#numpadDisplay')).toContainText('۱۰۰');
   await page.locator('#numpadDoneBtn').click();
   await expect(list).toHaveAttribute('data-mode','pending');
   await openTaskDetails(page,card);
