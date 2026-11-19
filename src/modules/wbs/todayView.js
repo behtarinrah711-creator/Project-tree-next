@@ -1,4 +1,4 @@
-import {openExecutionInterruption,openExecutionDelayReport} from './executionInterruption.js';
+import {openExecutionDelayReport} from './executionInterruption.js';
 import {openSearchPicker} from '../../ui/searchPickerAdapter.js';
 import {openNumpadGeneric} from '../../ui/numpad.js';
 import {executionFilterTree,openExecutionBranchFilter} from './executionBranchFilter.js';
@@ -378,35 +378,16 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
     root.appendChild(pending);
   }
   const interruption=executionInterruption(entity,day);
-  const interruptionCard=detailCard(documentRef);
-  if(interruption){
-    interruptionCard.append(detailRow(documentRef,interruption.type==='planned_pause'?'وقفهٔ برنامه‌ریزی‌شده':'توقف اجرا',
-      [interruption.reason,interruption.resumeOn?formatDate(interruption.resumeOn):''].filter(Boolean).join(' · ')));
-    appendReportPhotos(interruptionCard,interruption.photos);
+  const upcoming=(entity.executionHistory||[]).filter(entry=>entry?.type==='planned_pause' && !entry.resumedOn && entry.day>day)
+    .sort((a,b)=>a.day.localeCompare(b.day));
+  for(const entry of [interruption,...upcoming].filter(Boolean)){
+    const card=detailCard(documentRef);
+    card.append(detailRow(documentRef,entry.type==='planned_pause'?'وقفهٔ برنامه‌ریزی‌شده':'توقف اجرا',
+      ['شروع '+formatDate(entry.day),entry.resumeOn?'ادامه '+formatDate(entry.resumeOn):'',entry.reason,entry.description]
+        .filter(Boolean).join(' · ')));
+    appendReportPhotos(card,entry.photos);
+    root.append(card);
   }
-  if(writable && isExecutionAssignee(entity,currentActor) && !['approved','pending_approval'].includes(executionStatus(entity))){
-    const open=options=>openExecutionInterruption(project,item,currentActor,refresh,options);
-    if(interruption){
-      const resume=linkButton(documentRef,'today-report-link','ازسرگیری کار');
-      resume.onclick=()=>{
-        if(todayApi.saveInterruption(project.id,refOf(item),{id:interruption.id,resume:true},currentActor).ok)refresh();
-      };
-      interruptionCard.append(resume);
-    }else{
-      const planned=linkButton(documentRef,'today-report-link','ثبت وقفهٔ برنامه‌ریزی‌شده');
-      planned.onclick=()=>open({type:'planned_pause'});
-      const stop=linkButton(documentRef,'today-report-link','ثبت توقف چندروزه');
-      stop.onclick=()=>open({multiday:true});
-      interruptionCard.append(planned,stop);
-      const obstacle=(entity.executionHistory||[]).findLast(entry=>entry.type==='execution_obstacle'&&!entry.multiday&&!entry.resumedOn);
-      if(obstacle){
-        const extend=linkButton(documentRef,'today-report-link','ادامهٔ مانع به‌صورت توقف چندروزه');
-        extend.onclick=()=>open({multiday:true,existing:{...obstacle,multiday:true}});
-        interruptionCard.append(extend);
-      }
-    }
-  }
-  if(interruptionCard.childElementCount)root.append(interruptionCard);
   const latestDate=reportsOf(entity).map(executionReportDay).filter(date=>date && date<=day).sort().at(-1);
   const latest=latestDate && renderExecutionReportCard(documentRef,entity,latestDate,{historical:latestDate!==day});
   if(latest){
@@ -566,18 +547,36 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   const status=current.reasonId==='officialHoliday'?'holiday':current.status;
   const saved=!!todayReportOf(entity,today);
   const canReport=!approval && today===tehranTodayJalali() && canWriteProjectModule(project.id,'execution:today')
-    && !executionInterruption(entity,today) && isExecutionAssignee(entity,currentExecutionActor(project)) && !['approved','pending_approval'].includes(executionStatus(entity));
+    && isExecutionAssignee(entity,currentExecutionActor(project)) && !['approved','pending_approval'].includes(executionStatus(entity));
   const report=documentRef.createElement(canReport?'button':'span');
   report.className='today-report-circle is-'+status+(saved?' is-saved':'');
   report.innerHTML='گزارش <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6m-6 4h6"/></svg>';
   report.setAttribute('aria-label',(status==='holiday'?'تعطیل رسمی':DAILY_EXECUTION_LABELS[status])+'، '+(saved?'گزارش ثبت شده':'بدون گزارش'));
   report.onclick=event=>{
     event.stopPropagation();
-    if(canReport)openDailyExecutionReport({projectId:project.id,item,actor:currentExecutionActor(project),day:today,statusControls:true,
+    if(!canReport)return;
+    const actor=currentExecutionActor(project);
+    const interruption=executionInterruption(entity,today);
+    if(interruption){
+      openWbsSheet({title:'گزارش کار متوقف‌شده',showSave:false,body(root){
+        const resume=linkButton(documentRef,'wbs-input','ازسرگیری کار');
+        const feedback=documentRef.createElement('p');
+        feedback.setAttribute('role','alert');
+        resume.onclick=()=>{
+          const result=todayApi.saveInterruption(project.id,refOf(item),{id:interruption.id,resume:true},actor);
+          if(!result.ok){feedback.textContent='ازسرگیری ثبت نشد. دسترسی و وضعیت کار را بررسی کنید.';return;}
+          closeWbsSheet();
+          onChanged?.();
+        };
+        root.append(resume,feedback);
+      }});
+      return;
+    }
+    openDailyExecutionReport({projectId:project.id,item,actor,day:today,statusControls:true,
       onChanged,onReturn:returnToCalendar,onSubmitted(updated){if(item.kind==='standalone')standaloneMode='pending';else activeMode=timeState(updated,tehranTodayJalali());}});
   };
   if(canReport)report.type='button';
-  const canChangeProgress=canReport;
+  const canChangeProgress=canReport && !executionInterruption(entity,today);
   const progress=progressCircle(documentRef,entity,{summary:{},onClick:canChangeProgress?event=>{
     event.stopPropagation();
     openNumpadGeneric(String(Number(entity.progress)||0),raw=>{

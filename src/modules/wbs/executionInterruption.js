@@ -41,7 +41,7 @@ export function openExecutionInterruption(project,item,actor,refresh,{type='exec
           window.KarhaUI?.openJalaliPicker?.(draft[key]||current,value=>{draft[key]=value;node.textContent=formatJalaliDisplay(value);}));
         root.append(fieldRow(label,node));
       };
-      if(planned||draft.multiday)date('تاریخ شروع','day');
+      if(planned||draft.multiday)date(planned?'تاریخ شروع وقفه':'تاریخ شروع توقف','day');
       if(planned||draft.multiday)date(planned?'تاریخ برنامه‌ریزی‌شدهٔ ادامه':'تاریخ پیگیری یا ادامه','resumeOn');
       field(planned?'دلیل یا پیش‌نیاز ادامه':'علت مانع','reason','input');
       field(planned?'شرح کار باقی‌مانده':'شرح مانع','description','textarea');
@@ -86,7 +86,20 @@ export function openExecutionInterruption(project,item,actor,refresh,{type='exec
     onSave(){
       if(uploader?.isBusy()){feedback.textContent='ابتدا بارگذاری عکس‌ها را تمام کنید';return false;}
       const result=todayApi.saveInterruption(project.id,ref,{...draft,photos},actor);
-      if(!result.ok){feedback.textContent='دلیل، شرح، تاریخ‌ها و مخاطب را بررسی کنید';return false;}
+      if(!result.ok){
+        feedback.textContent=({
+          forbidden:'ثبت برای مسئول پیگیریِ دارای دسترسی اجرا مجاز است.',
+          locked:'کار تکمیل شده یا در انتظار تأیید است.',
+          not_found:'کار پیدا نشد. فهرست اجرا را تازه کنید.',
+          reason_required:'دلیل را وارد کنید.',
+          description_required:planned?'شرح کار باقی‌مانده را وارد کنید.':'شرح مانع را وارد کنید.',
+          invalid_start:planned?'تاریخ شروع وقفه را انتخاب کنید.':'تاریخ شروع توقف باید امروز یا قبل از امروز باشد.',
+          invalid_resume:planned?'تاریخ ادامه باید بعد از شروع وقفه باشد.':'تاریخ پیگیری یا ادامه را بررسی کنید.',
+          invalid_duration:'مدت باید بین صفر و ۲۴ ساعت باشد.',
+          contact_required:'شخص یا شرکت مرتبط را انتخاب کنید.',
+        })[result.code]||'ذخیره انجام نشد. وضعیت کار را بررسی کنید.';
+        return false;
+      }
       refresh?.();
       return true;
     },

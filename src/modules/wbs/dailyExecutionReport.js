@@ -120,7 +120,27 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
     historyKey:`execution-report:${projectId}:${item.id}:${day}`,
     ...(onReturn?{requestClose:onReturn,reuseHistoryOnReplace:true}:{}),
     body(root){
-      if(statusControls)dailyStatus=statusFields(root,projectId,item.entity,day);
+      if(statusControls){
+        const project=projectRepository.find(projectId);
+        if(project && (item.kind==='standalone'||item.entity.type!=='خرید')){
+          const actions=document.createElement('div');
+          actions.className='wbs-toggles-row';
+          const lastObstacle=(item.entity.executionHistory||[]).findLast(entry=>entry?.type==='execution_obstacle' && !entry.multiday && !entry.resumedOn);
+          const choices=[
+            ['ثبت وقفهٔ برنامه‌ریزی‌شده',{type:'planned_pause'}],
+            ['ثبت توقف چندروزه',{multiday:true}],
+          ];
+          if(lastObstacle)choices.push(['ادامهٔ مانع به‌صورت توقف چندروزه',{multiday:true,existing:{...lastObstacle,multiday:true}}]);
+          for(const [label,options] of choices){
+            const button=document.createElement('button');
+            button.type='button';button.className='wbs-input';button.textContent=label;
+            button.onclick=()=>openExecutionInterruption(project,item,actor,onChanged,options);
+            actions.append(button);
+          }
+          root.append(actions);
+        }
+        dailyStatus=statusFields(root,projectId,item.entity,day);
+      }
       root.append(fieldRow('شرح گزارش',textarea(document,current?.description||'')));
       if(purchaseReport)root.append(fieldRow('درصد پیشرفت',progressInput(document,current?.progress ?? item.entity.progress,Boolean(current))));
       const attachments=document.createElement('div');
