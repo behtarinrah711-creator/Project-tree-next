@@ -139,7 +139,7 @@ test('review edits preserve the submitted content and require a separate decisio
    approvedContactIds:['other'],approvalHistory:[{action:'approve',actor:{contactId:'other'}}],title:'عنوان اولیه'};
  assert.equal(saveContractReviewEdit(initial,author,{title:'غیرمجاز'}).ok,false);
  assert.equal(saveContractReviewEdit({...initial,signedAt:1},manager,{title:'غیرمجاز'}).ok,false);
- const edited=saveContractReviewEdit(initial,manager,{title:'عنوان اصلاح‌شده',signedAt:1,approvalStatus:'approved'},10).contract;
+ const edited=saveContractReviewEdit(initial,manager,{revisionReason:'اصلاح عنوان قرارداد',title:'عنوان اصلاح‌شده',signedAt:1,approvalStatus:'approved'},10).contract;
  assert.equal(edited.approvalStatus,'pending');
  assert.deepEqual(edited.approvedContactIds,[]);
  assert.equal(edited.signedAt,undefined);

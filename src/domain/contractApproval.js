@@ -77,6 +77,8 @@ export function saveContractReviewEdit(contract,actor,changes,at=Date.now()){
   if(!canEditContractReview(contract,actor) || !changes || typeof changes!=='object' || Array.isArray(changes)){
     return {ok:false,message:'ویرایش این نسخه برای شما مجاز نیست'};
   }
+  const reason=typeof changes.revisionReason==='string'?changes.revisionReason.trim():'';
+  if(reason.length<5)return {ok:false,message:'دلیل ویرایش حداقل ۵ حرف باشد'};
   const fields=['title','contractDate','contractPlace','startDate','endDate','employerId','contractorId',
     'activityId','templateId','items','amountMethod','operationRows','amountRows','agreedRows','amount',
     'agreedAmount','amountDescription','remeasurement','paymentMethod','paymentRows','paymentItems',
@@ -93,7 +95,7 @@ export function saveContractReviewEdit(contract,actor,changes,at=Date.now()){
   next.activityIds=next.activityId?[next.activityId]:[];
   Object.assign(next,{approvalStatus:'pending',approvedContactIds:[],submittedAt:at,updatedAt:at,
     reviewedAt:null,reviewedBy:null,handoffVersion:Number(contract.handoffVersion||0)+1});
-  next.approvalHistory=[...(contract.approvalHistory||[]),{action:'edit_review',at,actor:{...actor}}];
+  next.approvalHistory=[...(contract.approvalHistory||[]),{action:'edit_review',reason,at,actor:{...actor}}];
   return {ok:true,contract:next};
 }
 

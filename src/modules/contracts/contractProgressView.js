@@ -33,7 +33,7 @@ export function renderContractProgressCircle(documentRef,contract,project,onClic
   return circle;
 }
 
-export function renderContractProgress(documentRef,contract,project,onOpen){
+export function renderContractProgress(documentRef,contract,project,onOpen,openCompleted=false){
   const steps=contractProgressSteps(contract,project);
   const list=documentRef.createElement('ol');list.className='contract-progress';list.dir='rtl';
   list.setAttribute('aria-label',contract.statementType?'مراحل صورت‌وضعیت':contract.parentContractId?'مراحل الحاقیه':'مراحل قرارداد');
@@ -49,8 +49,8 @@ export function renderContractProgress(documentRef,contract,project,onOpen){
     if(onOpen){
       const button=documentRef.createElement('button');button.type='button';button.className='contract-stage-button';
       button.setAttribute('aria-label',step.label+'؛ '+(step.rejected?'رد شده':step.done?'انجام شده':'انجام نشده')+(index===current?'؛ انجام اقدام':''));
-      button.append(label,dot);button.disabled=index!==current;
-      if(index===current)button.onclick=event=>{event.stopPropagation();onOpen(event,step);};
+      button.append(label,dot);button.disabled=index!==current && !(openCompleted && step.done);
+      if(!button.disabled)button.onclick=event=>{event.stopPropagation();onOpen(event,step);};
       item.append(button);
     }else item.append(label,dot);
     list.appendChild(item);
@@ -62,7 +62,7 @@ export function renderContractProgress(documentRef,contract,project,onOpen){
 
 
 // Cards and inbox documents share the same named workflow and status entry point.
-export function renderContractWorkflowPanel(documentRef,record,project,{onOpen,expanded=true,heading}={}){
+export function renderContractWorkflowPanel(documentRef,record,project,{onOpen,expanded=true,heading,openCompleted=false}={}){
   const panel=documentRef.createElement('section');panel.className='contract-workflow-panel';
   const body=documentRef.createElement('div');body.className='contract-workflow-body';
   const state=contractApprovalState(record);
@@ -75,7 +75,7 @@ export function renderContractWorkflowPanel(documentRef,record,project,{onOpen,e
     main.setAttribute('aria-label','نمایش یا بستن مراحل سند');
     main.onkeydown=event=>{if(event.target && event.target!==main)return;if(event.key==='Enter' || event.key===' '){event.preventDefault();expanded=!expanded;paint();}};
   }
-  const list=renderContractProgress(documentRef,record,project,onOpen);
+  const list=renderContractProgress(documentRef,record,project,onOpen,openCompleted);
   body.append(list);
   if(reason){const message=documentRef.createElement('p');message.className='contract-rejection-reason';message.textContent='دلیل برگشت: '+reason;body.append(message);}
   panel.append(body);paint();return panel;

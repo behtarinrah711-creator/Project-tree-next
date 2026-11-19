@@ -62,23 +62,32 @@ export function renderContractFinancialSummary(project,contract){
   const summary=element('div','contract-financial-groups');
   function group(title,rows){
     const card=element('section','contract-financial-group');
-    card.append(element('h3','',title),table(rows));
+    const ledger=element('table','contract-financial-table');
+    const body=element('tbody');
+    for(const [label,value] of rows){
+      const row=element('tr'),name=element('th','',label);
+      name.scope='row';
+      row.append(name,element('td','summary-amount',value==null?'تعیین نشده':format.format(value)),element('td','summary-unit',value?'تومان':''));
+      body.append(row);
+    }
+    ledger.append(body);
+    card.append(element('h3','',title),ledger);
     summary.append(card);
   }
   group('خلاصه مالی',[
-    ['مبلغ به‌روز قرارداد',money(totals.total)],
-    ['مبلغ اولیه قرارداد',money(totals.original)],
-    ['جمع الحاقیه‌های نهایی‌شده',money(totals.adjustments)],
-    ['حسن انجام کار کل با احتساب الحاقیه‌ها',money(totals.estimatedRetention)],
-    ['خالص کل در صورت تکمیل',money(totals.total===null?null:totals.total-totals.estimatedRetention)],
+    ['مبلغ به‌روز قرارداد',totals.total],
+    ['مبلغ اولیه قرارداد',totals.original],
+    ['جمع الحاقیه‌های نهایی‌شده',totals.adjustments],
+    ['حسن انجام کار کل با احتساب الحاقیه‌ها',totals.estimatedRetention],
+    ['خالص کل در صورت تکمیل',totals.total===null?null:totals.total-totals.estimatedRetention],
   ]);
   group('صورت‌وضعیت‌ها و پرداخت‌ها',[
-    ['کارکرد تأییدشده',money(totals.gross)],
-    ['مانده حسن انجام کار',money(totals.retained)],
-    ['حسن انجام کار آزادشده',money(totals.released)],
-    ['پرداخت ثبت‌شده',money(totals.paid)],
-    ['مانده برای صورت‌وضعیت',money(totals.remaining)],
-    ['مانده پرداخت پیمانکار',money(totals.payable)],
+    ['کارکرد تأییدشده',totals.gross],
+    ['مانده حسن انجام کار',totals.retained],
+    ['حسن انجام کار آزادشده',totals.released],
+    ['پرداخت ثبت‌شده',totals.paid],
+    ['مانده برای صورت‌وضعیت',totals.remaining],
+    ['مانده پرداخت پیمانکار',totals.payable],
   ]);
   return summary;
 }

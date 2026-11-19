@@ -50,6 +50,11 @@ export function renderInlineContractReject(submit,onRejected){
   button.textContent='رد کردن';
   button.onclick=()=>{
     const sheet=button.closest('.wbs-sheet-overlay');
+    if(!sheet){
+      openContractReasonSheet({title:'رد قرارداد',historyKey:'contract-review-reject',fieldLabel:'دلیل رد',minLength:REJECTION_MIN_LENGTH,
+        async submit(reason){try{const record=await submit(reason);onRejected(record);return true;}catch(error){window.KarhaLegacy?.showToast?.(error.message);return false;}}});
+      return;
+    }
     const body=sheet.querySelector('.sheet-body');
     const header=sheet.querySelector('.sheet-head');
     const caption=header.querySelector('.sheet-caption');

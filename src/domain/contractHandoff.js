@@ -95,6 +95,8 @@ export function transitionContractHandoff(contract,action,actor,{files=[],reason
       if(!Array.isArray(files) || files.length>30 || new Set(files.map(f=>f?.id)).size!==files.length || files.some(f=>!f?.id || f.category!=='contracts' || String(f.recordId)!==String(contract.id) || !['image/jpeg','application/pdf'].includes(f.mime)))return fail('فقط عکس یا PDF معتبر این قرارداد را انتخاب کنید');
       const old=signedContractFiles(contract),added=files.filter(f=>!old.some(o=>o.id===f.id)),removed=old.filter(f=>!files.some(o=>o.id===f.id));
       if(!added.length && !removed.length && (!canAttachSignedContract(contract) || isContractSigned(contract) || !files.length))return {ok:true,contract};
+      const changedVersion=!contract.parentContractId && !contract.statementType && old.length && (added.length || removed.length);
+      if(changedVersion && (typeof reason!=='string' || reason.trim().length<5))return fail('دلیل تغییر نسخه امضاشده را وارد کنید');
       next.signedFiles=files.map(f=>({...f}));next.signedFilesUpdatedAt=at;next.signedAt=canAttachSignedContract(contract) && files.length?at:null;next.signedBy=next.signedAt?{...actor}:null;
       if(!added.length && !removed.length)events.push({action:'confirm_signed',files:files.map(file=>file.name)});
       if(added.length===1 && removed.length===1)events.push({action:'replace_signed',files:added.map(f=>f.name),removed:removed.map(f=>f.name)});
@@ -102,6 +104,7 @@ export function transitionContractHandoff(contract,action,actor,{files=[],reason
         if(added.length)events.push({action:'add_signed',files:added.map(f=>f.name)});
         if(removed.length)events.push({action:'remove_signed',files:removed.map(f=>f.name)});
       }
+      if(changedVersion)for(const event of events){event.reason=reason.trim();event.previousSignedFiles=old.map(file=>({...file}));}
     }else if(action==='send_finance'){
       if(!isContractSigned(contract)){
         if(!canReuseReturnedSignature(contract))return fail('ابتدا نسخه امضاشده قرارداد را ذخیره کنید');

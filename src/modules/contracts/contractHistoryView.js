@@ -1,5 +1,5 @@
 import {openWbsSheet} from '../wbs/wbsSheet.js';
-const labels={edit_contract:'قرارداد ویرایش شد',edit_review:'مسئول تأیید قرارداد را ویرایش کرد',reopen_signed_contract:'قرارداد برای ویرایش به پیش‌نویس برگشت',confirm_signed:'نسخه امضاشده تأیید شد',approve_finance:'توسط بخش مالی تأیید شد',reject_finance:'توسط بخش مالی رد شد',revoke_finance:'تأیید مالی پس گرفته شد',add_signed:'نسخه امضاشده افزوده شد',remove_signed:'پیوست امضاشده حذف شد',replace_signed:'پیوست امضاشده جایگزین شد',send_finance:'به واحد مالی ارسال شد',withdraw_finance:'از واحد مالی پس گرفته شد',complete:'تکمیل قرارداد اعلام شد',cancel_completion:'اعلام تکمیل لغو شد',withdraw_submission:'از تأیید پس گرفته شد',create:'ایجاد شد',submit:'برای تأیید ارسال شد',approve:'تأیید شد',reject:'برای اصلاح برگشت داده شد',revoke:'تأیید لغو شد'};
+const labels={complete_submit:'اعلام تکمیل شد و برای تأیید ارسال شد',edit_contract:'قرارداد ویرایش شد',edit_review:'مسئول تأیید قرارداد را ویرایش کرد',reopen_signed_contract:'قرارداد برای ویرایش به پیش‌نویس برگشت',confirm_signed:'نسخه امضاشده تأیید شد',approve_finance:'توسط بخش مالی تأیید شد',reject_finance:'توسط بخش مالی رد شد',revoke_finance:'تأیید مالی پس گرفته شد',add_signed:'نسخه امضاشده افزوده شد',remove_signed:'پیوست امضاشده حذف شد',replace_signed:'پیوست امضاشده جایگزین شد',send_finance:'به واحد مالی ارسال شد',withdraw_finance:'از واحد مالی پس گرفته شد',complete:'تکمیل قرارداد اعلام شد',cancel_completion:'اعلام تکمیل لغو شد',withdraw_submission:'از تأیید پس گرفته شد',create:'ایجاد شد',submit:'برای تأیید ارسال شد',approve:'تأیید شد',reject:'برای اصلاح برگشت داده شد',revoke:'تأیید لغو شد'};
 const historyDate=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{timeZone:'Asia/Tehran',year:'numeric',month:'long',day:'numeric'});
 const historyTime=new Intl.DateTimeFormat('fa-IR',{timeZone:'Asia/Tehran',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
 const moment=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{timeZone:'Asia/Tehran',year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
@@ -17,7 +17,14 @@ export function renderContractHistory(documentRef,contract,{finance=false,compac
     ? {action:'complete',at:contract.completedAt,actor:contract.completedBy} : null;
   const events=finance?(contract.financeHistory || history.filter(e=>financialActions.includes(e.action)))
     : [creation,completion,...history].filter(Boolean);
-  const entries=[...events];
+  const entries=[];
+  const actorsMatch=(a,b)=>a.at===b.at && (a.actor?.id || a.actor?.name)===(b.actor?.id || b.actor?.name);
+  for(const entry of events){
+    const last=entries.at(-1);
+    if(last && ['complete','submit'].includes(entry.action) && ['complete','submit'].includes(last.action) && entry.action!==last.action && actorsMatch(entry,last)){
+      entries[entries.length-1]={...last,...entry,manualFields:last.manualFields || entry.manualFields,action:'complete_submit'};
+    }else entries.push(entry);
+  }
   if(isAddendum)entries.reverse();
   entries.sort((a,b)=>Number(b.at)-Number(a.at));
   if(!entries.length){

@@ -9,7 +9,7 @@ import {renderContractFinanceReview} from './contractFinanceReviewView.js';
 import {openContractSignedUpload,renderContractSignedSection} from './contractSignedView.js';
 import { contractProgressSteps, renderContractWorkflowPanel, renderContractProgressCircle } from './contractProgressView.js';
 import { openContractHistory } from './contractHistoryView.js';
-import { approvalLabels, contractApprovalState } from '../../domain/contractApproval.js';
+import { approvedContractContactIds,contractApproverIds,approvalLabels, contractApprovalState } from '../../domain/contractApproval.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
 import { fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
 const contractListViews=new Map();
@@ -179,8 +179,20 @@ export function renderContractStatusRow(c,{showBadge=true}={}){
   return statusRow;
 }
 
-export function renderContractReviewRow(contract,{action,reject,edit,onEdited,onRejected,showBadge=true}){
+export function renderContractReviewRow(contract,{action,reject,edit,onEdited,onRejected,viewer,viewerContactName=()=>null,showBadge=true}){
   const row=renderContractStatusRow(contract,{showBadge});
+  if(viewer?.contactId && showBadge && approvedContractContactIds(contract).includes(String(viewer.contactId))){
+    const badge=row.children[0];badge.className='contract-status-badge is-approved';
+    const total=contractApproverIds(contract).length,approved=approvedContractContactIds(contract).length;
+    badge.textContent='شما این قرارداد را تأیید کردید';
+    if(total>1){
+      const pending=contractApproverIds(contract).filter(id=>!approvedContractContactIds(contract).includes(id));
+      const names=pending.map(id=>viewerContactName(id)).filter(Boolean);
+      const detail=document.createElement('small');detail.className='contract-review-count';
+      detail.textContent=[approved,total].map(n=>n.toLocaleString('fa-IR')).join(' از ')+' تأیید · '+(pending.length?'در انتظار تأیید '+(names.join('، ')||'سایر مسئولان'):'تأییدها تکمیل شد');
+      badge.appendChild(detail);
+    }
+  }
   if(contract.parentContractId)row.className='contract-addendum-toolbar';
   if(action)row.appendChild(action);
   if(edit && onEdited){
@@ -224,10 +236,35 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       const openStatus=(event,step)=>{
         event?.stopPropagation();
         const active=contractProgressSteps(statusRecord,p).find(item=>!item.done);
-        if(!active || (step && step.id!==active.id))return;
-        if(active.id==='signed')return openSignedSheet(p,statusRecord,{onChanged,finance:finance||!!approval});
-        openStatusSheet({title:active.label,showSave:false,reuseHistoryOnReplace:true,historyKey:'contract-status:'+c.id,
-          body(root){root.classList.add('contract-status-sheet');statusSheetBody(root,active);}});
+        const selected=step || active;
+        if(!selected || (!selected.done && selected.id!==active?.id))return;
+        if(selected.id==='signed')return openSignedSheet(p,statusRecord,{onChanged,finance:finance||!!approval});
+        openStatusSheet({title:selected.label,showSave:false,reuseHistoryOnReplace:true,historyKey:'contract-status:'+c.id,
+          body(root){
+            root.classList.add('contract-status-sheet');
+            const note=text=>{const line=document.createElement('p');line.textContent=text;root.append(line);};
+            if(selected.done){
+              const events=statusRecord.approvalHistory||[];
+              const actions={created:'create',completed:'complete',approved:'approve',finance:'send_finance','finance-approved':'approve_finance'};
+              const event=events.findLast(entry=>entry.action===actions[selected.id]) || (selected.id==='created'?statusRecord.creationEvent:null);
+              const submitted=selected.id==='completed' && contractApproverIds(statusRecord).length;
+              note(({created:'قرارداد ایجاد شد',completed:submitted?'اعلام تکمیل شد و برای تأیید ارسال شد':'تکمیل قرارداد اعلام شد',approved:'تأییدها تکمیل شد',finance:'قرارداد به بخش مالی ارسال شد','finance-approved':'بخش مالی قرارداد را تأیید کرد'})[selected.id]);
+              const at=event?.at || ({created:statusRecord.createdAt,completed:statusRecord.completedAt,finance:statusRecord.sentToAccountingAt,'finance-approved':statusRecord.accountingDecision?.at})[selected.id];
+              const person=event?.actor || ({created:statusRecord.createdBy,completed:statusRecord.completedBy,finance:statusRecord.sentToAccountingBy,'finance-approved':statusRecord.accountingDecision?.actor})[selected.id];
+              if(at || person?.name)note([person?.name,at && new Date(at).toLocaleString('fa-IR',{timeZone:'Asia/Tehran'})].filter(Boolean).join(' · '));
+            }
+            if(selected.id==='approved'){
+              const ids=contractApproverIds(statusRecord),done=approvedContractContactIds(statusRecord);
+              for(const id of ids){
+                const person=(p.contacts||[]).find(c=>String(c.id)===id);
+                const name=person?.name || [person?.firstName,person?.lastName].filter(Boolean).join(' ') || 'مسئول تأیید';
+                note(name+' · '+(done.includes(id)?'تأیید کرد':'در انتظار تأیید'));
+              }
+              const history=statusRecord.approvalHistory||[];
+              for(const entry of history.slice(history.findLastIndex(e=>e.action==='submit')+1).filter(e=>e.action==='edit_review' && e.reason))note([entry.actor?.name,'دلیل ویرایش',entry.reason].filter(Boolean).join(' · '));
+            }
+            if(!selected.done || (selected.id==='finance' && !finance && !approval))statusSheetBody(root,selected);
+          }});
       };
       const heading=renderContractCardHeading(p,c,{
         onEdit:approval || !writable?undefined:()=>{
@@ -249,11 +286,20 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
         },'بله',{cancelLabel:'خیر'}),
       },{onPreview:showDetails && !finance && !approval ? trigger=>openContractDetails(p,c,trigger) : approval?preview:openPreview,onDocumentPreview:openPreview,onSummary:trigger=>openContractDetails(p,c,trigger,{showDocuments:showDetails && !finance && !approval}),onHistory:()=>openContractHistory(statusRecord,{finance,openSheet:openStatusSheet}),progress:renderContractProgressCircle(document,c,p,openStatus)});
       row.appendChild(heading);
-      row.append(renderContractWorkflowPanel(document,c,p,{onOpen:openStatus}));
+      row.append(renderContractWorkflowPanel(document,c,p,{onOpen:openStatus,openCompleted:true}));
+      const events=c.approvalHistory||[];
+      const cycle=events.slice(events.findLastIndex(e=>['submit','reject','edit_contract','withdraw_submission','cancel_completion'].includes(e.action))+1);
+      const edited=cycle.findLastIndex(e=>e.action==='edit_review');
+      if(edited>=0 && cycle.slice(edited+1).some(e=>e.action==='approve' && e.actor?.id===cycle[edited].actor?.id)){
+        const label=document.createElement('p');label.className='contract-review-notice';label.textContent='قرارداد توسط مسئول تأیید ویرایش و سپس تأیید شد';row.append(label);
+      }
       if(approval){
         const reviewAction=approval.action && !approval.action.disabled && document.createElement('button');
         if(reviewAction){reviewAction.type='button';reviewAction.className='contract-review-action';reviewAction.textContent=approval.action.textContent;reviewAction.onclick=event=>{event.stopPropagation();approval.action.click();};}
-        row.append(renderContractReviewRow(c,{...approval,action:reviewAction,onEdited:onChanged,onRejected:onChanged}));
+        row.append(renderContractReviewRow(c,{...approval,viewer:actor,viewerContactName:id=>{
+          const person=(p.contacts||[]).find(contact=>String(contact.id)===id);
+          return person?.name || [person?.firstName,person?.lastName].filter(Boolean).join(' ');
+        },action:reviewAction,onEdited:onChanged,onRejected:onChanged}));
         row.appendChild(renderContractDocuments(p,c,{reviewOnly:true,approvals:approvalDocuments}));
         statusSheetBody=(root,step)=>{
           if(step.id!=='approved')return;
@@ -285,7 +331,8 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
           }
           return;
         }
-        if(['signed','finance','finance-approved'].includes(step.id)){
+        if(step.id==='finance-approved'){const note=document.createElement('p');note.textContent='در انتظار بررسی بخش مالی';root.append(note);return;}
+        if(['signed','finance'].includes(step.id)){
           const signed=renderContractSignedSection(p,record,{stage:step.id,onChanged,onReturn:()=>{statusRecord=contractApi.get(id,record.id)||record;openStatus();}});
           if(signed)root.append(signed);
         }
