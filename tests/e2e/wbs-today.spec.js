@@ -92,7 +92,6 @@ test('Today shows Tasks instead of their Work, formats one-day dates once, and e
 
 test('report is edited in place with edit time and a photo uploader',async({page})=>{
   const card=page.locator('.wbs-today-frame[data-view="today"] .today-task-card[data-entity-id="today-task"]');
-  await card.locator('.today-progress-circle').click();
   const sheet=page.locator('#wbsSheetOverlay');
   await expect(sheet).toHaveCount(0);
   await card.locator('.today-report-circle').click();
@@ -124,13 +123,15 @@ test('completion enters pending approval, rejection returns Today with typed new
   await expect(card.locator('.today-report-circle')).toHaveAttribute('aria-label','فعال، بدون گزارش');
   await card.locator('.today-report-circle').click();
   await page.locator('[name="reportDescription"]').fill('گزارش تکمیل قالب‌بندی');
-  await page.locator('[name="reportProgress"]').click();
-  await expect(page.locator('#numpadDisplay')).toHaveText('وارد کنید…');
-  for(const digit of '100') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
-  await expect(page.locator('#numpadDisplay')).toHaveText('٪۱۰۰');
-  await page.locator('#numpadDoneBtn').click();
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
-  await expect(list).toHaveAttribute('data-mode','pending');
+  await card.locator('.today-progress-circle').click();
+  await expect(page.locator('#numpadDisplay')).toContainText('۰');
+  await page.locator('#numpadBackspace').click();
+  for(const digit of '100') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
+  await expect(page.locator('#numpadDisplay')).toContainText('۱۰۰');
+  await page.locator('#numpadDoneBtn').click();
+  await expect.poll(()=>page.evaluate(()=>window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0].workTasks[0].completionState)).toBe('pending_approval');
+  await list.getByRole('tab',{name:'همه',exact:true}).click();
   await openTaskDetails(page,card);
   await expect(sheet).toContainText('در انتظار تأیید');
   await expect(sheet.getByRole('button',{name:'رد',exact:true})).toHaveCount(0);
@@ -144,19 +145,22 @@ test('completion enters pending approval, rejection returns Today with typed new
   await openTaskDetails(page,card);
   await expect(sheet.locator('.today-comment').first()).toContainText('نیاز به اصلاح');
   await sheet.getByRole('button',{name:'بستن'}).click();
-  await card.locator('.today-report-circle').click();
-  await page.locator('[name="reportProgress"]').click();
-  await expect(page.locator('#numpadDisplay')).toHaveText('٪۱۰۰');
+  await card.locator('.today-progress-circle').click();
+  await expect(page.locator('#numpadDisplay')).toContainText('۱۰۰');
   await page.locator('#numpadDoneBtn').click();
-  await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
+  await expect(card).toHaveCount(0);
+  await list.getByRole('tab',{name:'تکمیل',exact:true}).click();
   await openTaskDetails(page,card);
+  await expect(sheet).toContainText('در انتظار تأیید');
   await sheet.getByRole('button',{name:'بستن'}).click();
   await page.evaluate(async()=>{
     const {todayApi}=await import('/src/domain/wbs/todayApi.js');
     todayApi.approve('e2e-today',{kind:'task',id:'today-task',workId:'w1'},{id:'e2e',contactId:'a'});
   });
-  await list.getByRole('tab',{name:'تکمیل',exact:true}).click();
+  await list.getByRole('tab',{name:'امروز',exact:true}).click();
   await expect(card).toHaveCount(0);
+  await list.getByRole('tab',{name:'تکمیل',exact:true}).click();
+  await expect(card).toBeVisible();
   await expect.poll(()=>page.evaluate(()=>window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0].workTasks[0].completionState)).toBe('approved');
 });
 

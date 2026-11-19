@@ -67,6 +67,21 @@ function dailyStatusChange(entity,status,reasonId,note,actor,at,day){
 }
 
 export const todayApi = {
+  setProgress(projectId,ref,value,actor,clock=Date.now){
+    const by=actorValue(actor);
+    const entity=todayRepository.get(projectId,ref);
+    const progress=Number(value);
+    if(!Number.isInteger(progress)||progress<0||progress>100)return {ok:false,code:'invalid_progress'};
+    if(!entity || entity.trashed || !by.contactId || String(entity.assigneeContactId)!==by.contactId)return {ok:false,code:'forbidden'};
+    if(entity.completed || ['approved','pending_approval'].includes(entity.completionState))return {ok:false,code:'locked'};
+    const at=clock(),day=tehranTodayJalali(new Date(at));
+    return mutate(projectId,ref,current=>{
+      const updated={...current,progress,actualStart:progress>0?(current.actualStart||day):current.actualStart,
+        workflowStatus:'in_progress',updatedAt:at,
+        executionHistory:[...(current.executionHistory||[]),event('progress_updated',by,at,{day,progress})]};
+      return progress===100?completeExecution(updated,ref,by,at,day):updated;
+    },{completion:ref.kind==='task' && progress===100 ? saved=>saved.completed || undefined:undefined});
+  },
   setDailyStatus(projectId,ref,status,reasonId,note,actor,clock=Date.now){
     const entity=todayRepository.get(projectId,ref);
     const by=actorValue(actor);

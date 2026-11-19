@@ -95,7 +95,7 @@ export function createStandaloneWork(projectId,draft,clock=Date.now){
   });
   if(!checked.ok)return checked;
   const now=clock();
-  const task=normalizeWorkTask({...checked.value,id:draft.id,description:String(draft.description||'').trim(),oddJobType:draft.oddJobType,
+  const task=normalizeWorkTask({...checked.value,id:draft.id,description:String(draft.description||'').trim(),oddJobType:draft.oddJobType,linkedWbsId:String(draft.linkedWbsId||''),
     scheduleStart:start,scheduleEnd:end,dueDate:end,
     expenseApproverContactId:draft.expenseApproverContactId,
     expenseApprovalStatus:draft.expenseApproverContactId?'pending':null,

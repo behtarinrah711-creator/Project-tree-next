@@ -1,4 +1,5 @@
 import {openSearchPicker} from '../../ui/searchPickerAdapter.js';
+import {openNumpadGeneric} from '../../ui/numpad.js';
 import {executionFilterTree,openExecutionBranchFilter} from './executionBranchFilter.js';
 import {gregorianToJalali} from '../../ui/jalali.js';
 import {canDeletePlanning,canWritePlanning,planningAccessLevel} from '../roleManagement/planningAccess.js';
@@ -556,8 +557,18 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
       onChanged,onReturn:returnToCalendar,onSubmitted(updated){if(item.kind==='standalone')standaloneMode='pending';else activeMode=timeState(updated,tehranTodayJalali());}});
   };
   if(canReport)report.type='button';
-  const progress=progressCircle(documentRef,entity,{summary:{}});
-  progress.onclick=event=>event.stopPropagation();
+  const canChangeProgress=canReport;
+  const progress=progressCircle(documentRef,entity,{summary:{},onClick:canChangeProgress?event=>{
+    event.stopPropagation();
+    openNumpadGeneric(String(Number(entity.progress)||0),raw=>{
+      const value=Number(raw);
+      if(!Number.isInteger(value)||value<0||value>100){window.KarhaUI?.showToast?.('درصد پیشرفت باید بین صفر تا صد باشد');return false;}
+      const result=todayApi.setProgress(project.id,refOf(item),value,currentExecutionActor(project));
+      if(!result.ok){window.KarhaUI?.showToast?.('ثبت درصد پیشرفت انجام نشد');return false;}
+      onChanged?.();
+    },{suffix:'٪',group:false,maxLen:3});
+  }:undefined});
+  if(!canChangeProgress)progress.onclick=event=>event.stopPropagation();
   heading.append(titles,progress);
   if(item.kind==='standalone' && entity.oddJobType && !approval && canWriteProjectModule(project.id,'execution:today')){
     heading.classList.add('has-oddjob-menu');

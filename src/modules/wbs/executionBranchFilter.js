@@ -35,7 +35,16 @@ export function searchExecutionBranches(node,query){
   return matches;
 }
 
-export function openExecutionBranchFilter(project,tree,onSelect,selectedBranch=null){
+export function selectableWbsTree(project){
+  const walk=nodes=>(nodes||[]).filter(node=>node&&!node.trashed).map(node=>({
+    id:'branch:'+node.id,title:node.text||node.title||'بدون عنوان',children:[
+      ...walk(node.subtasks),...(node.workTasks||[]).filter(task=>task&&!task.trashed).map(task=>({id:'task:'+node.id+':'+task.id,title:task.title||'کار',children:[]})),
+    ],
+  }));
+  return {id:'',title:'انتخاب مرحله یا کار',children:walk(project.tasks)};
+}
+
+export function openExecutionBranchFilter(project,tree,onSelect,selectedBranch=null,{selectionMode=false}={}){
   const stack=[tree];
   let caption,back,search,list;
   const select=node=>{closeWbsSheet();onSelect(node.id);};
@@ -65,7 +74,7 @@ export function openExecutionBranchFilter(project,tree,onSelect,selectedBranch=n
     };
     const query=search.value.trim();
     const rows=query?searchExecutionBranches(current,query):current.children.map(node=>({node,path:[]}));
-    if(!query)add(current.id?'همهٔ '+current.title:'همهٔ مراحل و کارها','',()=>select(current),{all:true});
+    if(!query)add(selectionMode?(current.id?'انتخاب '+current.title:'بدون ارتباط با درخت پروژه'):(current.id?'همهٔ '+current.title:'همهٔ مراحل و کارها'),'',()=>select(current),{all:true});
     for(const {node,path} of rows){
       const nested=node.children.length>0;
       add(node.title,path.slice(0,-1).join(' · '),()=>{
@@ -80,7 +89,7 @@ export function openExecutionBranchFilter(project,tree,onSelect,selectedBranch=n
     list.append(buttons);
   }
   const sheet=openWbsSheet({
-    title:tree.title,showSave:false,autoFocus:false,historyKey:'execution-branch-filter:'+project.id,
+    title:tree.title,showSave:false,autoFocus:false,historyKey:(selectionMode?'wbs-selection:':'execution-branch-filter:')+project.id,
     requestClose(){
       if(stack.length===1){closeWbsSheet();return;}
       stack.pop();search.value='';list.scrollTop=0;paint('backward');
@@ -103,7 +112,7 @@ export function openExecutionBranchFilter(project,tree,onSelect,selectedBranch=n
         clear.type='button';
         clear.className='execution-details-filter-clear';
         clear.textContent='×';
-        clear.setAttribute('aria-label','پاک کردن فیلتر '+selectedBranch.title);
+        clear.setAttribute('aria-label','پاک کردن انتخاب '+selectedBranch.title);
         clear.onclick=()=>{selected.remove();onSelect(tree.id);};
         selected.append(value,clear);
         root.append(selected);
