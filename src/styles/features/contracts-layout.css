@@ -158,7 +158,7 @@
              linear-gradient(to right,#dde2e9,transparent) left center/7px 70% scroll no-repeat;
 }
 
-.financial-summary-page.workspace-page{bottom:0;display:flex;flex-flow:column;height:auto;}
+.financial-summary-page.workspace-page{bottom:0 !important;display:flex;flex-flow:column;height:auto;}
 .financial-summary-page .inner-section-bar{flex:none;}
 .financial-summary-page > .contract-details-body{min-height:0;flex:1;overflow-y:auto;padding-bottom:max(16px,env(safe-area-inset-bottom));}
 .financial-summary-page .contract-financial-table{table-layout:auto;}

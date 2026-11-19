@@ -96,7 +96,7 @@ test('only contract writers can register documents and linked records remain vis
     assert.equal(shortcut({...contract,accountingStatus:'sent'}),undefined);
     const status=readStatusSheet(openStatusSheet=>renderContractCard(project,pending,{openStatusSheet}),make);
     assert.deepEqual(status.children.map(node=>node.textContent),
-      ['پس‌گرفتن از تأیید']);
+      ['مسئول تأیید · تأیید کرد','مسئول تأیید · در انتظار تأیید','پس‌گرفتن از تأیید']);
     window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'view',accounting:'full'}}}};
     assert.equal(shortcut(contract),undefined);
     project.contractAddenda=[
@@ -131,7 +131,7 @@ test('active contract sheets contain only stage actions and history opens separa
   function render(record){
     let opened;
     const card=renderContractCard(project,{...base,...record},{openSignedSheet:(source,record,options)=>{opened={upload:true,record,options};},openStatusSheet:options=>{const root=make('div');root.classList={add(){}};options.body(root);opened={title:options.title,root};}});
-    return {card,openStage(){const stage=nodes(card).find(n=>n.className==='contract-stage-button' && !n.disabled);stage?.onclick({stopPropagation(){}});return opened;},get opened(){return opened;}};
+    return {card,openStage(id){const stage=id?nodes(card).find(n=>n.dataset.step===id)?.children[0]:nodes(card).find(n=>n.className.includes('contract-progress-step') && !n.className.includes('is-complete'))?.children[0];stage?.onclick({stopPropagation(){}});return opened;},get opened(){return opened;}};
   }
   const labels=sheet=>nodes(sheet.root).filter(n=>n.tag==='button').map(n=>n.textContent);
   try{
@@ -142,13 +142,14 @@ test('active contract sheets contain only stage actions and history opens separa
     const signed={signedAt:1,signedFiles:[file]};
     assert.deepEqual(labels(render(signed).openStage()),['ارسال به واحد مالی']);
     const sent={...signed,accountingStatus:'sent',sentToAccountingAt:2,accountingPackage:{contract:base,signedFiles:[file]}};
-    assert.deepEqual(labels(render(sent).openStage()),['پس‌گرفتن از مالی']);
+    assert.deepEqual(labels(render(sent).openStage()),[]);
+    assert.deepEqual(labels(render(sent).openStage('finance')),['پس‌گرفتن از مالی']);
     for(const record of [{status:'draft',isDraft:true},signed,sent]){
       const sheet=render(record).openStage();
       assert.ok(!nodes(sheet.root).some(n=>['contract-progress','contract-history','contract-status-badge'].includes(n.className)));
     }
     const completed=render({...sent,accountingStatus:'accepted'});
-    assert.equal(nodes(completed.card).filter(n=>n.className==='contract-stage-button' && !n.disabled).length,0);
+    assert.equal(nodes(completed.card).filter(n=>n.className==='contract-stage-button' && !n.disabled).length,5);
     const history=nodes(completed.card).find(n=>n.tag==='button' && n.textContent==='تاریخچه');
     history.onclick({stopPropagation(){}});
     assert.equal(completed.opened.title,'تاریخچه');
