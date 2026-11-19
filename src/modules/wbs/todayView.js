@@ -568,7 +568,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
       onChanged?.();
     },{suffix:'٪',group:false,maxLen:3});
   }:undefined});
-  progress.onclick=event=>event.stopPropagation();
+  if(!canChangeProgress)progress.onclick=event=>event.stopPropagation();
   heading.append(titles,progress);
   if(item.kind==='standalone' && entity.oddJobType && !approval && canWriteProjectModule(project.id,'execution:today')){
     heading.classList.add('has-oddjob-menu');
