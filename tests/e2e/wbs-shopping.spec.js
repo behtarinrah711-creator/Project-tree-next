@@ -75,6 +75,7 @@ test('shopping report, comment and approval use the same WBS purchase entity',as
   await page.locator('.wbs-tab[aria-label="خریدها"]').click();
   let card=page.locator('.shopping-item-card[data-entity-id="w1"]');
   await card.locator('.today-progress-circle').click();
+  await page.locator('#numpadBackspace').click();
   for(const digit of '90') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
   await page.locator('#numpadDoneBtn').click();
   await card.locator('.today-report-circle').click();
