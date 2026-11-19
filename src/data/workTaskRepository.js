@@ -58,16 +58,16 @@ export class WorkTaskRepository{
 
   update(projectId, workId, taskId, updater){
     let updated = null;
-    this.mutate(projectId, workId, work => ({
+    const work=this.mutate(projectId, workId, work => ({
       ...work,
       workTasks:(work.workTasks || []).map(task => {
         if(String(task?.id) !== String(taskId)) return task;
         const next = typeof updater === 'function' ? updater(task) : updater;
         updated = normalizeWorkTask(next, workId);
-        return updated ? this.get(projectId, workId, taskId) : null;
+        return updated;
       }),
     }));
-    return updated;
+    return work && updated ? this.get(projectId, workId, taskId) : null;
   }
 }
 
