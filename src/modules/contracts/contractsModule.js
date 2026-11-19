@@ -179,12 +179,19 @@ export function renderContractStatusRow(c,{showBadge=true}={}){
   return statusRow;
 }
 
-export function renderContractReviewRow(contract,{action,reject,edit,onEdited,onRejected,viewer,showBadge=true}){
+export function renderContractReviewRow(contract,{action,reject,edit,onEdited,onRejected,viewer,viewerContactName=()=>null,showBadge=true}){
   const row=renderContractStatusRow(contract,{showBadge});
   if(viewer?.contactId && showBadge && approvedContractContactIds(contract).includes(String(viewer.contactId))){
     const badge=row.children[0];badge.className='contract-status-badge is-approved';
     const total=contractApproverIds(contract).length,approved=approvedContractContactIds(contract).length;
-    badge.textContent='شما این قرارداد را تأیید کردید'+(total>1?' · '+[approved,total].map(n=>n.toLocaleString('fa-IR')).join(' از '):'');
+    badge.textContent='شما این قرارداد را تأیید کردید';
+    if(total>1){
+      const pending=contractApproverIds(contract).filter(id=>!approvedContractContactIds(contract).includes(id));
+      const names=pending.map(id=>viewerContactName(id)).filter(Boolean);
+      const detail=document.createElement('small');detail.className='contract-review-count';
+      detail.textContent=[approved,total].map(n=>n.toLocaleString('fa-IR')).join(' از ')+' تأیید · '+(pending.length?'در انتظار تأیید '+(names.join('، ')||'سایر مسئولان'):'تأییدها تکمیل شد');
+      badge.appendChild(detail);
+    }
   }
   if(contract.parentContractId)row.className='contract-addendum-toolbar';
   if(action)row.appendChild(action);
@@ -289,7 +296,10 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       if(approval){
         const reviewAction=approval.action && !approval.action.disabled && document.createElement('button');
         if(reviewAction){reviewAction.type='button';reviewAction.className='contract-review-action';reviewAction.textContent=approval.action.textContent;reviewAction.onclick=event=>{event.stopPropagation();approval.action.click();};}
-        row.append(renderContractReviewRow(c,{...approval,viewer:actor,action:reviewAction,onEdited:onChanged,onRejected:onChanged}));
+        row.append(renderContractReviewRow(c,{...approval,viewer:actor,viewerContactName:id=>{
+          const person=(p.contacts||[]).find(contact=>String(contact.id)===id);
+          return person?.name || [person?.firstName,person?.lastName].filter(Boolean).join(' ');
+        },action:reviewAction,onEdited:onChanged,onRejected:onChanged}));
         row.appendChild(renderContractDocuments(p,c,{reviewOnly:true,approvals:approvalDocuments}));
         statusSheetBody=(root,step)=>{
           if(step.id!=='approved')return;

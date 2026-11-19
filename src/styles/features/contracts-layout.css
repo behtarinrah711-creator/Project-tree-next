@@ -172,3 +172,5 @@
 .financial-summary-page .contract-financial-table .summary-unit{width:3em;}
 .inner-section-back:not(:has(svg,img)):not(:empty){font-size:0;}
 .inner-section-back:not(:has(svg,img)):not(:empty)::before{content:"";display:inline-block;width:9px;height:9px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);}
+
+.contract-review-count{display:block;font-size:11px;font-weight:400;color:#505964;margin-top:3px;}

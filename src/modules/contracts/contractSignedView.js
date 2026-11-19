@@ -66,7 +66,7 @@ export function openContractSignedUpload(project,contract,{onChanged=()=>{},fina
   let uploader,reason,saving=false;
   const sheet=openSheet({title:(editable?'بارگذاری نسخه امضاشده ':'نسخه امضاشده ')+label,saveLabel:'ذخیره',autoFocus:false,showSave:editable,reuseHistoryOnReplace:true,historyKey:'contract-signed:'+contract.id,
     body(root){
-      uploader=mountUploader(root,{projectId:project.id,recordId:contract.id,category:'contracts',files,readOnly:!editable,label:'افزودن عکس یا PDF '+label,buttonLabel:true,onError:toast,
+      uploader=mountUploader(root,{projectId:project.id,recordId:contract.id,category:'contracts',files,readOnly:!editable,allowReplace:editable && !contract.parentContractId && !contract.statementType,label:'افزودن عکس یا PDF '+label,buttonLabel:true,onError:toast,
         confirmRemove:remove=>{if(!saving)openConfirm('این فایل حذف شود؟',()=>{if(!saving)remove();},'حذف');}});
       if(editable && existing.length && !contract.parentContractId && !contract.statementType){
         reason=document.createElement('textarea');reason.className='wbs-input';reason.placeholder='دلیل تغییر نسخه امضاشده';reason.setAttribute('aria-label',reason.placeholder);root.append(reason);
