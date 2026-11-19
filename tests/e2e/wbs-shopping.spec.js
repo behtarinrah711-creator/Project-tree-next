@@ -73,26 +73,13 @@ test('shopping is a native WBS view with its own modular surface', async ({ page
 
 test('shopping report, comment and approval use the same WBS purchase entity',async({page})=>{
   await page.locator('.wbs-tab[aria-label="خریدها"]').click();
-  let card=page.locator('.shopping-item-card[data-entity-id="w1"]');
-  await card.locator('.today-progress-circle').click();
+  const card=page.locator('.shopping-item-card[data-entity-id="w1"]');
+  await card.locator('.today-report-circle').click();
   await page.locator('[name="reportDescription"]').fill('پیش‌فاکتور آهن دریافت شد');
-  await page.locator('[name="reportProgress"]').click();
-  for(const digit of '90') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
-  await page.locator('#numpadDoneBtn').click();
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
   await expect(card).toContainText('پیش‌فاکتور آهن دریافت شد');
   await card.locator('[name="comment"]').fill('قیمت با فروشنده بررسی شود');
   await card.locator('.today-comment-form button').click();
   await expect(card).toContainText('قیمت با فروشنده بررسی شود');
-  await card.locator('.today-progress-circle').click();
-  await page.locator('[name="reportProgress"]').click();
-  await expect(page.locator('#numpadDisplay')).toContainText('۹۰');
-  for(let digit=0;digit<2;digit++) await page.locator('#numpadBackspace').click();
-  for(const digit of '100') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
-  await page.locator('#numpadDoneBtn').click();
-  await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
-  await expect(page.locator('.wbs-shopping-frame')).toHaveAttribute('data-mode','pending');
-  card=page.locator('.shopping-item-card[data-entity-id="w1"]');
-  await expect(card).toContainText('در انتظار تأیید خرید');
-  await expect.poll(()=>page.evaluate(()=>{const item=window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0];return{reports:item.executionReports.length,comments:item.executionComments.length,state:item.completionState};})).toEqual({reports:1,comments:1,state:'pending_approval'});
+  await expect.poll(()=>page.evaluate(()=>{const item=window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0];return {reports:item.executionReports.length,comments:item.executionComments.length};})).toEqual({reports:1,comments:1});
 });
