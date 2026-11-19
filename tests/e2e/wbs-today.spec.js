@@ -130,7 +130,8 @@ test('completion enters pending approval, rejection returns Today with typed new
   for(const digit of '100') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
   await expect(page.locator('#numpadDisplay')).toContainText('۱۰۰');
   await page.locator('#numpadDoneBtn').click();
-  await expect(list).toHaveAttribute('data-mode','pending');
+  await list.getByRole('tab',{name:'همه',exact:true}).click();
+  await expect.poll(()=>page.evaluate(()=>window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0].workTasks[0].completionState)).toBe('pending_approval');
   await openTaskDetails(page,card);
   await expect(sheet).toContainText('در انتظار تأیید');
   await expect(sheet.getByRole('button',{name:'رد',exact:true})).toHaveCount(0);
