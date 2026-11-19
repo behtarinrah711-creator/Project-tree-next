@@ -14,6 +14,7 @@ import { formatJalaliDisplay } from '../../ui/jalali.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
+import {selectableWbsTree,openExecutionBranchFilter} from './executionBranchFilter.js';
 import { isExpanded, toggleExpanded } from './wbsExpandState.js';
 import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
 import { predecessorField } from './predecessorField.js';
@@ -450,6 +451,7 @@ export async function openStandaloneWorkSheet({projectId,onChanged,saveStandalon
     amount:existing?.amount??'',
     title:existing?.title||'',
     description:existing?.description||'',
+    linkedWbsId:existing?.linkedWbsId||'',
   };
   const types=ODD_JOB_TYPES;
   const toast=message=>window.KarhaUI?.showToast?.(message);
@@ -469,6 +471,7 @@ export async function openStandaloneWorkSheet({projectId,onChanged,saveStandalon
           const row=document.createElement('label');row.className='ft-row';
           const caption=document.createElement('span');caption.className='ft-label';caption.textContent=label;
           const input=document.createElement('input');input.className='ft-input';input.value=draft[key]||'';
+          input.style.textAlign='left';input.style.direction='rtl';
           input.placeholder='وارد کنید';input.oninput=()=>{draft[key]=input.value;};
           row.append(caption,input);fields.append(row);
         };
@@ -487,6 +490,26 @@ export async function openStandaloneWorkSheet({projectId,onChanged,saveStandalon
         };
         textRow('عنوان','title');
         textRow('شرح کوتاه','description');
+        const project=projectRepository.find(projectId);
+        if(project){
+          const tree=selectableWbsTree(project);
+          const find=(node,id)=>node.id===id?node:node.children.map(child=>find(child,id)).find(Boolean);
+          const selected=draft.linkedWbsId?find(tree,draft.linkedWbsId):null;
+          const row=document.createElement('div');row.className='execution-details-filter-row';
+          const pick=document.createElement('button');pick.type='button';pick.className='execution-details-filter-picker';
+          const label=document.createElement('span');label.textContent='ارتباط با درخت پروژه';
+          const value=document.createElement('span');value.textContent=selected?.title||'انتخاب مرحله یا کار';
+          value.className=selected?'execution-details-filter-value':'is-placeholder';
+          pick.append(label,value);
+          pick.onclick=()=>openExecutionBranchFilter(project,tree,id=>update('linkedWbsId',id),selected,{selectionMode:true});
+          row.append(pick);
+          if(selected){
+            const clear=document.createElement('button');clear.type='button';clear.className='execution-details-filter-clear';clear.textContent='×';
+            clear.setAttribute('aria-label','حذف ارتباط با '+selected.title);
+            clear.onclick=()=>update('linkedWbsId','');row.append(clear);
+          }
+          fields.append(row);
+        }
         choice('نوع کار','oddJobType',types.map(value=>({value,label:value})));
         person('مسئول پیگیری','assigneeContactId');
         choice('درجه اهمیت','priority',Object.entries(PRIORITY_LABELS).map(([value,label])=>({value,label})));
