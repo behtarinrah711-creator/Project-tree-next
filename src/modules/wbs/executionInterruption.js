@@ -60,7 +60,9 @@ export function openExecutionInterruption(project,item,actor,refresh,{type='exec
         const paint=()=>{
           role.textContent=roles[draft.role];
           person.textContent=name(contacts.find(contact=>id(contact)===draft.contactId))||'انتخاب مخاطب';
-          personRow.style.display=['unknown','external'].includes(draft.role)?'none':'';
+          const hidePerson=['unknown','external'].includes(draft.role);
+          personRow.hidden=hidePerson;
+          personRow.classList.toggle('hidden',hidePerson);
         };
         paint();
         root.append(fieldRow('نقش طرف منتسب',role),personRow);
