@@ -110,7 +110,7 @@ test('contract editor can replace returned printed files in draft without approv
  let status,uploaded;
  await createFileUploadHandler({pool:f.pool,sessionSecret:'s',storage:f.storage})(request,{writeHead(code){status=code;},end(value){uploaded=JSON.parse(value);}},new URL('http://local/api/v1/projects/p/files/contracts/c?name=replacement.pdf'));
  assert.equal(status,201);
- const result=await f.call({action:'save_signed',files:[uploaded.file],version:c.handoffVersion,updatedAt:c.updatedAt});
+ const result=await f.call({action:'save_signed',reason:'بارگذاری اسکن واضح',files:[uploaded.file],version:c.handoffVersion,updatedAt:c.updatedAt});
  assert.equal(result.status,200);assert.equal(result.result.contract.status,'draft');assert.equal(result.result.contract.signedAt,null);
  assert.equal(result.result.contract.signedFiles[0].id,uploaded.file.id);
  assert.equal(result.result.contract.accountingPackage.signedFiles[0].id,file.id);
@@ -558,10 +558,12 @@ test('only an assigned contract editor can save changes during review',async()=>
   f.setPermissions({modules:{contracts:'view',accounting:'full'}});
   assert.equal((await f.call(action)).status,403);
   f.setPermissions({modules:{contracts:'create'}});
+  assert.equal((await f.call({...action,changes:{title:'ویرایش بدون دلیل'}})).status,400);
   const saved=await f.call(action);
   assert.equal(saved.status,200);
   assert.equal(saved.result.contract.title,action.changes.title);
   assert.equal(saved.result.contract.approvalStatus,'pending');
   assert.equal(saved.result.contract.approvalHistory.at(-1).action,'edit_review');
+  assert.equal(saved.result.contract.approvalHistory.at(-1).reason,action.changes.revisionReason);
   assert.equal((await f.call(action)).status,409);
 });
