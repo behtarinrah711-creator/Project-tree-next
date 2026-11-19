@@ -141,7 +141,7 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
       }
       const progress=Number(item.entity.progress)||0;
       const description=root.querySelector('[name="reportDescription"]').value;
-      const statusOnly=statusControls && !current && !description.trim() && !photos.length && Number(progress)===(Number(item.entity.progress)||0);
+      const statusOnly=statusControls && !current && !description.trim() && !photos.length;
       const result=statusOnly
         ? todayApi.setDailyStatus(projectId,ref,dailyStatus.status,dailyStatus.reasonId,'',actor)
         : todayApi.saveReport(projectId,ref,description,actor,Date.now,progress,{files:photos,completeAt100:true,dailyStatus});
