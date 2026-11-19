@@ -1,3 +1,4 @@
+import {flattenDependencyCandidates,jalaliDayNumber,requiredScheduleStart,scheduleDate,scheduleRangeOf} from '../../domain/wbs/scheduling.js';
 import {confirmSaosaWorkspaceSave,isSaosaHost,saosaWorkspaceSaveDiagnostic} from '../../cloud/saosaWorkspaceSync.js';
 import {findInTree} from '../../domain/wbs/normalize.js';
 import {mountFileUploader} from '../files/fileUploader.js';
@@ -9,7 +10,7 @@ import { activityRepository } from '../../data/activityRepository.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { FOLLOW_UP_WORK_TYPE, ODD_JOB_TYPES, WORK_TYPES, WORK_TYPE_TOGGLES, taskCostOf } from '../../domain/wbs/normalize.js';
 import { workTaskApi } from '../../domain/wbs/workTaskApi.js';
-import { TASK_PRIORITIES, isTaskComplete } from '../../domain/wbs/workTaskModel.js';
+import { TASK_PRIORITIES, activeWorkTasks, isTaskComplete } from '../../domain/wbs/workTaskModel.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
@@ -72,26 +73,26 @@ function optionButton({ name, value, options, onChange, placeholder = 'انتخ�
   button.append(label,arrow);root.append(input,button,menu);paint();return root;
 }
 
-function numericButton(name, value, { money=false }={}){
+function numericButton(name, value, { money=false, suffix='', onChange }={}){
   const button=document.createElement('button');
   button.type='button';button.name=name;button.className='wbs-input wbs-inline-number';button.dataset.value=String(value ?? 0);
-  const paint=()=>{button.textContent=`${new Intl.NumberFormat('fa-IR').format(Number(button.dataset.value)||0)}${money?' تومان':''}`;};
+  const paint=()=>{button.textContent=`${new Intl.NumberFormat('fa-IR').format(Number(button.dataset.value)||0)}${money?' تومان':suffix}`;};
   button.addEventListener('click',()=>{
     const initial = money && Number(button.dataset.value) === 0 ? '' : button.dataset.value;
     openNumpadGeneric(initial,raw=>{
-      button.dataset.value=toEnglishDigits(String(raw)).replace(/[^\d.]/g,'');paint();
-    },{group:money,suffix:money?' تومان':'',maxLen:16});
+      button.dataset.value=toEnglishDigits(String(raw)).replace(/[^\d.]/g,'');paint();onChange?.(Number(button.dataset.value));
+    },{group:money,suffix:money?' تومان':suffix,maxLen:onChange?5:16});
   });
   paint();return button;
 }
 
-function dateField(documentRef, name, label, value){
+function dateField(documentRef, name, label, value, onChange){
   const button = documentRef.createElement('button');
   button.type = 'button'; button.name = name; button.className = 'wbs-input wbs-date-input';
   button.dataset.value = value || '';
   const paint = () => { button.textContent = button.dataset.value ? formatJalaliDisplay(button.dataset.value) : 'انتخاب تاریخ'; };
   button.addEventListener('click', () => documentRef.defaultView?.KarhaUI?.openJalaliPicker?.(button.dataset.value, next => {
-    button.dataset.value = next; paint();
+    button.dataset.value = next; paint(); onChange?.();
   }));
   paint();
   return fieldRow(label, button);
@@ -278,8 +279,80 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       templateContainer.appendChild(fieldRow('قالب قرارداد',templateButton));root.appendChild(templateContainer);
       togglesContainer.addEventListener('change',paintTemplate);paintTemplate();
 
-      root.appendChild(dateField(documentRef, 'taskStart', 'تاریخ شروع', task?.scheduleStart || ''));
-      root.appendChild(dateField(documentRef, 'taskEnd', 'تاریخ پایان', task?.scheduleEnd || ''));
+      let preferredMode=editing?(task.scheduleMode||'manual'):'';
+      let duration=task?.scheduleDuration||0;
+      let selectedEnd=task?.scheduleEnd||'';
+      let manualStart=task?.scheduleStart||'',manualEnd=selectedEnd;
+      let wasAutomatic=preferredMode==='auto';
+      const sourceItems=new Map(flattenDependencyCandidates(projectRepository.find(projectId)?.tasks)
+        .map(row=>[row.id,row.kind==='workTask'?{...row.item,kind:'workTask'}:row.item]));
+      const mode=optionButton({name:'taskScheduleMode',value:preferredMode||'manual',
+        options:[{id:'manual',name:'دستی'},{id:'auto',name:'خودکار'}],
+        onChange:value=>{preferredMode=value;updateSchedule('mode');}});
+      const startRow=dateField(documentRef,'taskStart','تاریخ شروع',task?.scheduleStart||'',()=>updateSchedule('start'));
+      const endRow=dateField(documentRef,'taskEnd','تاریخ پایان',selectedEnd,()=>{
+        selectedEnd=end.dataset.value;updateSchedule('end');
+      });
+      const start=startRow.querySelector('button'),end=endRow.querySelector('button');
+      const durationButton=numericButton('taskDuration',duration,{suffix:' روز',onChange:value=>{
+        duration=value;updateSchedule('duration');
+      }});
+      const warning=documentRef.createElement('p');
+      warning.className='wbs-sheet-hint';
+      warning.setAttribute('role','status');
+      const lookup=id=>scheduleRangeOf(sourceItems.get(id));
+      const setDate=(button,value)=>{
+        button.dataset.value=value||'';
+        button.textContent=value?formatJalaliDisplay(value):'انتخاب تاریخ';
+      };
+      function updateSchedule(trigger){
+        const relations=root._taskDependency?.relations()||[];
+        const auto=(preferredMode||(relations.length?'auto':'manual'))==='auto';
+        const label=mode.querySelector('.wbs-task-option-trigger span');
+        mode.querySelector('input').value=auto?'auto':'manual';
+        label.textContent=auto?'خودکار':'دستی';
+        if(auto && !wasAutomatic){
+          manualStart=start.dataset.value;
+          manualEnd=end.dataset.value;
+        }
+        if(!auto && wasAutomatic){
+          setDate(start,manualStart);
+          setDate(end,manualEnd);
+        }
+        wasAutomatic=auto;
+        start.disabled=auto;
+        let first=jalaliDayNumber(start.dataset.value),last=jalaliDayNumber(end.dataset.value);
+        if(auto){
+          if((trigger==='end'||(!duration && selectedEnd)) && selectedEnd){
+            const limit=jalaliDayNumber(selectedEnd);
+            const bounds=relations.map(link=>{
+              const range=lookup(link.predecessorId);
+              if(!range)return null;
+              if(link.type==='FF')return limit>=range.end+link.lagDays?undefined:null;
+              return (link.type==='SS'?range.start:range.end+1)+link.lagDays;
+            });
+            const starts=bounds.filter(Number.isFinite);
+            if(starts.length && !bounds.includes(null) && limit>=Math.max(...starts))duration=limit-Math.max(...starts)+1;
+            else if(trigger==='end')duration=0;
+          }
+          first=requiredScheduleStart({dependencies:relations},Math.max(1,duration),lookup);
+          setDate(start,first===null?'':scheduleDate(first));
+          setDate(end,first!==null && duration>0?scheduleDate(first+duration-1):'');
+          warning.textContent=first===null?'برای زمان‌بندی خودکار، پیش‌نیاز تاریخ‌دار لازم است.'
+            :duration<=0?'مدت را وارد کنید یا تاریخ پایان معتبر انتخاب کنید.':'';
+        }else{
+          if((trigger==='duration'||(trigger==='start' && last===null)) && first!==null && duration>0){
+            last=first+duration-1;setDate(end,scheduleDate(last));
+          }else duration=first!==null && last!==null && last>=first?last-first+1:0;
+          const bound=requiredScheduleStart({dependencies:relations},Math.max(1,duration),lookup);
+          warning.textContent=first!==null && bound!==null && first<bound?'تاریخ شروع با پیش‌نیاز تداخل دارد.':'';
+        }
+        durationButton.dataset.value=String(duration);
+        durationButton.textContent=duration?new Intl.NumberFormat('fa-IR').format(duration)+' روز':'وارد کردن مدت';
+      }
+      if(!saveStandalone)root.append(fieldRow('زمان‌بندی',mode));
+      root.append(startRow,endRow);
+      if(!saveStandalone)root.append(fieldRow('مدت',durationButton),warning);
       const priority=optionButton({name:'taskPriority',value:task?.priority || 'normal',options:TASK_PRIORITIES.map(value=>({id:value,name:PRIORITY_LABELS[value]}))});
       root.appendChild(fieldRow('درجه اهمیت',priority));
 
@@ -347,8 +420,10 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       }
       root.appendChild(fieldRow('وزن',numericButton('taskWeight',task?.weight || 1)));
       root.appendChild(amountContainer);
-      const dependency = predecessorField({ documentRef, project:saveStandalone?{...projectRepository.find(projectId),tasks:[]}:projectRepository.find(projectId), consumerId:task?.id || `new:${work.id}`, initial:task?.dependencies || task?.predecessorIds || [] });
+      const dependency = predecessorField({ documentRef, project:saveStandalone?{...projectRepository.find(projectId),tasks:[]}:projectRepository.find(projectId), consumerId:task?.id || `new:${work.id}`, initial:task?(task.dependencies?.length?task.dependencies:task.predecessorIds||[])
+        :!saveStandalone && !activeWorkTasks(work).length?(work.dependencies?.length?work.dependencies:work.predecessorIds||[]):[], onChange:()=>{if(!saveStandalone)updateSchedule('dependency');} });
       root.appendChild(dependency.element); root._taskDependency = dependency;
+      if(!saveStandalone)updateSchedule('initial');
 
       if(editing && !readOnly){
         if(canDelete){
@@ -376,6 +451,8 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         type:root.querySelector('[name="taskType"]').value,
         scheduleStart:root.querySelector('[name="taskStart"]').dataset.value,
         scheduleEnd:root.querySelector('[name="taskEnd"]').dataset.value,
+        ...(!saveStandalone?{scheduleMode:root.querySelector('[name="taskScheduleMode"]').value,
+          scheduleDuration:Number(root.querySelector('[name="taskDuration"]').dataset.value)}:{}),
         priority:root.querySelector('[name="taskPriority"]').value,
         assigneeContactId:root.querySelector('[name="taskAssignee"]').dataset.value,
         activityId:root.querySelector('[name="taskActivity"]')?.dataset.value || '',
@@ -395,12 +472,17 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         hasLaborPayroll:!!root.querySelector('[name="hasLaborPayroll"]')?.checked,
         isRental:!!root.querySelector('[name="isRental"]')?.checked,
       };
+      if(draft.scheduleMode==='auto' && (!draft.scheduleStart||!draft.scheduleEnd||!draft.scheduleDuration)){
+        root.querySelector('.wbs-sheet-hint')?.scrollIntoView?.({block:'nearest'});
+        return false;
+      }
       const result = saveStandalone ? saveStandalone(draft) : editing
         ? workTaskApi.update(projectId, work.id, task.id, draft)
         : workTaskApi.create(projectId, work.id, draft);
       if(!result.ok){
         documentRef.defaultView?.KarhaUI?.showToast?.(result.code === 'dates'
           ? 'تاریخ پایان باید برابر یا بعد از تاریخ شروع باشد'
+          : result.code === 'automatic_schedule' ? 'برای زمان‌بندی خودکار، پیش‌نیاز تاریخ‌دار و مدت معتبر لازم است'
           : result.code === 'contract_locked' ? 'برای برداشتن تیک قرارداد، ابتدا خود قرارداد را حذف کنید'
           : result.code === 'approver' ? 'مسئول تأیید را انتخاب کنید'
           : 'اطلاعات کار را کامل و معتبر وارد کنید');

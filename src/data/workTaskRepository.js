@@ -53,7 +53,7 @@ export class WorkTaskRepository{
       predecessorIds:clearWorkPredecessors ? [] : current.predecessorIds,
       workTasks:[...(current.workTasks || []), normalized],
     }));
-    return work ? normalized : null;
+    return work ? this.get(projectId, workId, normalized.id) : null;
   }
 
   update(projectId, workId, taskId, updater){
@@ -64,7 +64,7 @@ export class WorkTaskRepository{
         if(String(task?.id) !== String(taskId)) return task;
         const next = typeof updater === 'function' ? updater(task) : updater;
         updated = normalizeWorkTask(next, workId);
-        return updated;
+        return updated ? this.get(projectId, workId, taskId) : null;
       }),
     }));
     return updated;

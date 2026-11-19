@@ -45,6 +45,8 @@ function validate(projectId, workId, input){
   if(contractorContactId && !contactRepository.get(projectId, contractorContactId)) return { ok:false, code:'contractor' };
   if(approvalContactId && !contactRepository.get(projectId, approvalContactId)) return { ok:false, code:'approver' };
   if(activityId && !activityRepository.get(projectId, activityId)) return { ok:false, code:'activity' };
+  if(input.scheduleMode==='auto' && (!Number.isInteger(input.scheduleDuration)||input.scheduleDuration<1
+    || !input.scheduleStart || !input.scheduleEnd || !input.predecessorIds?.length))return {ok:false,code:'automatic_schedule'};
   if(!validDateRange(input.scheduleStart || '', input.scheduleEnd || '')) return { ok:false, code:'dates' };
   if(workId && !workTaskRepository.work(projectId, workId)) return { ok:false, code:'work' };
   return { ok:true, value:{ ...input, title, weight, assigneeContactId, counterpartyContactId, contractorContactId,

@@ -27,7 +27,7 @@ export function validInitialRelations(initial, candidates = []){
   return normalizeRelations(initial).filter(row => candidateIds.has(row.predecessorId));
 }
 
-export function predecessorField({ documentRef = document, project, consumerId, initial = [] } = {}){
+export function predecessorField({ documentRef = document, project, consumerId, initial = [], onChange = () => {} } = {}){
   const root = documentRef.createElement('div'); root.className = 'wbs-field wbs-predecessor-field';
   const caption = documentRef.createElement('span'); caption.className = 'wbs-field-label'; caption.textContent = 'پیش‌نیاز';
   const candidates = flattenDependencyCandidates(project?.tasks || []).filter(row => row.id !== String(consumerId));
@@ -54,7 +54,7 @@ export function predecessorField({ documentRef = document, project, consumerId, 
       });
       type.value = relation.type;
       type.setAttribute('aria-label', 'نوع رابطه');
-      type.addEventListener('change', () => { relation.type = type.value; });
+      type.addEventListener('change', () => { relation.type = type.value; onChange(); });
 
       const lag = documentRef.createElement('label');
       lag.className = 'wbs-predecessor-lag';
@@ -62,12 +62,12 @@ export function predecessorField({ documentRef = document, project, consumerId, 
       const lagInput = documentRef.createElement('input');
       lagInput.type = 'number'; lagInput.step = '1'; lagInput.value = String(relation.lagDays || 0);
       lagInput.setAttribute('aria-label', 'Lag روز');
-      lagInput.addEventListener('input', () => { relation.lagDays = Number(lagInput.value) || 0; });
+      lagInput.addEventListener('input', () => { relation.lagDays = Math.trunc(Number(lagInput.value) || 0); onChange(); });
       lag.append(lagText, lagInput);
 
       const remove = documentRef.createElement('button');
       remove.type = 'button'; remove.className = 'wbs-activity-remove'; remove.textContent = 'حذف';
-      remove.addEventListener('click', () => { relations.delete(relation.predecessorId); paint(); });
+      remove.addEventListener('click', () => { relations.delete(relation.predecessorId); paint(); onChange(); });
 
       chip.append(text, type, lag, remove);
       chips.appendChild(chip);
@@ -81,6 +81,7 @@ export function predecessorField({ documentRef = document, project, consumerId, 
       const id = String(item.id);
       relations.set(id, { predecessorId:id, type:'FS', lagDays:0 });
       paint();
+      onChange();
     },
   }));
 
