@@ -110,6 +110,7 @@ function statusFields(root,projectId,entity,day){
 export function openDailyExecutionReport({ projectId, item, actor, onChanged, onSubmitted, onReturn, statusControls=false, day=tehranTodayJalali(), subject='کار' }){
   const current=todayReportOf(item.entity,day);
   const photos=[...(current?.photos||[])];
+  const purchaseReport=item.entity.type==='خرید';
   const ref={kind:item.kind,id:item.id,workId:item.workId};
   let uploader,dailyStatus;
   const sheet=openWbsSheet({
@@ -120,6 +121,7 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
     body(root){
       if(statusControls)dailyStatus=statusFields(root,projectId,item.entity,day);
       root.append(fieldRow('شرح گزارش',textarea(document,current?.description||'')));
+      if(purchaseReport)root.append(fieldRow('درصد پیشرفت',progressInput(document,current?.progress ?? item.entity.progress,Boolean(current))));
       const attachments=document.createElement('div');
       const note=document.createElement('div');
       note.className='today-upload-note';
@@ -139,7 +141,9 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
         toast('ابتدا بارگذاری عکس‌ها را تمام کنید');
         return false;
       }
-      const progress=Number(item.entity.progress)||0;
+      const progress=purchaseReport
+        ? Number(root.querySelector('[name="reportProgress"]').dataset.value)
+        : Number(item.entity.progress)||0;
       const description=root.querySelector('[name="reportDescription"]').value;
       const statusOnly=statusControls && !current && !description.trim() && !photos.length;
       const result=statusOnly

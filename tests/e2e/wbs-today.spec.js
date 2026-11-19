@@ -148,14 +148,19 @@ test('completion enters pending approval, rejection returns Today with typed new
   await card.locator('.today-progress-circle').click();
   await expect(page.locator('#numpadDisplay')).toContainText('۱۰۰');
   await page.locator('#numpadDoneBtn').click();
+  await expect(card).toHaveCount(0);
+  await list.getByRole('tab',{name:'تکمیل',exact:true}).click();
   await openTaskDetails(page,card);
+  await expect(sheet).toContainText('در انتظار تأیید');
   await sheet.getByRole('button',{name:'بستن'}).click();
   await page.evaluate(async()=>{
     const {todayApi}=await import('/src/domain/wbs/todayApi.js');
     todayApi.approve('e2e-today',{kind:'task',id:'today-task',workId:'w1'},{id:'e2e',contactId:'a'});
   });
-  await list.getByRole('tab',{name:'تکمیل',exact:true}).click();
+  await list.getByRole('tab',{name:'امروز',exact:true}).click();
   await expect(card).toHaveCount(0);
+  await list.getByRole('tab',{name:'تکمیل',exact:true}).click();
+  await expect(card).toBeVisible();
   await expect.poll(()=>page.evaluate(()=>window.KarhaAppData.getSnapshot().projects[0].tasks[0].subtasks[0].workTasks[0].completionState)).toBe('approved');
 });
 
