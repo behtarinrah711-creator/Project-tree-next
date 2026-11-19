@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {Readable} from 'node:stream';
+import {tehranTodayJalali} from '../../src/domain/wbs/todayDomain.js';
 import {createContractHandoffHandler} from '../src/contractHandoff.js';
 import {createFileUploadHandler} from '../src/fileUploads.js';
 const file={id:'file-one',projectId:'p',category:'contracts',recordId:'c',name:'signed.jpg',mime:'image/jpeg',uploadedBy:'member'};
@@ -451,7 +452,8 @@ test('execution rejection requires write access, assignment and a reason',async(
   const task={id:'exec',type:'اجرا',approvalContactId:'reviewer',completionState:'pending_approval',updatedAt:2};
   f.payload.tasks=[{id:'w',kind:'work',workTasks:[task]}];
   const path='/api/v1/projects/p/execution-approvals/exec/handoff';
-  const reject=reason=>f.call({action:'reject_execution',scope:'execution:today',kind:'task',workId:'w',updatedAt:2,reason},path);
+  const endDate=tehranTodayJalali();
+  const reject=(reason,revision={progress:75,endDate})=>f.call({action:'reject_execution',scope:'execution:today',kind:'task',workId:'w',updatedAt:2,reason,...revision},path);
   f.setPermissions({modules:{'execution:today':'view',contracts:'full'}});
   assert.equal((await reject('نیاز به اصلاح')).status,403);
   f.setPermissions({modules:{'execution:today':'create'}});
@@ -459,9 +461,12 @@ test('execution rejection requires write access, assignment and a reason',async(
   task.approvalContactId='other';
   assert.equal((await reject('نیاز به اصلاح')).status,403);
   task.approvalContactId='reviewer';
+  assert.equal((await reject('نیاز به اصلاح',{})).status,400);
   const result=await reject('نیاز به اصلاح');
   assert.equal(result.status,200);
   assert.equal(result.result.entity.completionState,'incomplete');
+  assert.equal(result.result.entity.progress,75);
+  assert.equal(result.result.entity.scheduleEnd,endDate);
   assert.equal(result.result.entity.executionComments.at(-1).text,'نیاز به اصلاح');
 });
 
