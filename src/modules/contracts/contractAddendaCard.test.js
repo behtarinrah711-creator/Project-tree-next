@@ -113,7 +113,8 @@ test('saved addenda use the contract card layout and their own status, number an
       const toolbar=card.children[0].children.find(node=>node.className==='contract-card-visible-actions');
       const wrap=toolbar.children.at(-1);
       wrap.children[0].onclick({stopPropagation(){}});
-      return [...toolbar.children.filter(node=>node.textContent==='ویرایش').map(node=>node.textContent), ...wrap.children.find(node=>node.className==='nb-project-menu').children.map(node=>node.title)];
+      const strip=toolbar.children.find(node=>node.className==='contract-action-strip');
+      return [...strip.children.filter(node=>node.textContent==='ویرایش').map(node=>node.textContent), ...wrap.children.find(node=>node.className==='nb-project-menu').children.map(node=>node.title)];
     };
     assert.deepEqual(menuActions(legacyCard),['ویرایش','خروجی','حذف']);
     assert.deepEqual(menuActions(list.children[1]),['خروجی']);

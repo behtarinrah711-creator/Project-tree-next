@@ -1,3 +1,4 @@
+import {hasPaidContractDocument} from './contractRevision.js';
 import {contractRevisionContent} from './contractApproval.js';
 
 export const HANDOFF_FIELDS=['signedFiles','signedFilesUpdatedAt','signedAt','signedBy','handoffVersion','accountingStatus','sentToAccountingAt','sentToAccountingBy','accountingPackage','accountingWithdrawal','accountingDecision','financeRejection','financeHistory'];
@@ -132,14 +133,15 @@ export function preserveContractHandoff(project,previous){
   project.contracts=(project.contracts||[]).map(candidate=>{
     const current=old.get(String(candidate.id));
     if(current?.handoffVersion && Number(candidate.handoffVersion||0)!==Number(current.handoffVersion))return JSON.parse(JSON.stringify(current));
-    if(current?.signedAt || isContractInFinance(current))return JSON.parse(JSON.stringify(current));
+    if(current && (current.signedAt || isContractInFinance(current) || hasPaidContractDocument(previous,current)))return JSON.parse(JSON.stringify(current));
     const record={...candidate};
     for(const key of HANDOFF_FIELDS){if(current && Object.hasOwn(current,key))record[key]=current[key];else delete record[key];}
     // Keep authenticated handoff events when an old workspace snapshot is saved.
-    const actions=new Set(['confirm_signed','add_signed','remove_signed','replace_signed','send_finance','withdraw_finance','approve_finance','reject_finance','revoke_finance']);
+    const actions=new Set(['edit_contract','confirm_signed','add_signed','remove_signed','replace_signed','send_finance','withdraw_finance','approve_finance','reject_finance','revoke_finance']);
     record.approvalHistory=[...(record.approvalHistory||[]).filter(e=>!actions.has(e.action)),...(current?.approvalHistory||[]).filter(e=>actions.has(e.action))];
     return record;
   });
   for(const current of old.values())if((current.signedAt || isContractInFinance(current)) && !project.contracts.some(c=>String(c.id)===String(current.id)))project.contracts.push(JSON.parse(JSON.stringify(current)));
   return project;
 }
+

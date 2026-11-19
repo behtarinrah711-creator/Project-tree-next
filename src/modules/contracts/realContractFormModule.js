@@ -1,3 +1,7 @@
+import {openContractReasonSheet} from './contractReasonSheet.js';
+import {saveContractHandoff} from './contractHandoffApi.js';
+import {hasPaidContractDocument,reviseContract} from '../../domain/contractRevision.js';
+import {contractRepository} from '../../data/contractRepository.js';
 import { MANAGEMENT_CONTRACT_TEMPLATE_ID } from '../../data/defaultProjectCatalogue.js';
 import { confirmSaosaWorkspaceSave, isSaosaHost } from '../../cloud/saosaWorkspaceSync.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
@@ -26,6 +30,7 @@ let inlineAddState = null;
 let activeProjectId = null;
 let pendingCompletion = null;
 let reviewEdit=null;
+let originalContract=null;
 let confirmingCompletion = false;
 // True only while the current browser entry is owned by this mounted form.
 // A popstate consumes that entry before requestClose runs, so this is ownership
@@ -674,7 +679,7 @@ function renderContractForm() {
     actions.innerHTML = '';
     actions.appendChild(renderContractSavebar({
       onSave:()=>realContractFormModule.save(activeProjectId,false),
-      onComplete:reviewEdit?null:()=>realContractFormModule.declareComplete(),
+      onComplete:reviewEdit || (originalContract && !originalContract.isDraft && originalContract.status!=='draft')?null:()=>realContractFormModule.declareComplete(),
       onCancel:()=>reviewEdit?realContractFormModule.close(false):realContractFormModule.requestClose(),
     }));
   }
@@ -694,6 +699,40 @@ function renderContractForm() {
   return true;
 }
 
+function saveRevision(project){
+  const original=originalContract;
+  const changes=structuredClone(state);
+  syncContractAmount(changes);
+  openContractReasonSheet({
+    title:'دلیل ویرایش قرارداد',fieldLabel:'دلیل ویرایش',historyKey:'contract-edit-reason:'+original.id,
+    async submit(reason){
+      try{
+        if(isSaosaHost(window)){
+          await saveContractHandoff(project.id,original,'edit_contract',{changes,reason});
+        }else{
+          const current=contractRepository.get(project.id,original.id);
+          if(!current || current.updatedAt!==original.updatedAt || current.handoffVersion!==original.handoffVersion)
+            throw new Error('قرارداد تغییر کرده است؛ صفحه را به‌روز کنید');
+          const result=reviseContract(activeProject(project.id),current,changes,reason,currentExecutionActor(project));
+          if(!result.ok)throw new Error(result.message);
+          contractRepository.save(project.id,result.contract);
+        }
+        const finish=()=>{
+          if(originalContract!==original)return;
+          dirty=false;
+          realContractFormModule.close(false);
+          helper('showToast','ویرایش ذخیره شد؛ قرارداد در مرحله نخست است');
+        };
+        const history=window.KarhaChildHistory;
+        if(history?.isOpen('contract-edit-reason:'+original.id) && history.afterNextPop)history.afterNextPop(finish);
+        else setTimeout(finish,0);
+        return true;
+      }catch(error){helper('showToast',error.message);return false;}
+    },
+  });
+  return false;
+}
+
 function saveDraft() {
   const project=activeProject(activeProjectId);
   if(!project || !state) return false;
@@ -711,6 +750,7 @@ function saveDraft() {
     }).catch(error=>helper('showToast',error.message)).finally(()=>{confirmingCompletion=false;});
     return false;
   }
+  if(originalContract)return saveRevision(project);
   const saosa=!!globalThis.window && isSaosaHost(window);
   if(saosa && confirmingCompletion)return false;
   const finish=()=>{
@@ -756,6 +796,10 @@ export const realContractFormModule = {
     const project = activeProject(projectId);
     if (!project || !canWriteProjectModule(project.id,'contracts')) return false;
 
+    const existing=id && realContractDomain.findProjectContract(id,project);
+    if(existing && hasPaidContractDocument(project,existing)){
+      helper('showToast','این قرارداد سند پرداخت‌شده دارد و قابل ویرایش نیست');return false;
+    }
     activeProjectId = project.id;
     if (!openFormShell(project.id)) {
       activeProjectId = null;
@@ -763,6 +807,7 @@ export const realContractFormModule = {
     }
 
     reviewEdit=options;
+    originalContract=existing && !options ? structuredClone(existing) : null;
     editingId = id || null;
     state = realContractDomain.resolveContractDocumentDraft(
       id ? realContractDomain.findProjectContract(id, project) : null,
@@ -784,6 +829,7 @@ export const realContractFormModule = {
 
   declareComplete(){
     if(!state)return false;
+    if(originalContract && dirty)return saveDraft();
     const manualFields=manualCompletionFields(state);
     const retentionEmpty=!String(state.retentionPercent??'').trim();
     const form=document.getElementById('contractFormBody');
@@ -943,6 +989,7 @@ export const realContractFormModule = {
   close(fromPopState = false) {
     const edit=reviewEdit;
     reviewEdit=null;
+    originalContract=null;
     const history=edit && window.KarhaContractHistory;
     const afterPop=edit && !fromPopState && history?.formOwned() && window.KarhaChildHistory?.afterNextPop;
     if(afterPop)window.KarhaChildHistory.afterNextPop(()=>edit.onReturn(edit.record));
@@ -980,3 +1027,4 @@ globalThis.window?.addEventListener?.('karha:projects-recovered',()=>{
   const input=globalThis.document?.getElementById('contractNumberDisplay');
   if(input)input.value=saved.contractNo;
 });
+
