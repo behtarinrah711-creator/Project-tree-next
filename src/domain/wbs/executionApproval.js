@@ -11,7 +11,7 @@ export function executionApprovalItem(project,ref){
 }
 
 export function approveExecutionEntity(entity,kind,actor,at){
-  if(kind==='standalone' && entity.oddJobType)return {...entity,expenseApprovalStatus:'approved',expenseApprovedAt:at,expenseApprovedBy:actor,updatedAt:at};
+  if(kind==='standalone' && entity.oddJobType)return {...entity,expenseApprovalStatus:'approved',expenseApprovedAt:at,expenseApprovedBy:actor,completed:true,done:true,completionState:'approved',workflowStatus:'approved',approvedAt:at,approvedBy:actor,completedAt:at,actualFinishDay:tehranTodayJalali(new Date(at)),progress:100,executionHistory:[...(entity.executionHistory||[]),{id:uid(),type:'approved',actor,at}],updatedAt:at};
   return {
     ...entity,completed:true,done:true,completionState:'approved',workflowStatus:'approved',
     completedAt:at,actualFinishDay:tehranTodayJalali(new Date(at)),
@@ -34,7 +34,7 @@ export function rejectExecutionEntity(entity,kind,reason,actor,at,{progress,endD
     updatedAt:at,
   };
   rejection.executionHistory.push({id:uid(),type:'approval_revised',actor,at,previousProgress:100,progress:hasRevision?revised:null,previousEnd:entity.scheduleEnd||'',endDate:newEnd});
-  if(kind==='standalone' && entity.oddJobType)return {...entity,...rejection,...scheduleChange,...progressChange,completed:false,done:false,completionState:'incomplete',expenseApprovalStatus:'rejected',returnedToTodayOn:tehranTodayJalali(new Date(at))};
+  if(kind==='standalone' && entity.oddJobType)return {...entity,...rejection,...scheduleChange,...progressChange,completed:false,done:false,completionState:'incomplete',expenseApprovalStatus:'rejected',workflowStatus:'in_progress',completedAt:null,approvedAt:null,actualFinishDay:null,completionSubmittedAt:null,returnedToTodayOn:tehranTodayJalali(new Date(at))};
   rejection.executionHistory.push({id:uid(),type:'returned_to_active',actor,at});
   return {...entity,...rejection,...scheduleChange,...progressChange,completed:false,done:false,completionState:'incomplete',workflowStatus:'in_progress',
     completedAt:null,completionSubmittedAt:null,actualFinishDay:null,approvedAt:null,
