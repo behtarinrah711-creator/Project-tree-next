@@ -57,7 +57,10 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         if(scope!==actualScope || !actor.contactId || String(item.entity.oddJobType?item.entity.expenseApproverContactId:item.entity.approvalContactId)!==actor.contactId){
           sendJson(response,403,{message:'این مورد در انتظار تأیید شما نیست'});return true;
         }
-        const entity=rejecting?rejectExecutionEntity(item.entity,item.kind,reason,actor,Date.now()):{...approveExecutionEntity(item.entity,item.kind,actor,Date.now()),...(item.entity.oddJobType?{}:{progress:100})};
+        if(rejecting && scope==='execution:today' && (!Number.isInteger(body.progress) || body.progress<0 || body.progress>=100 || !/^\d{4}\/\d{2}\/\d{2}$/.test(body.endDate||'') || body.endDate<tehranTodayJalali())){
+          sendJson(response,400,{message:'درصد پیشرفت یا تاریخ پایان معتبر نیست'});return true;
+        }
+        const entity=rejecting?rejectExecutionEntity(item.entity,item.kind,reason,actor,Date.now(),{progress:body.progress,endDate:body.endDate}):{...approveExecutionEntity(item.entity,item.kind,actor,Date.now()),...(item.entity.oddJobType?{}:{progress:100})};
         const project=applyExecutionApproval(row.payload,item,entity);
         await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[projectId,JSON.stringify(project)]);
         await client.query('COMMIT');committed=true;sendJson(response,200,{entity});

@@ -225,3 +225,6 @@
 .approval-option-count.is-zero{background:#686c72;}
 .approval-queue-list{padding:0 12px 12px;}
 .approval-queue-header{position:sticky;top:0;z-index:1;}
+
+/* Isolate scroll content so card menus cannot rise above the fixed footer; dialogs remain outside this stacking context. */
+.content{position:relative;isolation:isolate}

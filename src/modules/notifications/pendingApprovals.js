@@ -16,6 +16,9 @@ import {renderShoppingCard} from '../wbs/shoppingView.js';
 import {saveContractHandoff} from '../contracts/contractHandoffApi.js';
 import {openContractReasonSheet} from '../contracts/contractReasonSheet.js';
 import {openConfirm} from '../../ui/confirm.js';
+import {openWbsSheet,closeWbsSheet} from '../wbs/wbsSheet.js';
+import {openNumpadGeneric} from '../../ui/numpad.js';
+import {formatJalaliDisplay} from '../../ui/jalali.js';
 
 export const approvalGroups=[
   {id:'addenda',title:'قراردادها',scope:'contracts'},
@@ -26,12 +29,12 @@ export const approvalGroups=[
 const number=value=>Number(value).toLocaleString('fa-IR');
 const emptyQueue=()=>({assigned:false,groups:[],count:0});
 
-async function submitExecutionDecision(projectId,scope,item,actor,reason){
+async function submitExecutionDecision(projectId,scope,item,actor,reason,revision=null){
   const {kind,id,workId}=item;
   if(!isSaosaHost()){
     if(reason){
       projectRepository.updateProject(projectId,project=>
-        applyExecutionApproval(project,item,rejectExecutionEntity(item.entity,kind,reason,actor,Date.now())));
+        applyExecutionApproval(project,item,rejectExecutionEntity(item.entity,kind,reason,actor,Date.now(),revision||{})));
       return;
     }
     if(!todayApi.approve(projectId,{kind,id,workId},actor).ok)throw new Error('ثبت تأیید انجام نشد.');
@@ -39,7 +42,7 @@ async function submitExecutionDecision(projectId,scope,item,actor,reason){
   }
   const response=await fetch('/api/v1/projects/'+encodeURIComponent(projectId)+'/execution-approvals/'+encodeURIComponent(id)+'/handoff',{
     method:'POST',headers:{authorization:'Bearer '+fileToken(),'content-type':'application/json'},
-    body:JSON.stringify({action:reason?'reject_execution':'approve_execution',scope,kind,workId,reason,updatedAt:item.entity.updatedAt||0}),
+    body:JSON.stringify({action:reason?'reject_execution':'approve_execution',scope,kind,workId,reason,...(revision||{}),updatedAt:item.entity.updatedAt||0}),
   });
   const result=await response.json().catch(()=>({}));
   if(!response.ok || !result.entity)throw new Error(result.message || 'ثبت تأیید انجام نشد.');
@@ -118,20 +121,59 @@ function approvalOptions(documentRef,project,group,item,onChanged){
       return {current,actor:queue.actor};
     };
     if(group.id==='execution'){
-      const reject=button(documentRef,'رد کردن',()=>openContractReasonSheet({
-        title:'رد کردن کار اجرایی',fieldLabel:'دلیل رد',historyKey:'reject-execution:'+item.id,minLength:5,
-        async submit(reason){
-          try{
-            const {current,actor}=currentExecution();
-            await submitExecutionDecision(project.id,group.scope,current,actor,reason);
-            onChanged();
-            return true;
-          }catch(error){window.KarhaUI?.showToast?.(error.message);return false;}
-        },
-      }),'contract-review-action danger');
+      const reject=button(documentRef,'رد کردن',()=>{
+        let progress=null;
+        let endDate=item.entity.scheduleEnd||'';
+        let reason='';
+        let submitting=false;
+        openWbsSheet({
+          title:'رد تأیید و بازگشت به اجرا',historyKey:'reject-execution:'+item.id,
+          saveLabel:'ثبت',autoFocus:false,
+          body(root){
+            const percent=documentRef.createElement('div');percent.className='execution-reject-field';
+            const percentLabel=documentRef.createElement('span');percentLabel.textContent='پیشرفت واقعی';
+            const percentButton=button(documentRef,'انتخاب درصد',()=>{
+              openNumpadGeneric(progress===null?'':String(progress),raw=>{progress=Number(raw);percentButton.textContent=progress+'٪';},
+                {group:false,suffix:'٪',maxLen:2,validate:raw=>!/^\d{1,2}$/.test(raw)||Number(raw)>99?'درصد باید بین صفر تا ۹۹ باشد':''});
+            });
+            percent.append(percentLabel,percentButton);
+            const deadline=documentRef.createElement('div');deadline.className='execution-reject-field';
+            const deadlineLabel=documentRef.createElement('span');deadlineLabel.textContent='مهلت جدید تکمیل';
+            const dateButton=button(documentRef,endDate?formatJalaliDisplay(endDate):'انتخاب تاریخ',()=>{
+              window.KarhaUI?.openJalaliPicker?.(endDate,value=>{endDate=value;dateButton.textContent=formatJalaliDisplay(value);});
+            });
+            deadline.append(deadlineLabel,dateButton);
+            const reasonRow=documentRef.createElement('label');reasonRow.className='execution-reject-reason';
+            const reasonLabel=documentRef.createElement('span');reasonLabel.textContent='دلیل رد (اجباری)';
+            const textarea=documentRef.createElement('textarea');textarea.placeholder='دلیل رد تأیید را بنویسید…';
+            textarea.addEventListener('input',()=>{reason=textarea.value;});
+            reasonRow.append(reasonLabel,textarea);root.append(percent,deadline,reasonRow);
+          },
+          onSave(){
+            if(submitting)return false;
+            if(progress===null || !Number.isInteger(progress) || progress<0 || progress>99){
+              window.KarhaUI?.showToast?.('درصد پیشرفت واقعی را وارد کنید');return false;
+            }
+            if(!/^\d{4}\/\d{2}\/\d{2}$/.test(endDate)||endDate<tehranTodayJalali()){
+              window.KarhaUI?.showToast?.('مهلت جدید تکمیل را از تقویم انتخاب کنید');return false;
+            }
+            if(reason.trim().length<5){window.KarhaUI?.showToast?.('دلیل رد باید حداقل ۵ حرف باشد');return false;}
+            submitting=true;
+            (async()=>{
+              try{
+                const {current,actor}=currentExecution();
+                await submitExecutionDecision(project.id,group.scope,current,actor,reason.trim(),{progress,endDate});
+                closeWbsSheet();onChanged();
+              }catch(error){window.KarhaUI?.showToast?.(error.message);}
+              finally{submitting=false;}
+            })();
+            return false;
+          },
+        });
+      },'contract-review-action execution-review-action is-reject');
       approval.rejectAction=reject;
     }
-    const approve=button(documentRef,item.entity?.oddJobType?'تأیید خرج':shopping?'تأیید خرید':'تأیید',()=>openConfirm('این مورد تأیید شود؟',async()=>{
+    const approve=button(documentRef,shopping?'تأیید خرید':'تأیید',()=>openConfirm('این مورد تأیید شود؟',async()=>{
       approve.disabled=true;
       try{
         const latest=projectRepository.find(project.id);
@@ -157,6 +199,7 @@ function approvalOptions(documentRef,project,group,item,onChanged){
         approve.disabled=false;
       }
     },'تأیید'),execution && shopping ? '' : 'contract-review-action');
+    if(execution){approve.classList.add('execution-review-action','is-approve');}
     if(execution || canReviewContract(item,currentExecutionActor(project)))approval.action=approve;
     else if(action==='approve_contract' && canRevokeContractApproval(item,currentExecutionActor(project))){
       approve.disabled=true;
