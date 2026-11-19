@@ -1,3 +1,4 @@
+import {projectRepository} from '../../data/projectRepository.js';
 import {approveExecutionEntity} from './executionApproval.js';
 import { canWriteProjectModule } from '../../modules/roleManagement/permissionState.js';
 import { uid } from '../../data/projectFactories.js';
@@ -67,6 +68,43 @@ function dailyStatusChange(entity,status,reasonId,note,actor,at,day){
 }
 
 export const todayApi = {
+  saveInterruption(projectId,ref,draft,actor,clock=Date.now){
+    const entity=todayRepository.get(projectId,ref);
+    const by=actorValue(actor);
+    if(!entity || entity.trashed || !by.contactId || String(entity.assigneeContactId)!==by.contactId)return {ok:false,code:'forbidden'};
+    if(!draft.review && (entity.completed || ['approved','pending_approval'].includes(entity.completionState)))return {ok:false,code:'locked'};
+    const at=clock(), day=tehranTodayJalali(new Date(at));
+    const entries=entity.executionHistory||[];
+    const previous=entries.find(entry=>entry.id===draft.id && ['planned_pause','execution_obstacle'].includes(entry.type));
+    const date=value=>typeof value==='string' && /^\d{4}\/\d{2}\/\d{2}$/.test(value);
+    if(draft.resume){
+      if(!previous || previous.resumedOn || previous.day>day)return {ok:false,code:'invalid_interruption'};
+      return mutate(projectId,ref,current=>({...current,returnedToTodayOn:day,updatedAt:at,
+        executionHistory:current.executionHistory.map(entry=>entry.id===previous.id?{...entry,resumedOn:day,resumedBy:by}:entry)}));
+    }
+    if(draft.review){
+      if(!previous || previous.type!=='execution_obstacle' || !Number.isInteger(draft.impactDays) || draft.impactDays<0)
+        return {ok:false,code:'invalid_interruption'};
+      return mutate(projectId,ref,current=>({...current,updatedAt:at,executionHistory:current.executionHistory.map(entry=>
+        entry.id===previous.id?{...entry,reviewed:true,impactDays:draft.impactDays,reviewedBy:by,reviewedAt:at}:entry)}));
+    }
+    const planned=draft.type==='planned_pause';
+    if(previous?.resumedOn || (!planned && draft.type!=='execution_obstacle'))return {ok:false,code:'invalid_interruption'};
+    const start=previous?.day||draft.day||day;
+    const reason=String(draft.reason||'').trim(),description=String(draft.description||'').trim();
+    const contact=(projectRepository.find(projectId)?.contacts||[]).find(person=>person && !person.trashed && String(person.id)===draft.contactId);
+    if(!reason || !description || !date(start) || (!planned && start>day) || (planned && (!date(draft.resumeOn)||draft.resumeOn<=start))
+      || (draft.resumeOn && (!date(draft.resumeOn)||draft.resumeOn<start))
+      || (draft.durationHours!=null && !(Number.isFinite(draft.durationHours)&&draft.durationHours>0&&draft.durationHours<=24))
+      || (!planned && !['external','unknown'].includes(draft.role) && !contact))return {ok:false,code:'invalid_interruption'};
+    const details={day:start,reason,description,resumeOn:draft.resumeOn||'',multiday:!!draft.multiday,
+      role:planned?'':draft.role,contactId:planned?'':String(contact?.id||''),
+      contactName:planned?'':String(contact?.name||contact?.title||''),
+      durationHours:draft.durationHours ?? null,photos:draft.photos||[],baselineResume:previous?.baselineResume||draft.resumeOn||'',baselineEnd:previous?.baselineEnd||entity.scheduleEnd||''};
+    const entry=previous?{...previous,...details,updatedAt:at,updatedBy:by}:event(planned?'planned_pause':'execution_obstacle',by,at,details);
+    return mutate(projectId,ref,current=>({...current,updatedAt:at,
+      executionHistory:previous?(current.executionHistory||[]).map(value=>value.id===previous.id?entry:value):[...(current.executionHistory||[]),entry]}));
+  },
   setProgress(projectId,ref,value,actor,clock=Date.now){
     const by=actorValue(actor);
     const entity=todayRepository.get(projectId,ref);

@@ -37,15 +37,15 @@ async function openTaskDetails(page,card){
   return sheet;
 }
 
-test('Today toolbar shows six ordered tabs and a separate filter row',async({page})=>{
+test('Today toolbar shows seven ordered tabs and a separate filter row',async({page})=>{
   const header=page.locator('.wbs-today-frame .wbs-view-header');
   const tabs=header.getByRole('tab');
   await expect(header.locator('.wbs-view-title')).toHaveCount(0);
-  await expect(tabs).toHaveText(['همه','عقب‌افتاده','امروز','آینده','تکمیل','بی زمان']);
+  await expect(tabs).toHaveText(['همه','عقب‌افتاده','امروز','آینده','تکمیل','بی زمان','متوقف']);
   await expect(header.getByRole('tab',{name:'امروز',exact:true})).toHaveAttribute('aria-selected','true');
   await expect(header.getByRole('button',{name:'تقویم'})).toBeVisible();
   const controls=header.locator('.today-task-secondary');
-  await expect(controls.getByRole('button')).toHaveText(['همه مراحل','فیلتر','تقویم']);
+  await expect(controls.getByRole('button')).toHaveText(['همه مراحل','فیلتر','تقویم','گزارش تأخیرات']);
   for(const row of [tabs,controls.getByRole('button')]){
     const positions=await row.evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().left));
     expect(positions).toEqual([...positions].sort((a,b)=>b-a));

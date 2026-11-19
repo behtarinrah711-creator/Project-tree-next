@@ -23,6 +23,8 @@ export function openNumpadGeneric(initial, onDone, opts, { documentRef = documen
     };
   }
   if(decimal) decimal.hidden=!numpadOpts.allowDecimal;
+  const paste = documentRef.getElementById('numpadPasteBtn');
+  if(paste) paste.style.display=numpadOpts.allowPaste===false?'none':'';
   updateNumpadDisplay({ documentRef });
   showNumpadError('', { documentRef });
   const overlay = documentRef.getElementById('numpadOverlay');
@@ -122,7 +124,7 @@ export function installNumpadBindings({ documentRef, windowRef = globalThis } = 
     };
   }
   documentRef.addEventListener('paste', event=>{
-    if(overlay.classList.contains('hidden')) return;
+    if(overlay.classList.contains('hidden') || numpadOpts.allowPaste===false) return;
     const text = event.clipboardData?.getData('text') || '';
     if(!text) return;
     event.preventDefault();
