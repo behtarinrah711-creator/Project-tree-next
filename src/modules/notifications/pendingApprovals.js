@@ -134,7 +134,7 @@ function approvalOptions(documentRef,project,group,item,onChanged){
             const percentLabel=documentRef.createElement('span');percentLabel.textContent='پیشرفت واقعی';
             const percentButton=button(documentRef,'انتخاب درصد',()=>{
               openNumpadGeneric(progress===null?'':String(progress),raw=>{progress=Number(raw);percentButton.textContent=progress+'٪';},
-                {group:false,suffix:'٪',maxLen:2,validate:raw=>!/^\\d{1,2}$/.test(raw)||Number(raw)>99?'درصد باید بین صفر تا ۹۹ باشد':''});
+                {group:false,suffix:'٪',maxLen:2,validate:raw=>!/^\d{1,2}$/.test(raw)||Number(raw)>99?'درصد باید بین صفر تا ۹۹ باشد':''});
             });
             percent.append(percentLabel,percentButton);
             const deadline=documentRef.createElement('div');deadline.className='execution-reject-field';
@@ -154,7 +154,7 @@ function approvalOptions(documentRef,project,group,item,onChanged){
             if(progress===null || !Number.isInteger(progress) || progress<0 || progress>99){
               window.KarhaUI?.showToast?.('درصد پیشرفت واقعی را وارد کنید');return false;
             }
-            if(!/^\\d{4}\\/\\d{2}\\/\\d{2}$/.test(endDate)||endDate<tehranTodayJalali()){
+            if(!/^\d{4}\/\d{2}\/\d{2}$/.test(endDate)||endDate<tehranTodayJalali()){
               window.KarhaUI?.showToast?.('مهلت جدید تکمیل را از تقویم انتخاب کنید');return false;
             }
             if(reason.trim().length<5){window.KarhaUI?.showToast?.('دلیل رد باید حداقل ۵ حرف باشد');return false;}
