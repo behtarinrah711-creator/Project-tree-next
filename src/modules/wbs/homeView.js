@@ -81,6 +81,15 @@ function materialIcon(path){
 
 let currentView = 'tree';
 const selectedViews = new Map();
+const executionSearches = new Map();
+function normalizeExecutionSearch(value){return String(value||'').replace(/[يى]/g,'ی').replace(/ك/g,'ک').replace(/\u200c/g,' ').trim().toLowerCase();}
+function applyExecutionSearch(root,query){
+  const words=normalizeExecutionSearch(query).split(/\s+/).filter(Boolean);
+  root.querySelectorAll('.today-task-card,.shopping-item-card').forEach(card=>{
+    card.hidden=words.length>0 && !words.every(word=>normalizeExecutionSearch(card.textContent).includes(word));
+  });
+}
+
 let currentTreeMode = DEFAULT_TREE_MODE;
 let explicitProjectId = null;
 let tabRenderFrame = 0;
@@ -668,6 +677,22 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     tabs.appendChild(btn);
   });
   if(allowedViews.length>1) root.appendChild(tabs);
+  if(scope==='execution' && ['today','oddjobs','shopping'].includes(currentView)){
+    const key=String(project.id)+':'+currentView;
+    const search=document.createElement('div');search.className='execution-quick-search';
+    const input=document.createElement('input');input.type='search';input.className='execution-quick-search-input';
+    input.placeholder='جست‌وجو در '+(currentView==='today'?'کارها':currentView==='shopping'?'خریدها':'خرده‌کارها')+'…';
+    input.setAttribute('aria-label','جست‌وجو');
+    input.value=executionSearches.get(key)||'';
+    const icon=document.createElement('button');icon.type='button';icon.className='execution-quick-search-icon';
+    icon.setAttribute('aria-label','پاک کردن جست‌وجو');
+    icon.innerHTML='<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg>';
+    const apply=()=>{executionSearches.set(key,input.value);applyExecutionSearch(root,input.value);};
+    input.addEventListener('input',apply);
+    icon.onclick=()=>{if(input.value){input.value='';apply();}input.blur();};
+    search.append(input,icon);root.append(search);
+    queueMicrotask(apply);
+  }
 
   if(currentView === 'today' || currentView === 'oddjobs'){
     root.appendChild(renderTodayView(project, document, rerender,{standalone:currentView==='oddjobs'}));
