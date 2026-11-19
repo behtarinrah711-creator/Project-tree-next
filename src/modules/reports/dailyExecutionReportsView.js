@@ -6,7 +6,7 @@ import { toEnglishDigits, toPersianDigits } from '../../ui/digits.js';
 import { openWbsSheet, closeWbsSheet } from '../wbs/wbsSheet.js';
 
 const clock = new Intl.DateTimeFormat('fa-IR', { timeZone:'Asia/Tehran', hour:'2-digit', minute:'2-digit' });
-const kindLabel = { progress:'گزارش پیشرفت', start_delayed:'شروع نشد' };
+const kindLabel = { progress:'گزارش پیشرفت', start_delayed:'شروع نشد', planned_pause:'وقفهٔ برنامه‌ریزی‌شده', execution_obstacle:'مانع اجرا' };
 
 export {executionWorkKey};
 
@@ -31,10 +31,10 @@ export function collectDailyExecutionReports(project){
         description:report.description, progress:report.progress, photos:report.photos });
     }
     for(const entry of entity.executionHistory || []){
-      if(entry?.type !== 'start_delayed') continue;
+      if(!['start_delayed','planned_pause','execution_obstacle'].includes(entry?.type)) continue;
       if(jalaliDayNumber(entry.day) === null) continue;
-      rows.push({ work, kind:'start_delayed', day:entry.day, at:entry.at, author:entry.actor?.name,
-        description:[entry.reason,entry.description].filter(Boolean).join('\n') });
+      rows.push({ work, kind:entry.type, day:entry.day, at:entry.at, author:entry.actor?.name,
+        description:[entry.reason,entry.description,entry.contactName,entry.resumeOn?'ادامهٔ برنامه‌ریزی‌شده '+formatJalaliDisplay(entry.resumeOn):'',entry.resumedOn?'ازسرگیری '+formatJalaliDisplay(entry.resumedOn):''].filter(Boolean).join('\n'),photos:entry.photos });
     }
   }
   function walk(nodes, path){
@@ -78,7 +78,9 @@ export function filterDailyExecutionReports(rows, filters = {}){
 
 function counts(rows){
   const delays = rows.filter(row=>row.kind==='start_delayed').length;
-  return `${toPersianDigits(rows.length-delays)} گزارش پیشرفت · ${toPersianDigits(delays)} ثبت دلیل شروع نشدن`;
+  const progress=rows.filter(row=>row.kind==='progress').length;
+  const interruptions=rows.length-progress-delays;
+  return `${toPersianDigits(progress)} گزارش پیشرفت · ${toPersianDigits(delays)} ثبت دلیل شروع نشدن${interruptions?' · '+toPersianDigits(interruptions)+' وقفه یا مانع':''}`;
 }
 
 function buildStageTree(project){

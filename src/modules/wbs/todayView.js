@@ -1,7 +1,7 @@
+import {openExecutionInterruption,openExecutionDelayReport} from './executionInterruption.js';
 import {openSearchPicker} from '../../ui/searchPickerAdapter.js';
 import {openNumpadGeneric} from '../../ui/numpad.js';
 import {executionFilterTree,openExecutionBranchFilter} from './executionBranchFilter.js';
-import {gregorianToJalali} from '../../ui/jalali.js';
 import {canDeletePlanning,canWritePlanning,planningAccessLevel} from '../roleManagement/planningAccess.js';
 import {wbsApi} from '../../domain/wbs/wbsApi.js';
 import {openStageEditSheet} from './stageEditSheet.js';
@@ -15,7 +15,7 @@ import {projectRepository} from '../../data/projectRepository.js';
 import { todayRepository } from '../../data/todayRepository.js';
 import { canWriteProjectModule, projectPermissionState } from '../roleManagement/permissionState.js';
 import { todayApi, COMMENT_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
-import { collectTodayItems, collectStandaloneWorks, executionWorkKey, executionReportDay, dailyExecutionStatus, DAILY_EXECUTION_LABELS, contractorForItem, executionStatus, itemsForMode, jalaliDayNumber, remainingLabel, TODAY_MODES, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
+import { collectTodayItems, collectStandaloneWorks, executionInterruption, executionWorkKey, executionReportDay, dailyExecutionStatus, DAILY_EXECUTION_LABELS, contractorForItem, executionStatus, itemsForMode, jalaliDayNumber, remainingLabel, TODAY_MODES, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
 import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { currentExecutionActor, isExecutionAssignee } from './executionActor.js';
@@ -24,7 +24,7 @@ import { fetchFile } from '../files/fileApi.js';
 import { openFileViewer } from '../files/fileViewer.js';
 
 export const TODAY_ICON = 'M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v255l-80 80v-175H200v400h248l80 80H200Zm0-560h560v-80H200v80Zm0 0v-80 80ZM662-60 520-202l56-56 85 85 170-170 56 57L662-60Z';
-const LABELS = Object.freeze({ overdue:'عقب‌افتاده', today:'امروز', future:'آینده', pending:'تکمیل', unscheduled:'بی زمان' });
+const LABELS = Object.freeze({ overdue:'عقب‌افتاده', today:'امروز', future:'آینده', pending:'تکمیل', unscheduled:'بی زمان', blocked:'متوقف' });
 const TYPE_CLASSES = new Map([['اجرا','type-1'],['خرید','type-2'],['نیروی کار','type-3'],['پیمانکار','type-4'],['کرایه','type-5'],['خدمات','type-6'],['پیگیری','type-7'],['سایر','type-9']]);
 const PRIORITY_LABELS = Object.freeze({ low:'بحرانی', normal:'عادی', high:'مهم' });
 const PRIORITY_CLASSES = Object.freeze({ low:'priority-low', normal:'priority-normal', high:'priority-high' });
@@ -96,7 +96,7 @@ function renderComments(documentRef,item,onChanged,editContext,comments=comments
   if(comments.length>2){ const more=documentRef.createElement('button'); more.type='button'; more.className='today-show-comments'; more.textContent=`مشاهده ${toPersianDigits(comments.length-2)} نظر قبلی`; more.addEventListener('click',()=>{ expanded=true; paint(); more.remove(); }); host.appendChild(more); }
   return host;
 }
-function historyLabel(type){ return ({odd_job_created:'خرده‌کار ایجاد شد',odd_job_edited:'خرده‌کار ویرایش شد',odd_job_deleted:'خرده‌کار حذف شد',started:'شروع شد',start_delayed:'دلیل شروع نشدن ثبت شد',start_cancelled:'شروع لغو شد',report_created:'گزارش ثبت شد',report_edited:'گزارش ویرایش شد',comment_added:'نظر ثبت شد',comment_edited:'نظر ویرایش شد',marked_complete:'انجام‌شده اعلام شد',completed_without_approval:'بدون نیاز به تأیید تکمیل شد',sent_for_approval:'برای تأیید ارسال شد',approval_rejected:'تأیید رد شد',approval_cancelled:'تأیید نهایی لغو شد',returned_to_active:'به فهرست فعال برگشت',completion_withdrawn:'تیک انجام‌شدن برداشته شد',returned_to_previous:'به تب قبلی برگشت',approved:'تأیید نهایی شد'})[type]||type; }
+function historyLabel(type){ return ({planned_pause:'وقفهٔ برنامه‌ریزی‌شده',execution_obstacle:'مانع اجرا',progress_updated:'درصد پیشرفت ثبت شد',odd_job_created:'خرده‌کار ایجاد شد',odd_job_edited:'خرده‌کار ویرایش شد',odd_job_deleted:'خرده‌کار حذف شد',started:'شروع شد',start_delayed:'دلیل شروع نشدن ثبت شد',start_cancelled:'شروع لغو شد',report_created:'گزارش ثبت شد',report_edited:'گزارش ویرایش شد',comment_added:'نظر ثبت شد',comment_edited:'نظر ویرایش شد',marked_complete:'انجام‌شده اعلام شد',completed_without_approval:'بدون نیاز به تأیید تکمیل شد',sent_for_approval:'برای تأیید ارسال شد',approval_rejected:'تأیید رد شد',approval_cancelled:'تأیید نهایی لغو شد',returned_to_active:'به فهرست فعال برگشت',completion_withdrawn:'تیک انجام‌شدن برداشته شد',returned_to_previous:'به تب قبلی برگشت',approved:'تأیید نهایی شد'})[type]||type; }
 function renderHistory(documentRef,entity){ const history=[...(entity.executionHistory||[])];
   if(entity.oddJobType && entity.createdAt && !history.some(entry=>entry.type==='odd_job_created')){
     history.push({type:'odd_job_created',at:entity.createdAt,actor:entity.createdBy});
@@ -288,54 +288,40 @@ function renderExecutionReportCard(documentRef,entity,day,{historical=false}={})
   return {reportCard,release};
 }
 
-function executionDayAt(dayNumber){
-  const date=new Date(dayNumber*86400000);
-  const {jy,jm,jd}=gregorianToJalali(date.getUTCFullYear(),date.getUTCMonth()+1,date.getUTCDate());
-  return [jy,jm,jd].map(part=>String(part).padStart(2,'0')).join('/');
-}
-
-function previousExecutionDays(documentRef,entity,day,project){
-  const commentsByDay=new Map();
-  for(const comment of commentsOf(entity)){
-    const date=executionReportDay(comment);
-    if(!date)continue;
-    if(!commentsByDay.has(date))commentsByDay.set(date,[]);
-    commentsByDay.get(date).push(comment);
-  }
-  const selected=jalaliDayNumber(day);
-  const dates=[entity.scheduleStart,executionReportDay(entity),...commentsByDay.keys(),
-    ...reportsOf(entity).map(executionReportDay),
-    ...(entity.executionHistory||[]).map(entry=>entry?.day || executionReportDay({createdAt:entry?.at}))];
-  const known=dates.map(jalaliDayNumber).filter(value=>value!==null);
-  const earliest=Math.min(selected,...(known.length?known:[jalaliDayNumber(executionReportDay(project)) ?? selected]));
+function previousExecutionDays(documentRef,entity,day){
+  const comments=commentsOf(entity);
+  const events=(entity.executionHistory||[]).filter(entry=>['planned_pause','execution_obstacle','daily_status'].includes(entry.type));
+  const dates=[...new Set([...reportsOf(entity).map(executionReportDay),...comments.map(executionReportDay),...events.map(entry=>entry.day)])]
+    .filter(date=>date && date<day).sort().reverse();
   const releases=[];
   const root=documentRef.createElement('div');
-  let cursor=(selected??0)-1;
-  const more=linkButton(documentRef,'today-detail-card today-report-link today-previous-days-button','نمایش گزارش‌های روزهای قبل');
-  const appendDays=()=>{
-    for(let count=0;count<5 && cursor>=earliest;count++,cursor--){
-      const date=executionDayAt(cursor);
-      const report=renderExecutionReportCard(documentRef,entity,date,{historical:true});
-      const comments=commentsByDay.get(date)||[];
-      const notes=detailCard(documentRef);
+  let offset=0;
+  const more=linkButton(documentRef,'today-detail-card today-report-link today-previous-days-button','نمایش سابقه');
+  more.onclick=()=>{
+    for(const date of dates.slice(offset,offset+5)){
+      const section=detailCard(documentRef);
       const heading=documentRef.createElement('h2');
-      heading.textContent='نظرات · '+toPersianDigits(comments.length);
-      notes.append(heading,renderComments(documentRef,{entity},null,null,comments));
-      if(!comments.length){
-        const empty=documentRef.createElement('p');
-        empty.className='today-detail-meta';
-        empty.textContent='نظری ثبت نشده است';
-        notes.append(empty);
+      heading.textContent=formatDate(date);
+      section.append(heading);
+      if(todayReportOf(entity,date)){
+        const report=renderExecutionReportCard(documentRef,entity,date,{historical:true});
+        section.append(report.reportCard);
+        releases.push(report.release);
       }
-      root.insertBefore(report.reportCard,more);
-      root.insertBefore(notes,more);
-      releases.push(report.release);
+      for(const entry of events.filter(value=>value.day===date)){
+        const label=entry.type==='planned_pause'?'وقفهٔ برنامه‌ریزی‌شده':entry.type==='execution_obstacle'?'مانع اجرا':DAILY_EXECUTION_LABELS[entry.status];
+        section.append(detailRow(documentRef,label,[entry.reason,entry.description,entry.resumeOn?formatDate(entry.resumeOn):''].filter(Boolean).join(' · ')));
+        appendReportPhotos(section,entry.photos);
+      }
+      const notes=comments.filter(comment=>executionReportDay(comment)===date);
+      if(notes.length)section.append(renderComments(documentRef,{entity},null,null,notes));
+      root.insertBefore(section,more);
     }
+    offset+=5;
     more.textContent='نمایش بیشتر';
-    if(cursor<earliest)more.remove();
+    if(offset>=dates.length)more.remove();
   };
-  if(selected!==null && cursor>=earliest)root.append(more);
-  more.addEventListener('click',appendDays);
+  if(dates.length)root.append(more);
   return {root,release(){releases.forEach(release=>release());}};
 }
 
@@ -391,8 +377,42 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
     pending.textContent='در انتظار تأیید';
     root.appendChild(pending);
   }
-  const {reportCard,release:releasePhotos}=renderExecutionReportCard(documentRef,entity,day);
-  root.appendChild(reportCard);
+  const interruption=executionInterruption(entity,day);
+  const interruptionCard=detailCard(documentRef);
+  if(interruption){
+    interruptionCard.append(detailRow(documentRef,interruption.type==='planned_pause'?'وقفهٔ برنامه‌ریزی‌شده':'توقف اجرا',
+      [interruption.reason,interruption.resumeOn?formatDate(interruption.resumeOn):''].filter(Boolean).join(' · ')));
+    appendReportPhotos(interruptionCard,interruption.photos);
+  }
+  if(writable && isExecutionAssignee(entity,currentActor) && !['approved','pending_approval'].includes(executionStatus(entity))){
+    const open=options=>openExecutionInterruption(project,item,currentActor,refresh,options);
+    if(interruption){
+      const resume=linkButton(documentRef,'today-report-link','ازسرگیری کار');
+      resume.onclick=()=>{
+        if(todayApi.saveInterruption(project.id,refOf(item),{id:interruption.id,resume:true},currentActor).ok)refresh();
+      };
+      interruptionCard.append(resume);
+    }else{
+      const planned=linkButton(documentRef,'today-report-link','ثبت وقفهٔ برنامه‌ریزی‌شده');
+      planned.onclick=()=>open({type:'planned_pause'});
+      const stop=linkButton(documentRef,'today-report-link','ثبت توقف چندروزه');
+      stop.onclick=()=>open({multiday:true});
+      interruptionCard.append(planned,stop);
+      const obstacle=(entity.executionHistory||[]).findLast(entry=>entry.type==='execution_obstacle'&&!entry.multiday&&!entry.resumedOn);
+      if(obstacle){
+        const extend=linkButton(documentRef,'today-report-link','ادامهٔ مانع به‌صورت توقف چندروزه');
+        extend.onclick=()=>open({multiday:true,existing:{...obstacle,multiday:true}});
+        interruptionCard.append(extend);
+      }
+    }
+  }
+  if(interruptionCard.childElementCount)root.append(interruptionCard);
+  const latestDate=reportsOf(entity).map(executionReportDay).filter(date=>date && date<=day).sort().at(-1);
+  const latest=latestDate && renderExecutionReportCard(documentRef,entity,latestDate,{historical:latestDate!==day});
+  if(latest){
+    if(latestDate!==day)latest.reportCard.querySelector('h2').textContent='آخرین گزارش · '+formatDate(latestDate);
+    root.appendChild(latest.reportCard);
+  }
 
   const commentsCard=detailCard(documentRef);
   const commentsHead=documentRef.createElement('div');
@@ -427,12 +447,12 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
     commentsCard.appendChild(form);
   }
   root.appendChild(commentsCard);
-  const previous=previousExecutionDays(documentRef,entity,day,project);
+  const previous=previousExecutionDays(documentRef,entity,day);
   root.append(previous.root);
 
   const reports=reportsOf(entity);
   const canBrowse=projectPermissionState(project.id,['reports:reports']).visible;
-  if(canBrowse && (reports.length || (entity.executionHistory||[]).some(entry=>entry?.type==='start_delayed'))){
+  if(canBrowse && (reports.length || (entity.executionHistory||[]).some(entry=>['start_delayed','planned_pause','execution_obstacle'].includes(entry?.type)))){
     const link=documentRef.createElement('a');
     link.className='today-detail-card today-report-link';
     link.textContent='همهٔ گزارش‌های این کار';
@@ -448,7 +468,7 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
   const history=renderHistory(documentRef,entity);
   history.classList.add('today-detail-card');
   root.appendChild(history);
-  return {root,release(){releasePhotos();previous.release();}};
+  return {root,release(){latest?.release();previous.release();}};
 }
 
 function openTodayDetails(documentRef,project,item,today,onChanged,returnToCalendar,approval){
@@ -546,7 +566,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   const status=current.reasonId==='officialHoliday'?'holiday':current.status;
   const saved=!!todayReportOf(entity,today);
   const canReport=!approval && today===tehranTodayJalali() && canWriteProjectModule(project.id,'execution:today')
-    && isExecutionAssignee(entity,currentExecutionActor(project)) && !['approved','pending_approval'].includes(executionStatus(entity));
+    && !executionInterruption(entity,today) && isExecutionAssignee(entity,currentExecutionActor(project)) && !['approved','pending_approval'].includes(executionStatus(entity));
   const report=documentRef.createElement(canReport?'button':'span');
   report.className='today-report-circle is-'+status+(saved?' is-saved':'');
   report.innerHTML='گزارش <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6m-6 4h6"/></svg>';
@@ -562,11 +582,11 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     event.stopPropagation();
     openNumpadGeneric(String(Number(entity.progress)||0),raw=>{
       const value=Number(raw);
-      if(!Number.isInteger(value)||value<0||value>100){window.KarhaUI?.showToast?.('درصد پیشرفت باید بین صفر تا صد باشد');return false;}
+      if(!raw||!Number.isInteger(value)||value<0||value>100){window.KarhaUI?.showToast?.('درصد پیشرفت باید بین صفر تا صد باشد');return false;}
       const result=todayApi.setProgress(project.id,refOf(item),value,currentExecutionActor(project));
       if(!result.ok){window.KarhaUI?.showToast?.('ثبت درصد پیشرفت انجام نشد');return false;}
       onChanged?.();
-    },{suffix:'٪',group:false,maxLen:3});
+    },{suffix:'٪',group:false,maxLen:3,allowPaste:false});
   }:undefined});
   if(!canChangeProgress)progress.onclick=event=>event.stopPropagation();
   heading.append(titles,progress);
@@ -821,7 +841,7 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
   if(!standalone)header.className+=' today-task-toolbar-stacked';
   tabs.setAttribute('role','tablist');
   tabs.setAttribute('aria-label','دسته‌های لیست کارها');
-  for(const mode of (standalone?TODAY_MODES:['all',...TODAY_MODES])){
+  for(const mode of (standalone?[...TODAY_MODES,'blocked']:['all',...TODAY_MODES,'blocked'])){
     const button=documentRef.createElement('button');
     button.type='button';
     button.className='wbs-tree-mode-tab'+(mode===selectedMode?' active':'');
@@ -841,11 +861,16 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
     filter.classList.add('active');
   }
   filter.onclick=()=>openExecutionBranchFilter(project,tree,id=>{activeBranch=id;onChanged?.();},selectedBranch);
+  const delayReport=linkButton(documentRef,'wbs-tree-mode-tab today-task-filter','گزارش تأخیرات');
+  delayReport.onclick=()=>openExecutionDelayReport(project,standalone?collectStandaloneWorks(project,today):collectTodayItems(project,today,{includeApproved:true}),{
+    actor:currentExecutionActor(project),canReview:canWriteProjectModule(project.id,'execution:today'),refresh:onChanged});
+  const showDelayReport=projectPermissionState(project.id,['reports:reports']).visible;
   const showCalendar=options=>openExecutionCalendar(projectRepository.find(project.id)||project,
     (source,item,day,selection)=>renderTodaySummary(documentRef,source,item,day,onChanged,()=>showCalendar(selection)),options);
   const calendar=linkButton(documentRef,'wbs-tree-mode-tab today-task-filter','تقویم');
   calendar.onclick=()=>showCalendar();
   header.append(tabs);
+  if(standalone && showDelayReport)header.append(delayReport);
   if(standalone){
     if(canWriteProjectModule(project.id,'execution:today')){
       const add=linkButton(documentRef,'wbs-tree-mode-tab today-task-filter oddjobs-add','+','افزودن خرده‌کار');
@@ -864,6 +889,7 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
     const detailsFilter=linkButton(documentRef,'wbs-tree-mode-tab today-task-filter'+(Object.keys(activeDetails).length?' active':''),'فیلتر');
     detailsFilter.onclick=()=>openExecutionDetailsFilter(documentRef,project,statusAndBranchItems,filters=>{activeDetails=filters;onChanged?.();});
     tools.append(filter,detailsFilter,calendar);
+    if(showDelayReport)tools.append(delayReport);
     const appendTag=(label,value,clear)=>{
       const tag=linkButton(documentRef,'today-active-filter-tag','', 'حذف فیلتر '+label+' '+value);
       const text=documentRef.createElement('span');

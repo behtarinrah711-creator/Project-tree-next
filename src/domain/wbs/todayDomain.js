@@ -2,6 +2,13 @@ import { jalaliToGregorian } from '../../ui/jalali.js';
 import { activeWorkTasks } from './workTaskModel.js';
 import { isWork, canHoldWorkTasks } from './normalize.js';
 
+export function executionInterruption(entity,day){
+  const history=entity.executionHistory||[];
+  const open=entry=>entry?.day<=day && (!entry.resumedOn||day<entry.resumedOn);
+  return history.findLast(entry=>entry?.type==='execution_obstacle' && entry.multiday && open(entry))
+    || history.findLast(entry=>entry?.type==='planned_pause' && open(entry) && day<entry.resumeOn);
+}
+
 export const TODAY_MODES = Object.freeze(['overdue','today','future','pending','unscheduled']);
 
 export const START_DELAY_REASONS = Object.freeze([
@@ -52,6 +59,9 @@ export function executionStatus(entity){
 
 export function timeState(entity, today){
   if(['pending_approval','approved'].includes(executionStatus(entity))) return 'pending';
+  const interruption=entity && executionInterruption(entity,today);
+  if(interruption)return interruption.type==='planned_pause'?'future':'blocked';
+  if((entity?.executionHistory||[]).some(entry=>entry?.type==='planned_pause' && !entry.resumedOn && entry.resumeOn===today))return 'today';
   const start = entity?.scheduleStart || '';
   const end = entity?.scheduleEnd || '';
   const endDay = jalaliDayNumber(end);
@@ -141,14 +151,14 @@ export const INACTIVE_REASONS=Object.freeze({
 });
 
 export function dailyExecutionStatus(entity,day){
-  return (entity.executionHistory||[]).findLast(entry=>entry?.type==='daily_status' && entry.day===day)
-    || {status:'unknown'};
+  const entry=(entity.executionHistory||[]).findLast(entry=>(entry?.type==='daily_status'||entry?.type==='execution_obstacle') && entry.day===day);
+  return entry?.type==='execution_obstacle'?{...entry,status:'inactive'}:entry||{status:'unknown'};
 }
 
 export function executionItemsOnDay(items,day){
   return items.filter(({entity})=>{
     const planned=entity.scheduleStart && entity.scheduleEnd && entity.scheduleStart<=day && day<=entity.scheduleEnd;
-    return planned || (entity.executionReports||[]).some(report=>report && !report.trashed && executionReportDay(report)===day)
+    return (planned && !executionInterruption(entity,day)) || (entity.executionReports||[]).some(report=>report && !report.trashed && executionReportDay(report)===day)
       || (entity.executionHistory||[]).some(entry=>entry?.type==='daily_status' && entry.day===day);
   });
 }

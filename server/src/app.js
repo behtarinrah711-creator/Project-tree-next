@@ -316,14 +316,28 @@ function canWriteExecutionItem(permissions,item){
 
 export function hasDeniedExecutionChanges(current,incoming,permissions,phone,accountId){
   const contactIds=executionContactIds(current,phone);
+  const restrictedHistory=new Set(['start_delayed','daily_status','planned_pause','execution_obstacle','progress_updated']);
   const deniedDailyHistory=(previous,item)=>{
     const prior=new Map((previous?.executionHistory||[])
-      .filter(entry=>['start_delayed','daily_status'].includes(entry?.type)).map(entry=>[entry.id,entry]));
+      .filter(entry=>restrictedHistory.has(entry?.type)).map(entry=>[entry.id,entry]));
     return (item.executionHistory||[]).some(entry=>{
-      if(!['start_delayed','daily_status'].includes(entry?.type) || JSON.stringify(prior.get(entry.id))===JSON.stringify(entry))return false;
+      if(!restrictedHistory.has(entry?.type) || JSON.stringify(prior.get(entry.id))===JSON.stringify(entry))return false;
       const at=new Date(entry.at);
       if(item.type==='خرید' || !previous?.assigneeContactId || !contactIds.has(String(previous.assigneeContactId))
-        || !Number.isFinite(at.getTime()) || entry.day!==tehranTodayJalali(at))return true;
+        || !Number.isFinite(at.getTime()) || !canWriteExecutionItem(permissions,item))return true;
+      if(entry.type==='planned_pause'||entry.type==='execution_obstacle'){
+        const date=value=>typeof value==='string' && /^\d{4}\/\d{2}\/\d{2}$/.test(value);
+        const original=prior.get(entry.id);
+        if(original && (original.type!==entry.type || original.day!==entry.day))return true;
+        if(!date(entry.day)||typeof entry.reason!=='string'||!entry.reason.trim()||typeof entry.description!=='string'||!entry.description.trim())return true;
+        if(entry.resumedOn && (!date(entry.resumedOn)||entry.resumedOn<entry.day))return true;
+        if(entry.type==='planned_pause' && (!date(entry.resumeOn)||entry.resumeOn<=entry.day))return true;
+        if(entry.type==='execution_obstacle' && !['unknown','external'].includes(entry.role)
+          && !(current?.contacts||[]).some(contact=>contact && String(contact.id)===entry.contactId))return true;
+        return entry.reviewed===true && (!Number.isInteger(entry.impactDays)||entry.impactDays<0);
+      }
+      if(entry.day!==tehranTodayJalali(at))return true;
+      if(entry.type==='progress_updated')return !Number.isInteger(entry.progress)||entry.progress<0||entry.progress>100;
       if(entry.type==='daily_status'){
         if(!Object.hasOwn(DAILY_EXECUTION_LABELS,entry.status))return true;
         if(entry.status!=='inactive')return false;

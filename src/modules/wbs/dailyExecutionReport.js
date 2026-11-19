@@ -1,3 +1,4 @@
+import {openExecutionInterruption} from './executionInterruption.js';
 import {projectRepository} from '../../data/projectRepository.js';
 import { REPORT_MIN_LENGTH, todayApi } from '../../domain/wbs/todayApi.js';
 import { collectTodayItems, dailyExecutionStatus, INACTIVE_REASONS, executionReportDay, tehranTodayJalali } from '../../domain/wbs/todayDomain.js';
@@ -145,6 +146,14 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
         ? Number(root.querySelector('[name="reportProgress"]').dataset.value)
         : Number(item.entity.progress)||0;
       const description=root.querySelector('[name="reportDescription"]').value;
+      if(statusControls && dailyStatus.status==='inactive' && dailyStatus.reasonId!=='officialHoliday'){
+        const reason=INACTIVE_REASONS[dailyStatus.reasonId]||dailyStatus.reasonId.replace(/^custom:/,'');
+        if(!reason){toast('دلیل غیرفعال بودن را انتخاب کنید');return false;}
+        const project=projectRepository.find(projectId);
+        if(!project)return false;
+        requestAnimationFrame(()=>openExecutionInterruption(project,item,actor,onChanged,{existing:{reason,description,photos}}));
+        return true;
+      }
       const statusOnly=statusControls && !current && !description.trim() && !photos.length;
       const result=statusOnly
         ? todayApi.setDailyStatus(projectId,ref,dailyStatus.status,dailyStatus.reasonId,'',actor)

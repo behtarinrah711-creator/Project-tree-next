@@ -122,7 +122,8 @@ function approvalOptions(documentRef,project,group,item,onChanged){
     };
     if(group.id==='execution'){
       const reject=button(documentRef,'رد کردن',()=>{
-        let progress=null;
+        let progress=Math.min(99,Math.max(0,Math.trunc(Number(item.entity.progress)||0)));
+        let feedback;
         let endDate=item.entity.scheduleEnd||'';
         let reason='';
         let submitting=false;
@@ -132,7 +133,7 @@ function approvalOptions(documentRef,project,group,item,onChanged){
           body(root){
             const percent=documentRef.createElement('div');percent.className='execution-reject-field';
             const percentLabel=documentRef.createElement('span');percentLabel.textContent='پیشرفت واقعی';
-            const percentButton=button(documentRef,'انتخاب درصد',()=>{
+            const percentButton=button(documentRef,`${progress}٪`,()=>{
               openNumpadGeneric(progress===null?'':String(progress),raw=>{progress=Number(raw);percentButton.textContent=progress+'٪';},
                 {group:false,suffix:'٪',maxLen:2,validate:raw=>!/^\d{1,2}$/.test(raw)||Number(raw)>99?'درصد باید بین صفر تا ۹۹ باشد':''});
             });
@@ -147,24 +148,26 @@ function approvalOptions(documentRef,project,group,item,onChanged){
             const reasonLabel=documentRef.createElement('span');reasonLabel.textContent='دلیل رد (اجباری)';
             const textarea=documentRef.createElement('textarea');textarea.placeholder='دلیل رد تأیید را بنویسید…';
             textarea.addEventListener('input',()=>{reason=textarea.value;});
-            reasonRow.append(reasonLabel,textarea);root.append(percent,deadline,reasonRow);
+            feedback=documentRef.createElement('p');feedback.setAttribute('role','alert');
+            reasonRow.append(reasonLabel,textarea);root.append(percent,deadline,reasonRow,feedback);
           },
           onSave(){
             if(submitting)return false;
             if(progress===null || !Number.isInteger(progress) || progress<0 || progress>99){
-              window.KarhaUI?.showToast?.('درصد پیشرفت واقعی را وارد کنید');return false;
+              feedback.textContent='درصد پیشرفت واقعی را وارد کنید';return false;
             }
             if(!/^\d{4}\/\d{2}\/\d{2}$/.test(endDate)||endDate<tehranTodayJalali()){
-              window.KarhaUI?.showToast?.('مهلت جدید تکمیل را از تقویم انتخاب کنید');return false;
+              feedback.textContent='مهلت جدید تکمیل را از تقویم انتخاب کنید';return false;
             }
-            if(reason.trim().length<5){window.KarhaUI?.showToast?.('دلیل رد باید حداقل ۵ حرف باشد');return false;}
+            if(reason.trim().length<5){feedback.textContent='دلیل رد باید حداقل ۵ حرف باشد';return false;}
+            feedback.textContent='';
             submitting=true;
             (async()=>{
               try{
                 const {current,actor}=currentExecution();
                 await submitExecutionDecision(project.id,group.scope,current,actor,reason.trim(),{progress,endDate});
                 closeWbsSheet();onChanged();
-              }catch(error){window.KarhaUI?.showToast?.(error.message);}
+              }catch(error){feedback.textContent=error.message || 'ثبت انجام نشد';}
               finally{submitting=false;}
             })();
             return false;
