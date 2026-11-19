@@ -471,7 +471,7 @@ export async function openStandaloneWorkSheet({projectId,onChanged,saveStandalon
           const row=document.createElement('label');row.className='ft-row';
           const caption=document.createElement('span');caption.className='ft-label';caption.textContent=label;
           const input=document.createElement('input');input.className='ft-input';input.value=draft[key]||'';
-          input.style.textAlign='left';input.style.direction='rtl';
+          input.classList.add('oddjob-inline-text-value');
           input.placeholder='وارد کنید';input.oninput=()=>{draft[key]=input.value;};
           row.append(caption,input);fields.append(row);
         };
