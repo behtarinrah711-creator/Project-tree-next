@@ -43,7 +43,7 @@ export function jalaliDayNumber(value){
 
 export function executionStatus(entity){
   if(entity?.completionState === 'pending_approval') return 'pending_approval';
-  if(entity?.completionState === 'approved' || entity?.completed) return 'approved';
+  if(entity?.completionState === 'approved' || entity?.completed || entity?.done) return 'approved';
   if(entity?.actualStart) return 'in_progress';
   if((entity?.executionReports || []).some(report => report && !report.trashed)) return 'in_progress';
   if(Number(entity?.progress) > 0) return 'in_progress';
@@ -51,7 +51,7 @@ export function executionStatus(entity){
 }
 
 export function timeState(entity, today){
-  if(executionStatus(entity) === 'pending_approval') return 'pending';
+  if(['pending_approval','approved'].includes(executionStatus(entity))) return 'pending';
   const start = entity?.scheduleStart || '';
   const end = entity?.scheduleEnd || '';
   const endDay = jalaliDayNumber(end);
@@ -112,7 +112,7 @@ export function collectStandaloneWorks(project,day=tehranTodayJalali()){
 }
 
 export function itemsForMode(project, mode, today = tehranTodayJalali()){
-  return collectTodayItems(project, today).filter(item => item.mode === mode);
+  return collectTodayItems(project, today, {includeApproved:mode==='pending'}).filter(item => item.mode === mode);
 }
 
 export function contractorForItem(project, item){
