@@ -61,7 +61,7 @@ test('stage-scoped actions keep upload, send and withdrawal separate',()=>{
  assert.deepEqual(labels(renderContractSignedSection(project,signed,{stage:'signed'})),['نسخه امضاشده قرارداد','بازگشت برای ویرایش']);
  assert.deepEqual(labels(renderContractSignedSection(project,signed,{stage:'finance'})),['ارسال به واحد مالی']);
  const sent={...signed,accountingStatus:'sent',sentToAccountingAt:2,accountingPackage:{contract:signed,signedFiles:[file]}};
- assert.deepEqual(labels(renderContractSignedSection(project,sent,{stage:'finance-approved'})),['پس‌گرفتن از مالی']);
+ assert.deepEqual(labels(renderContractSignedSection(project,sent,{stage:'finance'})),['پس‌گرفتن از مالی']);
  window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'view',accounting:'full'}}}};
  try{
    assert.equal(renderContractSignedSection(project,signed,{stage:'finance'}),null);

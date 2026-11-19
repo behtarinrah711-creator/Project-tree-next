@@ -742,7 +742,7 @@ function saveDraft() {
     confirmingCompletion=true;
     const changes=structuredClone(state);
     syncContractAmount(changes);
-    Promise.resolve().then(()=>edit.save(changes)).then(record=>{
+    Promise.resolve().then(()=>edit.save({...changes,revisionReason:edit.revisionReason})).then(record=>{
       if(reviewEdit!==edit)return;
       edit.record=record;
       dirty=false;
@@ -799,6 +799,18 @@ export const realContractFormModule = {
     const existing=id && realContractDomain.findProjectContract(id,project);
     if(existing && hasPaidContractDocument(project,existing)){
       helper('showToast','این قرارداد سند پرداخت‌شده دارد و قابل ویرایش نیست');return false;
+    }
+    if(options?.save && !options.revisionReason){
+      const key='contract-review-reason:'+id;
+      openContractReasonSheet({title:'دلیل ویرایش قرارداد',fieldLabel:'دلیل ویرایش',saveLabel:'ادامه',historyKey:key,
+        async submit(reason){
+          const open=()=>realContractFormModule.open(id,project.id,{...options,revisionReason:reason});
+          const history=window.KarhaChildHistory;
+          if(history?.isOpen?.(key) && history.afterNextPop)history.afterNextPop(open);
+          else setTimeout(open,0);
+          return true;
+        }});
+      return true;
     }
     activeProjectId = project.id;
     if (!openFormShell(project.id)) {

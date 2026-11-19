@@ -5,7 +5,7 @@ import {contractDisplayTitle} from './contractTitle.js';
 
 export function openContractDetails(project,contract,trigger,{showDocuments=true}={}){
   const page=document.createElement('section');
-  page.className='page-overlay workspace-page workspace-page--own-section-bar';
+  page.className='page-overlay workspace-page workspace-page--own-section-bar financial-summary-page';
   const key='contract-details:'+contract.id;
   const close=(fromPopState=false)=>{
     page.remove();
@@ -14,7 +14,7 @@ export function openContractDetails(project,contract,trigger,{showDocuments=true
   };
   const header=document.createElement('div');header.className='inner-section-bar';
   const back=document.createElement('button');back.type='button';back.className='inner-section-back';
-  back.textContent='‹';back.setAttribute('aria-label','بازگشت');back.onclick=()=>close();
+  back.innerHTML='<svg width="22" height="22" viewBox="0 0 20 20" fill="none"><path d="M12 4l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';back.setAttribute('aria-label','بازگشت');back.onclick=()=>close();
   const heading=document.createElement('h2');heading.textContent='خلاصه مالی';
   const spacer=document.createElement('span');spacer.className='inner-section-spacer';
   header.append(back,heading,spacer);

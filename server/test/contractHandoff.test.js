@@ -551,7 +551,7 @@ test('only an assigned contract editor can save changes during review',async()=>
   const f=fixture();
   f.payload.contacts=[{id:'reviewer',phones:['0912']}];
   Object.assign(f.payload.contracts[0],{approvalStatus:'pending',approvalContactIds:['other'],approvedContactIds:[]});
-  const action={action:'edit_contract_review',version:0,updatedAt:1,changes:{title:'عنوان اصلاح‌شده'}};
+  const action={action:'edit_contract_review',version:0,updatedAt:1,changes:{revisionReason:'اصلاح عنوان قرارداد',title:'عنوان اصلاح‌شده'}};
   f.setPermissions({modules:{contracts:'create'}});
   assert.equal((await f.call(action)).status,400);
   f.payload.contracts[0].approvalContactIds=['reviewer'];

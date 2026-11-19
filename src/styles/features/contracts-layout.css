@@ -157,3 +157,18 @@
   background:linear-gradient(to right,#fff 65%,transparent) left center/14px 100% local no-repeat,
              linear-gradient(to right,#dde2e9,transparent) left center/7px 70% scroll no-repeat;
 }
+
+.financial-summary-page.workspace-page{bottom:0;display:flex;flex-flow:column;height:auto;}
+.financial-summary-page .inner-section-bar{flex:none;}
+.financial-summary-page > .contract-details-body{min-height:0;flex:1;overflow-y:auto;padding-bottom:max(16px,env(safe-area-inset-bottom));}
+.financial-summary-page .contract-financial-table{table-layout:auto;}
+.financial-summary-page .contract-financial-table th{width:auto;overflow-wrap:anywhere;text-align:start;}
+.financial-summary-page .contract-financial-table .summary-amount,.financial-summary-page .contract-financial-table .summary-unit{width:1%;white-space:nowrap;direction:rtl;}
+.financial-summary-page .summary-amount{font-size:clamp(11px,3.1vw,14px);}
+.financial-summary-page .contract-financial-table .summary-unit{font-size:10px;padding-inline:2px 5px;}
+#notificationsPageBody .contract-row .contract-workflow-row > .contract-review-action{border-radius:8px;background:#e8f2ff;color:#145da2;padding:7px 12px;}
+#notificationsPageBody .contract-row .contract-workflow-row > .contract-review-action.danger{background:#ffeded;color:#ab2929;}
+.contract-review-notice{font-size:12px;color:#28583e;}
+.financial-summary-page .contract-financial-table .summary-unit{width:3em;}
+.inner-section-back:not(:has(svg,img)):not(:empty){font-size:0;}
+.inner-section-back:not(:has(svg,img)):not(:empty)::before{content:"";display:inline-block;width:9px;height:9px;border-left:2px solid currentColor;border-bottom:2px solid currentColor;transform:rotate(45deg);}

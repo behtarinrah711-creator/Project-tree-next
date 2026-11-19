@@ -86,6 +86,9 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         sendJson(response,409,{message:'قرارداد تغییر کرده است؛ صفحه را به‌روز کنید'});return true;
       }
       let files=[];
+      if(!statement && !addendum && ['save_signed','withdraw_finance','reopen_signed_contract','revoke_finance'].includes(body.action) && hasPaidContractDocument(row.payload,contract)){
+        sendJson(response,409,{message:'قرارداد دارای سند پرداخت‌شده است'});return true;
+      }
       if(body.action==='save_signed'){
         if(!storage){sendJson(response,503,{message:'فضای ذخیره‌سازی آماده نیست'});return true;}
         if(!Array.isArray(body.files) || body.files.length>30){sendJson(response,400,{message:'حداکثر ۳۰ صفحه انتخاب کنید'});return true;}
