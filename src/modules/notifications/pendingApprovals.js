@@ -173,7 +173,7 @@ function approvalOptions(documentRef,project,group,item,onChanged){
       },'contract-review-action execution-review-action is-reject');
       approval.rejectAction=reject;
     }
-    const approve=button(documentRef,item.entity?.oddJobType?'تأیید خرج':shopping?'تأیید خرید':'تأیید',()=>openConfirm('این مورد تأیید شود؟',async()=>{
+    const approve=button(documentRef,shopping?'تأیید خرید':'تأیید',()=>openConfirm('این مورد تأیید شود؟',async()=>{
       approve.disabled=true;
       try{
         const latest=projectRepository.find(project.id);
