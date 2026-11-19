@@ -73,7 +73,7 @@ export const todayApi = {
     const entity=todayRepository.get(projectId,ref);
     const by=actorValue(actor);
     if(!entity || entity.trashed || !by.contactId || String(entity.assigneeContactId)!==by.contactId)return {ok:false,code:'forbidden'};
-    if(!draft.review && (entity.completed || ['approved','pending_approval'].includes(entity.completionState)))return {ok:false,code:'locked'};
+    if(!draft.review && !draft.eligibility && (entity.completed || ['approved','pending_approval'].includes(entity.completionState)))return {ok:false,code:'locked'};
     const at=clock(), day=tehranTodayJalali(new Date(at));
     const entries=entity.executionHistory||[];
     const previous=entries.find(entry=>entry?.id && entry.id===draft.id && ['planned_pause','execution_obstacle'].includes(entry.type));
@@ -82,6 +82,12 @@ export const todayApi = {
       if(!previous || previous.resumedOn || previous.day>day)return {ok:false,code:'invalid_interruption'};
       return mutate(projectId,ref,current=>({...current,returnedToTodayOn:day,updatedAt:at,
         executionHistory:current.executionHistory.map(entry=>entry.id===previous.id?{...entry,resumedOn:day,resumedBy:by}:entry)}));
+    }
+    if(draft.eligibility){
+      if(!previous || previous.type!=='execution_obstacle' || !['pending','eligible','ineligible'].includes(draft.eligibility))
+        return {ok:false,code:'invalid_interruption'};
+      return mutate(projectId,ref,current=>({...current,updatedAt:at,executionHistory:current.executionHistory.map(entry=>
+        entry.id===previous.id?{...entry,eligibility:draft.eligibility,eligibilityBy:by,eligibilityAt:at}:entry)}));
     }
     if(draft.review){
       if(!previous || previous.type!=='execution_obstacle' || !Number.isInteger(draft.impactDays) || draft.impactDays<0)

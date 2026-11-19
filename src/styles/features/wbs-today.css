@@ -2,7 +2,9 @@
 @media(max-width:420px){.wbs-today-frame .wbs-view-header{padding-inline:5px}.wbs-today-frame .wbs-view-title{font-size:11px}.today-mode-tab,.today-filter{width:27px!important;min-width:27px!important}.today-mode-tab img,.today-filter img{width:18px;height:18px}.today-task-meta{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.today-task-meta span:last-child{text-align:left}}
 
 .today-task-toolbar{direction:rtl;gap:4px;}
-.today-task-tabs{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:3px;flex:1;min-width:0;}
+.today-task-tabs{display:flex;gap:3px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:none;overscroll-behavior-inline:contain;}
+.today-task-tabs::-webkit-scrollbar{display:none;}
+.today-task-toolbar .today-task-tabs .wbs-tree-mode-tab{flex:0 0 auto;width:auto;padding-inline:10px;}
 .today-task-toolbar .wbs-tree-mode-tab{width:100%;min-width:0;height:32px;padding:0 2px;font:inherit;font-size:11px;white-space:nowrap;}
 .today-task-toolbar .wbs-tree-mode-tab:not(.active){border-color:var(--wbs-frame-border);background:#fff;}
 .today-task-toolbar .today-task-filter{width:auto;gap:2px;padding-inline:4px;}
@@ -95,7 +97,7 @@
 .wbs-today-frame .today-card-summary .today-card-activity{font-size:10px;}
 .wbs-today-frame .today-card-summary .today-card-activity.is-inactive{background:#9e3229;}
 .wbs-today-frame .today-card-summary button.today-progress-circle{cursor:pointer;}
-.today-task-tabs button[data-mode="overdue"]{white-space:normal;line-height:1.15;}
+
 .execution-calendar .jalali-days,.execution-calendar .jalali-week{direction:rtl;}
 .execution-calendar .jalali-days button{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;height:auto;min-height:48px;padding:0;}
 .execution-calendar .jalali-days button.selected{background:transparent;color:inherit;}
@@ -279,8 +281,8 @@ button.today-report-circle{cursor:pointer;}
 }
 
 .today-task-toolbar.today-task-toolbar-stacked{display:flex;flex-direction:column;align-items:stretch;height:auto;flex-shrink:0;gap:0;padding-block:6px;background:#fff;}
-.today-task-toolbar-stacked .today-task-secondary{margin-top:6px;padding-top:6px;border-top:1px solid var(--wbs-frame-border);}
-.today-task-tabs.today-task-tabs-all{grid-template-columns:repeat(7,minmax(0,1fr));}
+.today-task-toolbar-stacked .today-task-secondary{margin-top:6px;padding-top:6px;}
+
 .today-task-secondary{display:flex;direction:rtl;align-items:center;gap:6px;}
 .today-task-toolbar .today-task-secondary .today-task-filter{padding-inline:10px;max-width:55%;overflow:hidden;text-overflow:ellipsis;}
 .execution-details-filter{padding-inline:16px;background:#fff;}

@@ -1,4 +1,4 @@
-import {openExecutionDelayReport} from './executionInterruption.js';
+import {INTERRUPTION_ELIGIBILITY,openExecutionDelayReport} from './executionInterruption.js';
 import {openSearchPicker} from '../../ui/searchPickerAdapter.js';
 import {openNumpadGeneric} from '../../ui/numpad.js';
 import {executionFilterTree,openExecutionBranchFilter} from './executionBranchFilter.js';
@@ -24,7 +24,7 @@ import { fetchFile } from '../files/fileApi.js';
 import { openFileViewer } from '../files/fileViewer.js';
 
 export const TODAY_ICON = 'M200-80q-33 0-56.5-23.5T120-160v-560q0-33 23.5-56.5T200-800h40v-80h80v80h320v-80h80v80h40q33 0 56.5 23.5T840-720v255l-80 80v-175H200v400h248l80 80H200Zm0-560h560v-80H200v80Zm0 0v-80 80ZM662-60 520-202l56-56 85 85 170-170 56 57L662-60Z';
-const LABELS = Object.freeze({ overdue:'عقب‌افتاده', today:'امروز', future:'آینده', pending:'تکمیل', unscheduled:'بی زمان', blocked:'متوقف' });
+const LABELS = Object.freeze({ overdue:'عقب‌افتاده', today:'امروز', future:'آینده', pending:'تکمیل', unscheduled:'بی زمان', waiting:'انتظار', blocked:'متوقف' });
 const TYPE_CLASSES = new Map([['اجرا','type-1'],['خرید','type-2'],['نیروی کار','type-3'],['پیمانکار','type-4'],['کرایه','type-5'],['خدمات','type-6'],['پیگیری','type-7'],['سایر','type-9']]);
 const PRIORITY_LABELS = Object.freeze({ low:'بحرانی', normal:'عادی', high:'مهم' });
 const PRIORITY_CLASSES = Object.freeze({ low:'priority-low', normal:'priority-normal', high:'priority-high' });
@@ -288,15 +288,16 @@ function renderExecutionReportCard(documentRef,entity,day,{historical=false}={})
   return {reportCard,release};
 }
 
-function previousExecutionDays(documentRef,entity,day){
+function previousExecutionDays(documentRef,item,day,refresh,editContext){
+  const {entity}=item;
   const comments=commentsOf(entity);
-  const events=(entity.executionHistory||[]).filter(entry=>['planned_pause','execution_obstacle','daily_status'].includes(entry.type));
+  const events=(entity.executionHistory||[]).filter(entry=>['planned_pause','execution_obstacle','daily_status'].includes(entry?.type));
   const dates=[...new Set([...reportsOf(entity).map(executionReportDay),...comments.map(executionReportDay),...events.map(entry=>entry.day)])]
-    .filter(date=>date && date<day).sort().reverse();
+    .filter(date=>date && (date<=day||events.some(entry=>entry.type==='planned_pause' && entry.day===date))).sort().reverse();
   const releases=[];
   const root=documentRef.createElement('div');
   let offset=0;
-  const more=linkButton(documentRef,'today-detail-card today-report-link today-previous-days-button','نمایش سابقه');
+  const more=linkButton(documentRef,'today-detail-card today-report-link today-previous-days-button','مشاهدهٔ سابقه');
   more.onclick=()=>{
     for(const date of dates.slice(offset,offset+5)){
       const section=detailCard(documentRef);
@@ -309,12 +310,12 @@ function previousExecutionDays(documentRef,entity,day){
         releases.push(report.release);
       }
       for(const entry of events.filter(value=>value.day===date)){
-        const label=entry.type==='planned_pause'?'وقفهٔ برنامه‌ریزی‌شده':entry.type==='execution_obstacle'?'مانع اجرا':DAILY_EXECUTION_LABELS[entry.status];
+        const label=entry.type==='planned_pause'?'انتظار':entry.type==='execution_obstacle'?(entry.multiday?'متوقف':'مانع اجرا'):DAILY_EXECUTION_LABELS[entry.status];
         section.append(detailRow(documentRef,label,[entry.reason,entry.description,entry.resumeOn?formatDate(entry.resumeOn):''].filter(Boolean).join(' · ')));
         appendReportPhotos(section,entry.photos);
       }
       const notes=comments.filter(comment=>executionReportDay(comment)===date);
-      if(notes.length)section.append(renderComments(documentRef,{entity},null,null,notes));
+      if(notes.length)section.append(renderComments(documentRef,item,refresh,editContext,notes));
       root.insertBefore(section,more);
     }
     offset+=5;
@@ -380,30 +381,27 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
   const interruption=executionInterruption(entity,day);
   const upcoming=(entity.executionHistory||[]).filter(entry=>entry?.type==='planned_pause' && !entry.resumedOn && entry.day>day)
     .sort((a,b)=>a.day.localeCompare(b.day));
-  for(const entry of [interruption,...upcoming].filter(Boolean)){
+  const latestDate=reportsOf(entity).map(executionReportDay).filter(date=>date && date<=day).sort().at(-1);
+  const lastObstacle=(entity.executionHistory||[]).findLast(entry=>entry?.type==='execution_obstacle' && entry.day<=day
+    && !entry.resumedOn && (!latestDate||entry.day>=latestDate));
+  const entry=interruption||upcoming[0]||lastObstacle;
+  const latest=!entry && latestDate && renderExecutionReportCard(documentRef,entity,latestDate,{historical:latestDate!==day});
+  if(entry){
     const card=detailCard(documentRef);
-    card.append(detailRow(documentRef,entry.type==='planned_pause'?'وقفهٔ برنامه‌ریزی‌شده':'توقف اجرا',
-      ['شروع '+formatDate(entry.day),entry.resumeOn?'ادامه '+formatDate(entry.resumeOn):'',entry.reason,entry.description]
+    const heading=documentRef.createElement('h2');
+    heading.textContent='آخرین وضعیت';
+    const label=entry.type==='planned_pause'?'انتظار':entry.multiday?'متوقف':'مانع اجرا';
+    card.append(heading,detailRow(documentRef,label,
+      ['شروع '+formatDate(entry.day),entry.resumeOn?'ادامه '+formatDate(entry.resumeOn):'',entry.reason,entry.description,entry.type==='execution_obstacle'?(INTERRUPTION_ELIGIBILITY[entry.eligibility]||INTERRUPTION_ELIGIBILITY.pending):'']
         .filter(Boolean).join(' · ')));
     appendReportPhotos(card,entry.photos);
     root.append(card);
-  }
-  const latestDate=reportsOf(entity).map(executionReportDay).filter(date=>date && date<=day).sort().at(-1);
-  const latest=latestDate && renderExecutionReportCard(documentRef,entity,latestDate,{historical:latestDate!==day});
-  if(latest){
-    if(latestDate!==day)latest.reportCard.querySelector('h2').textContent='آخرین گزارش · '+formatDate(latestDate);
+  }else if(latest){
+    latest.reportCard.querySelector('h2').textContent='آخرین گزارش · '+formatDate(latestDate);
     root.appendChild(latest.reportCard);
   }
 
   const commentsCard=detailCard(documentRef);
-  const commentsHead=documentRef.createElement('div');
-  commentsHead.className='today-detail-rowline';
-  const commentsTitle=documentRef.createElement('h2');
-  commentsTitle.textContent='نظرات';
-  const commentsCount=documentRef.createElement('small');
-  commentsCount.textContent=toPersianDigits(commentsOf(item.entity).length)+' نظر';
-  commentsHead.append(commentsTitle,commentsCount);
-  commentsCard.append(commentsHead,renderComments(documentRef,item,refresh,writable?{projectId:project.id,actor:currentActor}:null));
   if(writable){
     const form=documentRef.createElement('form');
     form.className='today-detail-composer';
@@ -427,8 +425,8 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
     });
     commentsCard.appendChild(form);
   }
-  root.appendChild(commentsCard);
-  const previous=previousExecutionDays(documentRef,entity,day);
+  if(writable)root.appendChild(commentsCard);
+  const previous=previousExecutionDays(documentRef,item,day,refresh,writable?{projectId:project.id,actor:currentActor}:null);
   root.append(previous.root);
 
   const reports=reportsOf(entity);
@@ -448,7 +446,7 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
   }
   const history=renderHistory(documentRef,entity);
   history.classList.add('today-detail-card');
-  root.appendChild(history);
+  previous.root.append(history);
   return {root,release(){latest?.release();previous.release();}};
 }
 
@@ -836,11 +834,11 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
   const header=documentRef.createElement('div');
   header.className='wbs-view-header today-task-toolbar';
   const tabs=documentRef.createElement('div');
-  tabs.className='today-task-tabs'+(standalone?'':' today-task-tabs-all');
+  tabs.className='today-task-tabs';
   if(!standalone)header.className+=' today-task-toolbar-stacked';
   tabs.setAttribute('role','tablist');
   tabs.setAttribute('aria-label','دسته‌های لیست کارها');
-  for(const mode of (standalone?[...TODAY_MODES,'blocked']:['all',...TODAY_MODES,'blocked'])){
+  for(const mode of (standalone?[...TODAY_MODES,'waiting','blocked']:['all',...TODAY_MODES,'waiting','blocked'])){
     const button=documentRef.createElement('button');
     button.type='button';
     button.className='wbs-tree-mode-tab'+(mode===selectedMode?' active':'');

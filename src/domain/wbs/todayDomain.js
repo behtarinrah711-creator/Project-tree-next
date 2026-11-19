@@ -60,7 +60,7 @@ export function executionStatus(entity){
 export function timeState(entity, today){
   if(['pending_approval','approved'].includes(executionStatus(entity))) return 'pending';
   const interruption=entity && executionInterruption(entity,today);
-  if(interruption)return interruption.type==='planned_pause'?'future':'blocked';
+  if(interruption)return interruption.type==='planned_pause'?'waiting':'blocked';
   if((entity?.executionHistory||[]).some(entry=>entry?.type==='planned_pause' && !entry.resumedOn && entry.resumeOn===today))return 'today';
   const start = entity?.scheduleStart || '';
   const end = entity?.scheduleEnd || '';
