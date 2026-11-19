@@ -243,6 +243,9 @@ test('Save button and exit Save preserve incomplete contract fields when reopene
   const prompt=page.locator('.global-incomplete-exit-choice');
   await expect(prompt).toBeVisible();
   await prompt.locator('[data-exit="yes"]').click();
+  const reasonSheet=page.locator('.contract-reason-sheet');
+  await reasonSheet.locator('textarea[name="reason"]').fill('اصلاح محل انعقاد قرارداد');
+  await reasonSheet.locator('.wbs-sheet-save').click();
   await expect(page.locator('#contractFormPage')).toBeHidden();
   await page.evaluate(id=>window.KarhaRealContractForm.open(id,'e2e-contract-project'),id);
   await expect(row(page,'محل انعقاد قرارداد').locator('input')).toHaveValue('ویرایش پیش‌نویس هنگام خروج');
