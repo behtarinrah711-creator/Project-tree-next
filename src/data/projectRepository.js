@@ -1,3 +1,4 @@
+import {rescheduleAutomaticTasks} from '../domain/wbs/scheduling.js';
 import { localStorageAdapter } from './storageAdapter.js';
 import { STORAGE_KEYS } from '../config/deploymentConfig.js';
 
@@ -126,9 +127,10 @@ export class ProjectRepository{
     const next = typeof updater === 'function' ? updater(current) : updater;
     if(!next) return null;
 
-    projects[index] = next;
+    const saved=next.tasks!==current.tasks?rescheduleAutomaticTasks(next):next;
+    projects[index] = saved;
     this.saveProjectsList(projects);
-    return next;
+    return saved;
   }
 }
 

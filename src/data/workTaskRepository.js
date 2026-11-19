@@ -53,12 +53,12 @@ export class WorkTaskRepository{
       predecessorIds:clearWorkPredecessors ? [] : current.predecessorIds,
       workTasks:[...(current.workTasks || []), normalized],
     }));
-    return work ? normalized : null;
+    return work ? this.get(projectId, workId, normalized.id) : null;
   }
 
   update(projectId, workId, taskId, updater){
     let updated = null;
-    this.mutate(projectId, workId, work => ({
+    const work=this.mutate(projectId, workId, work => ({
       ...work,
       workTasks:(work.workTasks || []).map(task => {
         if(String(task?.id) !== String(taskId)) return task;
@@ -67,7 +67,7 @@ export class WorkTaskRepository{
         return updated;
       }),
     }));
-    return updated;
+    return work && updated ? this.get(projectId, workId, taskId) : null;
   }
 }
 

@@ -1,4 +1,4 @@
-import { jalaliToGregorian } from '../../ui/jalali.js';
+import { gregorianToJalali, jalaliToGregorian } from '../../ui/jalali.js';
 import { isStage, isWork, canHoldWorkTasks, progressOf, progressWeightOf, scheduleEndOf, scheduleStartOf } from './normalize.js';
 import { activeWorkTasks, taskProgressOf, taskWeightOf } from './workTaskModel.js';
 
@@ -129,7 +129,7 @@ export function parentTemporalDelay(item, today = tehranTodayDayNumber()){
   return values.length ? Math.max(...values) : null;
 }
 
-function dependencyRows(item){
+export function dependencyRows(item){
   if(Array.isArray(item?.dependencies) && item.dependencies.length){
     return item.dependencies.map(row => ({
       predecessorId:String(row?.predecessorId || row?.id || ''),
@@ -173,7 +173,9 @@ export function buildEffectiveNetwork(items){
   const activities = effective.map(row => {
     const range = scheduleRangeOf(row.kind === 'workTask' ? { ...row.item, kind:'workTask' } : row.item);
     const dependencies = [];
-    (row.item.predecessorIds || []).map(String).forEach(id => {
+    const relations=[];
+    dependencyRows(row.item).forEach(relation => {
+      const id=relation.predecessorId;
       const source = byId.get(id); const expanded = effectiveIds(source);
       if(!source || !expanded.length) unresolved.push({ consumerId:row.id, predecessorId:id });
       expanded.forEach(expandedId => {
@@ -183,11 +185,13 @@ export function buildEffectiveNetwork(items){
           : expandedRow.item);
         if(!expandedRange) unresolved.push({ consumerId:row.id, predecessorId:id, sourceId:expandedId, reason:'unscheduled' });
         dependencies.push(expandedId);
+        relations.push({...relation,predecessorId:expandedId});
       });
     });
     return {
       id:row.id, title:row.title,
       predecessorIds:[...new Set(dependencies)].filter(id => id !== row.id),
+      relations:relations.filter(relation=>relation.predecessorId!==row.id),
       duration:range ? range.end - range.start + 1 : 1,
       scheduled:Boolean(range), range,
     };
@@ -283,21 +287,35 @@ export function calculateCpm(activities, { projectFinish = null } = {}){
     const rawDuration = Number(row.duration);
     return { ...row, id:String(row.id), predecessorIds:(row.predecessorIds || []).map(String), duration:row.milestone ? 0 : Math.max(1, rawDuration || 1) };
   });
-  const byId = new Map(rows.map(row => [row.id, row])); const successors = new Map(rows.map(row => [row.id, []]));
-  rows.forEach(row => row.predecessorIds.forEach(id => { if(byId.has(id)) successors.get(id).push(row.id); }));
-  const result = new Map(); const pending = new Set(rows.map(row => row.id)); const order = [];
+  const byId=new Map(rows.map(row=>[row.id,row]));
+  const successors=new Map(rows.map(row=>[row.id,[]]));
+  const incoming=new Map(rows.map(row=>[row.id,(row.relations||dependencyRows(row)).filter(link=>byId.has(link.predecessorId))]));
+  const offset=(row,link)=>dependencyOffset(link,byId.get(link.predecessorId).duration,row.duration);
+  for(const row of rows)for(const link of incoming.get(row.id))successors.get(link.predecessorId).push({row,link});
+  const result=new Map(), pending=new Set(rows), order=[];
   while(pending.size){
-    let moved = false;
-    [...pending].forEach(id => { const row = byId.get(id); if(row.predecessorIds.filter(p => byId.has(p)).every(p => result.has(p))){ const es = Math.max(Number(row.notBefore) || 0, ...row.predecessorIds.map(p => result.get(p)?.earlyFinish || 0)); result.set(id, { earlyStart:es, earlyFinish:es + row.duration }); pending.delete(id); order.push(id); moved = true; } });
-    if(!moved) return { ok:false, code:'cycle', rows:result };
+    const ready=[...pending].filter(row=>incoming.get(row.id).every(link=>result.has(link.predecessorId)));
+    if(!ready.length)return {ok:false,code:'cycle',rows:result};
+    for(const row of ready){
+      const earlyStart=Math.max(Number(row.notBefore)||0,...incoming.get(row.id)
+        .map(link=>result.get(link.predecessorId).earlyStart+offset(row,link)));
+      result.set(row.id,{earlyStart,earlyFinish:earlyStart+row.duration});
+      pending.delete(row);
+      order.push(row);
+    }
   }
-  const anchored = Number.isFinite(projectFinish) || rows.some(row => successors.get(row.id).length === 0 && Number.isFinite(row.deadline));
-  [...order].reverse().forEach(id => { const row = byId.get(id);
-    const current = result.get(row.id); const next = successors.get(row.id);
-    const boundary = next.length ? Math.min(...next.map(id => result.get(id).lateStart)) : (Number.isFinite(row.deadline) ? row.deadline : projectFinish);
-    if(!anchored || !Number.isFinite(boundary)){ Object.assign(current, { lateStart:null, lateFinish:null, totalFloat:null }); return; }
-    current.lateFinish = boundary; current.lateStart = boundary - row.duration; current.totalFloat = current.lateStart - current.earlyStart;
-  });
+  for(const row of order.reverse()){
+    const current=result.get(row.id);
+    const limits=successors.get(row.id).map(({row:next,link})=>{
+      const start=result.get(next.id).lateStart;
+      return Number.isFinite(start)?start-offset(next,link):Infinity;
+    });
+    const deadline=Number.isFinite(row.deadline)?row.deadline:projectFinish;
+    const lateStart=Math.min(Number.isFinite(deadline)?deadline-row.duration:Infinity,...limits);
+    Object.assign(current,Number.isFinite(lateStart)
+      ?{lateStart,lateFinish:lateStart+row.duration,totalFloat:lateStart-current.earlyStart}
+      :{lateStart:null,lateFinish:null,totalFloat:null});
+  }
   return { ok:true, rows:result };
 }
 
@@ -334,4 +352,71 @@ export function projectScheduleAnalysis(project){
   };
   const cpm = calculateCpm([...normalized, milestone]);
   return { ...cpm, network, projectFinish:boundaryDay, calculatedFinish, milestone };
+}
+
+function dependencyOffset(link,sourceDuration,targetDuration){
+  const lag=Math.trunc(Number(link.lagDays)||0);
+  if(link.type==='SS')return lag;
+  if(link.type==='FF')return sourceDuration-targetDuration+lag;
+  return sourceDuration+lag;
+}
+
+export function scheduleDate(day){
+  const date=new Date(day*86400000);
+  const {jy,jm,jd}=gregorianToJalali(date.getUTCFullYear(),date.getUTCMonth()+1,date.getUTCDate());
+  return [jy,jm,jd].map(value=>String(value).padStart(2,'0')).join('/');
+}
+
+export function requiredScheduleStart(item,duration,lookup){
+  const links=dependencyRows(item);
+  if(!links.length)return null;
+  const bounds=links.map(link=>{
+    const range=lookup(link.predecessorId);
+    return range?range.start+dependencyOffset(link,range.end-range.start+1,duration):null;
+  });
+  return bounds.includes(null)?null:Math.max(...bounds);
+}
+
+export function rescheduleAutomaticTasks(project){
+  const rows=flattenDependencyCandidates(project.tasks);
+  if(!rows.some(row=>row.kind==='workTask' && row.item.scheduleMode==='auto'))return project;
+  const byId=new Map(rows.map(row=>[row.id,row]));
+  const changes=new Map(), ranges=new Map(), visiting=new Set();
+  function resolve(id){
+    if(ranges.has(id))return ranges.get(id);
+    if(visiting.has(id))return null;
+    const row=byId.get(id);
+    if(!row)return null;
+    visiting.add(id);
+    const {item,kind}=row;
+    let range;
+    if(kind==='workTask'){
+      const duration=item.scheduleDuration;
+      const start=item.scheduleMode==='auto' && Number.isInteger(duration) && duration>0
+        && !item.actualStart && !item.completed && !item.done && !['pending_approval','approved'].includes(item.completionState)
+        ? requiredScheduleStart(item,duration,resolve):null;
+      if(start!==null){
+        const end=start+duration-1;
+        range={start,end};
+        const scheduleStart=scheduleDate(start),scheduleEnd=scheduleDate(end);
+        if(item.scheduleStart!==scheduleStart||item.scheduleEnd!==scheduleEnd)changes.set(id,{scheduleStart,scheduleEnd});
+      }else range=scheduleRangeOf({...item,kind:'workTask'});
+    }else{
+      const children=[...(item.workTasks||[]),...(item.subtasks||[])].filter(child=>child&&!child.trashed);
+      const childRanges=children.map(child=>resolve(String(child.id))).filter(Boolean);
+      range=childRanges.length?{start:Math.min(...childRanges.map(value=>value.start)),end:Math.max(...childRanges.map(value=>value.end))}:scheduleRangeOf(item);
+    }
+    visiting.delete(id);
+    ranges.set(id,range);
+    return range;
+  }
+  for(const row of rows)resolve(row.id);
+  if(!changes.size)return project;
+  const apply=items=>items.map(item=>{
+    if(!item||item.trashed)return item;
+    const workTasks=item.workTasks?.map(task=>changes.has(String(task?.id))?{...task,...changes.get(String(task.id))}:task);
+    const subtasks=item.subtasks && apply(item.subtasks);
+    return {...item,...(workTasks?{workTasks}:{}),...(subtasks?{subtasks}:{})};
+  });
+  return {...project,tasks:apply(project.tasks||[])};
 }

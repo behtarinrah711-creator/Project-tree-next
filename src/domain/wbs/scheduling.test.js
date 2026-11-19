@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { buildEffectiveNetwork, calculateCpm, effectiveDependencyLinks, plannedProgress, projectScheduleAnalysis, temporalDelay, validatePredecessors } from './scheduling.js';
+import { buildEffectiveNetwork, calculateCpm, rescheduleAutomaticTasks, effectiveDependencyLinks, plannedProgress, projectScheduleAnalysis, temporalDelay, validatePredecessors } from './scheduling.js';
 
 test('planned progress is calendar-day based and bounded', () => {
   assert.equal(plannedProgress('1405/01/01', '1405/01/10', 20532), 0);
@@ -112,4 +112,31 @@ test('an unscheduled predecessor leaves the dependency unresolved', () => {
 test('approved completion delay uses submission date rather than approval date', () => {
   const submitted = new Date('2026-08-25T12:00:00Z').getTime();
   assert.equal(temporalDelay({ scheduleStart:'1405/06/01', scheduleEnd:'1405/06/02', progress:100, actualFinishDay:submitted }), 1);
+});
+
+test('CPM uses typed dependencies and signed lags in both passes',()=>{
+  const result=calculateCpm([
+    {id:'a',duration:6},
+    {id:'fs',duration:3,dependencies:[{predecessorId:'a',type:'FS',lagDays:-2}]},
+    {id:'ss',duration:3,dependencies:[{predecessorId:'a',type:'SS',lagDays:2}]},
+    {id:'ff',duration:3,dependencies:[{predecessorId:'a',type:'FF',lagDays:1}]},
+  ],{projectFinish:10});
+  assert.equal(result.rows.get('fs').earlyStart,4);
+  assert.equal(result.rows.get('ss').earlyStart,2);
+  assert.equal(result.rows.get('ff').earlyFinish,7);
+  assert.equal(result.rows.get('a').lateStart,3);
+});
+
+test('automatic scheduling propagates through tasks and preserves legacy manual dates',()=>{
+  const source={id:'source',scheduleStart:'1405/01/01',scheduleEnd:'1405/01/05'};
+  const successor={id:'auto',scheduleMode:'auto',scheduleDuration:3,
+    dependencies:[{predecessorId:'source',type:'FS',lagDays:1}]};
+  const manual={id:'manual',scheduleStart:'1405/01/04',scheduleEnd:'1405/01/06',
+    predecessorIds:['auto']};
+  const project={tasks:[{id:'work',kind:'work',workTasks:[source,successor,manual]}]};
+  const first=rescheduleAutomaticTasks(project);
+  assert.equal(first.tasks[0].workTasks[1].scheduleStart,'1405/01/07');
+  assert.equal(first.tasks[0].workTasks[1].scheduleEnd,'1405/01/09');
+  assert.equal(first.tasks[0].workTasks[2],manual);
+  assert.equal(rescheduleAutomaticTasks(first),first);
 });
