@@ -12,7 +12,7 @@ const roles={contractor:'پیمانکار',assignee:'مسئول پیگیری',ap
 const name=contact=>contact?.name||contact?.title||'';
 const id=contact=>String(contact?.id||'');
 
-export function openExecutionInterruption(project,item,actor,refresh,{type='execution_obstacle',multiday=false,existing}={}){
+export function openExecutionInterruption(project,item,actor,refresh,{type='execution_obstacle',multiday=false,existing,onDismiss}={}){
   const planned=type==='planned_pause';
   const documentRef=document;
   const current=tehranTodayJalali();
@@ -30,6 +30,7 @@ export function openExecutionInterruption(project,item,actor,refresh,{type='exec
   const sheet=openWbsSheet({
     title:planned?'ثبت وقفهٔ برنامه‌ریزی‌شده':draft.multiday?'ثبت توقف چندروزه':'ثبت مانع امروز',
     historyKey:'execution-interruption:'+item.id,autoFocus:false,
+    ...(onDismiss ? {requestClose:onDismiss, returnOnBack:onDismiss, reuseHistoryOnReplace:true} : {}),
     body(root){
       const field=(label,key,tag)=>{
         const input=documentRef.createElement(tag);

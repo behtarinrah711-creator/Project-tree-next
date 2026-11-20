@@ -50,9 +50,9 @@ export function appendReportPhotos(root,photos){
   }
 }
 
-function statusFields(root,projectId,entity,day){
+function statusFields(root,projectId,entity,day,draftStatus){
   const current=dailyExecutionStatus(entity,day);
-  const state={status:current.status,reasonId:current.reasonId||''};
+  const state=draftStatus ? {...draftStatus} : {status:current.status,reasonId:current.reasonId||''};
   const row=document.createElement('fieldset');
   row.className='today-report-status-row';
   const question=document.createElement('span');
@@ -70,6 +70,7 @@ function statusFields(root,projectId,entity,day){
   reason.type='button';reason.className='wbs-input';
   const reasonRow=fieldRow('دلیل غیرفعال بودن',reason);
   const selectReason=id=>{state.reasonId=id;reason.textContent=reasons.get(id)||'انتخاب کنید';};
+  if(state.reasonId.startsWith('custom:'))reasons.set(state.reasonId,state.reasonId.slice(7));
   selectReason(state.reasonId);
   reason.onclick=async()=>{
     const {openStaticChoicePicker}=await import("../contracts/contractPickers.js");
@@ -108,12 +109,17 @@ function statusFields(root,projectId,entity,day){
   return state;
 }
 
-export function openDailyExecutionReport({ projectId, item, actor, onChanged, onSubmitted, onReturn, statusControls=false, day=tehranTodayJalali(), subject='کار' }){
+export function openDailyExecutionReport({ projectId, item, actor, onChanged, onSubmitted, onReturn, statusControls=false, day=tehranTodayJalali(), subject='کار', draft }){
   const current=todayReportOf(item.entity,day);
-  const photos=[...(current?.photos||[])];
+  const photos=[...(draft?.photos ?? current?.photos ?? [])];
   const purchaseReport=item.entity.type==='خرید';
   const ref={kind:item.kind,id:item.id,workId:item.workId};
   let uploader,dailyStatus;
+  const returnToReport=()=>{
+    const description=sheet.querySelector('[name="reportDescription"]').value;
+    openDailyExecutionReport({projectId,item,actor,onChanged,onSubmitted,onReturn,statusControls,day,subject,
+      draft:{description,photos,dailyStatus}});
+  };
   const sheet=openWbsSheet({
     title:statusControls?`ثبت گزارش ${item.entity.title || item.entity.text || subject}`:`ثبت گزارش:\n${item.entity.title || item.entity.text || subject}`,
     saveLabel:'ذخیره', presentation:'stage-create', autoFocus:false,
@@ -135,14 +141,14 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
           for(const [label,options] of choices){
             const button=document.createElement('button');
             button.type='button';button.className='wbs-input';button.textContent=label;
-            button.onclick=()=>openExecutionInterruption(project,item,actor,onChanged,options);
+            button.onclick=()=>openExecutionInterruption(project,item,actor,onChanged,{...options,onDismiss:returnToReport});
             actions.append(button);
           }
           root.append(actions);
         }
-        dailyStatus=statusFields(root,projectId,item.entity,day);
+        dailyStatus=statusFields(root,projectId,item.entity,day,draft?.dailyStatus);
       }
-      root.append(fieldRow('شرح گزارش',textarea(document,current?.description||'')));
+      root.append(fieldRow('شرح گزارش',textarea(document,draft?.description ?? current?.description ?? '')));
       if(purchaseReport)root.append(fieldRow('درصد پیشرفت',progressInput(document,current?.progress ?? item.entity.progress,Boolean(current))));
       const attachments=document.createElement('div');
       const note=document.createElement('div');

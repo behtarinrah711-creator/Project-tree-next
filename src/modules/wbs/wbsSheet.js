@@ -38,7 +38,7 @@ export function closeWbsSheet(fromPopState = false){
   }
 }
 
-export function openWbsSheet({ title, body, onSave, onClose, saveLabel = 'ذخیره', presentation = '', autoFocus = true, readOnly = false, showSave = true, closeOnBackdrop = true, historyKey = '', header, footer, requestClose, hasUnsavedChanges, reuseHistoryOnReplace = false } = {}){
+export function openWbsSheet({ title, body, onSave, onClose, saveLabel = 'ذخیره', presentation = '', autoFocus = true, readOnly = false, showSave = true, closeOnBackdrop = true, historyKey = '', header, footer, requestClose, returnOnBack, hasUnsavedChanges, reuseHistoryOnReplace = false } = {}){
   const replacementKey = reuseHistoryOnReplacement && historyKey && window.KarhaChildHistory?.isOpen(sheetHistoryKey)
     ? sheetHistoryKey : '';
   if(replacementKey) sheetHistoryKey = '';
@@ -102,7 +102,10 @@ export function openWbsSheet({ title, body, onSave, onClose, saveLabel = 'ذخی
   if(historyKey){
     sheetHistoryKey = replacementKey || String(historyKey);
     const history=window.KarhaChildHistory;
-    const onPop=()=>closeWbsSheet(true);
+    const onPop=(_payload,transition)=>{
+      if(returnOnBack && transition?.restore(returnOnBack)) return;
+      closeWbsSheet(true);
+    };
     if(hasUnsavedChanges && history?.registerGuardedForm){
       history.registerGuardedForm(sheetHistoryKey,{shouldIntercept:hasUnsavedChanges,requestExit:close,onPop});
     }else history?.register(sheetHistoryKey,{onPop});

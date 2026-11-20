@@ -185,3 +185,27 @@ for(const [tab,id] of [['امروز','midnight-work'],['عقب‌افتاده','
     await expect(page.locator('.today-history')).toContainText('فعال');
   });
 }
+
+for(const action of ['ثبت وقفهٔ برنامه‌ریزی‌شده','ثبت توقف چندروزه']){
+  test(`execution report returns after dismissing ${action}`,async({page})=>{
+    const card=page.locator('.wbs-today-frame[data-view="today"] .today-task-card[data-entity-id="today-task"]');
+    const sheet=page.locator('#wbsSheetOverlay');
+    await card.locator('.today-report-circle').click();
+    await sheet.locator('[name="reportDescription"]').fill('شرح گزارش ثبت‌نشده');
+    const url=page.url();
+
+    await sheet.getByRole('button',{name:action,exact:true}).click();
+    await sheet.getByRole('button',{name:'بستن',exact:true}).click();
+    await expect(sheet.locator('.sheet-caption')).toHaveText('ثبت گزارش قالب‌بندی');
+
+    await sheet.getByRole('button',{name:action,exact:true}).click();
+    await page.goBack();
+    await expect(sheet.locator('.sheet-caption')).toHaveText('ثبت گزارش قالب‌بندی');
+    await expect(sheet.locator('[name="reportDescription"]')).toHaveValue('شرح گزارش ثبت‌نشده');
+    await expect(page).toHaveURL(url);
+
+    await page.goBack();
+    await expect(sheet).toHaveCount(0);
+    await expect(card).toBeVisible();
+  });
+}
