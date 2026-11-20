@@ -1,5 +1,5 @@
 import {collectTodayItems,executionWorkKey} from '../../domain/wbs/todayDomain.js';
-import {closeWbsSheet,openWbsSheet} from './wbsSheet.js';
+import {openWbsSheet} from './wbsSheet.js';
 
 export function executionFilterTree(project,day){
   const byWork=new Map();
@@ -44,10 +44,10 @@ export function selectableWbsTree(project){
   return {id:'',title:'انتخاب مرحله یا کار',children:walk(project.tasks)};
 }
 
-export function openExecutionBranchFilter(project,tree,onSelect,selectedBranch=null,{selectionMode=false}={}){
+export function openExecutionBranchFilter(project,tree,onSelect,selectedBranch=null,{selectionMode=false,keepParent=false,canSelect=()=>true}={}){
   const stack=[tree];
-  let caption,back,search,list;
-  const select=node=>{closeWbsSheet();onSelect(node.id);};
+  let caption,back,search,list,dismiss;
+  const select=node=>{dismiss();onSelect(node.id);};
   function paint(direction=''){
     const current=stack.at(-1);
     caption.textContent=current.title;
@@ -74,27 +74,29 @@ export function openExecutionBranchFilter(project,tree,onSelect,selectedBranch=n
     };
     const query=search.value.trim();
     const rows=query?searchExecutionBranches(current,query):current.children.map(node=>({node,path:[]}));
-    if(!query)add(selectionMode?(current.id?'انتخاب '+current.title:'بدون ارتباط با درخت پروژه'):(current.id?'همهٔ '+current.title:'همهٔ مراحل و کارها'),'',()=>select(current),{all:true});
+    if(!query && canSelect(current))add(selectionMode?(current.id?'انتخاب '+current.title:'بدون ارتباط با درخت پروژه'):(current.id?'همهٔ '+current.title:'همهٔ مراحل و کارها'),'',()=>select(current),{all:true});
     for(const {node,path} of rows){
       const nested=node.children.length>0;
+      if(!nested && !canSelect(node))continue;
       add(node.title,path.slice(0,-1).join(' · '),()=>{
         if(!nested){select(node);return;}
         stack.push(node);search.value='';list.scrollTop=0;paint('forward');
       },{hasNext:nested});
     }
-    if(query && !rows.length){
+    if(!buttons.childElementCount){
       const empty=document.createElement('p');empty.className='empty-state';empty.textContent='موردی پیدا نشد.';
       buttons.append(empty);
     }
     list.append(buttons);
   }
   const sheet=openWbsSheet({
-    title:tree.title,showSave:false,autoFocus:false,historyKey:(selectionMode?'wbs-selection:':'execution-branch-filter:')+project.id,
+    title:tree.title,keepParent,showSave:false,autoFocus:false,historyKey:(selectionMode?'wbs-selection:':'execution-branch-filter:')+project.id,
     requestClose(){
-      if(stack.length===1){closeWbsSheet();return;}
+      if(stack.length===1){dismiss();return;}
       stack.pop();search.value='';list.scrollTop=0;paint('backward');
     },
-    body(root){
+    body(root,close){
+      dismiss=close;
       root.classList.add('execution-branch-filter');
       search=document.createElement('input');search.type='search';
       search.className='execution-branch-search';

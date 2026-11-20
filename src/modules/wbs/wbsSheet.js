@@ -34,22 +34,27 @@ export function closeWbsSheet(fromPopState = false){
   if(sheetHistoryKey){
     const key = sheetHistoryKey;
     sheetHistoryKey = '';
-    window.KarhaChildHistory?.consume(key, { fromPopState });
+    globalThis.window?.KarhaChildHistory?.consume(key, { fromPopState });
   }
 }
 
-export function openWbsSheet({ title, body, onSave, onClose, saveLabel = 'ذخیره', presentation = '', autoFocus = true, readOnly = false, showSave = true, closeOnBackdrop = true, historyKey = '', header, footer, requestClose, hasUnsavedChanges, reuseHistoryOnReplace = false } = {}){
-  const replacementKey = reuseHistoryOnReplacement && historyKey && window.KarhaChildHistory?.isOpen(sheetHistoryKey)
+export function openWbsSheet({ title, body, onSave, onClose, saveLabel = 'ذخیره', presentation = '', autoFocus = true, readOnly = false, showSave = true, closeOnBackdrop = true, historyKey = '', header, footer, requestClose, hasUnsavedChanges, reuseHistoryOnReplace = false, keepParent = false } = {}){
+  const parent = keepParent ? document.getElementById('wbsSheetOverlay') : null;
+  const replacementKey = !parent && reuseHistoryOnReplacement && historyKey && globalThis.window?.KarhaChildHistory?.isOpen(sheetHistoryKey)
     ? sheetHistoryKey : '';
   if(replacementKey) sheetHistoryKey = '';
-  closeWbsSheet();
-  releaseSheetContent = onClose;
-  reuseHistoryOnReplacement = reuseHistoryOnReplace;
+  if(!parent){
+    closeWbsSheet();
+    releaseSheetContent = onClose;
+    reuseHistoryOnReplacement = reuseHistoryOnReplace;
+  }
+  const history=globalThis.window?.KarhaChildHistory;
+  const previousFocus=parent ? document.activeElement : null;
   const overlay = document.createElement('div');
-  overlay.id = 'wbsSheetOverlay';
+  overlay.id = parent ? 'wbsNestedSheetOverlay' : 'wbsSheetOverlay';
   overlay.className = 'overlay wbs-sheet-overlay';
   if(!header) overlay.classList.add('wbs-sheet-centered-header');
-  if(presentation === 'stage-create' || presentation === 'work-create'){
+  if(!parent && (presentation === 'stage-create' || presentation === 'work-create')){
     overlay.classList.add(presentation === 'work-create' ? 'wbs-work-create-overlay' : 'wbs-stage-create-overlay');
     // Anchor the sheet to the visible area above the mobile keyboard.
     const viewport = document.defaultView?.visualViewport;
@@ -84,24 +89,37 @@ export function openWbsSheet({ title, body, onSave, onClose, saveLabel = 'ذخی
   if(header) overlay.querySelector('.sheet-head').replaceWith(header);
   const bodyEl = overlay.querySelector('.sheet-body');
   if(footer) bodyEl.after(footer);
-  if(typeof body === 'function') body(bodyEl);
+  const restoreParent=()=>{
+    overlay.remove();
+    parent.inert=false;
+    previousFocus?.focus({preventScroll:true});
+    onClose?.();
+  };
+  const dismiss=()=>{
+    if(!parent){closeWbsSheet();return;}
+    if(history?.dismissTransient)history.dismissTransient(historyKey,{after:restoreParent});
+    else restoreParent();
+  };
+  if(typeof body === 'function') body(bodyEl,dismiss);
   else if(body) bodyEl.append(body);
   if(readOnly){
     overlay.classList.add('is-read-only');
     overlay.querySelector('.wbs-sheet-save').hidden=true;
     bodyEl.querySelectorAll('input,textarea,select,button').forEach(control=>{control.disabled=true;});
   }
-  const close = requestClose || (()=>closeWbsSheet());
+  const close = requestClose || dismiss;
   overlay.querySelector('.close-btn')?.addEventListener('click', close);
   overlay.addEventListener('click', ev => { if(closeOnBackdrop && ev.target === overlay) close(); });
   overlay.querySelector('.wbs-sheet-save')?.addEventListener('click', () => {
     const ok = onSave ? onSave(bodyEl) : true;
-    if(ok !== false) closeWbsSheet();
+    if(ok !== false) dismiss();
   });
   document.body.appendChild(overlay);
-  if(historyKey){
+  if(parent){
+    parent.inert=true;
+    history?.presentTransient(historyKey,{onDismiss:restoreParent});
+  }else if(historyKey){
     sheetHistoryKey = replacementKey || String(historyKey);
-    const history=window.KarhaChildHistory;
     const onPop=()=>closeWbsSheet(true);
     if(hasUnsavedChanges && history?.registerGuardedForm){
       history.registerGuardedForm(sheetHistoryKey,{shouldIntercept:hasUnsavedChanges,requestExit:close,onPop});
