@@ -546,16 +546,16 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   const activeStop=executionInterruption(entity,today);
   const stopReport=interruptionReportOf(entity,today)||activeStop;
   const saved=!!todayReportOf(entity,today);
-  const actor=currentExecutionActor(project);
-  const canReport=!approval && today===tehranTodayJalali() && canWriteProjectModule(project.id,'execution:today')
-    && isExecutionAssignee(entity,actor) && !['approved','pending_approval'].includes(executionStatus(entity));
+  const canEditToday=!approval && today===tehranTodayJalali() && canWriteProjectModule(project.id,'execution:today');
+  const actor=canEditToday?currentExecutionActor(project):null;
+  const canReport=canEditToday && isExecutionAssignee(entity,actor) && !['approved','pending_approval'].includes(executionStatus(entity));
   const report=documentRef.createElement(canReport || stopReport?'button':'span');
   report.className='today-report-circle is-'+status+(saved?' is-saved':'');
   report.innerHTML='<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6m-6 4h6"/></svg> گزارش';
   report.setAttribute('aria-label',stopReport?'گزارش این روز در توقف ثبت شده است':
     (status==='holiday'?'تعطیل رسمی':DAILY_EXECUTION_LABELS[status])+'، '+(saved?'گزارش ثبت شده':'بدون گزارش'));
   if(report.tagName==='BUTTON')report.type='button';
-  if(stopReport){report.disabled=true;report.title=report.getAttribute('aria-label');}
+  if(stopReport){report.disabled=true;report.title='گزارش این روز در توقف ثبت شده است';}
   report.onclick=event=>{
     event.stopPropagation();
     if(!canReport || stopReport)return;

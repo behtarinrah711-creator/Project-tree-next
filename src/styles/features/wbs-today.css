@@ -377,7 +377,10 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
 .today-report-status-buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px;}
 .today-report-status-buttons button{min-width:0;min-height:42px;padding:4px;border:1px solid var(--wbs-frame-border,#ddd);border-radius:8px;background:#fff;color:#292724;font:inherit;}
 .today-report-status-buttons button[aria-pressed="true"]{background:#e4edff;border-color:#2157b1;color:#17499a;}
-.today-report-sheet .today-textarea{min-height:64px;box-sizing:border-box;resize:none;overflow:hidden;}
+.today-report-sheet .today-textarea{min-height:64px;box-sizing:border-box;resize:vertical;}
+@supports (field-sizing:content){
+  .today-report-sheet .today-textarea{field-sizing:content;resize:none;overflow:hidden;}
+}
 .today-report-stop-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
 .today-report-stop-choice{height:auto;display:grid;gap:4px;text-align:start;}
 .today-report-stop-choice small{font-size:.85em;font-weight:400;}

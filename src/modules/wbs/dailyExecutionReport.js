@@ -125,13 +125,7 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
       if(statusControls)dailyStatus=statusFields(root,projectId,item.entity,day);
       const description=textarea(document,current?.description||'');
       description.rows=2;
-      const resize=()=>{
-        description.style.height='auto';
-        description.style.height=description.scrollHeight+'px';
-      };
-      description.addEventListener('input',resize);
       root.append(fieldRow('شرح گزارش',description));
-      requestAnimationFrame(resize);
       if(purchaseReport)root.append(fieldRow('درصد پیشرفت',progressInput(document,current?.progress ?? item.entity.progress,Boolean(current))));
       const attachments=document.createElement('div');
       const note=document.createElement('div');
