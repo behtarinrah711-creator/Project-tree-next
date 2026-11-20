@@ -388,6 +388,11 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       const approversLocked=readOnly || task?.completionState==='pending_approval';
       const paintApprovers=()=>{
         approvers.replaceChildren();
+        if(!approverIds.length){
+          const empty=documentRef.createElement('p');
+          empty.className='wbs-note';empty.textContent='بدون مسئول تأیید';
+          approvers.append(empty);
+        }
         for(const id of approverIds){
           const person=contacts.find(contact=>String(contact.id)===id);
           const row=documentRef.createElement('div');row.className='wbs-contract-approver';
