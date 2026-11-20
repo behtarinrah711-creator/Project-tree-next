@@ -388,3 +388,9 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
 .today-card-report-actions{display:flex;flex-wrap:wrap;gap:4px;direction:rtl;}
 .today-card-report-actions .today-report-circle:disabled{background:#eee;color:#666;cursor:default;}
 .today-card-stop{border:1px solid #d6d9dd;border-radius:6px;padding:3px 10px;min-height:30px;background:#fff;color:#484848;font:inherit;font-size:11px;font-weight:700;}
+
+.today-task-toolbar-footer{display:flex;align-items:center;gap:6px;margin-top:6px;direction:rtl;}
+.today-task-toolbar-stacked .today-task-toolbar-footer .today-task-secondary{flex:1;margin:0;padding:0;}
+.today-task-toolbar-footer:has(.oddjobs-add){position:relative;}
+.today-task-toolbar-footer:has(.oddjobs-add) .today-task-secondary{padding-inline-end:40px;}
+.today-task-toolbar-footer .oddjobs-add{position:absolute;inset-inline-end:0;z-index:1;}

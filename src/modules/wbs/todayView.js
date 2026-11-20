@@ -1,5 +1,5 @@
 import {executionApproverIds} from "../../domain/wbs/workTaskModel.js";
-import {INTERRUPTION_ELIGIBILITY,openExecutionDelayReport,openExecutionInterruption} from "./executionInterruption.js";
+import {INTERRUPTION_ELIGIBILITY,openExecutionInterruption} from "./executionInterruption.js";
 import {openSearchPicker} from '../../ui/searchPickerAdapter.js';
 import {openNumpadGeneric} from '../../ui/numpad.js';
 import {executionFilterTree,openExecutionBranchFilter} from './executionBranchFilter.js';
@@ -30,8 +30,7 @@ const TYPE_CLASSES = new Map([['اجرا','type-1'],['خرید','type-2'],['نی
 const PRIORITY_LABELS = Object.freeze({ low:'بحرانی', normal:'عادی', high:'مهم' });
 const PRIORITY_CLASSES = Object.freeze({ low:'priority-low', normal:'priority-normal', high:'priority-high' });
 let standaloneMode='today';
-let activeBranch='';
-let activeDetails={};
+const toolbarFilters=new Map();
 let activeMode = 'today'; let activeProjectId = null;
 
 function esc(value){ return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])); }
@@ -760,7 +759,7 @@ function relativeTime(ts) {
 const executionFilterFields=[
   ['assignee','مسئول پیگیری',(_project,item)=>item.entity.assigneeContactId],
   ['approver','مسئول تأیید',(_project,item)=>executionApproverIds(item.entity)],
-  ['contractor','پیمانکار',(project,item)=>contractorForItem(project,item).contact?.id],
+  ['contractor','پیمانکار',(project,item)=>contractorForItem(project,item).contact?.id || item.entity.counterpartyContactId],
   ['priority','اهمیت',(_project,item)=>item.entity.priority || 'normal'],
 ];
 
@@ -769,7 +768,7 @@ export function filterExecutionCards(project,items,filters){
     !filters[key] || [value(project,item)].flat().map(String).includes(filters[key])));
 }
 
-function openExecutionDetailsFilter(documentRef,project,items,onApply){
+function openExecutionDetailsFilter(documentRef,project,items,onApply,activeDetails){
   const draft={...activeDetails};
   const contacts=(project.contacts||[]).filter(contact=>contact && !contact.trashed);
   const footer=documentRef.createElement('div');
@@ -779,7 +778,7 @@ function openExecutionDetailsFilter(documentRef,project,items,onApply){
   apply.onclick=()=>{closeWbsSheet();onApply(draft);};
   footer.append(apply);
   openWbsSheet({
-    title:'فیلتر',showSave:false,autoFocus:false,historyKey:'execution-details-filter:'+project.id,footer,
+    title:'فیلتر اشخاص',showSave:false,autoFocus:false,historyKey:'execution-details-filter:'+project.id,footer,
     body(root){
       root.classList.add('execution-details-filter');
       for(const [key,label] of executionFilterFields){
@@ -824,49 +823,58 @@ function openExecutionDetailsFilter(documentRef,project,items,onApply){
   updateCount();
 }
 
-export function renderTodayView(project,documentRef=document,onChanged,{standalone=false}={}){
+export function renderTodayView(project,documentRef=document,onChanged,{standalone=false,shopping=null}={}){
   if(activeProjectId!==String(project?.id||'')){
     activeProjectId=String(project?.id||'');
-    activeMode='today';standaloneMode='today';activeBranch='';activeDetails={};
+    activeMode='today';standaloneMode='today';toolbarFilters.clear();
   }
   const today=tehranTodayJalali();
-  const selectedMode=standalone?standaloneMode:activeMode;
-  let items=standalone?collectStandaloneWorks(project,today).filter(item=>item.mode===selectedMode):activeMode==='all'?collectTodayItems(project,today):itemsForMode(project,activeMode,today);
-  const tree=standalone?null:executionFilterTree(project,today);
-  const findBranch=node=>node.id===activeBranch?node:node.children.map(findBranch).find(Boolean);
-  const selectedBranch=tree && activeBranch?findBranch(tree):null;
+  const view=shopping?'shopping':standalone?'oddjobs':'today';
+  const filterKey=String(project.id)+':'+view;
+  if(!toolbarFilters.has(filterKey))toolbarFilters.set(filterKey,{branch:'',details:{}});
+  const filters=toolbarFilters.get(filterKey);
+  const selectedMode=shopping?shopping.mode:standalone?standaloneMode:activeMode;
+  const collect=shopping?shopping.collect:standalone?collectStandaloneWorks:collectTodayItems;
+  const all=collect(project,today,{includeApproved:true});
+  let items=selectedMode==='all'?collect(project,today)
+    :shopping || standalone ? all.filter(item=>item.mode===selectedMode)
+    :itemsForMode(project,activeMode,today);
+  const tree=executionFilterTree(project,today,all);
+  const findBranch=node=>node.id===filters.branch?node:node.children.map(findBranch).find(Boolean);
+  const selectedBranch=filters.branch?findBranch(tree):null;
   if(selectedBranch){
     const keys=new Set(selectedBranch.keys);
     items=items.filter(item=>keys.has(executionWorkKey(item)));
   }
   const statusAndBranchItems=items;
-  if(!standalone)items=filterExecutionCards(project,items,activeDetails);
-  items = items.slice().sort((a, b) => {
+  items=filterExecutionCards(project,items,filters.details);
+  if(!shopping)items = items.slice().sort((a, b) => {
     const ta = latestActivity(a.entity)?.at || 0;
     const tb = latestActivity(b.entity)?.at || 0;
     return tb - ta;
   });
   const frame=documentRef.createElement('section');
-  frame.className='wbs-view-frame wbs-today-frame is-today-view';
-  frame.dataset.view=standalone?'oddjobs':'today';
+  frame.className=shopping?'wbs-view-frame wbs-shopping-frame is-shopping-view':'wbs-view-frame wbs-today-frame is-today-view';
+  frame.dataset.view=view;
+  if(shopping && project.id)frame.dataset.projectId=String(project.id);
   frame.dataset.mode=selectedMode;
   const header=documentRef.createElement('div');
   header.className='wbs-view-header today-task-toolbar';
   const tabs=documentRef.createElement('div');
   tabs.className='today-task-tabs';
-  if(!standalone)header.className+=' today-task-toolbar-stacked';
+  header.className+=' today-task-toolbar-stacked';
   tabs.setAttribute('role','tablist');
   tabs.setAttribute('aria-label','دسته‌های لیست کارها');
-  for(const mode of (standalone?[...TODAY_MODES,'waiting','blocked']:['all',...TODAY_MODES,'waiting','blocked'])){
+  for(const mode of ['all',...TODAY_MODES,'waiting','blocked']){
     const button=documentRef.createElement('button');
     button.type='button';
     button.className='wbs-tree-mode-tab'+(mode===selectedMode?' active':'');
     button.dataset.mode=mode;
-    button.textContent=standalone && mode==='pending'?'تکمیل‌شده':mode==='all'?'همه':LABELS[mode];
+    button.textContent=mode==='all'?'همه':LABELS[mode];
     button.setAttribute('role','tab');
     button.setAttribute('aria-selected',String(mode===selectedMode));
     if(mode==='pending')button.title='کارهای تکمیل‌شدهٔ در انتظار تأیید';
-    button.addEventListener('click',()=>{if(standalone)standaloneMode=mode;else activeMode=mode;onChanged?.();});
+    button.addEventListener('click',()=>{if(shopping)shopping.setMode(mode);else if(standalone)standaloneMode=mode;else activeMode=mode;onChanged?.();});
     tabs.appendChild(button);
   }
   const filter=documentRef.createElement('button');
@@ -876,61 +884,56 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
   if(selectedBranch){
     filter.classList.add('active');
   }
-  filter.onclick=()=>openExecutionBranchFilter(project,tree,id=>{activeBranch=id;onChanged?.();},selectedBranch);
-  const delayReport=linkButton(documentRef,'wbs-tree-mode-tab today-task-filter','گزارش تأخیرات');
-  delayReport.onclick=()=>openExecutionDelayReport(project,standalone?collectStandaloneWorks(project,today):collectTodayItems(project,today,{includeApproved:true}),{
-    actor:currentExecutionActor(project),canReview:canWriteProjectModule(project.id,'execution:today'),refresh:onChanged});
-  const showDelayReport=projectPermissionState(project.id,['reports:reports']).visible;
+  filter.onclick=()=>openExecutionBranchFilter(project,tree,id=>{filters.branch=id;onChanged?.();},selectedBranch);
   const showCalendar=options=>openExecutionCalendar(projectRepository.find(project.id)||project,
-    (source,item,day,selection)=>renderTodaySummary(documentRef,source,item,day,onChanged,()=>showCalendar(selection)),options);
+    (source,item,day,selection)=>shopping?shopping.renderCard(documentRef,source,item,day,onChanged)
+      :renderTodaySummary(documentRef,source,item,day,onChanged,()=>showCalendar(selection)),{...options,collect});
   const calendar=linkButton(documentRef,'wbs-tree-mode-tab today-task-filter','تقویم');
   calendar.onclick=()=>showCalendar();
   header.append(tabs);
-  if(standalone && showDelayReport)header.append(delayReport);
-  if(standalone){
-    if(canWriteProjectModule(project.id,'execution:today')){
-      const add=linkButton(documentRef,'wbs-tree-mode-tab today-task-filter oddjobs-add','+','افزودن خرده‌کار');
-      add.onclick=()=>openStandaloneWorkSheet({projectId:project.id,onChanged,
-        saveStandalone:draft=>{
-          const result=createStandaloneWork(project.id,draft);
-          if(result.ok)standaloneMode=timeState(result.task,tehranTodayJalali());
-          return result;
-        },
-      });
-      header.append(add);
-    }
-  }else{
-    const tools=documentRef.createElement('div');
-    tools.className='today-task-secondary';
-    const detailsFilter=linkButton(documentRef,'wbs-tree-mode-tab today-task-filter'+(Object.keys(activeDetails).length?' active':''),'فیلتر');
-    detailsFilter.onclick=()=>openExecutionDetailsFilter(documentRef,project,statusAndBranchItems,filters=>{activeDetails=filters;onChanged?.();});
-    tools.append(filter,detailsFilter,calendar);
-    if(showDelayReport)tools.append(delayReport);
-    const appendTag=(label,value,clear)=>{
-      const tag=linkButton(documentRef,'today-active-filter-tag','', 'حذف فیلتر '+label+' '+value);
-      const text=documentRef.createElement('span');
-      text.textContent=label+': '+value;
-      const close=documentRef.createElement('span');
-      close.textContent='×';
-      close.setAttribute('aria-hidden','true');
-      tag.append(text,close);
-      tag.onclick=()=>{clear();onChanged?.();};
-      tools.append(tag);
-    };
-    if(selectedBranch)appendTag(selectedBranch.children.length?'مرحله':'کار',selectedBranch.title,()=>{activeBranch='';});
-    for(const [key,label] of executionFilterFields){
-      const id=activeDetails[key];
-      if(!id)continue;
-      const contact=(project.contacts||[]).find(row=>row && !row.trashed && String(row.id)===id);
-      const value=key==='priority'?PRIORITY_LABELS[id]:contact && contactName(contact);
-      appendTag(label,value || 'انتخاب‌شده',()=>{delete activeDetails[key];});
-    }
-    header.append(tools);
+  const footer=documentRef.createElement('div');
+  footer.className='today-task-toolbar-footer';
+  const tools=documentRef.createElement('div');
+  tools.className='today-task-secondary';
+  const detailsFilter=linkButton(documentRef,'wbs-tree-mode-tab today-task-filter'+(Object.keys(filters.details).length?' active':''),'فیلتر اشخاص');
+  detailsFilter.onclick=()=>openExecutionDetailsFilter(documentRef,project,statusAndBranchItems,next=>{filters.details=next;onChanged?.();},filters.details);
+  tools.append(filter,detailsFilter,calendar);
+  const appendTag=(label,value,clear)=>{
+    const tag=linkButton(documentRef,'today-active-filter-tag','', 'حذف فیلتر '+label+' '+value);
+    const text=documentRef.createElement('span');
+    text.textContent=label+': '+value;
+    const close=documentRef.createElement('span');
+    close.textContent='×';
+    close.setAttribute('aria-hidden','true');
+    tag.append(text,close);
+    tag.onclick=()=>{clear();onChanged?.();};
+    tools.append(tag);
+  };
+  if(selectedBranch)appendTag(selectedBranch.children.length?'مرحله':'کار',selectedBranch.title,()=>{filters.branch='';});
+  for(const [key,label] of executionFilterFields){
+    const id=filters.details[key];
+    if(!id)continue;
+    const contact=(project.contacts||[]).find(row=>row && !row.trashed && String(row.id)===id);
+    const value=key==='priority'?PRIORITY_LABELS[id]:contact && contactName(contact);
+    appendTag(label,value || 'انتخاب‌شده',()=>{delete filters.details[key];});
   }
+  footer.append(tools);
+  if(standalone && canWriteProjectModule(project.id,'execution:today')){
+    const add=linkButton(documentRef,'wbs-tree-mode-tab today-task-filter oddjobs-add','+','افزودن خرده‌کار');
+    add.onclick=()=>openStandaloneWorkSheet({projectId:project.id,onChanged,
+      saveStandalone:draft=>{
+        const result=createStandaloneWork(project.id,draft);
+        if(result.ok)standaloneMode=timeState(result.task,tehranTodayJalali());
+        return result;
+      },
+    });
+    footer.append(add);
+  }
+  header.append(footer);
   const body=documentRef.createElement('div');
-  body.className='wbs-view-body wbs-today-body';
+  body.className=shopping?'wbs-view-body wbs-shopping-body':'wbs-view-body wbs-today-body';
   if(!items.length)body.innerHTML='<div class="empty-state">موردی در این بخش وجود ندارد.</div>';
-  else items.forEach(item=>body.appendChild(renderTodaySummary(documentRef,project,item,today,onChanged)));
+  else items.forEach(item=>body.appendChild((shopping?.renderCard||renderTodaySummary)(documentRef,project,item,today,onChanged)));
   const stopWatching=()=>{
     clearInterval(timer);
     documentRef.removeEventListener('visibilitychange',refreshDate);

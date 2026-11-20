@@ -29,13 +29,14 @@ test('report rows open independent destinations using the financial row design',
     reportsModule.mount({ projectId:'p1' });
     const list = body.children[0];
     assert.equal(list.className, 'workspace-option-list');
-    assert.equal(list.children.length, 4);
+    assert.equal(list.children.length, 5);
+    assert.match(list.children.at(-1).innerHTML,/گزارش تأخیرات/);
     for(const row of list.children){
       assert.equal(row.className, 'workspace-option');
       assert.match(row.innerHTML, /workspace-option-title/);
       assert.match(row.innerHTML, /workspace-option-meta/);
       assert.match(row.innerHTML, /m15 6-6 6 6 6/);
-      row.listeners.click();
+      if(row!==list.children.at(-1))row.listeners.click();
     }
     assert.deepEqual(navigations, [['p1','contracts'], ['p1','daily-execution-reports'], ['p1','done-works'], ['p1','work-delays']]);
     assert.deepEqual(reportSectionModules.map(module => module.id), ['contract-addenda', 'daily-execution-reports', 'done-works', 'work-delays']);
@@ -47,6 +48,7 @@ test('report rows open independent destinations using the financial row design',
     window.KarhaSaosaWorkspaceAccess={p1:{role:'member',permissions:{modules:{'execution:today':'full','reports:reports':'none'}}}};
     reportsModule.mount({ projectId:'p1' });
     assert.ok(!body.children[0].children.some(row=>row.innerHTML.includes('گزارش‌های روزانهٔ اجرا')));
+    assert.ok(!body.children[0].children.some(row=>row.innerHTML.includes('گزارش تأخیرات')));
     reportsModule.render('p1','daily-execution-reports');
     assert.equal(body.children.length,0);
     reportsModule.mount({ projectId:'missing' });

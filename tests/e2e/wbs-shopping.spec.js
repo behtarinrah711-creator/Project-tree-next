@@ -47,10 +47,10 @@ test('shopping is a native WBS view with its own modular surface', async ({ page
   await expect(page.locator('.wbs-home-root')).toHaveClass(/is-shopping-view/);
   await expect(page.locator('.wbs-shopping-frame')).toBeVisible();
   await expect(page.locator('.wbs-shopping-frame')).toHaveAttribute('data-view', 'shopping');
-  await expect(page.locator('.wbs-shopping-frame .wbs-view-title')).toHaveText('خریدهای امروز');
+  await expect(page.locator('.wbs-shopping-frame').getByRole('tab',{name:'امروز',exact:true})).toHaveAttribute('aria-selected','true');
   await expect(page.locator('.wbs-shopping-body')).toBeVisible();
-  await expect(page.locator('.wbs-shopping-frame .today-mode-tab img')).toHaveCount(4);
-  await expect(page.locator('.wbs-shopping-frame .today-filter')).toHaveCount(1);
+  await expect(page.locator('.wbs-shopping-frame .today-task-tabs').getByRole('tab')).toHaveText(['همه','عقب‌افتاده','امروز','آینده','تکمیل','بی زمان','انتظار','متوقف']);
+  await expect(page.locator('.wbs-shopping-frame .today-task-secondary').getByRole('button')).toHaveText(['همه مراحل','فیلتر اشخاص','تقویم']);
   await page.locator('.wbs-shopping-frame .today-filter').click();
   await expect(page.locator('#wbsSheetOverlay')).toHaveCount(0);
   const card=page.locator('.shopping-item-card[data-entity-id="w1"]');

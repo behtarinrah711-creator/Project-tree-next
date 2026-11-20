@@ -4,9 +4,9 @@ import {collectTodayItems,dailyExecutionStatus,executionItemsOnDay,tehranTodayJa
 import {todayReportOf} from './dailyExecutionReport.js';
 import {openWbsSheet} from './wbsSheet.js';
 
-export function openExecutionCalendar(project,renderCard,{day=tehranTodayJalali(),month=day.slice(0,7)}={}){
+export function openExecutionCalendar(project,renderCard,{day=tehranTodayJalali(),month=day.slice(0,7),collect=collectTodayItems}={}){
   const today=tehranTodayJalali();
-  const items=collectTodayItems(project,today,{includeApproved:true});
+  const items=collect(project,today,{includeApproved:true});
   const button=(label,action)=>{
     const node=document.createElement('button');
     node.type='button';node.textContent=label;node.onclick=action;

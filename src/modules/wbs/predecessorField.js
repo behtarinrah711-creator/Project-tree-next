@@ -4,11 +4,7 @@ import { openExecutionBranchFilter, selectableWbsTree } from './executionBranchF
 
 const RELATION_TYPES = Object.freeze(['FS','SS','FF']);
 
-function label(row){
-  const kind = row.kind === 'stage' ? 'بسته' : (row.kind === 'workTask' ? 'Task' : 'Work');
-  const path = row.parentPath.join(' ← ');
-  return path ? `${kind} — ${row.title} (${path})` : `${kind} — ${row.title}`;
-}
+const RELATION_LABELS={FS:'پایان به شروع (FS)',SS:'شروع به شروع (SS)',FF:'پایان به پایان (FF)'};
 
 function normalizeRelations(initial){
   return (Array.isArray(initial) ? initial : []).map(value => {
@@ -29,12 +25,12 @@ export function validInitialRelations(initial, candidates = []){
 }
 
 export function predecessorField({ documentRef = document, project, consumerId, initial = [], onChange = () => {} } = {}){
-  const root = documentRef.createElement('div'); root.className = 'wbs-field wbs-predecessor-field';
-  const caption = documentRef.createElement('span'); caption.className = 'wbs-field-label'; caption.textContent = 'پیش‌نیاز';
+  const root = documentRef.createElement('div'); root.className = 'wbs-predecessor-field wbs-dependency-cards';
+  const caption = documentRef.createElement('span'); caption.className = 'wbs-field-label'; caption.textContent = 'پیش‌نیازها';
   const candidates = flattenDependencyCandidates(project?.tasks || []).filter(row => row.id !== String(consumerId));
   const relations = new Map(validInitialRelations(initial, candidates).map(row => [row.predecessorId, row]));
   const chips = documentRef.createElement('div'); chips.className = 'wbs-predecessor-list';
-  const add = documentRef.createElement('button'); add.type = 'button'; add.className = 'wbs-choice'; add.textContent = '+ افزودن پیش‌نیاز';
+  const add = documentRef.createElement('button'); add.type = 'button'; add.className = 'wbs-choice wbs-dependency-add'; add.textContent = '+ افزودن پیش‌نیاز';
 
   const paint = () => {
     chips.replaceChildren();
@@ -42,50 +38,69 @@ export function predecessorField({ documentRef = document, project, consumerId, 
       const row = candidates.find(item => item.id === relation.predecessorId); if(!row) return;
       const chip = documentRef.createElement('div'); chip.className = 'wbs-activity-row wbs-predecessor-row';
 
-      const text = documentRef.createElement('span');
-      text.className = 'wbs-predecessor-name';
-      text.textContent = label(row);
+      const header=documentRef.createElement('div');
+      header.className='wbs-dependency-header';
+      const text=documentRef.createElement('div');
+      const title=documentRef.createElement('strong');title.textContent=row.title||'بدون عنوان';
+      const path=documentRef.createElement('small');path.textContent=row.parentPath.join(' · ');
+      text.append(title,path);
+      const button=(label,action)=>{
+        const control=documentRef.createElement('button');
+        control.type='button';control.textContent=label;control.onclick=action;
+        return control;
+      };
+      const remove=button('×',()=>{relations.delete(relation.predecessorId);paint();onChange();});
+      remove.className='wbs-activity-remove';
+      remove.setAttribute('aria-label','حذف پیش‌نیاز '+title.textContent);
+      header.append(text,remove);
 
-      const type = documentRef.createElement('select');
-      type.className = 'wbs-predecessor-type';
-      RELATION_TYPES.forEach(value => {
-        const option = documentRef.createElement('option');
-        option.value = value; option.textContent = value;
-        type.appendChild(option);
+      const type=documentRef.createElement('select');
+      type.className='wbs-predecessor-type';
+      type.setAttribute('aria-label','نوع رابطه');
+      for(const value of RELATION_TYPES){
+        const option=documentRef.createElement('option');
+        option.value=value;option.textContent=RELATION_LABELS[value];type.append(option);
+      }
+      type.value=relation.type;
+      type.onchange=()=>{relation.type=type.value;onChange();};
+      const typeRow=documentRef.createElement('label');
+      typeRow.className='wbs-dependency-control';typeRow.append('نوع رابطه',type);
+
+      let direction=Math.sign(relation.lagDays);
+      const directions=documentRef.createElement('div');
+      directions.className='wbs-dependency-directions';
+      const stepper=documentRef.createElement('div');stepper.className='wbs-dependency-stepper';
+      const steps=documentRef.createElement('div');steps.className='wbs-dependency-steps';
+      const changeDays=days=>{
+        const magnitude=Math.max(0,Math.min(99999,days));
+        if(!magnitude)direction=0;
+        relation.lagDays=direction*magnitude;
+        draw();onChange();
+      };
+      const value=button('',()=>openNumpadGeneric('',raw=>{
+        if(/^\d+$/.test(raw))changeDays(Number(raw));
+      },{suffix:' روز',group:false,maxLen:5}));
+      value.className='wbs-input';value.setAttribute('aria-label','تعداد روز فاصلهٔ زمانی');
+      const up=button('⌃',()=>changeDays(Math.abs(relation.lagDays)+1));
+      up.setAttribute('aria-label','افزایش تعداد روز');
+      const down=button('⌄',()=>changeDays(Math.abs(relation.lagDays)-1));
+      down.setAttribute('aria-label','کاهش تعداد روز');
+      steps.append(up,down);stepper.append(value,steps);
+      const choices=[[-1,'زودتر'],[0,'بدون فاصله'],[1,'دیرتر']].map(([sign,label])=>{
+        const choice=button(label,()=>{
+          direction=sign;
+          changeDays(sign?Math.abs(relation.lagDays)||1:0);
+        });
+        directions.append(choice);return [sign,choice];
       });
-      type.value = relation.type;
-      type.setAttribute('aria-label', 'نوع رابطه');
-      type.addEventListener('change', () => { relation.type = type.value; onChange(); });
-
-      const lag = documentRef.createElement('span');
-      lag.className='wbs-predecessor-lag';
-      const sign=documentRef.createElement('button');sign.type='button';
-      sign.setAttribute('aria-label','تغییر علامت فاصلهٔ زمانی');
-      const value=documentRef.createElement('button');value.type='button';value.className='wbs-input';
-      value.setAttribute('aria-label','Lag روز');
-      let negative=relation.lagDays<0;
       const draw=()=>{
-        sign.textContent=negative?'−':'+';
+        for(const [sign,choice] of choices)choice.setAttribute('aria-pressed',String(sign===direction));
+        stepper.hidden=!direction;
         value.textContent=new Intl.NumberFormat('fa-IR').format(Math.abs(relation.lagDays))+' روز';
       };
-      sign.onclick=()=>{
-        negative=!negative;
-        relation.lagDays=negative?-Math.abs(relation.lagDays):Math.abs(relation.lagDays);
-        draw();onChange();
-      };
-      value.onclick=()=>openNumpadGeneric('',raw=>{
-        if(raw==='')return;
-        relation.lagDays=(negative?-1:1)*Number(raw);
-        draw();onChange();
-      },{suffix:' روز',group:false,maxLen:5});
       draw();
-      lag.append(sign,value);
-
-      const remove = documentRef.createElement('button');
-      remove.type = 'button'; remove.className = 'wbs-activity-remove'; remove.textContent = 'حذف';
-      remove.addEventListener('click', () => { relations.delete(relation.predecessorId); paint(); onChange(); });
-
-      chip.append(text, type, lag, remove);
+      const lagLabel=documentRef.createElement('span');lagLabel.textContent='فاصلهٔ زمانی';
+      chip.append(header,typeRow,lagLabel,directions,stepper);
       chips.appendChild(chip);
     });
   };
@@ -111,7 +126,7 @@ export function predecessorField({ documentRef = document, project, consumerId, 
   });
 
   const controls=documentRef.createElement('div');
-  controls.append(chips,add);
+  controls.append(add,chips);
   root.append(caption,controls);paint();
   return {
     element:root,
