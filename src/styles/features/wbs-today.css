@@ -98,6 +98,7 @@
 .wbs-today-frame .today-card-summary .today-card-activity.is-inactive{background:#9e3229;}
 .wbs-today-frame .today-card-summary button.today-progress-circle{cursor:pointer;}
 
+.sheet-body.execution-calendar{padding-inline:10px;}
 .execution-calendar .jalali-days,.execution-calendar .jalali-week{direction:rtl;}
 .execution-calendar .jalali-days button{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;height:auto;min-height:48px;padding:0;}
 .execution-calendar .jalali-days button.selected{background:transparent;color:inherit;}
