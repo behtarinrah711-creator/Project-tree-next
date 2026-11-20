@@ -75,11 +75,14 @@ export function openExecutionInterruption(project,item,actor,refresh){
           remove.setAttribute('aria-label','برداشتن '+text.textContent);
           row.append(text,remove);selected.append(row);
         }
-        selected.append(button(draft.contactIds.length?'افزودن شخص':'انتخاب طرف منتسب',()=>openSearchPicker({
+        const label=draft.contactIds.length?'افزودن شخص':'انتخاب طرف منتسب';
+        const picker=button(label,()=>openSearchPicker({
           title:'انتخاب طرف منتسب',resourceType:'contact',contextKey:'execution-stop-contact',
           items:contacts.filter(contact=>!draft.contactIds.includes(id(contact))).map(contact=>({id:id(contact),name:name(contact)})),
           onSelect:contact=>{draft.contactIds.push(String(contact.id));paint();},
-        })));
+        }));
+        picker.setAttribute('aria-label',label);
+        selected.append(picker);
       };
       paint();
       root.append(fieldRow('طرف‌های منتسب',selected));
