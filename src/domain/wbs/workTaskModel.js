@@ -40,6 +40,19 @@ function normalizeDependencies(value){
   })).filter(row => row.predecessorId);
 }
 
+export function executionApproverIds(task){
+  return [...new Set((Array.isArray(task?.executionApproverContactIds)
+    ? task.executionApproverContactIds : [task?.approvalContactId]).map(id=>String(id||'')).filter(Boolean))];
+}
+
+export function pendingExecutionApproverIds(task){
+  const history=task?.executionHistory||[];
+  const submitted=history.findLastIndex(entry=>entry.type==='sent_for_approval');
+  const voted=new Set(history.slice(submitted+1).filter(entry=>entry.type==='execution_approval_vote')
+    .map(entry=>String(entry.actor?.contactId||'')));
+  return executionApproverIds(task).filter(id=>!voted.has(id));
+}
+
 export function normalizeWorkTask(task, workId = ''){
   if(!task || typeof task !== 'object') return task;
   const activityId = task.type === FOLLOW_UP_WORK_TYPE ? '' : String(task.activityId || task.activityIds?.[0] || task.activities?.[0] || '');
@@ -58,9 +71,9 @@ export function normalizeWorkTask(task, workId = ''){
     activityIds:activityId ? [activityId] : [],
     activities:activityId ? [activityId] : [],
     counterpartyContactId:String(task.counterpartyContactId || ''),
-    approvalContactId:String(task.approvalContactId || ''),
+    approvalContactId:executionApproverIds(task)[0]||'',
     contractApproverContactIds:[...new Set((Array.isArray(task.contractApproverContactIds)?task.contractApproverContactIds:[]).map(String).filter(Boolean))],
-    requiresManagementApproval:Boolean(task.approvalContactId),
+    requiresManagementApproval:executionApproverIds(task).length>0,
     contractorContactId:String(task.contractorContactId || ''),
     weight:taskWeightOf(task),
     progress:taskProgressOf(task),

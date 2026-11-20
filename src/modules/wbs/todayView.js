@@ -1,3 +1,4 @@
+import {executionApproverIds} from '../../domain/wbs/workTaskModel.js';
 import {INTERRUPTION_ELIGIBILITY,openExecutionDelayReport} from './executionInterruption.js';
 import {openSearchPicker} from '../../ui/searchPickerAdapter.js';
 import {openNumpadGeneric} from '../../ui/numpad.js';
@@ -353,10 +354,10 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
     schedule.append(timing.bar,detailRow(documentRef,'شروع '+formatDate(entity.scheduleStart),'پایان '+formatDate(entity.scheduleEnd)));
   }
   const assignee=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.assigneeContactId||''));
-  const approver=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.approvalContactId||''));
+  const approvers=(project.contacts||[]).filter(contact=>executionApproverIds(entity).includes(String(contact.id)));
   const contractor=contractorForItem(project,item).contact;
   summary.append(detailRow(documentRef,'مسئول کار',assignee?contactName(assignee):'—'),
-    detailRow(documentRef,'مسئول تأیید',approver?contactName(approver):'—'));
+    detailRow(documentRef,'مسئول تأیید',approvers.map(contactName).join('، ')||'—'));
   if(contractor)summary.append(detailRow(documentRef,'پیمانکار',contactName(contractor)));
   if(current.reason)summary.append(detailRow(documentRef,'دلیل',[current.reason,current.description].filter(Boolean).join(' · ')));
   root.append(schedule,progress,summary);
@@ -740,14 +741,14 @@ function relativeTime(ts) {
 
 const executionFilterFields=[
   ['assignee','مسئول پیگیری',(_project,item)=>item.entity.assigneeContactId],
-  ['approver','مسئول تأیید',(_project,item)=>item.entity.approvalContactId],
+  ['approver','مسئول تأیید',(_project,item)=>executionApproverIds(item.entity)],
   ['contractor','پیمانکار',(project,item)=>contractorForItem(project,item).contact?.id],
   ['priority','اهمیت',(_project,item)=>item.entity.priority || 'normal'],
 ];
 
 export function filterExecutionCards(project,items,filters){
   return items.filter(item=>executionFilterFields.every(([key,,value])=>
-    !filters[key] || String(value(project,item)??'')===filters[key]));
+    !filters[key] || [value(project,item)].flat().map(String).includes(filters[key])));
 }
 
 function openExecutionDetailsFilter(documentRef,project,items,onApply){

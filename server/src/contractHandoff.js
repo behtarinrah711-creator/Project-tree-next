@@ -1,3 +1,4 @@
+import {pendingExecutionApproverIds} from '../../src/domain/wbs/workTaskModel.js';
 import {hasPaidContractDocument,reviseContract} from '../../src/domain/contractRevision.js';
 import {canDeleteContractDocument} from '../../src/domain/contractHandoff.js';
 import {acceptedMembership} from './acceptedMembership.js';
@@ -55,13 +56,18 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
           sendJson(response,409,{message:'این مورد تغییر کرده است؛ صفحه را به‌روز کنید'});return true;
         }
         const actualScope=item.kind!=='standalone' && item.entity.type==='خرید'?'execution:shopping':'execution:today';
-        if(scope!==actualScope || !actor.contactId || String(item.entity.oddJobType?item.entity.expenseApproverContactId:item.entity.approvalContactId)!==actor.contactId){
+        const reviewers=item.entity.oddJobType?[String(item.entity.expenseApproverContactId||'')]:pendingExecutionApproverIds(item.entity);
+        if(scope!==actualScope || !actor.contactId || !reviewers.includes(actor.contactId)){
           sendJson(response,403,{message:'این مورد در انتظار تأیید شما نیست'});return true;
         }
         if(rejecting && scope==='execution:today' && (!Number.isInteger(body.progress) || body.progress<0 || body.progress>=100 || !/^\d{4}\/\d{2}\/\d{2}$/.test(body.endDate||'') || body.endDate<tehranTodayJalali())){
           sendJson(response,400,{message:'درصد پیشرفت یا تاریخ پایان معتبر نیست'});return true;
         }
-        const entity=rejecting?rejectExecutionEntity(item.entity,item.kind,reason,actor,Date.now(),{progress:body.progress,endDate:body.endDate}):{...approveExecutionEntity(item.entity,item.kind,actor,Date.now()),...(item.entity.oddJobType?{}:{progress:100})};
+        const at=Date.now();
+        const entity=rejecting
+          ? rejectExecutionEntity(item.entity,item.kind,reason,actor,at,{progress:body.progress,endDate:body.endDate})
+          : approveExecutionEntity(item.entity,item.kind,actor,at);
+        if(!rejecting && entity.completed)entity.progress=100;
         const project=applyExecutionApproval(row.payload,item,entity);
         await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[projectId,JSON.stringify(project)]);
         await client.query('COMMIT');committed=true;sendJson(response,200,{entity});
