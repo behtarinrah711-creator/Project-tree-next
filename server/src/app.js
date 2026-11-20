@@ -334,6 +334,19 @@ export function hasDeniedExecutionChanges(current,incoming,permissions,phone,acc
         if(entry.type==='planned_pause' && (!date(entry.resumeOn)||entry.resumeOn<=entry.day))return true;
         if(entry.type==='execution_obstacle' && !['unknown','external'].includes(entry.role)
           && !(current?.contacts||[]).some(contact=>contact && String(contact.id)===entry.contactId))return true;
+        if(entry.isDailyReport!=null && entry.isDailyReport!==true)return true;
+        if(original?.isDailyReport && !entry.isDailyReport)return true;
+        if(entry.isDailyReport){
+          if(!entry.multiday || !Object.hasOwn(INACTIVE_REASONS,entry.reasonId) || INACTIVE_REASONS[entry.reasonId]!==entry.reason
+            || !Array.isArray(entry.attributedContacts) || (entry.type==='planned_pause' && entry.attributedContacts.length))return true;
+          const priorParties=new Set((original?.attributedContacts||[]).map(person=>person.id));
+          const ids=new Set();
+          for(const person of entry.attributedContacts){
+            if(typeof person?.id!=='string' || typeof person.name!=='string' || ids.has(person.id)
+              || (!priorParties.has(person.id) && !(current?.contacts||[]).some(contact=>!contact?.trashed && String(contact?.id)===person.id)))return true;
+            ids.add(person.id);
+          }
+        }
         if(entry.eligibility!=null && (entry.type!=='execution_obstacle'||!['pending','eligible','ineligible'].includes(entry.eligibility)))return true;
         return entry.reviewed===true && (!Number.isInteger(entry.impactDays)||entry.impactDays<0);
       }

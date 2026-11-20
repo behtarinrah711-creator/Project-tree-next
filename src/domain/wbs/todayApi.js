@@ -6,7 +6,7 @@ import { uid } from '../../data/projectFactories.js';
 import { todayRepository } from '../../data/todayRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
 import { workTaskApi } from './workTaskApi.js';
-import { canRecordStartDelay, dailyExecutionStatus, DAILY_EXECUTION_LABELS, INACTIVE_REASONS, executionReportDay, START_DELAY_REASONS, tehranTodayJalali } from './todayDomain.js';
+import { canRecordStartDelay, interruptionReportOf, dailyExecutionStatus, DAILY_EXECUTION_LABELS, INACTIVE_REASONS, executionReportDay, executionInterruption, START_DELAY_REASONS, tehranTodayJalali } from './todayDomain.js';
 
 export const REPORT_MIN_LENGTH = 3;
 export const COMMENT_MIN_LENGTH = 2;
@@ -64,7 +64,7 @@ function dailyStatusChange(entity,status,reasonId,note,actor,at,day){
   if(status==='inactive' && !reason)return {ok:false,code:'invalid_reason'};
   const previous=dailyExecutionStatus(entity,day);
   const details=status==='inactive'?{reasonId:key,reason,description:String(note||'').trim()}:{};
-  if(previous.status===status && previous.reasonId===details.reasonId && previous.description===details.description)return {ok:true};
+  if(previous.type==='daily_status' && previous.status===status && previous.reasonId===details.reasonId && previous.description===details.description)return {ok:true};
   return {ok:true,entry:event('daily_status',actor,at,{day,status,...details})};
 }
 
@@ -84,7 +84,7 @@ export const todayApi = {
         executionHistory:current.executionHistory.map(entry=>entry.id===previous.id?{...entry,resumedOn:day,resumedBy:by}:entry)}));
     }
     if(draft.eligibility){
-      if(!previous || previous.type!=='execution_obstacle' || !['pending','eligible','ineligible'].includes(draft.eligibility))
+      if(!previous || previous.isDailyReport || previous.type!=='execution_obstacle' || !['pending','eligible','ineligible'].includes(draft.eligibility))
         return {ok:false,code:'invalid_interruption'};
       return mutate(projectId,ref,current=>({...current,updatedAt:at,executionHistory:current.executionHistory.map(entry=>
         entry.id===previous.id?{...entry,eligibility:draft.eligibility,eligibilityBy:by,eligibilityAt:at}:entry)}));
@@ -111,7 +111,20 @@ export const todayApi = {
     if(draft.durationHours!=null && !(Number.isFinite(draft.durationHours)&&draft.durationHours>0&&draft.durationHours<=24))
       return {ok:false,code:'invalid_duration'};
     if(!planned && !['external','unknown'].includes(draft.role) && !contact)return {ok:false,code:'contact_required'};
+    const contacts=(projectRepository.find(projectId)?.contacts||[]).filter(person=>person && !person.trashed);
+    const contactIds=[...new Set(draft.contactIds||[])];
+    if(draft.isDailyReport && contactIds.some(id=>!contacts.some(person=>String(person.id)===id)))return {ok:false,code:'contact_required'};
+    if(draft.isDailyReport && (!Object.hasOwn(INACTIVE_REASONS,draft.reasonId) || INACTIVE_REASONS[draft.reasonId]!==reason))
+      return {ok:false,code:'reason_required'};
+    if(draft.isDailyReport && (executionInterruption(entity,day) || interruptionReportOf(entity,start)
+      || entries.some(entry=>entry.isDailyReport && !entry.resumedOn && entry.day>=start && (!planned || entry.day<resumeOn))))
+      return {ok:false,code:'interruption_exists'};
+    const attributedContacts=planned?[]:contactIds.map(id=>{
+      const person=contacts.find(contact=>String(contact.id)===id);
+      return {id,name:[person.firstName,person.lastName].filter(Boolean).join(' ')||person.name||person.title||''};
+    });
     const details={day:start,reason,description,resumeOn,multiday:!!draft.multiday,
+      ...(draft.isDailyReport?{isDailyReport:true,reasonId:draft.reasonId,attributedContacts}:{}),
       role:planned?'':draft.role,contactId:planned?'':String(contact?.id||''),
       contactName:planned?'':String(contact?.name||contact?.title||''),
       durationHours:draft.durationHours ?? null,photos:draft.photos||[],baselineResume:previous?.baselineResume||resumeOn,baselineEnd:previous?.baselineEnd||entity.scheduleEnd||''};
@@ -140,6 +153,7 @@ export const todayApi = {
     if(!entity || entity.trashed || !by.contactId || String(entity.assigneeContactId)!==by.contactId)return {ok:false,code:'forbidden'};
     if(entity.completed || ['approved','pending_approval'].includes(entity.completionState))return {ok:false,code:'locked'};
     const at=clock(),day=tehranTodayJalali(new Date(at));
+    if(interruptionReportOf(entity,day) || executionInterruption(entity,day))return {ok:false,code:'interruption_exists'};
     const change=dailyStatusChange(entity,status,reasonId,note,by,at,day);
     if(!change.ok)return change;
     if(!change.entry)return {ok:true,entity};
@@ -161,6 +175,7 @@ export const todayApi = {
         return {ok:false,code:'locked'};
       }
     }
+    if(interruptionReportOf(entity,reportDay) || executionInterruption(entity||{},reportDay))return {ok:false,code:'interruption_exists'};
     const change=dailyStatus?dailyStatusChange(entity,dailyStatus.status,dailyStatus.reasonId,text,by,at,reportDay):{ok:true};
     if(!change.ok)return change;
     const attachments = Array.isArray(files) ? { photos:[...files] } : {};
