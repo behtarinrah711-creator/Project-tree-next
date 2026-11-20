@@ -943,6 +943,13 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
   timer.unref?.();
   documentRef.addEventListener('visibilitychange',refreshDate);
   frame.append(header,body);
+  documentRef.defaultView?.requestAnimationFrame(()=>{
+    const selected=tabs.querySelector('[aria-selected="true"]');
+    if(!frame.isConnected || !selected || tabs.scrollWidth<=tabs.clientWidth)return;
+    const strip=tabs.getBoundingClientRect();
+    const tab=selected.getBoundingClientRect();
+    tabs.scrollLeft+=(tab.left+tab.width/2)-(strip.left+strip.width/2);
+  });
   return frame;
 }
 
