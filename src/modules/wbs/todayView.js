@@ -573,9 +573,11 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   const stop=linkButton(documentRef,'today-card-stop',stopReport?'مشاهدهٔ توقف':'ثبت توقف');
   stop.onclick=event=>{
     event.stopPropagation();
-    if(!stopReport){openExecutionInterruption(project,item,actor,onChanged);return;}
+    if(!stopReport){openExecutionInterruption(project,item,actor,onChanged,returnToCalendar);return;}
+    let resumed=false;
     openWbsSheet({title:stopReport.type==='planned_pause'?'توقف مجاز':'توقف غیرمجاز',
-      historyKey:'execution-stop-report:'+item.id,showSave:false,body(root){
+      historyKey:'execution-stop-report:'+item.id,showSave:false,keepParent:!!returnToCalendar,
+      onClose:()=>{if(resumed) returnToCalendar?.();},body(root,dismiss){
         for(const text of [stopReport.reason,stopReport.description]){
           const line=documentRef.createElement('p');
           line.textContent=text||'';root.append(line);
@@ -591,7 +593,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
         resume.onclick=()=>{
           const result=todayApi.saveInterruption(project.id,refOf(item),{id:activeStop.id,resume:true},actor);
           if(!result.ok){feedback.textContent='ازسرگیری ثبت نشد. دسترسی و وضعیت کار را بررسی کنید.';return;}
-          closeWbsSheet();onChanged?.();
+          resumed=true;dismiss();onChanged?.();
         };
         root.append(resume,feedback);
       }});

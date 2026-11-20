@@ -13,13 +13,13 @@ const roles={contractor:'پیمانکار',assignee:'مسئول پیگیری',ap
 const name=contact=>[contact?.firstName,contact?.lastName].filter(Boolean).join(' ')||contact?.name||contact?.title||'';
 const id=contact=>String(contact?.id||'');
 
-export function openExecutionInterruption(project,item,actor,refresh){
+export function openExecutionInterruption(project,item,actor,refresh,onReturn){
   const current=tehranTodayJalali();
   const draft={multiday:true,day:current,role:'unknown',contactIds:[]};
   const contacts=(project.contacts||[]).filter(contact=>contact && !contact.trashed);
   const ref={kind:item.kind,id:item.id,workId:item.workId};
   const photos=[];
-  let uploader,feedback;
+  let uploader,feedback,saved=false;
   const button=(label,onclick)=>{
     const node=document.createElement('button');
     node.className='wbs-input';node.type='button';node.textContent=label;node.onclick=onclick;
@@ -99,7 +99,8 @@ export function openExecutionInterruption(project,item,actor,refresh){
   };
   const sheet=openWbsSheet({
     title:'ثبت توقف',historyKey:'execution-interruption:'+item.id,autoFocus:false,
-    onClose:()=>uploader?.destroy(),
+    keepParent:!!onReturn,
+    onClose:()=>{uploader?.destroy();if(saved)onReturn?.();},
     body(root){
       for(const [planned,title,description] of [
         [true,'توقف مجاز','وقفه‌ای که از قبل هماهنگ شده است.'],
@@ -130,6 +131,7 @@ export function openExecutionInterruption(project,item,actor,refresh){
         return false;
       }
       refresh?.();
+      saved=true;
       return true;
     },
   });
