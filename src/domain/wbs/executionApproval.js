@@ -1,7 +1,7 @@
 import {uid} from '../../data/projectFactories.js';
 import {collectStandaloneWorks,collectTodayItems} from './todayDomain.js';
 import {collectShoppingItems} from './shoppingDomain.js';
-import {workTaskProgress} from './workTaskModel.js';
+import {executionApproverIds,pendingExecutionApproverIds,workTaskProgress} from './workTaskModel.js';
 import {tehranTodayJalali} from './todayDomain.js';
 
 export function executionApprovalItem(project,ref){
@@ -12,6 +12,12 @@ export function executionApprovalItem(project,ref){
 
 export function approveExecutionEntity(entity,kind,actor,at){
   if(kind==='standalone' && entity.oddJobType)return {...entity,expenseApprovalStatus:'approved',expenseApprovedAt:at,expenseApprovedBy:actor,completed:true,done:true,completionState:'approved',workflowStatus:'approved',approvedAt:at,approvedBy:actor,completedAt:at,actualFinishDay:tehranTodayJalali(new Date(at)),progress:100,executionHistory:[...(entity.executionHistory||[]),{id:uid(),type:'approved',actor,at}],updatedAt:at};
+  if(executionApproverIds(entity).length>1){
+    const pending=pendingExecutionApproverIds(entity);
+    if(entity.completionState!=='pending_approval' || !pending.includes(String(actor?.contactId||'')))return entity;
+    entity={...entity,executionHistory:[...(entity.executionHistory||[]),{id:uid(),type:'execution_approval_vote',actor,at}],updatedAt:at};
+    if(pending.length>1)return entity;
+  }
   return {
     ...entity,completed:true,done:true,completionState:'approved',workflowStatus:'approved',
     completedAt:at,actualFinishDay:tehranTodayJalali(new Date(at)),
@@ -48,6 +54,7 @@ export function applyExecutionApproval(project,item,approved){
     if(String(node.id)===String(item.workId)){
       if(item.kind==='work')return approved;
       const workTasks=node.workTasks.map(task=>String(task.id)===String(item.id)?approved:task);
+      if(approved.completionState==='pending_approval')return {...node,workTasks};
       const progress=workTaskProgress({...node,workTasks});
       return {...node,workTasks,progress,done:progress===100,
         status:progress===100?'completed':progress>0?'in_progress':'not_started',

@@ -5,7 +5,7 @@ import { contactRepository } from '../../data/contactRepository.js';
 import { workTaskRepository } from '../../data/workTaskRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
 import { FOLLOW_UP_WORK_TYPE, ODD_JOB_TYPES, WORK_TYPES } from './normalize.js';
-import { TASK_PRIORITIES, activeWorkTasks, normalizeWorkTask, workTaskProgress } from './workTaskModel.js';
+import { TASK_PRIORITIES, activeWorkTasks, executionApproverIds, normalizeWorkTask, workTaskProgress } from './workTaskModel.js';
 import { validatePredecessors } from './scheduling.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { cardFundingKey, placeCardFunding } from './fundingReceipts.js';
@@ -53,7 +53,7 @@ function validate(projectId, workId, input){
     contractTemplateId:input.hasContract ? contractTemplateId : '',
     activityId, activityIds:activityId ? [activityId] : [], activities:activityId ? [activityId] : [],
     requiresManagementApproval:Boolean(approvalContactId),
-    approvalContactId, contractApproverContactIds:input.hasContract?contractApproverContactIds:[],
+    approvalContactId, ...(Array.isArray(input.executionApproverContactIds)?{executionApproverContactIds}:{}), contractApproverContactIds:input.hasContract?contractApproverContactIds:[],
   } };
 }
 
@@ -180,6 +180,9 @@ export const workTaskApi = {
   update(projectId, workId, taskId, patch, clock = Date.now){
     const current = workTaskRepository.get(projectId, workId, taskId);
     if(!current) return { ok:false, code:'not_found' };
+    if(current.completionState==='pending_approval' && Array.isArray(patch.executionApproverContactIds)
+      && JSON.stringify(executionApproverIds(current))!==JSON.stringify(executionApproverIds(patch)))
+      return {ok:false,code:'approver'};
     const linkedContract=linkedWorkTaskContract(projectId,workId,taskId);
     const currentTemplateId=String(current.contractTemplateId || linkedContract?.templateId || '');
     const next = { ...current, contractTemplateId:currentTemplateId, ...patch };

@@ -1,3 +1,4 @@
+import { openNumpadGeneric } from '../../ui/numpad.js';
 import { flattenDependencyCandidates, validatePredecessors } from '../../domain/wbs/scheduling.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 
@@ -56,14 +57,29 @@ export function predecessorField({ documentRef = document, project, consumerId, 
       type.setAttribute('aria-label', 'نوع رابطه');
       type.addEventListener('change', () => { relation.type = type.value; onChange(); });
 
-      const lag = documentRef.createElement('label');
-      lag.className = 'wbs-predecessor-lag';
-      const lagText = documentRef.createElement('span'); lagText.textContent = 'Lag';
-      const lagInput = documentRef.createElement('input');
-      lagInput.type = 'number'; lagInput.step = '1'; lagInput.value = String(relation.lagDays || 0);
-      lagInput.setAttribute('aria-label', 'Lag روز');
-      lagInput.addEventListener('input', () => { relation.lagDays = Math.trunc(Number(lagInput.value) || 0); onChange(); });
-      lag.append(lagText, lagInput);
+      const lag = documentRef.createElement('span');
+      lag.className='wbs-predecessor-lag';
+      const sign=documentRef.createElement('button');sign.type='button';
+      sign.setAttribute('aria-label','تغییر علامت فاصلهٔ زمانی');
+      const value=documentRef.createElement('button');value.type='button';value.className='wbs-input';
+      value.setAttribute('aria-label','Lag روز');
+      let negative=relation.lagDays<0;
+      const draw=()=>{
+        sign.textContent=negative?'−':'+';
+        value.textContent=new Intl.NumberFormat('fa-IR').format(Math.abs(relation.lagDays))+' روز';
+      };
+      sign.onclick=()=>{
+        negative=!negative;
+        relation.lagDays=negative?-Math.abs(relation.lagDays):Math.abs(relation.lagDays);
+        draw();onChange();
+      };
+      value.onclick=()=>openNumpadGeneric('',raw=>{
+        if(raw==='')return;
+        relation.lagDays=(negative?-1:1)*Number(raw);
+        draw();onChange();
+      },{suffix:' روز',group:false,maxLen:5});
+      draw();
+      lag.append(sign,value);
 
       const remove = documentRef.createElement('button');
       remove.type = 'button'; remove.className = 'wbs-activity-remove'; remove.textContent = 'حذف';
@@ -85,7 +101,9 @@ export function predecessorField({ documentRef = document, project, consumerId, 
     },
   }));
 
-  root.append(caption, chips, add); paint();
+  const controls=documentRef.createElement('div');
+  controls.append(chips,add);
+  root.append(caption,controls);paint();
   return {
     element:root,
     value:() => [...relations.keys()],

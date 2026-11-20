@@ -38,3 +38,15 @@
 
 .wbs-contract-approver{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;margin-bottom:8px;border:1px solid var(--border,#ddd);border-radius:12px;background:var(--surface,#f3f3f3)}
 .wbs-contract-approver button{border:0;background:transparent;color:var(--danger,#b83b35);font-size:24px;min-width:40px;min-height:40px}
+
+.wbs-compact-task-form .wbs-task-form-section{margin:12px 0 4px;padding:8px;background:#eee;border-radius:6px;font:inherit;font-weight:700;}
+.wbs-compact-task-form .wbs-field{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.65fr);align-items:center;gap:8px;margin:0;padding:7px 0;border-bottom:1px solid #e5e5e5;}
+.wbs-compact-task-form .wbs-field > :last-child{min-width:0;max-width:100%;}
+.wbs-compact-task-form :is(.wbs-input,.wbs-choice,.wbs-contract-approver){background:#f1f1f1;border-color:#ddd;}
+.wbs-compact-task-form .wbs-input{min-height:40px;}
+.wbs-compact-task-form .wbs-contract-approver{padding:2px 8px;margin-bottom:5px;}
+.wbs-compact-task-form .wbs-predecessor-row{flex-wrap:wrap;}
+.wbs-compact-task-form .wbs-predecessor-name{flex-basis:100%;overflow-wrap:anywhere;}
+.wbs-compact-task-form .wbs-toggles-row{display:grid;gap:0;margin:0;}
+.wbs-compact-task-form .wbs-toggle-label{flex-direction:row-reverse;justify-content:space-between;min-height:40px;border-bottom:1px solid #e5e5e5;}
+.wbs-compact-task-form .wbs-toggle-label input{margin-inline-end:8px;}

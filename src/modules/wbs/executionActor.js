@@ -1,3 +1,4 @@
+import {executionApproverIds,pendingExecutionApproverIds} from '../../domain/wbs/workTaskModel.js';
 import { readSaosaSession } from '../../cloud/saosaWorkspaceSync.js';
 
 function phonesOf(contact){
@@ -30,6 +31,6 @@ export function isExecutionAssignee(entity, actor){
 }
 
 export function isExecutionApprover(entity, actor){
-  return Boolean(entity?.approvalContactId)
-    && String(entity.approvalContactId) === String(actor?.contactId || '');
+  const ids=entity?.completionState==='pending_approval'?pendingExecutionApproverIds(entity):executionApproverIds(entity);
+  return ids.includes(String(actor?.contactId||''));
 }
