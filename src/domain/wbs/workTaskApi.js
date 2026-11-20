@@ -30,7 +30,8 @@ function validate(projectId, workId, input){
   const assigneeContactId = String(input?.assigneeContactId || '');
   const counterpartyContactId = String(input?.counterpartyContactId || '');
   const contractorContactId = String(input?.contractorContactId || '');
-  const approvalContactId = String(input?.approvalContactId || '');
+  const executionApproverContactIds=executionApproverIds(input);
+  const approvalContactId=executionApproverContactIds[0]||'';
   const activityId = input.type === FOLLOW_UP_WORK_TYPE ? '' : String(input?.activityId || '');
   const contractTemplateId=String(input?.contractTemplateId || '');
   if(input.hasContract && contractTemplateId && !(projectRepository.find(projectId)?.contractTemplates || []).some(t=>!t.trashed && String(t.id)===contractTemplateId)) return {ok:false,code:'contract_template'};
@@ -43,7 +44,7 @@ function validate(projectId, workId, input){
   if(assigneeContactId && !contactRepository.get(projectId, assigneeContactId)) return { ok:false, code:'assignee' };
   if(counterpartyContactId && !contactRepository.get(projectId, counterpartyContactId)) return { ok:false, code:'counterparty' };
   if(contractorContactId && !contactRepository.get(projectId, contractorContactId)) return { ok:false, code:'contractor' };
-  if(approvalContactId && !contactRepository.get(projectId, approvalContactId)) return { ok:false, code:'approver' };
+  if(executionApproverContactIds.some(id=>{const contact=contactRepository.get(projectId,id);return !contact || contact.trashed;})) return { ok:false, code:'approver' };
   if(activityId && !activityRepository.get(projectId, activityId)) return { ok:false, code:'activity' };
   if(input.scheduleMode==='auto' && (!Number.isInteger(input.scheduleDuration)||input.scheduleDuration<1
     || !input.scheduleStart || !input.scheduleEnd || !input.predecessorIds?.length))return {ok:false,code:'automatic_schedule'};
