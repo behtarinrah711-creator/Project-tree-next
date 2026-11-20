@@ -34,13 +34,13 @@ export function closeWbsSheet(fromPopState = false){
   if(sheetHistoryKey){
     const key = sheetHistoryKey;
     sheetHistoryKey = '';
-    window.KarhaChildHistory?.consume(key, { fromPopState });
+    globalThis.window?.KarhaChildHistory?.consume(key, { fromPopState });
   }
 }
 
 export function openWbsSheet({ title, body, onSave, onClose, saveLabel = 'ذخیره', presentation = '', autoFocus = true, readOnly = false, showSave = true, closeOnBackdrop = true, historyKey = '', header, footer, requestClose, hasUnsavedChanges, reuseHistoryOnReplace = false, keepParent = false } = {}){
   const parent = keepParent ? document.getElementById('wbsSheetOverlay') : null;
-  const replacementKey = !parent && reuseHistoryOnReplacement && historyKey && window.KarhaChildHistory?.isOpen(sheetHistoryKey)
+  const replacementKey = !parent && reuseHistoryOnReplacement && historyKey && globalThis.window?.KarhaChildHistory?.isOpen(sheetHistoryKey)
     ? sheetHistoryKey : '';
   if(replacementKey) sheetHistoryKey = '';
   if(!parent){
@@ -48,7 +48,7 @@ export function openWbsSheet({ title, body, onSave, onClose, saveLabel = 'ذخی
     releaseSheetContent = onClose;
     reuseHistoryOnReplacement = reuseHistoryOnReplace;
   }
-  const history=window.KarhaChildHistory;
+  const history=globalThis.window?.KarhaChildHistory;
   const previousFocus=parent ? document.activeElement : null;
   const overlay = document.createElement('div');
   overlay.id = parent ? 'wbsNestedSheetOverlay' : 'wbsSheetOverlay';
