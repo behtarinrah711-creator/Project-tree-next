@@ -388,15 +388,11 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       const approversLocked=readOnly || task?.completionState==='pending_approval';
       const paintApprovers=()=>{
         approvers.replaceChildren();
-        if(!approverIds.length){
-          const empty=documentRef.createElement('p');
-          empty.className='wbs-note';empty.textContent='بدون مسئول تأیید';
-          approvers.append(empty);
-        }
         for(const id of approverIds){
           const person=contacts.find(contact=>String(contact.id)===id);
           const row=documentRef.createElement('div');row.className='wbs-contract-approver';
           const name=documentRef.createElement('span');name.textContent=person?contactName(person):'مخاطب حذف‌شده';
+          name.title=name.textContent;
           const remove=documentRef.createElement('button');remove.type='button';remove.textContent='×';
           remove.disabled=approversLocked;
           remove.setAttribute('aria-label','برداشتن '+name.textContent);
@@ -405,6 +401,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         }
         const add=documentRef.createElement('button');add.type='button';add.name='taskApprover';add.className='wbs-input';
         add.disabled=approversLocked;add.textContent='افزودن مسئول تأیید';
+        add.classList.toggle('wbs-approver-add-inline',approverIds.length>0);
         add.onclick=()=>openSearchPicker({
           title:'انتخاب مسئول تأیید',listTitle:'مخاطبین',contextKey:`wbs-task-approver:${work.id}`,
           items:contacts.filter(contact=>!approverIds.includes(String(contact.id))).map(contact=>({id:contact.id,name:contactName(contact)})),
@@ -456,14 +453,16 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       }
       const dependency = predecessorField({ documentRef, project:saveStandalone?{...projectRepository.find(projectId),tasks:[]}:projectRepository.find(projectId), consumerId:task?.id || `new:${work.id}`, initial:task?(task.dependencies?.length?task.dependencies:task.predecessorIds||[])
         :!saveStandalone && !activeWorkTasks(work).length?(work.dependencies?.length?work.dependencies:work.predecessorIds||[]):[], onChange:()=>{if(!saveStandalone)updateSchedule('dependency');} });
-      root.appendChild(dependency.element); root._taskDependency = dependency;
-      root.append(amountContainer,fieldRow('وزن',numericButton('taskWeight',task?.weight || 1)));
+      root.append(amountContainer,fieldRow('وزن',numericButton('taskWeight',task?.weight || 1)),dependency.element);
+      root._taskDependency = dependency;
       if(!saveStandalone)updateSchedule('initial');
 
       if(editing && !readOnly){
         if(canDelete){
           const remove = documentRef.createElement('button');
-          remove.type = 'button'; remove.className = 'wbs-info-row is-danger wbs-task-delete'; remove.textContent = 'حذف کار';
+          remove.type = 'button'; remove.className = 'wbs-task-delete';
+          const icon=documentRef.createElement('span');icon.textContent='×';icon.setAttribute('aria-hidden','true');
+          remove.append(icon,'حذف کار');
           remove.addEventListener('click', () => {
             requestPlanningTaskDelete({documentRef,projectId,workId:work.id,taskId:task.id,onChanged:()=>{
               closeWbsSheet();
