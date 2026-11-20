@@ -1,11 +1,12 @@
 import {collectTodayItems,executionWorkKey} from '../../domain/wbs/todayDomain.js';
 import {openWbsSheet} from './wbsSheet.js';
 
-export function executionFilterTree(project,day){
+export function executionFilterTree(project,day,items=collectTodayItems(project,day,{includeApproved:true})){
   const byWork=new Map();
-  for(const item of collectTodayItems(project,day,{includeApproved:true})){
-    if(!byWork.has(String(item.workId)))byWork.set(String(item.workId),[]);
-    byWork.get(String(item.workId)).push(item);
+  for(const item of items){
+    const key=String(item.kind==='standalone'?item.entity.linkedWbsId||'':item.workId);
+    if(!byWork.has(key))byWork.set(key,[]);
+    byWork.get(key).push(item);
   }
   function branches(items){
     return (items||[]).filter(item=>item && !item.trashed).flatMap(node=>{
@@ -15,7 +16,7 @@ export function executionFilterTree(project,day){
         const key=executionWorkKey(task);
         children.push({id:key,title:task.entity.title,children:[],keys:[key]});
       }
-      const keys=[...own.filter(item=>item.kind==='work').map(executionWorkKey),...children.flatMap(child=>child.keys)];
+      const keys=[...own.filter(item=>item.kind!=='task').map(executionWorkKey),...children.flatMap(child=>child.keys)];
       return keys.length?[{id:'branch:'+node.id,title:node.text||node.title,children,keys}]:[];
     });
   }

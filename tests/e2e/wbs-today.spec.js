@@ -45,12 +45,12 @@ test('Today toolbar shows eight ordered tabs and a separate filter row',async({p
   await expect(header.getByRole('tab',{name:'امروز',exact:true})).toHaveAttribute('aria-selected','true');
   await expect(header.getByRole('button',{name:'تقویم'})).toBeVisible();
   const controls=header.locator('.today-task-secondary');
-  await expect(controls.getByRole('button')).toHaveText(['همه مراحل','فیلتر','تقویم','گزارش تأخیرات']);
+  await expect(controls.getByRole('button')).toHaveText(['همه مراحل','فیلتر اشخاص','تقویم']);
   for(const row of [tabs,controls.getByRole('button')]){
     const positions=await row.evaluateAll(nodes=>nodes.map(node=>node.getBoundingClientRect().left));
     expect(positions).toEqual([...positions].sort((a,b)=>b-a));
   }
-  await controls.getByRole('button',{name:'فیلتر',exact:true}).click();
+  await controls.getByRole('button',{name:'فیلتر اشخاص',exact:true}).click();
   const sheet=page.locator('#wbsSheetOverlay');
   await expect(sheet.locator('.execution-details-filter-row')).toHaveText(['مسئول پیگیریانتخاب','مسئول تأییدانتخاب','پیمانکارانتخاب','اهمیتانتخاب']);
   await expect(sheet.getByRole('button',{name:/نمایش .+ کار/})).toBeVisible();

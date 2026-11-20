@@ -1,7 +1,10 @@
+import {openExecutionDelayReport} from '../wbs/executionInterruption.js';
+import {collectTodayItems,collectStandaloneWorks,tehranTodayJalali} from '../../domain/wbs/todayDomain.js';
+import {currentExecutionActor} from '../wbs/executionActor.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { renderDelayView } from '../wbs/delayView.js';
-import { projectPermissionState } from '../roleManagement/permissionState.js';
+import { canWriteProjectModule, projectPermissionState } from '../roleManagement/permissionState.js';
 import { renderDailyExecutionReports } from './dailyExecutionReportsView.js';
 import { renderDoneWorks } from './doneWorksView.js';
 import { openProjectFinishSheet } from '../wbs/homeView.js';
@@ -83,7 +86,9 @@ export const reportsModule = {
     const wrap = document.createElement('div');
     wrap.className = 'workspace-option-list';
 
-    REPORT_SECTIONS.forEach(section => {
+    const sections=[...REPORT_SECTIONS];
+    if(canViewDailyReports)sections.push({id:'execution-delays',title:'گزارش تأخیرات',meta:'مشاهده و بررسی توقف‌ها و موانع اجرا'});
+    sections.forEach(section => {
       if(section.id==='contract-addenda') return;
       if(section.id==='daily-execution-reports' && !canViewDailyReports) return;
       const row = document.createElement('button');
@@ -98,6 +103,16 @@ export const reportsModule = {
       `;
 
       row.addEventListener('click', () => {
+        if(section.id==='execution-delays'){
+          if(!projectPermissionState(activeProjectId,['reports:reports']).visible)return;
+          const current=getActiveProject(activeProjectId);
+          if(!current)return;
+          const today=tehranTodayJalali();
+          openExecutionDelayReport(current,[...collectTodayItems(current,today,{includeApproved:true}),...collectStandaloneWorks(current,today)],{
+            actor:currentExecutionActor(current),canReview:canWriteProjectModule(current.id,'execution:today'),
+          });
+          return;
+        }
         if(!window.KarhaApp?.projectWorkspace?.selectProject?.(activeProjectId,{moduleId:section.id}))
           goToProjectModule(activeProjectId, section.id);
       });

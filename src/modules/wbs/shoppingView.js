@@ -1,7 +1,8 @@
+import {renderTodayView} from './todayView.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { todayApi, COMMENT_MIN_LENGTH, REJECTION_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
 import { contractorForItem, remainingLabel, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
-import { SHOPPING_MODES, shoppingItemsForMode, shoppingStatusLabel } from '../../domain/wbs/shoppingDomain.js';
+import { collectShoppingItems, shoppingStatusLabel } from '../../domain/wbs/shoppingDomain.js';
 import { fieldRow, openWbsSheet } from './wbsSheet.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { currentExecutionActor, isExecutionApprover, isExecutionAssignee } from './executionActor.js';
@@ -9,8 +10,6 @@ import { appendReportPhotos, openDailyExecutionReport, progressCircle } from './
 
 export const SHOPPING_ICON = 'M221-120q-27 0-48-16.5T144-179L42-549q-5-19 6.5-35T80-600h190l176-262q5-8 14-13t19-5q10 0 19 5t14 13l176 262h192q20 0 31.5 16t6.5 35L816-179q-8 26-29 42.5T739-120H221Zm-1-80h520l88-320H132l88 320Zm316.5-103.5Q560-327 560-360t-23.5-56.5Q513-440 480-440t-56.5 23.5Q400-393 400-360t23.5 56.5Q447-280 480-280t56.5-23.5ZM367-600h225L479-768 367-600Zm113 240Z';
 
-const ICONS=Object.freeze({overdue:'./src/assets/wbs/pending-actions.svg',today:'./src/assets/wbs/today.svg',future:'./src/assets/wbs/next-week.svg',pending:'./src/assets/wbs/pending-approval.svg',unscheduled:'./src/assets/wbs/event-busy.svg',filter:'./src/assets/wbs/filter-alt.svg'});
-const LABELS=Object.freeze({overdue:'خریدهای عقب‌افتاده',today:'خریدهای امروز',future:'خریدهای آینده',pending:'خریدهای منتظر تأیید',unscheduled:'خریدهای زمان‌بندی‌نشده'});
 const PRIORITIES=Object.freeze({low:'بحرانی',normal:'عادی',high:'مهم'});
 let activeMode='today';let activeProjectId=null;let activeProject=null;
 
@@ -82,10 +81,7 @@ export function renderShoppingCard(documentRef,project,item,today,onChanged,appr
 export function renderShoppingView(project,documentRef=document,onChanged){
   activeProject=project;
   if(activeProjectId!==String(project?.id||'')){activeProjectId=String(project?.id||'');activeMode='today';}
-  const today=tehranTodayJalali();const byMode=Object.fromEntries(SHOPPING_MODES.map(mode=>[mode,shoppingItemsForMode(project,mode,today)]));const available=byMode.unscheduled.length?SHOPPING_MODES:SHOPPING_MODES.filter(mode=>mode!=='unscheduled');if(!available.includes(activeMode))activeMode='today';
-  const frame=documentRef.createElement('section');frame.className='wbs-view-frame wbs-shopping-frame is-shopping-view';frame.dataset.view='shopping';frame.dataset.mode=activeMode;if(project?.id)frame.dataset.projectId=String(project.id);
-  const header=documentRef.createElement('div');header.className='wbs-view-header';const title=documentRef.createElement('div');title.className='wbs-view-title';title.textContent=LABELS[activeMode];const actions=documentRef.createElement('div');actions.className='wbs-view-actions today-mode-tabs';actions.setAttribute('role','tablist');
-  available.forEach(mode=>{const button=documentRef.createElement('button');button.type='button';button.className='wbs-tree-mode-tab today-mode-tab'+(mode===activeMode?' active':'');button.dataset.mode=mode;button.setAttribute('role','tab');button.setAttribute('aria-selected',mode===activeMode?'true':'false');button.setAttribute('aria-label',LABELS[mode]);button.title=LABELS[mode];button.innerHTML=`<img src="${ICONS[mode]}" alt="">`;button.addEventListener('click',()=>{activeMode=mode;onChanged?.();});actions.appendChild(button);});
-  const divider=documentRef.createElement('span');divider.className='wbs-view-action-separator';actions.appendChild(divider);const filter=documentRef.createElement('button');filter.type='button';filter.className='wbs-tree-mode-tab today-filter';filter.setAttribute('aria-label','فیلتر');filter.title='فیلتر';filter.innerHTML=`<img src="${ICONS.filter}" alt="">`;actions.appendChild(filter);
-  const body=documentRef.createElement('div');body.className='wbs-view-body wbs-shopping-body';if(!byMode[activeMode].length)body.innerHTML='<div class="empty-state">خریدی در این بخش وجود ندارد.</div>';else byMode[activeMode].forEach(item=>body.appendChild(renderShoppingCard(documentRef,project,item,today,onChanged)));header.append(title,actions);frame.append(header,body);return frame;
+  return renderTodayView(project,documentRef,onChanged,{shopping:{
+    mode:activeMode,setMode:mode=>{activeMode=mode;},collect:collectShoppingItems,renderCard:renderShoppingCard,
+  }});
 }

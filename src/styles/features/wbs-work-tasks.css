@@ -67,7 +67,31 @@
   background:transparent;border:0;color:#1565c0;text-align:start;
 }
 .wbs-compact-task-form .wbs-task-delete{
-  display:flex;align-items:center;justify-content:center;gap:8px;direction:rtl;width:100%;
-  margin-block-start:14px;min-height:44px;border:0;border-radius:10px;
-  background:var(--danger,#b83b35);color:#fff;font:inherit;cursor:pointer;
+  display:block;width:100%;text-align:right;margin-block-start:14px;min-height:44px;
+  border:0;background:transparent;color:var(--danger,#b83b35);font:inherit;cursor:pointer;
 }
+
+.wbs-clearable-value{position:relative;min-width:0;}
+.wbs-clearable-value > :first-child{width:100%;}
+.wbs-compact-task-form .wbs-clearable-value.has-clear button.wbs-input{padding-inline-end:34px;}
+.wbs-compact-task-form .wbs-clearable-value.has-clear button.wbs-input::after,
+.wbs-clearable-value.has-clear .wbs-task-option-arrow{visibility:hidden;}
+.wbs-selection-clear{position:absolute;inset-inline-end:0;top:0;width:34px;min-height:40px;border:0;background:transparent;color:var(--danger,#b83b35);font:inherit;font-size:20px;}
+.wbs-compact-task-form .wbs-date-input:disabled{opacity:.55;cursor:default;}
+.wbs-compact-task-form .wbs-approver-add-inline{text-align:center;}
+.wbs-dependency-cards{margin-block:12px;}
+.wbs-dependency-cards > .wbs-field-label{display:block;padding:8px;background:#eee;border-radius:6px;font-weight:700;}
+.wbs-dependency-add{display:block;width:100%;min-height:42px;margin-block:8px;text-align:center;color:#1565c0;}
+.wbs-dependency-cards .wbs-predecessor-list{display:grid;gap:8px;}
+.wbs-dependency-cards .wbs-predecessor-row{display:grid;gap:8px;padding:10px;border:1px solid #ddd;border-radius:8px;min-width:0;}
+.wbs-dependency-header{display:flex;align-items:flex-start;justify-content:space-between;gap:8px;}
+.wbs-dependency-header > div{min-width:0;overflow-wrap:anywhere;}
+.wbs-dependency-header small{display:block;color:#666;}
+.wbs-dependency-header .wbs-activity-remove{color:var(--danger,#b83b35);font-size:20px;flex:none;}
+.wbs-dependency-control{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.wbs-dependency-directions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;}
+.wbs-dependency-directions button,.wbs-dependency-steps button{border:1px solid #ddd;border-radius:5px;background:#f1f1f1;color:inherit;font:inherit;min-height:32px;}
+.wbs-dependency-directions [aria-pressed="true"]{background:#e4edff;border-color:#2157b1;color:#17499a;}
+.wbs-dependency-stepper:not([hidden]){display:flex;justify-self:end;align-items:stretch;}
+.wbs-dependency-steps{display:grid;}
+.wbs-dependency-stepper .wbs-input{width:auto;min-width:72px;}

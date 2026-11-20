@@ -11,7 +11,7 @@ import { projectRepository } from '../../data/projectRepository.js';
 import { FOLLOW_UP_WORK_TYPE, ODD_JOB_TYPES, WORK_TYPES, WORK_TYPE_TOGGLES, taskCostOf } from '../../domain/wbs/normalize.js';
 import { workTaskApi } from '../../domain/wbs/workTaskApi.js';
 import { TASK_PRIORITIES, activeWorkTasks, executionApproverIds, isTaskComplete } from '../../domain/wbs/workTaskModel.js';
-import { formatJalaliDisplay } from '../../ui/jalali.js';
+import { formatJalaliDisplay, jalaliToGregorian } from '../../ui/jalali.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
@@ -54,7 +54,27 @@ function linkedContractForWork(projectId, workId, taskId=''){
       && (!taskId || String(contract.workTaskId || '') === String(taskId)));
 }
 
-function optionButton({ name, value, options, onChange, placeholder = 'انتخاب کنید' }){
+function clearSelection(control,label,clear,hasValue){
+  const wrap=document.createElement('div');wrap.className='wbs-clearable-value';
+  const button=document.createElement('button');button.type='button';button.className='wbs-selection-clear';
+  button.textContent='×';button.setAttribute('aria-label','پاک کردن '+label);
+  const paint=()=>{
+    button.hidden=!hasValue() || control.disabled;
+    wrap.classList.toggle('has-clear',!button.hidden);
+  };
+  button.onclick=event=>{event.preventDefault();event.stopPropagation();clear();paint();(control.matches('button')?control:control.querySelector('button'))?.focus();};
+  wrap.append(control,button);
+  return {wrap,paint};
+}
+
+function workDateLabel(value){
+  const [year,month,day]=value.split('/').map(Number);
+  const {gy,gm,gd}=jalaliToGregorian(year,month,day);
+  const weekday=new Intl.DateTimeFormat('fa-IR',{weekday:'long',timeZone:'UTC'}).format(Date.UTC(gy,gm-1,gd));
+  return weekday+' '+formatJalaliDisplay(value);
+}
+
+function optionButton({ name, value, options, onChange, placeholder = 'انتخاب کنید', clearLabel }){
   const root=document.createElement('div');root.className='wbs-task-option-select';
   const input=document.createElement('input');input.type='hidden';input.name=name;input.value=String(value ?? '');
   const button=document.createElement('button');button.type='button';button.className='wbs-input wbs-task-option-trigger';
@@ -62,7 +82,8 @@ function optionButton({ name, value, options, onChange, placeholder = 'انتخ�
   const arrow=document.createElement('span');arrow.className='wbs-task-option-arrow';arrow.textContent='⌄';
   const menu=document.createElement('div');menu.className='wbs-task-option-menu';menu.setAttribute('role','listbox');
   const close=()=>{menu.classList.remove('open');button.classList.remove('open');};
-  const paint=()=>{label.textContent=options.find(item=>String(item.id)===input.value)?.name || placeholder;};
+  let clear;
+  const paint=()=>{label.textContent=options.find(item=>String(item.id)===input.value)?.name || placeholder;clear?.paint();};
   options.forEach(item=>{
     const option=document.createElement('button');option.type='button';option.className='wbs-task-option-item';
     option.textContent=item.name;option.dataset.value=String(item.id);
@@ -70,7 +91,13 @@ function optionButton({ name, value, options, onChange, placeholder = 'انتخ�
     menu.appendChild(option);
   });
   button.addEventListener('click',event=>{event.preventDefault();event.stopPropagation();const opening=!menu.classList.contains('open');document.querySelectorAll('.wbs-task-option-menu.open').forEach(open=>open.classList.remove('open'));document.querySelectorAll('.wbs-task-option-trigger.open').forEach(open=>open.classList.remove('open'));if(opening){menu.classList.add('open');button.classList.add('open');}});
-  button.append(label,arrow);root.append(input,button,menu);paint();return root;
+  button.append(label,arrow);root.append(input,button,menu);
+  root.setOption=value=>{input.value=value;paint();};
+  if(clearLabel){
+    clear=clearSelection(root,clearLabel,()=>{input.value='';close();onChange?.('');paint();},()=>Boolean(input.value));
+    clear.wrap.addEventListener('focusin',paint);
+  }
+  paint();return clear?.wrap||root;
 }
 
 function numericButton(name, value, { money=false, suffix='', onChange }={}){
@@ -90,17 +117,19 @@ function dateField(documentRef, name, label, value, onChange){
   const button = documentRef.createElement('button');
   button.type = 'button'; button.name = name; button.className = 'wbs-input wbs-date-input';
   button.dataset.value = value || '';
-  const paint = () => { button.textContent = button.dataset.value ? formatJalaliDisplay(button.dataset.value) : 'انتخاب تاریخ'; };
+  const selection=clearSelection(button,label,()=>{button.dataset.value='';paint();onChange?.();},()=>Boolean(button.dataset.value));
+  const paint = () => { button.textContent = button.dataset.value ? workDateLabel(button.dataset.value) : 'انتخاب کنید';selection.paint(); };
+  button.repaintDate=paint;
   button.addEventListener('click', () => documentRef.defaultView?.KarhaUI?.openJalaliPicker?.(button.dataset.value, next => {
     button.dataset.value = next; paint(); onChange?.();
   }));
   paint();
-  return fieldRow(label, button);
+  return fieldRow(label, selection.wrap);
 }
 
 function renderToggles(container, type, task, {contractLocked=false}={}){
   container.innerHTML = '';
-  const toggles = WORK_TYPE_TOGGLES[type] || [];
+  const toggles = (WORK_TYPE_TOGGLES[type] || []).filter(toggle=>type!=='پیمانکار' || toggle.key!=='hasProgressReport');
   if(!toggles.length) return;
   const row = document.createElement('div');
   row.className = 'wbs-toggles-row';
@@ -116,7 +145,7 @@ function renderToggles(container, type, task, {contractLocked=false}={}){
       checkbox.title='برای برداشتن تیک، ابتدا خود قرارداد را حذف کنید';
     }
     const text = document.createElement('span');
-    text.textContent = toggle.label;
+    text.textContent = toggle.key==='hasContract' && type==='پیمانکار'?'ایجاد قرارداد':toggle.label;
     label.append(checkbox, text);
     row.appendChild(label);
   });
@@ -217,9 +246,9 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       contractSummary.className = 'wbs-note';
       const paintContractSummary = () => {
         const checkbox = togglesContainer.querySelector('[name="hasContract"]');
-        contractSummary.hidden = !checkbox;
+        contractSummary.hidden = !checkbox?.checked;
         if(!checkbox?.checked){
-          contractSummary.textContent = 'بدون قرارداد';
+          contractSummary.textContent = '';
           return;
         }
         if(!linkedContract){
@@ -262,7 +291,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         paintTemplate();
       };
       const initialType=task?.type || '';
-      const type=optionButton({name:'taskType',value:initialType,placeholder:'انتخاب نوع کار',options:WORK_TYPES.map(value=>({id:value,name:value})), onChange:renderTypeFields});
+      const type=optionButton({name:'taskType',value:initialType,clearLabel:'نوع کار',options:WORK_TYPES.map(value=>({id:value,name:value})), onChange:renderTypeFields});
       root.appendChild(fieldRow('نوع کار',type));
       root.append(togglesContainer, contractSummary);
       root.appendChild(counterpartyContainer);
@@ -286,16 +315,17 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       templateContainer.appendChild(fieldRow('قالب قرارداد',templateButton));root.appendChild(templateContainer);
       togglesContainer.addEventListener('change',paintTemplate);paintTemplate();
 
-      let preferredMode=editing?(task.scheduleMode||'manual'):'';
+      const preferredMode=editing?(task.scheduleMode||'manual'):'';
+      let scheduleModeTouched=false;
       let duration=task?.scheduleDuration||0;
       let selectedEnd=task?.scheduleEnd||'';
       let manualStart=task?.scheduleStart||'',manualEnd=selectedEnd;
       let wasAutomatic=preferredMode==='auto';
       const sourceItems=new Map(flattenDependencyCandidates(projectRepository.find(projectId)?.tasks)
         .map(row=>[row.id,row.kind==='workTask'?{...row.item,kind:'workTask'}:row.item]));
-      const mode=optionButton({name:'taskScheduleMode',value:preferredMode||'manual',
-        options:[{id:'manual',name:'دستی'},{id:'auto',name:'خودکار'}],
-        onChange:value=>{preferredMode=value;updateSchedule('mode');}});
+      const mode=optionButton({name:'taskScheduleMode',value:preferredMode||'manual',clearLabel:'روش زمان‌بندی',
+        options:[{id:'manual',name:'دستی'},{id:'auto',name:'خودکار براساس پیش‌نیاز'}],
+        onChange:()=>{scheduleModeTouched=true;updateSchedule('mode');}});
       const startRow=dateField(documentRef,'taskStart','تاریخ شروع',task?.scheduleStart||'',()=>updateSchedule('start'));
       const endRow=dateField(documentRef,'taskEnd','تاریخ پایان',selectedEnd,()=>{
         selectedEnd=end.dataset.value;updateSchedule('end');
@@ -310,14 +340,12 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       const lookup=id=>scheduleRangeOf(sourceItems.get(id));
       const setDate=(button,value)=>{
         button.dataset.value=value||'';
-        button.textContent=value?formatJalaliDisplay(value):'انتخاب تاریخ';
+        button.repaintDate();
       };
       function updateSchedule(trigger){
         const relations=root._taskDependency?.relations()||[];
-        const auto=(preferredMode||(relations.length?'auto':'manual'))==='auto';
-        const label=mode.querySelector('.wbs-task-option-trigger span');
-        mode.querySelector('input').value=auto?'auto':'manual';
-        label.textContent=auto?'خودکار':'دستی';
+        if(!editing && !scheduleModeTouched)mode.querySelector('.wbs-task-option-select').setOption(relations.length?'auto':'manual');
+        const auto=mode.querySelector('input').value==='auto';
         if(auto && !wasAutomatic){
           manualStart=start.dataset.value;
           manualEnd=end.dataset.value;
@@ -354,23 +382,33 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
           const bound=requiredScheduleStart({dependencies:relations},Math.max(1,duration),lookup);
           warning.textContent=first!==null && bound!==null && first<bound?'تاریخ شروع با پیش‌نیاز تداخل دارد.':'';
         }
+        end.disabled=auto && duration>0;
+        start.repaintDate();end.repaintDate();
         durationButton.dataset.value=String(duration);
         durationButton.textContent=duration?new Intl.NumberFormat('fa-IR').format(duration)+' روز':'وارد کردن مدت';
       }
-      const priority=optionButton({name:'taskPriority',value:task?.priority || 'normal',options:TASK_PRIORITIES.map(value=>({id:value,name:PRIORITY_LABELS[value]}))});
+      const priority=optionButton({name:'taskPriority',value:task?.priority || 'normal',clearLabel:'درجه اهمیت',options:TASK_PRIORITIES.map(value=>({id:value,name:PRIORITY_LABELS[value]}))});
       root.append(fieldRow('درجه اهمیت',priority));
       section('زمان‌بندی');
       if(!saveStandalone)root.append(fieldRow('روش زمان‌بندی',mode));
       root.append(startRow,endRow);
-      if(!saveStandalone)root.append(fieldRow('مدت',durationButton),warning);
+      if(!saveStandalone)root.append(fieldRow('مدت انجام کار',durationButton),warning);
+      if(!saveStandalone){
+        const dependency = predecessorField({ documentRef, project:projectRepository.find(projectId), consumerId:task?.id || `new:${work.id}`, initial:task?(task.dependencies?.length?task.dependencies:task.predecessorIds||[])
+          :!activeWorkTasks(work).length?(work.dependencies?.length?work.dependencies:work.predecessorIds||[]):[], onChange:()=>updateSchedule('dependency') });
+        root.append(dependency.element);
+        root._taskDependency=dependency;
+      }
       section('مسئولان');
 
       const assignee = documentRef.createElement('button');
       assignee.type = 'button'; assignee.name = 'taskAssignee'; assignee.className = 'wbs-input';
       assignee.dataset.value = task?.assigneeContactId || '';
+      const assigneeSelection=clearSelection(assignee,'مسئول پیگیری',()=>{assignee.dataset.value='';paintAssignee();},()=>Boolean(assignee.dataset.value));
       const paintAssignee = () => {
         const selected = contacts.find(contact => String(contact.id) === String(assignee.dataset.value));
-        assignee.textContent = selected ? contactName(selected) : 'انتخاب مسئول پیگیری';
+        assignee.textContent = selected ? contactName(selected) : 'انتخاب کنید';
+        assigneeSelection.paint();
       };
       assignee.addEventListener('click', () => openSearchPicker({
         title:'انتخاب مسئول پیگیری', listTitle:'مخاطبین', selectedTitle:'مسئول پیگیری منتخب',
@@ -381,7 +419,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         onSelect:selected => { assignee.dataset.value = String(selected.id); paintAssignee(); },
       }));
       paintAssignee();
-      root.appendChild(fieldRow('مسئول پیگیری', assignee));
+      root.appendChild(fieldRow('مسئول پیگیری', assigneeSelection.wrap));
 
       const approvers=documentRef.createElement('div');
       let approverIds=executionApproverIds(task);
@@ -400,7 +438,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
           row.append(name,remove);approvers.append(row);
         }
         const add=documentRef.createElement('button');add.type='button';add.name='taskApprover';add.className='wbs-input';
-        add.disabled=approversLocked;add.textContent='افزودن مسئول تأیید';
+        add.disabled=approversLocked;add.textContent=approverIds.length?'+ افزودن مسئول تأیید':'انتخاب کنید';
         add.classList.toggle('wbs-approver-add-inline',approverIds.length>0);
         add.onclick=()=>openSearchPicker({
           title:'انتخاب مسئول تأیید',listTitle:'مخاطبین',contextKey:`wbs-task-approver:${work.id}`,
@@ -451,18 +489,14 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         note.textContent = `پیمانکار از قرارداد خوانده می‌شود: ${contactName(contractor)}`;
         root.appendChild(note);
       }
-      const dependency = predecessorField({ documentRef, project:saveStandalone?{...projectRepository.find(projectId),tasks:[]}:projectRepository.find(projectId), consumerId:task?.id || `new:${work.id}`, initial:task?(task.dependencies?.length?task.dependencies:task.predecessorIds||[])
-        :!saveStandalone && !activeWorkTasks(work).length?(work.dependencies?.length?work.dependencies:work.predecessorIds||[]):[], onChange:()=>{if(!saveStandalone)updateSchedule('dependency');} });
-      root.append(amountContainer,fieldRow('وزن',numericButton('taskWeight',task?.weight || 1)),dependency.element);
-      root._taskDependency = dependency;
+      root.append(amountContainer,fieldRow('وزن',numericButton('taskWeight',task?.weight || 1)));
       if(!saveStandalone)updateSchedule('initial');
 
       if(editing && !readOnly){
         if(canDelete){
           const remove = documentRef.createElement('button');
           remove.type = 'button'; remove.className = 'wbs-task-delete';
-          const icon=documentRef.createElement('span');icon.textContent='×';icon.setAttribute('aria-hidden','true');
-          remove.append(icon,'حذف کار');
+          remove.textContent='حذف کار';
           remove.addEventListener('click', () => {
             requestPlanningTaskDelete({documentRef,projectId,workId:work.id,taskId:task.id,onChanged:()=>{
               closeWbsSheet();
@@ -485,9 +519,9 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         type:root.querySelector('[name="taskType"]').value,
         scheduleStart:root.querySelector('[name="taskStart"]').dataset.value,
         scheduleEnd:root.querySelector('[name="taskEnd"]').dataset.value,
-        ...(!saveStandalone?{scheduleMode:root.querySelector('[name="taskScheduleMode"]').value,
+        ...(!saveStandalone?{scheduleMode:root.querySelector('[name="taskScheduleMode"]').value||'manual',
           scheduleDuration:Number(root.querySelector('[name="taskDuration"]').dataset.value)}:{}),
-        priority:root.querySelector('[name="taskPriority"]').value,
+        priority:root.querySelector('[name="taskPriority"]').value||'normal',
         assigneeContactId:root.querySelector('[name="taskAssignee"]').dataset.value,
         activityId:root.querySelector('[name="taskActivity"]')?.dataset.value || '',
         contractTemplateId:root.querySelector('[name="taskContractTemplate"]')?.dataset.value || '',
@@ -500,7 +534,8 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         predecessorIds:root._taskDependency?.value() || [],
         dependencies:root._taskDependency?.relations() || [],
         hasContract:!!root.querySelector('[name="hasContract"]')?.checked,
-        hasProgressReport:!!root.querySelector('[name="hasProgressReport"]')?.checked,
+        hasProgressReport:root.querySelector('[name="taskType"]').value==='پیمانکار'
+          ?Boolean(task?.type==='پیمانکار' && task.hasProgressReport):!!root.querySelector('[name="hasProgressReport"]')?.checked,
         hasInvoice:!!root.querySelector('[name="hasInvoice"]')?.checked,
         hasPreInvoice:!!root.querySelector('[name="hasPreInvoice"]')?.checked,
         hasLaborPayroll:!!root.querySelector('[name="hasLaborPayroll"]')?.checked,
