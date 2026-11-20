@@ -398,9 +398,13 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
     const heading=documentRef.createElement('h2');
     heading.textContent=entry.isDailyReport?'گزارش توقف':'آخرین وضعیت';
     const label=entry.type==='planned_pause'?'انتظار':entry.multiday?'متوقف':'مانع اجرا';
-    card.append(heading,detailRow(documentRef,label,
-      ['شروع '+formatDate(entry.day),entry.resumeOn?'ادامه '+formatDate(entry.resumeOn):'',entry.reason,entry.description,entry.type==='execution_obstacle'?(INTERRUPTION_ELIGIBILITY[entry.isDailyReport?'ineligible':entry.eligibility]||INTERRUPTION_ELIGIBILITY.pending):'']
-        .filter(Boolean).join(' · ')));
+    const details=detailRow(documentRef,label,
+      ['شروع '+formatDate(entry.day),entry.resumeOn?'ادامه '+formatDate(entry.resumeOn):'',entry.reason,entry.description]
+        .filter(Boolean).join(' · '));
+    details.classList.add('today-interruption-details');
+    card.append(heading,details);
+    if(entry.type==='execution_obstacle')card.append(detailRow(documentRef,'وضعیت مجاز بودن',
+      INTERRUPTION_ELIGIBILITY[entry.isDailyReport?'ineligible':entry.eligibility]||INTERRUPTION_ELIGIBILITY.pending));
     appendReportPhotos(card,entry.photos);
     root.append(card);
   }else if(latest){
@@ -572,9 +576,11 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   const stop=linkButton(documentRef,'today-card-stop',stopReport?'مشاهدهٔ توقف':'ثبت توقف');
   stop.onclick=event=>{
     event.stopPropagation();
-    if(!stopReport){openExecutionInterruption(project,item,actor,onChanged);return;}
+    if(!stopReport){openExecutionInterruption(project,item,actor,onChanged,returnToCalendar);return;}
+    let resumed=false;
     openWbsSheet({title:stopReport.type==='planned_pause'?'توقف مجاز':'توقف غیرمجاز',
-      historyKey:'execution-stop-report:'+item.id,showSave:false,body(root){
+      historyKey:'execution-stop-report:'+item.id,showSave:false,keepParent:!!returnToCalendar,
+      onClose:()=>{if(resumed) returnToCalendar?.();},body(root,dismiss){
         for(const text of [stopReport.reason,stopReport.description]){
           const line=documentRef.createElement('p');
           line.textContent=text||'';root.append(line);
@@ -590,7 +596,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
         resume.onclick=()=>{
           const result=todayApi.saveInterruption(project.id,refOf(item),{id:activeStop.id,resume:true},actor);
           if(!result.ok){feedback.textContent='ازسرگیری ثبت نشد. دسترسی و وضعیت کار را بررسی کنید.';return;}
-          closeWbsSheet();onChanged?.();
+          resumed=true;dismiss();onChanged?.();
         };
         root.append(resume,feedback);
       }});

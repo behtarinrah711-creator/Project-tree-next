@@ -115,12 +115,14 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
   const purchaseReport=item.entity.type==='خرید';
   const ref={kind:item.kind,id:item.id,workId:item.workId};
   let uploader,dailyStatus;
+  let saved=false;
   const sheet=openWbsSheet({
     title:statusControls?`ثبت گزارش ${item.entity.title || item.entity.text || subject}`:`ثبت گزارش:\n${item.entity.title || item.entity.text || subject}`,
     saveLabel:'ذخیره', presentation:'stage-create', autoFocus:false,
     historyKey:`execution-report:${projectId}:${item.id}:${day}`,
     reuseHistoryOnReplace:true,
-    ...(onReturn?{requestClose:onReturn}:{}),
+    keepParent:!!onReturn,
+    onClose:()=>{if(saved)onReturn?.();},
     body(root){
       if(statusControls)dailyStatus=statusFields(root,projectId,item.entity,day);
       const description=textarea(document,current?.description||'');
@@ -158,7 +160,7 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
       }
       if(!statusOnly && (!statusControls || dailyStatus.status==='active') && Number(progress)===100) onSubmitted?.(result.entity);
       onChanged?.();
-      if(onReturn){onReturn();return false;}
+      saved=true;
       return true;
     },
   });
