@@ -394,3 +394,6 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
 .today-task-toolbar-footer:has(.oddjobs-add){position:relative;}
 .today-task-toolbar-footer:has(.oddjobs-add) .today-task-secondary{padding-inline-end:40px;}
 .today-task-toolbar-footer .oddjobs-add{position:absolute;inset-inline-end:0;z-index:1;}
+
+.today-detail-reason.wbs-costline-detail-row{grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:start;}
+.today-detail-reason.wbs-costline-detail-row > span:last-child{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:start;}

@@ -62,6 +62,13 @@ function detailRow(documentRef, label, value){
   row.append(name, cell);
   return row;
 }
+function inactiveReasonRow(documentRef,status,report){
+  const note=String(status.description||'').trim();
+  const description=String(report?.description||'').trim();
+  const row=detailRow(documentRef,'دلیل',note && note!==description?[status.reason,note].join(' · '):status.reason);
+  row.classList.add('today-detail-reason');
+  return row;
+}
 function linkButton(documentRef, className, text, label){
   const button = documentRef.createElement('button');
   button.type = 'button';
@@ -283,7 +290,7 @@ function renderExecutionReportCard(documentRef,entity,day,{historical=false}={})
   if(historical){
     const status=dailyExecutionStatus(entity,day);
     reportCard.append(detailRow(documentRef,'وضعیت کار',DAILY_EXECUTION_LABELS[status.status]||'نامشخص'));
-    if(status.reason)reportCard.append(detailRow(documentRef,'دلیل',[status.reason,status.description].filter(Boolean).join(' · ')));
+    if(status.reason)reportCard.append(inactiveReasonRow(documentRef,status,report));
   }
   return {reportCard,release};
 }
@@ -358,7 +365,7 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
   summary.append(detailRow(documentRef,'مسئول کار',assignee?contactName(assignee):'—'),
     detailRow(documentRef,'مسئول تأیید',approvers.map(contactName).join('، ')||'—'));
   if(contractor)summary.append(detailRow(documentRef,'پیمانکار',contactName(contractor)));
-  if(current.reason)summary.append(detailRow(documentRef,'دلیل',[current.reason,current.description].filter(Boolean).join(' · ')));
+  if(current.reason)summary.append(inactiveReasonRow(documentRef,current,todayReportOf(entity,day)));
   root.append(schedule,progress,summary);
   if(item.kind==='standalone' && entity.oddJobType){
     const expense=detailCard(documentRef);
