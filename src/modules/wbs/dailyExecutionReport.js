@@ -1,4 +1,3 @@
-import {openExecutionInterruption} from './executionInterruption.js';
 import {projectRepository} from '../../data/projectRepository.js';
 import { REPORT_MIN_LENGTH, todayApi } from '../../domain/wbs/todayApi.js';
 import { collectTodayItems, dailyExecutionStatus, INACTIVE_REASONS, executionReportDay, tehranTodayJalali } from '../../domain/wbs/todayDomain.js';
@@ -52,11 +51,11 @@ export function appendReportPhotos(root,photos){
 
 function statusFields(root,projectId,entity,day){
   const current=dailyExecutionStatus(entity,day);
-  const state={status:current.status,reasonId:current.reasonId||''};
+  const state={status:current.type==='daily_status'?current.status:'',reasonId:current.reasonId||''};
   const row=document.createElement('fieldset');
   row.className='today-report-status-row';
   const question=document.createElement('span');
-  question.textContent='وضعیت این کار چگونه است؟';
+  question.textContent='امروز وضعیت این کار چگونه است؟';
   row.setAttribute('aria-label',question.textContent);
   row.append(question);
   const reasons=new Map(Object.entries(INACTIVE_REASONS));
@@ -91,19 +90,21 @@ function statusFields(root,projectId,entity,day){
       input.focus();
     },{preserveOrder:true});
   };
+  const buttons=document.createElement('div');
+  buttons.className='today-report-status-buttons';
   const choices=[];
   const paint=()=>{
     reasonRow.hidden=state.status!=='inactive';
     reasonRow.classList.toggle('hidden',reasonRow.hidden);
-    choices.forEach(input=>{input.checked=input.value===state.status;});
+    choices.forEach(button=>button.setAttribute('aria-pressed',String(button.value===state.status)));
   };
-  for(const [value,label] of [['active','فعال'],['inactive','غیرفعال'],['unknown','هنوز نامشخص']]){
-    const option=document.createElement('label');
-    const input=document.createElement('input');
-    input.type='checkbox';input.value=value;choices.push(input);
-    input.onchange=()=>{state.status=value;paint();};
-    option.append(input,label);row.append(option);
+  for(const [value,label] of [['active','فعال است'],['inactive','غیرفعال است'],['unknown','هنوز مشخص نیست']]){
+    const button=document.createElement('button');
+    button.type='button';button.value=value;button.textContent=label;
+    button.onclick=()=>{state.status=value;paint();};
+    choices.push(button);buttons.append(button);
   }
+  row.append(buttons);
   root.append(row,reasonRow);paint();
   return state;
 }
@@ -121,28 +122,10 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
     reuseHistoryOnReplace:true,
     ...(onReturn?{requestClose:onReturn}:{}),
     body(root){
-      if(statusControls){
-        const project=projectRepository.find(projectId);
-        if(project && (item.kind==='standalone'||item.entity.type!=='خرید')){
-          const actions=document.createElement('div');
-          actions.className='wbs-toggles-row';
-          const lastObstacle=(item.entity.executionHistory||[]).findLast(entry=>entry?.type==='execution_obstacle' && !entry.multiday && !entry.resumedOn);
-          const choices=[
-            ['ثبت وقفهٔ برنامه‌ریزی‌شده',{type:'planned_pause'}],
-            ['ثبت توقف چندروزه',{multiday:true}],
-          ];
-          if(lastObstacle)choices.push(['ادامهٔ مانع به‌صورت توقف چندروزه',{multiday:true,existing:{...lastObstacle,multiday:true}}]);
-          for(const [label,options] of choices){
-            const button=document.createElement('button');
-            button.type='button';button.className='wbs-input';button.textContent=label;
-            button.onclick=()=>openExecutionInterruption(project,item,actor,onChanged,options);
-            actions.append(button);
-          }
-          root.append(actions);
-        }
-        dailyStatus=statusFields(root,projectId,item.entity,day);
-      }
-      root.append(fieldRow('شرح گزارش',textarea(document,current?.description||'')));
+      if(statusControls)dailyStatus=statusFields(root,projectId,item.entity,day);
+      const description=textarea(document,current?.description||'');
+      description.rows=2;
+      root.append(fieldRow('شرح گزارش',description));
       if(purchaseReport)root.append(fieldRow('درصد پیشرفت',progressInput(document,current?.progress ?? item.entity.progress,Boolean(current))));
       const attachments=document.createElement('div');
       const note=document.createElement('div');
@@ -152,10 +135,6 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
       root.appendChild(note);
       uploader=mountFileUploader(attachments,{projectId,recordId:item.id,category:'reports',files:photos,
         label:'افزودن عکس',buttonLabel:true,allowReplace:true,onError:toast});
-      const placeholders=document.createElement('div');
-      placeholders.className='today-upload-placeholders';
-      placeholders.innerHTML='<button type="button" disabled>ویدئو<small>به‌زودی</small></button><button type="button" disabled>فایل<small>به‌زودی</small></button>';
-      note.appendChild(placeholders);
     },
     onSave(root){
       if(day!==tehranTodayJalali()){toast('روز تغییر کرده است. فرم گزارش امروز را دوباره باز کنید');return false;}
@@ -167,24 +146,17 @@ export function openDailyExecutionReport({ projectId, item, actor, onChanged, on
         ? Number(root.querySelector('[name="reportProgress"]').dataset.value)
         : Number(item.entity.progress)||0;
       const description=root.querySelector('[name="reportDescription"]').value;
-      if(statusControls && dailyStatus.status==='inactive' && dailyStatus.reasonId!=='officialHoliday'){
-        const reason=INACTIVE_REASONS[dailyStatus.reasonId]||dailyStatus.reasonId.replace(/^custom:/,'');
-        if(!reason){toast('دلیل غیرفعال بودن را انتخاب کنید');return false;}
-        const project=projectRepository.find(projectId);
-        if(!project)return false;
-        openExecutionInterruption(project,item,actor,onChanged,{existing:{reason,description,photos}});
-        return false;
-      }
+      if(statusControls && !dailyStatus.status){toast('وضعیت امروز کار را انتخاب کنید');return false;}
       const statusOnly=statusControls && !current && !description.trim() && !photos.length;
       const result=statusOnly
         ? todayApi.setDailyStatus(projectId,ref,dailyStatus.status,dailyStatus.reasonId,'',actor)
-        : todayApi.saveReport(projectId,ref,description,actor,Date.now,progress,{files:photos,completeAt100:true,dailyStatus});
+        : todayApi.saveReport(projectId,ref,description,actor,Date.now,progress,{files:photos,completeAt100:!statusControls || dailyStatus.status==='active',dailyStatus});
       if(!result.ok){
         if(result.code==='invalid_reason'){toast('دلیل غیرفعال بودن را انتخاب کنید');return false;}
         toast(result.code==='report_too_short' ? `شرح گزارش حداقل ${toPersianDigits(REPORT_MIN_LENGTH)} حرف باشد` : 'ذخیرهٔ گزارش انجام نشد');
         return false;
       }
-      if(!statusOnly && Number(progress)===100) onSubmitted?.(result.entity);
+      if(!statusOnly && (!statusControls || dailyStatus.status==='active') && Number(progress)===100) onSubmitted?.(result.entity);
       onChanged?.();
       if(onReturn){onReturn();return false;}
       return true;
