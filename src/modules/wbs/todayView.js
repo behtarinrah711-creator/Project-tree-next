@@ -399,9 +399,13 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
     const heading=documentRef.createElement('h2');
     heading.textContent=entry.isDailyReport?'گزارش توقف':'آخرین وضعیت';
     const label=entry.type==='planned_pause'?'انتظار':entry.multiday?'متوقف':'مانع اجرا';
-    card.append(heading,detailRow(documentRef,label,
-      ['شروع '+formatDate(entry.day),entry.resumeOn?'ادامه '+formatDate(entry.resumeOn):'',entry.reason,entry.description,entry.type==='execution_obstacle'?(INTERRUPTION_ELIGIBILITY[entry.isDailyReport?'ineligible':entry.eligibility]||INTERRUPTION_ELIGIBILITY.pending):'']
-        .filter(Boolean).join(' · ')));
+    const details=detailRow(documentRef,label,
+      ['شروع '+formatDate(entry.day),entry.resumeOn?'ادامه '+formatDate(entry.resumeOn):'',entry.reason,entry.description]
+        .filter(Boolean).join(' · '));
+    details.classList.add('today-interruption-details');
+    card.append(heading,details);
+    if(entry.type==='execution_obstacle')card.append(detailRow(documentRef,'وضعیت مجاز بودن',
+      INTERRUPTION_ELIGIBILITY[entry.isDailyReport?'ineligible':entry.eligibility]||INTERRUPTION_ELIGIBILITY.pending));
     appendReportPhotos(card,entry.photos);
     root.append(card);
   }else if(latest){
