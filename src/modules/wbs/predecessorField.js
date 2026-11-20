@@ -1,5 +1,5 @@
 import { flattenDependencyCandidates, validatePredecessors } from '../../domain/wbs/scheduling.js';
-import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
+import { openExecutionBranchFilter, selectableWbsTree } from './executionBranchFilter.js';
 
 const RELATION_TYPES = Object.freeze(['FS','SS','FF']);
 
@@ -74,16 +74,25 @@ export function predecessorField({ documentRef = document, project, consumerId, 
     });
   };
 
-  add.addEventListener('click', () => openSearchPicker({
-    title:'انتخاب پیش‌نیاز', listTitle:'فعالیت‌ها', selectedTitle:'پیش‌نیاز منتخب', contextKey:`wbs-predecessor:${consumerId}`,
-    items:candidates.filter(row => !relations.has(row.id)).map(row => ({ id:row.id, name:label(row) })), showStar:false, showAdd:false,
-    onSelect:item => {
-      const id = String(item.id);
-      relations.set(id, { predecessorId:id, type:'FS', lagDays:0 });
+  add.addEventListener('click', () => {
+    const tree=selectableWbsTree(project);
+    tree.title='انتخاب پیش‌نیاز';
+    const byTreeId=new Map(candidates.filter(row=>!relations.has(row.id)).map(row=>[
+      row.kind==='workTask'?`task:${row.workId}:${row.id}`:`branch:${row.id}`,row.id,
+    ]));
+    const prune=node=>{
+      node.children=node.children.filter(child=>prune(child));
+      return byTreeId.has(node.id) || node.children.length>0;
+    };
+    prune(tree);
+    openExecutionBranchFilter(project,tree,key=>{
+      const id=byTreeId.get(key);
+      if(!id)return;
+      relations.set(id,{predecessorId:id,type:'FS',lagDays:0});
       paint();
       onChange();
-    },
-  }));
+    },null,{selectionMode:true,keepParent:true,canSelect:node=>byTreeId.has(node.id)});
+  });
 
   root.append(caption, chips, add); paint();
   return {
