@@ -1,5 +1,6 @@
+import { openNumpadGeneric } from '../../ui/numpad.js';
 import { flattenDependencyCandidates, validatePredecessors } from '../../domain/wbs/scheduling.js';
-import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
+import { openExecutionBranchFilter, selectableWbsTree } from './executionBranchFilter.js';
 
 const RELATION_TYPES = Object.freeze(['FS','SS','FF']);
 
@@ -56,14 +57,29 @@ export function predecessorField({ documentRef = document, project, consumerId, 
       type.setAttribute('aria-label', 'نوع رابطه');
       type.addEventListener('change', () => { relation.type = type.value; onChange(); });
 
-      const lag = documentRef.createElement('label');
-      lag.className = 'wbs-predecessor-lag';
-      const lagText = documentRef.createElement('span'); lagText.textContent = 'Lag';
-      const lagInput = documentRef.createElement('input');
-      lagInput.type = 'number'; lagInput.step = '1'; lagInput.value = String(relation.lagDays || 0);
-      lagInput.setAttribute('aria-label', 'Lag روز');
-      lagInput.addEventListener('input', () => { relation.lagDays = Math.trunc(Number(lagInput.value) || 0); onChange(); });
-      lag.append(lagText, lagInput);
+      const lag = documentRef.createElement('span');
+      lag.className='wbs-predecessor-lag';
+      const sign=documentRef.createElement('button');sign.type='button';
+      sign.setAttribute('aria-label','تغییر علامت فاصلهٔ زمانی');
+      const value=documentRef.createElement('button');value.type='button';value.className='wbs-input';
+      value.setAttribute('aria-label','Lag روز');
+      let negative=relation.lagDays<0;
+      const draw=()=>{
+        sign.textContent=negative?'−':'+';
+        value.textContent=new Intl.NumberFormat('fa-IR').format(Math.abs(relation.lagDays))+' روز';
+      };
+      sign.onclick=()=>{
+        negative=!negative;
+        relation.lagDays=negative?-Math.abs(relation.lagDays):Math.abs(relation.lagDays);
+        draw();onChange();
+      };
+      value.onclick=()=>openNumpadGeneric('',raw=>{
+        if(raw==='')return;
+        relation.lagDays=(negative?-1:1)*Number(raw);
+        draw();onChange();
+      },{suffix:' روز',group:false,maxLen:5});
+      draw();
+      lag.append(sign,value);
 
       const remove = documentRef.createElement('button');
       remove.type = 'button'; remove.className = 'wbs-activity-remove'; remove.textContent = 'حذف';
@@ -74,18 +90,29 @@ export function predecessorField({ documentRef = document, project, consumerId, 
     });
   };
 
-  add.addEventListener('click', () => openSearchPicker({
-    title:'انتخاب پیش‌نیاز', listTitle:'فعالیت‌ها', selectedTitle:'پیش‌نیاز منتخب', contextKey:`wbs-predecessor:${consumerId}`,
-    items:candidates.filter(row => !relations.has(row.id)).map(row => ({ id:row.id, name:label(row) })), showStar:false, showAdd:false,
-    onSelect:item => {
-      const id = String(item.id);
-      relations.set(id, { predecessorId:id, type:'FS', lagDays:0 });
+  add.addEventListener('click', () => {
+    const tree=selectableWbsTree(project);
+    tree.title='انتخاب پیش‌نیاز';
+    const byTreeId=new Map(candidates.filter(row=>!relations.has(row.id)).map(row=>[
+      row.kind==='workTask'?`task:${row.workId}:${row.id}`:`branch:${row.id}`,row.id,
+    ]));
+    const prune=node=>{
+      node.children=node.children.filter(child=>prune(child));
+      return byTreeId.has(node.id) || node.children.length>0;
+    };
+    prune(tree);
+    openExecutionBranchFilter(project,tree,key=>{
+      const id=byTreeId.get(key);
+      if(!id)return;
+      relations.set(id,{predecessorId:id,type:'FS',lagDays:0});
       paint();
       onChange();
-    },
-  }));
+    },null,{selectionMode:true,keepParent:true,canSelect:node=>byTreeId.has(node.id)});
+  });
 
-  root.append(caption, chips, add); paint();
+  const controls=documentRef.createElement('div');
+  controls.append(chips,add);
+  root.append(caption,controls);paint();
   return {
     element:root,
     value:() => [...relations.keys()],

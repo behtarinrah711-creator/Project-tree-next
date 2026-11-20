@@ -97,12 +97,11 @@ test('report is edited in place with edit time and a photo uploader',async({page
   const sheet=page.locator('#wbsSheetOverlay');
   await expect(sheet).toHaveCount(0);
   await card.locator('.today-report-circle').click();
-  await expect(sheet.getByRole('checkbox',{name:'هنوز نامشخص'})).toBeChecked();
+  await expect(sheet.getByRole('button',{name:'هنوز مشخص نیست'})).toHaveAttribute('aria-pressed','false');
+  await sheet.getByRole('button',{name:'هنوز مشخص نیست'}).click();
   await expect(sheet.locator('.sheet-caption')).toHaveText('ثبت گزارش قالب‌بندی');
   await expect(sheet.locator('.saosa-file-uploader')).toBeVisible();
   await expect(sheet.locator('.today-submit-approval')).toHaveCount(0);
-  await expect(sheet.getByRole('button',{name:/ویدئو/})).toBeDisabled();
-  await expect(sheet.getByRole('button',{name:/فایل/})).toBeDisabled();
   await sheet.locator('[name="reportDescription"]').fill('گزارش اجرای امروز');
   await sheet.locator('.wbs-sheet-save').click();
   await card.locator('.today-report-circle').click();
@@ -120,7 +119,7 @@ test('completion enters pending approval, rejection returns Today with typed new
   const card=list.locator('.today-task-card[data-entity-id="today-task"]');
   const sheet=page.locator('#wbsSheetOverlay');
   await card.locator('.today-report-circle').click();
-  await sheet.getByRole('checkbox',{name:'فعال',exact:true}).check();
+  await sheet.getByRole('button',{name:'فعال است',exact:true}).click();
   await sheet.locator('.wbs-sheet-save').click();
   await expect(card.locator('.today-report-circle')).toHaveAttribute('aria-label','فعال، بدون گزارش');
   await card.locator('.today-report-circle').click();
@@ -186,26 +185,28 @@ for(const [tab,id] of [['امروز','midnight-work'],['عقب‌افتاده','
   });
 }
 
-for(const action of ['ثبت وقفهٔ برنامه‌ریزی‌شده','ثبت توقف چندروزه']){
-  test(`execution report returns after dismissing ${action}`,async({page})=>{
-    const card=page.locator('.wbs-today-frame[data-view="today"] .today-task-card[data-entity-id="today-task"]');
-    const sheet=page.locator('#wbsSheetOverlay');
-    await card.locator('.today-report-circle').click();
-    await sheet.locator('[name="reportDescription"]').fill('شرح گزارش ثبت‌نشده');
-    const url=page.url();
+test('stop is a separate card action and its form replaces the daily report',async({page})=>{
+  const list=page.locator('.wbs-today-frame[data-view="today"]');
+  const card=list.locator('.today-task-card[data-entity-id="today-task"]');
+  const sheet=page.locator('#wbsSheetOverlay');
+  await card.getByRole('button',{name:'ثبت توقف',exact:true}).click();
+  await sheet.getByRole('button',{name:/توقف غیرمجاز/}).click();
+  await expect(sheet.locator('.sheet-caption')).toHaveText('ثبت توقف غیرمجاز');
+  await expect(sheet.getByRole('button',{name:'انتخاب طرف منتسب'})).toBeVisible();
+  await sheet.getByRole('button',{name:'بستن'}).click();
 
-    await sheet.getByRole('button',{name:action,exact:true}).click();
-    await sheet.getByRole('button',{name:'بستن',exact:true}).click();
-    await expect(sheet.locator('.sheet-caption')).toHaveText('ثبت گزارش قالب‌بندی');
-
-    await sheet.getByRole('button',{name:action,exact:true}).click();
-    await page.goBack();
-    await expect(sheet.locator('.sheet-caption')).toHaveText('ثبت گزارش قالب‌بندی');
-    await expect(sheet.locator('[name="reportDescription"]')).toHaveValue('شرح گزارش ثبت‌نشده');
-    await expect(page).toHaveURL(url);
-
-    await page.goBack();
-    await expect(sheet).toHaveCount(0);
-    await expect(card).toBeVisible();
+  await page.evaluate(async()=>{
+    const {todayApi}=await import('/src/domain/wbs/todayApi.js');
+    const ref={kind:'task',id:'today-task',workId:'w1'};
+    const actor={id:'e2e',contactId:'a'};
+    const result=todayApi.saveInterruption('e2e-today',ref,{
+      type:'execution_obstacle',multiday:true,role:'unknown',isDailyReport:true,
+      reasonId:'weather',reason:'شرایط جوی',description:'شرح توقف امروز',
+    },actor);
+    if(!result.ok)throw Error(result.code);
   });
-}
+  await list.getByRole('tab',{name:'همه',exact:true}).click();
+  await expect(card.getByRole('button',{name:'گزارش این روز در توقف ثبت شده است'})).toBeDisabled();
+  await card.getByRole('button',{name:'مشاهدهٔ توقف'}).click();
+  await expect(sheet).toContainText('شرح توقف امروز');
+});

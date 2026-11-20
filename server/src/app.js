@@ -1,3 +1,4 @@
+import {executionApproverIds,pendingExecutionApproverIds} from '../../src/domain/wbs/workTaskModel.js';
 import {acceptedMembership} from './acceptedMembership.js';
 import {findInTree} from '../../src/domain/wbs/normalize.js';
 import {configuredContractReviewers, contractRevisionContent, routeCompletedContract} from '../../src/domain/contractApproval.js';
@@ -334,6 +335,19 @@ export function hasDeniedExecutionChanges(current,incoming,permissions,phone,acc
         if(entry.type==='planned_pause' && (!date(entry.resumeOn)||entry.resumeOn<=entry.day))return true;
         if(entry.type==='execution_obstacle' && !['unknown','external'].includes(entry.role)
           && !(current?.contacts||[]).some(contact=>contact && String(contact.id)===entry.contactId))return true;
+        if(entry.isDailyReport!=null && entry.isDailyReport!==true)return true;
+        if(original?.isDailyReport && !entry.isDailyReport)return true;
+        if(entry.isDailyReport){
+          if(!entry.multiday || !Object.hasOwn(INACTIVE_REASONS,entry.reasonId) || INACTIVE_REASONS[entry.reasonId]!==entry.reason
+            || !Array.isArray(entry.attributedContacts) || (entry.type==='planned_pause' && entry.attributedContacts.length))return true;
+          const priorParties=new Set((original?.attributedContacts||[]).map(person=>person.id));
+          const ids=new Set();
+          for(const person of entry.attributedContacts){
+            if(typeof person?.id!=='string' || typeof person.name!=='string' || ids.has(person.id)
+              || (!priorParties.has(person.id) && !(current?.contacts||[]).some(contact=>!contact?.trashed && String(contact?.id)===person.id)))return true;
+            ids.add(person.id);
+          }
+        }
         if(entry.eligibility!=null && (entry.type!=='execution_obstacle'||!['pending','eligible','ineligible'].includes(entry.eligibility)))return true;
         return entry.reviewed===true && (!Number.isInteger(entry.impactDays)||entry.impactDays<0);
       }
@@ -349,6 +363,20 @@ export function hasDeniedExecutionChanges(current,incoming,permissions,phone,acc
       return !START_DELAY_REASONS.includes(entry.reason)
         || (entry.reason==='سایر' && (typeof entry.description!=='string' || !entry.description.trim()));
     });
+  };
+  const deniedMultipleApprovals=(previous,item)=>{
+    const reviewers=executionApproverIds(previous);
+    if(previous?.completionState!=='pending_approval' || reviewers.length<2)return false;
+    if(JSON.stringify(reviewers)!==JSON.stringify(executionApproverIds(item)))return true;
+    const oldVotes=(previous.executionHistory||[]).filter(entry=>entry.type==='execution_approval_vote');
+    const nextVotes=(item.executionHistory||[]).filter(entry=>entry.type==='execution_approval_vote');
+    if(JSON.stringify(oldVotes)!==JSON.stringify(nextVotes.slice(0,oldVotes.length)))return true;
+    const votes=nextVotes.slice(oldVotes.length);
+    const pending=pendingExecutionApproverIds(previous);
+    if(votes.length && (!canWriteExecutionItem(permissions,previous) || votes.length!==1
+      || !pending.includes(votes[0].actor?.contactId) || !contactIds.has(votes[0].actor?.contactId)))return true;
+    if(item.completed || item.completionState==='approved')return votes.length!==1 || pending.length!==1;
+    return false;
   };
   const deniedCommentEdit=(previous,item)=>{
     const comments=new Map((previous?.executionComments||[]).filter(Boolean).map(comment=>[comment.id,comment]));
@@ -374,7 +402,7 @@ export function hasDeniedExecutionChanges(current,incoming,permissions,phone,acc
       if(!item)return false;
       const previous=records.get(String(item.id));
       return (changed(previous,item) && (!canWriteExecutionItem(permissions,previous||item) || !canWriteExecutionItem(permissions,item)))
-        || deniedDailyHistory(previous,item) || deniedCommentEdit(previous,item)
+        || deniedDailyHistory(previous,item) || deniedMultipleApprovals(previous,item) || deniedCommentEdit(previous,item)
         || check(previous?.subtasks||[],item.subtasks||[]) || check(previous?.workTasks||[],item.workTasks||[]);
     });
   };
@@ -412,7 +440,7 @@ function mergeAssignedExecutionItems(currentItems,incomingItems,contactIds,state
     if(!incoming){state.invalid=true;return current;}
     const permitted=canWriteExecutionItem(state.permissions,current);
     const assigned=permitted && Boolean(current.assigneeContactId)&&contactIds.has(String(current.assigneeContactId));
-    const approver=permitted && current.approvalContactId&&contactIds.has(String(current.approvalContactId));
+    const approver=permitted && pendingExecutionApproverIds(current).some(id=>contactIds.has(id));
     const allowed=new Set([...(assigned?ASSIGNED_EXECUTION_FIELDS:[]),...(approver?APPROVER_EXECUTION_FIELDS:[])]);
     const next={...current};
     const keys=new Set([...Object.keys(current),...Object.keys(incoming)]);
@@ -1173,3 +1201,4 @@ export function createApp({pool, sessionSecret, sendLoginCode, sendInvitationSms
     }
   };
 }
+

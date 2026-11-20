@@ -10,7 +10,8 @@ test('work form uses Saosa sheets, pickers and numpad without progress submissio
   assert.match(source,/optionButton\(\{name:'taskType'/);
   assert.match(source,/optionButton\(\{name:'taskPriority'/);
   assert.doesNotMatch(source,/taskRequiresApproval/);
-  assert.match(source,/بدون مسئول تأیید/);
+  assert.doesNotMatch(source,/بدون مسئول تأیید/);
+  assert.match(source,/add\.classList\.toggle\('wbs-approver-add-inline',approverIds\.length>0\)/);
   assert.match(source,/const COUNTERPARTY_LABELS/);
   assert.match(source,/'پیمانکار':'پیمانکار'/);
   assert.match(source,/'خرید':'فروشنده'/);

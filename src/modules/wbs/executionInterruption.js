@@ -1,124 +1,151 @@
+import {flattenDependencyCandidates} from '../../domain/wbs/scheduling.js';
 import {appendReportPhotos} from './dailyExecutionReport.js';
 import {openSearchPicker} from '../../ui/searchPickerAdapter.js';
 import {openNumpadGeneric} from '../../ui/numpad.js';
 import {formatJalaliDisplay} from '../../ui/jalali.js';
 import {todayApi} from '../../domain/wbs/todayApi.js';
-import {contractorForItem,tehranTodayJalali} from '../../domain/wbs/todayDomain.js';
+import {INACTIVE_REASONS,tehranTodayJalali} from '../../domain/wbs/todayDomain.js';
 import {mountFileUploader} from '../files/fileUploader.js';
 import {fieldRow,openWbsSheet} from './wbsSheet.js';
 
 export const INTERRUPTION_ELIGIBILITY={pending:'در دست بررسی',eligible:'مجاز',ineligible:'غیرمجاز'};
 const roles={contractor:'پیمانکار',assignee:'مسئول پیگیری',approver:'مسئول تأیید',client:'کارفرما',supplier:'تأمین‌کننده',other:'مخاطب دیگر',external:'عامل بیرونی',unknown:'در دست بررسی'};
-const name=contact=>contact?.name||contact?.title||'';
+const name=contact=>[contact?.firstName,contact?.lastName].filter(Boolean).join(' ')||contact?.name||contact?.title||'';
 const id=contact=>String(contact?.id||'');
 
-export function openExecutionInterruption(project,item,actor,refresh,{type='execution_obstacle',multiday=false,existing,onDismiss}={}){
-  const planned=type==='planned_pause';
-  const documentRef=document;
+export function openExecutionInterruption(project,item,actor,refresh,onReturn){
   const current=tehranTodayJalali();
-  const draft={type,multiday,day:current,role:'unknown',...existing};
+  const draft={multiday:true,day:current,role:'unknown',contactIds:[]};
   const contacts=(project.contacts||[]).filter(contact=>contact && !contact.trashed);
-  const entity=item.entity;
   const ref={kind:item.kind,id:item.id,workId:item.workId};
-  let uploader,feedback;
-  const photos=[...(draft.photos||[])];
-  const button=(label,fn)=>{
-    const node=documentRef.createElement('button');
-    node.className='wbs-input';node.type='button';node.textContent=label;node.onclick=fn;
+  const photos=[];
+  let uploader,feedback,saved=false;
+  const button=(label,onclick)=>{
+    const node=document.createElement('button');
+    node.className='wbs-input';node.type='button';node.textContent=label;node.onclick=onclick;
     return node;
   };
-  const sheet=openWbsSheet({
-    title:planned?'ثبت وقفهٔ برنامه‌ریزی‌شده':draft.multiday?'ثبت توقف چندروزه':'ثبت مانع امروز',
-    historyKey:'execution-interruption:'+item.id,autoFocus:false,
-    ...(onDismiss ? {requestClose:onDismiss, returnOnBack:onDismiss, reuseHistoryOnReplace:true} : {}),
-    body(root){
-      const field=(label,key,tag)=>{
-        const input=documentRef.createElement(tag);
-        input.className='wbs-input';input.value=draft[key]||'';
-        input.oninput=()=>{draft[key]=input.value;};
-        root.append(fieldRow(label,input));
-      };
-      const date=(label,key)=>{
-        const node=button(draft[key]?formatJalaliDisplay(draft[key]):'انتخاب تاریخ',()=>
-          window.KarhaUI?.openJalaliPicker?.(draft[key]||current,value=>{draft[key]=value;node.textContent=formatJalaliDisplay(value);}));
-        root.append(fieldRow(label,node));
-      };
-      if(planned||draft.multiday)date(planned?'تاریخ شروع وقفه':'تاریخ شروع توقف','day');
-      if(planned||draft.multiday)date(planned?'تاریخ برنامه‌ریزی‌شدهٔ ادامه':'تاریخ پیگیری یا ادامه','resumeOn');
-      field(planned?'دلیل یا پیش‌نیاز ادامه':'علت مانع','reason','input');
-      field(planned?'شرح کار باقی‌مانده':'شرح مانع','description','textarea');
-      if(!planned){
-        const person=button('انتخاب مخاطب',()=>openSearchPicker({title:'انتخاب مخاطب',resourceType:'contact',
-          contextKey:'execution-obstacle-contact',items:contacts.map(contact=>({id:id(contact),name:name(contact)})),
-          onSelect:selected=>{draft.contactId=String(selected.id);paint();}}));
-        const personRow=fieldRow('شخص یا شرکت',person);
-        const role=button('',()=>openSearchPicker({title:'انتخاب نقش',contextKey:'execution-obstacle-role',
-          items:Object.entries(roles).map(([id,name])=>({id,name})),onSelect:selected=>{
-            draft.role=selected.id;
-            const assigned={contractor:id(contractorForItem(project,item).contact),assignee:entity.assigneeContactId,approver:entity.approvalContactId};
-            draft.contactId=String(assigned[draft.role]||'');
-            paint();
-          }}));
-        const paint=()=>{
-          role.textContent=roles[draft.role];
-          person.textContent=name(contacts.find(contact=>id(contact)===draft.contactId))||'انتخاب مخاطب';
-          const hidePerson=['unknown','external'].includes(draft.role);
-          personRow.hidden=hidePerson;
-          personRow.classList.toggle('hidden',hidePerson);
-        };
-        paint();
-        root.append(fieldRow('نقش طرف منتسب',role),personRow);
-        if(!draft.multiday){
-          const duration=button(draft.durationHours==null?'تمام‌روز':draft.durationHours+' ساعت',()=>openNumpadGeneric(
-            draft.durationHours??'',value=>{
-              draft.durationHours=value===''?null:Number(value);
-              duration.textContent=draft.durationHours==null?'تمام‌روز':draft.durationHours+' ساعت';
-            },{suffix:' ساعت',group:false,allowDecimal:true,maxLen:4,validate:value=>value!==''&&!(Number(value)>0&&Number(value)<=24)?'مدت باید بیشتر از صفر و حداکثر ۲۴ ساعت باشد':''}));
-          root.append(fieldRow('مدت توقف',duration));
-        }
-        const attachments=documentRef.createElement('div');
-        root.append(fieldRow('مستندات',attachments));
-        uploader=mountFileUploader(attachments,{projectId:project.id,recordId:existing?.id||item.id,category:'reports',
-          files:photos,label:'افزودن عکس',buttonLabel:true,allowReplace:true});
+  const renderForm=(root,planned,title)=>{
+    draft.type=planned?'planned_pause':'execution_obstacle';
+    sheet.querySelector('.sheet-caption').textContent=title;
+    sheet.querySelector('.wbs-sheet-save').hidden=false;
+    root.replaceChildren();
+    const reason=button('انتخاب دلیل',()=>openSearchPicker({
+      title:'دلیل توقف',contextKey:'execution-stop-reason',
+      items:Object.entries(INACTIVE_REASONS).map(([id,name])=>({id,name})),
+      onSelect:selected=>{draft.reasonId=selected.id;draft.reason=selected.name;reason.textContent=selected.name;},
+    }));
+    root.append(fieldRow('دلیل توقف',reason));
+    const date=(label,key)=>{
+      const node=button(draft[key]?formatJalaliDisplay(draft[key]):'انتخاب تاریخ',()=>
+        window.KarhaUI?.openJalaliPicker?.(draft[key]||current,value=>{draft[key]=value;node.textContent=formatJalaliDisplay(value);}));
+      return fieldRow(label,node);
+    };
+    const dates=document.createElement('div');
+    dates.className='today-report-stop-dates';
+    dates.append(date('تاریخ شروع توقف','day'),date(planned?'تاریخ شروع مجدد کار':'تاریخ ادامه','resumeOn'));
+    root.append(dates);
+    if(planned){
+      const source=item.entity.dependencies?.length?item.entity
+        :item.entity.predecessorIds?.length?item.entity:item.work;
+      const ids=source?.dependencies?.length?source.dependencies.map(link=>link.predecessorId):source?.predecessorIds||[];
+      const titles=flattenDependencyCandidates(project.tasks||[])
+        .filter(record=>ids.some(value=>String(value)===String(record.id)))
+        .map(record=>record.title||record.text).filter(Boolean);
+      if(titles.length){
+        const value=document.createElement('div');
+        value.className='wbs-input';value.textContent=titles.join('، ');
+        root.append(fieldRow('پیش‌نیاز ثبت‌شده',value));
       }
-      feedback=documentRef.createElement('p');
-      feedback.setAttribute('role','alert');
-      root.append(feedback);
+    }
+    const description=document.createElement('textarea');
+    description.className='wbs-input';description.rows=3;
+    description.addEventListener('input',()=>{draft.description=description.value;});
+    root.append(fieldRow('توضیحات',description));
+    if(!planned){
+      const selected=document.createElement('div');
+      const paint=()=>{
+        selected.replaceChildren();
+        for(const contactId of draft.contactIds){
+          const row=document.createElement('div');
+          row.className='wbs-contract-approver';
+          const text=document.createElement('span');
+          text.textContent=name(contacts.find(contact=>id(contact)===contactId));
+          const remove=button('×',()=>{draft.contactIds=draft.contactIds.filter(value=>value!==contactId);paint();});
+          remove.setAttribute('aria-label','برداشتن '+text.textContent);
+          row.append(text,remove);selected.append(row);
+        }
+        const label=draft.contactIds.length?'افزودن شخص':'انتخاب طرف منتسب';
+        const picker=button(label,()=>openSearchPicker({
+          title:'انتخاب طرف منتسب',resourceType:'contact',contextKey:'execution-stop-contact',
+          items:contacts.filter(contact=>!draft.contactIds.includes(id(contact))).map(contact=>({id:id(contact),name:name(contact)})),
+          onSelect:contact=>{draft.contactIds.push(String(contact.id));paint();},
+        }));
+        picker.setAttribute('aria-label',label);
+        selected.append(picker);
+      };
+      paint();
+      root.append(fieldRow('طرف‌های منتسب',selected));
+    }
+    const attachments=document.createElement('div');
+    root.append(fieldRow('مستندات',attachments));
+    uploader=mountFileUploader(attachments,{projectId:project.id,recordId:item.id,category:'reports',
+      files:photos,label:'افزودن عکس',buttonLabel:true,allowReplace:true});
+    const note=document.createElement('small');
+    note.textContent='این ثبت، گزارش روزهای توقف است.';
+    feedback=document.createElement('p');
+    feedback.setAttribute('role','alert');
+    root.append(note,feedback);
+  };
+  const sheet=openWbsSheet({
+    title:'ثبت توقف',historyKey:'execution-interruption:'+item.id,autoFocus:false,
+    keepParent:!!onReturn,
+    onClose:()=>{uploader?.destroy();if(saved)onReturn?.();},
+    body(root){
+      for(const [planned,title,description] of [
+        [true,'توقف مجاز','وقفه‌ای که از قبل هماهنگ شده است.'],
+        [false,'توقف غیرمجاز','توقف ناشی از مانع یا تخلف خارج از برنامه.'],
+      ]){
+        const choice=button(title,()=>renderForm(root,planned,'ثبت '+title));
+        const note=document.createElement('small');
+        note.textContent=description;
+        choice.classList.add('today-report-stop-choice');
+        choice.append(note);root.append(choice);
+      }
     },
     onSave(){
+      if(!draft.type)return false;
       if(uploader?.isBusy()){feedback.textContent='ابتدا بارگذاری عکس‌ها را تمام کنید';return false;}
-      const result=todayApi.saveInterruption(project.id,ref,{...draft,photos},actor);
+      const result=todayApi.saveInterruption(project.id,ref,{...draft,photos,isDailyReport:true},actor);
       if(!result.ok){
         feedback.textContent=({
           forbidden:'ثبت برای مسئول پیگیریِ دارای دسترسی اجرا مجاز است.',
           locked:'کار تکمیل شده یا در انتظار تأیید است.',
-          not_found:'کار پیدا نشد. فهرست اجرا را تازه کنید.',
-          reason_required:'دلیل را وارد کنید.',
-          description_required:planned?'شرح کار باقی‌مانده را وارد کنید.':'شرح مانع را وارد کنید.',
-          invalid_start:planned?'تاریخ شروع وقفه را انتخاب کنید.':'تاریخ شروع توقف باید امروز یا قبل از امروز باشد.',
-          invalid_resume:planned?'تاریخ ادامه باید بعد از شروع وقفه باشد.':'تاریخ پیگیری یا ادامه را بررسی کنید.',
-          invalid_duration:'مدت باید بین صفر و ۲۴ ساعت باشد.',
-          contact_required:'شخص یا شرکت مرتبط را انتخاب کنید.',
+          reason_required:'دلیل توقف را انتخاب کنید.',
+          description_required:'توضیحات را وارد کنید.',
+          invalid_start:'تاریخ شروع توقف را بررسی کنید.',
+          invalid_resume:'تاریخ ادامه را بررسی کنید.',
+          contact_required:'طرف‌های منتسب را دوباره انتخاب کنید.',
+          interruption_exists:'برای این بازه توقف ثبت شده است.',
         })[result.code]||'ذخیره انجام نشد. وضعیت کار را بررسی کنید.';
         return false;
       }
       refresh?.();
+      saved=true;
       return true;
     },
   });
-  if(uploader){
-    const observer=new MutationObserver(()=>{
-      if(!sheet.isConnected){uploader.destroy();observer.disconnect();}
-    });
-    observer.observe(documentRef.body,{childList:true,subtree:true});
-  }
+  sheet.querySelector('.wbs-sheet-save').hidden=true;
 }
+
+const eligibilityOf=entry=>entry.type==='planned_pause'?'eligible':entry.isDailyReport?'ineligible':entry.eligibility||'pending';
+const attributedContacts=entry=>entry.attributedContacts || (entry.contactId?[{id:entry.contactId,name:entry.contactName}]:[]);
 
 export function obstacleRole(role){return roles[role]||'در دست بررسی';}
 
 export function openExecutionDelayReport(project,items,{actor,canReview,refresh}={}){
   const rows=items.flatMap(item=>(item.entity.executionHistory||[])
-    .filter(entry=>entry.type==='execution_obstacle')
+    .filter(entry=>['execution_obstacle','planned_pause'].includes(entry.type))
     .map(entry=>({entry,source:item,path:[...(item.path||[]),item.entity.title||item.entity.text].filter(Boolean).join(' / ')})));
   const filters={role:'',contactId:'',from:'',to:'',cause:'',review:'',eligibility:''};
   openWbsSheet({
@@ -133,8 +160,7 @@ export function openExecutionDelayReport(project,items,{actor,canReview,refresh}
         root.append(fieldRow(label,button));
       };
       pick('نقش','role',Object.entries(roles).map(([id,name])=>({id,name})));
-      pick('شخص یا شرکت','contactId',[...new Map(rows.filter(({entry})=>entry.contactId)
-        .map(({entry})=>[entry.contactId,{id:entry.contactId,name:entry.contactName}])).values()]);
+      pick('شخص یا شرکت','contactId',[...new Map(rows.flatMap(({entry})=>attributedContacts(entry).map(contact=>[contact.id,contact]))).values()]);
       pick('علت','cause',[...new Set(rows.map(({entry})=>entry.reason))].map(name=>({id:name,name})));
       pick('وضعیت توقف','eligibility',Object.entries(INTERRUPTION_ELIGIBILITY).map(([id,name])=>({id,name})));
       pick('وضعیت بررسی','review',[{id:'pending',name:'در دست بررسی'},{id:'confirmed',name:'بررسی‌شده'}]);
@@ -154,14 +180,14 @@ export function openExecutionDelayReport(project,items,{actor,canReview,refresh}
           item.className='today-detail-card';
           const title=document.createElement('strong');title.textContent=path;
           const summary=document.createElement('p');
-          summary.textContent=[formatJalaliDisplay(entry.day),entry.reason,obstacleRole(entry.role),entry.contactName,
+          summary.textContent=[formatJalaliDisplay(entry.day),entry.reason,obstacleRole(entry.role),attributedContacts(entry).map(contact=>contact.name).join('، '),
             entry.resumedOn?'رفع مانع '+formatJalaliDisplay(entry.resumedOn):'',
             entry.multiday?'چندروزه':entry.durationHours==null?'تمام‌روز':entry.durationHours+' ساعت',
-            INTERRUPTION_ELIGIBILITY[entry.eligibility]||INTERRUPTION_ELIGIBILITY.pending,
+            INTERRUPTION_ELIGIBILITY[eligibilityOf(entry)],
             entry.reviewed?'اثر بر موعد: '+entry.impactDays+' روز':''].filter(Boolean).join(' · ');
           item.append(title,summary);
           appendReportPhotos(item,entry.photos);
-          if(canReview && actor?.contactId && String(source.entity.assigneeContactId)===actor.contactId){
+          if(entry.type==='execution_obstacle' && canReview && actor?.contactId && String(source.entity.assigneeContactId)===actor.contactId){
             const review=document.createElement('button');
             review.type='button';review.className='today-report-link';review.textContent='ثبت اثر بر موعد';
             const error=document.createElement('p');error.setAttribute('role','alert');
@@ -182,7 +208,9 @@ export function openExecutionDelayReport(project,items,{actor,canReview,refresh}
                 row.entry=result.entity.executionHistory.find(value=>value.id===entry.id);
                 refresh?.();paint();
               }});
-            item.append(review,eligibility,error);
+            item.append(review);
+            if(!entry.isDailyReport)item.append(eligibility);
+            item.append(error);
           }
           results.append(item);
         }
@@ -194,8 +222,8 @@ export function openExecutionDelayReport(project,items,{actor,canReview,refresh}
       const escape=value=>'"'+String(value??'').replace(/^[=+@\-\t\r\n]/,first=>"'"+first).replaceAll('"','""')+'"';
       const data=[['مسیر کار','تاریخ شروع','تاریخ ادامهٔ پیش‌بینی‌شده','تاریخ رفع مانع','علت','شرح','نقش','مخاطب','نوع بازه','ساعت','اثر بر موعد (روز)','وضعیت توقف','وضعیت بررسی'],
         ...filtered().map(({entry,path})=>[path,entry.day,entry.resumeOn,entry.resumedOn,entry.reason,entry.description,
-          obstacleRole(entry.role),entry.contactName,entry.multiday?'چندروزه':entry.durationHours==null?'تمام‌روز':'ساعتی',
-          entry.durationHours,entry.impactDays,INTERRUPTION_ELIGIBILITY[entry.eligibility]||INTERRUPTION_ELIGIBILITY.pending,entry.reviewed?'بررسی‌شده':'در دست بررسی'])];
+          obstacleRole(entry.role),attributedContacts(entry).map(contact=>contact.name).join('، '),entry.multiday?'چندروزه':entry.durationHours==null?'تمام‌روز':'ساعتی',
+          entry.durationHours,entry.impactDays,INTERRUPTION_ELIGIBILITY[eligibilityOf(entry)],entry.reviewed?'بررسی‌شده':'در دست بررسی'])];
       const url=URL.createObjectURL(new Blob(['\uFEFF',data.map(row=>row.map(escape).join(',')).join('\r\n')],{type:'text/csv;charset=utf-8'}));
       const link=document.createElement('a');link.href=url;link.download='execution-delays.csv';link.click();
       setTimeout(()=>URL.revokeObjectURL(url),1000);
@@ -204,9 +232,9 @@ export function openExecutionDelayReport(project,items,{actor,canReview,refresh}
   });
   function filtered(){
     return rows.filter(({entry})=>(!filters.role||entry.role===filters.role)
-      && (!filters.contactId||entry.contactId===filters.contactId)
+      && (!filters.contactId||attributedContacts(entry).some(contact=>contact.id===filters.contactId))
       && (!filters.cause||entry.reason===filters.cause)
-      && (!filters.eligibility||(entry.eligibility||'pending')===filters.eligibility)
+      && (!filters.eligibility||eligibilityOf(entry)===filters.eligibility)
       && (!filters.review||(entry.reviewed?'confirmed':'pending')===filters.review)
       && (!filters.from||(entry.resumedOn||(entry.multiday?tehranTodayJalali():entry.day))>=filters.from)
       && (!filters.to||entry.day<=filters.to)).sort((a,b)=>b.entry.day.localeCompare(a.entry.day));

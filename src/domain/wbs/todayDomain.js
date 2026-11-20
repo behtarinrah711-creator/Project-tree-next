@@ -9,6 +9,13 @@ export function executionInterruption(entity,day){
     || history.findLast(entry=>entry?.type==='planned_pause' && open(entry) && day<entry.resumeOn);
 }
 
+export function interruptionReportOf(entity,day){
+  return (entity?.executionHistory||[]).findLast(entry=>entry?.isDailyReport===true
+    && ['planned_pause','execution_obstacle'].includes(entry.type)
+    && entry.day<=day && (entry.day===day || ((!entry.resumedOn || day<entry.resumedOn)
+      && (entry.type!=='planned_pause' || day<entry.resumeOn))));
+}
+
 export const TODAY_MODES = Object.freeze(['overdue','today','future','pending','unscheduled']);
 
 export const START_DELAY_REASONS = Object.freeze([
@@ -158,7 +165,7 @@ export function dailyExecutionStatus(entity,day){
 export function executionItemsOnDay(items,day){
   return items.filter(({entity})=>{
     const planned=entity.scheduleStart && entity.scheduleEnd && entity.scheduleStart<=day && day<=entity.scheduleEnd;
-    return (planned && !executionInterruption(entity,day)) || (entity.executionReports||[]).some(report=>report && !report.trashed && executionReportDay(report)===day)
+    return Boolean(interruptionReportOf(entity,day)) || (planned && !executionInterruption(entity,day)) || (entity.executionReports||[]).some(report=>report && !report.trashed && executionReportDay(report)===day)
       || (entity.executionHistory||[]).some(entry=>entry?.type==='daily_status' && entry.day===day);
   });
 }
