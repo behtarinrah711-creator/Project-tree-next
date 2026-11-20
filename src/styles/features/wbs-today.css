@@ -98,6 +98,7 @@
 .wbs-today-frame .today-card-summary .today-card-activity.is-inactive{background:#9e3229;}
 .wbs-today-frame .today-card-summary button.today-progress-circle{cursor:pointer;}
 
+.sheet-body.execution-calendar{padding-inline:10px;}
 .execution-calendar .jalali-days,.execution-calendar .jalali-week{direction:rtl;}
 .execution-calendar .jalali-days button{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;height:auto;min-height:48px;padding:0;}
 .execution-calendar .jalali-days button.selected{background:transparent;color:inherit;}
@@ -114,8 +115,6 @@
 .today-detail-card{display:block;background:#fff;border:1px solid #e5ded3;border-radius:var(--wbs-frame-radius,5px);padding:10px 12px;margin:0 0 10px;color:var(--text);font-size:13px;text-decoration:none;}
 .today-detail-card h2{margin:0;font-size:14px;font-weight:700;}
 .today-detail-progress .today-progress-circle{display:inline-flex;position:relative;flex:none;vertical-align:middle;}
-.today-detail-wrap.wbs-costline-detail-row{grid-template-columns:auto minmax(0,1fr);align-items:start;gap:8px;}
-.today-detail-wrap.wbs-costline-detail-row > span:last-child{width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:start;}
 .today-detail-card > .wbs-costline-detail-row:last-child{border-bottom:0;}
 .today-detail-empty-report{margin-bottom:0;}
 .today-detail-rowline{display:flex;justify-content:space-between;align-items:center;gap:8px;}
@@ -160,9 +159,7 @@ button.today-report-circle{cursor:pointer;}
 .today-report-circle.is-inactive{border-color:#b42318;}
 .today-report-circle.is-holiday{border-color:#1565c0;}
 .today-report-circle.is-saved{color:#16763e;}
-.today-report-status-row{display:flex;align-items:center;justify-content:space-between;gap:4px;padding:8px 0;margin:0;min-width:0;border:0;font-size:clamp(9px,2.6vw,13px);}
-.today-report-status-row label{display:flex;align-items:center;gap:2px;white-space:nowrap;}
-.today-report-status-row input{margin:0;accent-color:#1565c0;}
+.today-report-status-row{display:block;padding:8px 0;margin:0;min-width:0;border:0;font-size:clamp(9px,2.6vw,13px);}
 .today-report-progress-compact{display:flex;justify-content:space-between;align-items:center;border-block:1px solid var(--divider);padding-block:4px;}
 .today-report-progress-compact .today-progress-input{background:none;border:0;color:#1565c0;text-align:left;min-height:32px;}
 .today-detail-schedule{display:grid;gap:8px;}
@@ -377,3 +374,20 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
 .execution-reject-field button{border:1px solid #dedbd5;border-radius:8px;background:#fff;padding:9px 12px;font:inherit;color:#27345a}
 .execution-reject-reason{display:grid;gap:8px;padding:14px 0;font-size:13px}
 .execution-reject-reason textarea{box-sizing:border-box;width:100%;min-height:100px;border:1px solid #dedbd5;border-radius:8px;padding:10px;font:inherit;resize:vertical}
+
+.today-report-status-buttons{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:6px;margin-top:8px;}
+.today-report-status-buttons button{min-width:0;min-height:42px;padding:4px;border:1px solid var(--wbs-frame-border,#ddd);border-radius:8px;background:#fff;color:#292724;font:inherit;}
+.today-report-status-buttons button[aria-pressed="true"]{background:#e4edff;border-color:#2157b1;color:#17499a;}
+.today-report-sheet .today-textarea{min-height:64px;box-sizing:border-box;resize:vertical;}
+@supports (field-sizing:content){
+  .today-report-sheet .today-textarea{field-sizing:content;resize:none;overflow:hidden;}
+}
+.today-report-stop-dates{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
+.today-report-stop-choice{height:auto;display:grid;gap:4px;text-align:start;}
+.today-report-stop-choice small{font-size:.85em;font-weight:400;}
+.today-card-report-actions{display:flex;flex-wrap:wrap;gap:4px;direction:rtl;}
+.today-card-report-actions .today-report-circle:disabled{background:#eee;color:#666;cursor:default;}
+.today-card-stop{border:1px solid #d6d9dd;border-radius:6px;padding:3px 10px;min-height:30px;background:#fff;color:#484848;font:inherit;font-size:11px;font-weight:700;}
+
+.today-interruption-details.wbs-costline-detail-row{grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:start;}
+.today-interruption-details > span:last-child{min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:start;}

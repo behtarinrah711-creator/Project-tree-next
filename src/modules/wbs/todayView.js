@@ -1,4 +1,5 @@
-import {INTERRUPTION_ELIGIBILITY,openExecutionDelayReport} from './executionInterruption.js';
+import {executionApproverIds} from "../../domain/wbs/workTaskModel.js";
+import {INTERRUPTION_ELIGIBILITY,openExecutionDelayReport,openExecutionInterruption} from "./executionInterruption.js";
 import {openSearchPicker} from '../../ui/searchPickerAdapter.js';
 import {openNumpadGeneric} from '../../ui/numpad.js';
 import {executionFilterTree,openExecutionBranchFilter} from './executionBranchFilter.js';
@@ -15,7 +16,7 @@ import {projectRepository} from '../../data/projectRepository.js';
 import { todayRepository } from '../../data/todayRepository.js';
 import { canWriteProjectModule, projectPermissionState } from '../roleManagement/permissionState.js';
 import { todayApi, COMMENT_MIN_LENGTH } from '../../domain/wbs/todayApi.js';
-import { collectTodayItems, collectStandaloneWorks, executionInterruption, executionWorkKey, executionReportDay, dailyExecutionStatus, DAILY_EXECUTION_LABELS, contractorForItem, executionStatus, itemsForMode, jalaliDayNumber, remainingLabel, TODAY_MODES, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
+import { collectTodayItems, collectStandaloneWorks, executionInterruption, interruptionReportOf, executionWorkKey, executionReportDay, dailyExecutionStatus, DAILY_EXECUTION_LABELS, contractorForItem, executionStatus, itemsForMode, jalaliDayNumber, remainingLabel, TODAY_MODES, tehranTodayJalali, timeState } from '../../domain/wbs/todayDomain.js';
 import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { currentExecutionActor, isExecutionAssignee } from './executionActor.js';
@@ -50,10 +51,9 @@ function formatScheduleEndpoint(value){
 function formatMoment(value){ return value ? new Intl.DateTimeFormat('fa-IR-u-ca-persian', { timeZone:'Asia/Tehran', year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }).format(new Date(value)) : ''; }
 function reportsOf(entity){ return (entity.executionReports || []).filter(report => report && !report.trashed).slice().reverse(); }
 function commentsOf(entity){ return (entity.executionComments || []).filter(comment => comment && !comment.trashed).slice().sort((a,b) => Number(b.createdAt) - Number(a.createdAt)); }
-function detailRow(documentRef, label, value, {wrap=false}={}){
+function detailRow(documentRef, label, value){
   const row = documentRef.createElement('div');
   row.className = 'wbs-costline-detail-row';
-  if(wrap)row.classList.add('today-detail-wrap');
   const name = documentRef.createElement('span');
   if(label instanceof Node) name.appendChild(label);
   else name.textContent = label;
@@ -284,7 +284,7 @@ function renderExecutionReportCard(documentRef,entity,day,{historical=false}={})
   if(historical){
     const status=dailyExecutionStatus(entity,day);
     reportCard.append(detailRow(documentRef,'وضعیت کار',DAILY_EXECUTION_LABELS[status.status]||'نامشخص'));
-    if(status.reason)reportCard.append(detailRow(documentRef,'دلیل',[status.reason,status.description].filter(Boolean).join(' · '),{wrap:true}));
+    if(status.reason)reportCard.append(detailRow(documentRef,'دلیل',[status.reason,status.description].filter(Boolean).join(' · ')));
   }
   return {reportCard,release};
 }
@@ -312,7 +312,7 @@ function previousExecutionDays(documentRef,item,day,refresh,editContext){
       }
       for(const entry of events.filter(value=>value.day===date)){
         const label=entry.type==='planned_pause'?'انتظار':entry.type==='execution_obstacle'?(entry.multiday?'متوقف':'مانع اجرا'):DAILY_EXECUTION_LABELS[entry.status];
-        section.append(detailRow(documentRef,label,[entry.reason,entry.description,entry.resumeOn?formatDate(entry.resumeOn):''].filter(Boolean).join(' · '),{wrap:true}));
+        section.append(detailRow(documentRef,label,[entry.reason,entry.description,entry.resumeOn?formatDate(entry.resumeOn):''].filter(Boolean).join(' · ')));
         appendReportPhotos(section,entry.photos);
       }
       const notes=comments.filter(comment=>executionReportDay(comment)===date);
@@ -354,12 +354,12 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
     schedule.append(timing.bar,detailRow(documentRef,'شروع '+formatDate(entity.scheduleStart),'پایان '+formatDate(entity.scheduleEnd)));
   }
   const assignee=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.assigneeContactId||''));
-  const approver=(project.contacts||[]).find(contact=>String(contact.id)===String(entity.approvalContactId||''));
+  const approvers=(project.contacts||[]).filter(contact=>executionApproverIds(entity).includes(String(contact.id)));
   const contractor=contractorForItem(project,item).contact;
   summary.append(detailRow(documentRef,'مسئول کار',assignee?contactName(assignee):'—'),
-    detailRow(documentRef,'مسئول تأیید',approver?contactName(approver):'—'));
+    detailRow(documentRef,'مسئول تأیید',approvers.map(contactName).join('، ')||'—'));
   if(contractor)summary.append(detailRow(documentRef,'پیمانکار',contactName(contractor)));
-  if(current.reason)summary.append(detailRow(documentRef,'دلیل',[current.reason,current.description].filter(Boolean).join(' · '),{wrap:true}));
+  if(current.reason)summary.append(detailRow(documentRef,'دلیل',[current.reason,current.description].filter(Boolean).join(' · ')));
   root.append(schedule,progress,summary);
   if(item.kind==='standalone' && entity.oddJobType){
     const expense=detailCard(documentRef);
@@ -379,7 +379,7 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
     pending.textContent='در انتظار تأیید';
     root.appendChild(pending);
   }
-  const interruption=executionInterruption(entity,day);
+  const interruption=interruptionReportOf(entity,day)||executionInterruption(entity,day);
   const upcoming=(entity.executionHistory||[]).filter(entry=>entry?.type==='planned_pause' && !entry.resumedOn && entry.day>day)
     .sort((a,b)=>a.day.localeCompare(b.day));
   const latestDate=reportsOf(entity).map(executionReportDay).filter(date=>date && date<=day).sort().at(-1);
@@ -390,13 +390,15 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
   if(entry){
     const card=detailCard(documentRef);
     const heading=documentRef.createElement('h2');
-    heading.textContent='آخرین وضعیت';
+    heading.textContent=entry.isDailyReport?'گزارش توقف':'آخرین وضعیت';
     const label=entry.type==='planned_pause'?'انتظار':entry.multiday?'متوقف':'مانع اجرا';
-    card.append(heading,detailRow(documentRef,label,
+    const details=detailRow(documentRef,label,
       ['شروع '+formatDate(entry.day),entry.resumeOn?'ادامه '+formatDate(entry.resumeOn):'',entry.reason,entry.description]
-        .filter(Boolean).join(' · '),{wrap:true}));
+        .filter(Boolean).join(' · '));
+    details.classList.add('today-interruption-details');
+    card.append(heading,details);
     if(entry.type==='execution_obstacle')card.append(detailRow(documentRef,'وضعیت مجاز بودن',
-      INTERRUPTION_ELIGIBILITY[entry.eligibility]||INTERRUPTION_ELIGIBILITY.pending));
+      INTERRUPTION_ELIGIBILITY[entry.isDailyReport?'ineligible':entry.eligibility]||INTERRUPTION_ELIGIBILITY.pending));
     appendReportPhotos(card,entry.photos);
     root.append(card);
   }else if(latest){
@@ -546,37 +548,51 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   heading.onclick=openDetails;
   const current=dailyExecutionStatus(entity,today);
   const status=current.reasonId==='officialHoliday'?'holiday':current.status;
+  const activeStop=executionInterruption(entity,today);
+  const stopReport=interruptionReportOf(entity,today)||activeStop;
   const saved=!!todayReportOf(entity,today);
-  const canReport=!approval && today===tehranTodayJalali() && canWriteProjectModule(project.id,'execution:today')
-    && isExecutionAssignee(entity,currentExecutionActor(project)) && !['approved','pending_approval'].includes(executionStatus(entity));
-  const report=documentRef.createElement(canReport?'button':'span');
+  const canEditToday=!approval && today===tehranTodayJalali() && canWriteProjectModule(project.id,'execution:today');
+  const actor=canEditToday?currentExecutionActor(project):null;
+  const canReport=canEditToday && isExecutionAssignee(entity,actor) && !['approved','pending_approval'].includes(executionStatus(entity));
+  const report=documentRef.createElement(canReport || stopReport?'button':'span');
   report.className='today-report-circle is-'+status+(saved?' is-saved':'');
-  report.innerHTML='گزارش <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6m-6 4h6"/></svg>';
-  report.setAttribute('aria-label',(status==='holiday'?'تعطیل رسمی':DAILY_EXECUTION_LABELS[status])+'، '+(saved?'گزارش ثبت شده':'بدون گزارش'));
+  report.innerHTML='<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6m-6 4h6"/></svg> گزارش';
+  report.setAttribute('aria-label',stopReport?'گزارش این روز در توقف ثبت شده است':
+    (status==='holiday'?'تعطیل رسمی':DAILY_EXECUTION_LABELS[status])+'، '+(saved?'گزارش ثبت شده':'بدون گزارش'));
+  if(report.tagName==='BUTTON')report.type='button';
+  if(stopReport){report.disabled=true;report.title='گزارش این روز در توقف ثبت شده است';}
   report.onclick=event=>{
     event.stopPropagation();
-    if(!canReport)return;
-    const actor=currentExecutionActor(project);
-    const interruption=executionInterruption(entity,today);
-    if(interruption){
-      openWbsSheet({title:'گزارش کار متوقف‌شده',showSave:false,body(root){
+    if(!canReport || stopReport)return;
+    openDailyExecutionReport({projectId:project.id,item,actor,day:today,statusControls:true,
+      onChanged,onReturn:returnToCalendar,onSubmitted(updated){if(item.kind==='standalone')standaloneMode='pending';else activeMode=timeState(updated,tehranTodayJalali());}});
+  };
+  const stop=linkButton(documentRef,'today-card-stop',stopReport?'مشاهدهٔ توقف':'ثبت توقف');
+  stop.onclick=event=>{
+    event.stopPropagation();
+    if(!stopReport){openExecutionInterruption(project,item,actor,onChanged);return;}
+    openWbsSheet({title:stopReport.type==='planned_pause'?'توقف مجاز':'توقف غیرمجاز',
+      historyKey:'execution-stop-report:'+item.id,showSave:false,body(root){
+        for(const text of [stopReport.reason,stopReport.description]){
+          const line=documentRef.createElement('p');
+          line.textContent=text||'';root.append(line);
+        }
+        root.append(detailRow(documentRef,'تاریخ شروع توقف',formatDate(stopReport.day)));
+        if(stopReport.resumeOn)root.append(detailRow(documentRef,'تاریخ ادامه',formatDate(stopReport.resumeOn)));
+        if(stopReport.attributedContacts?.length)root.append(detailRow(documentRef,'طرف‌های منتسب',stopReport.attributedContacts.map(person=>person.name).join('، ')));
+        appendReportPhotos(root,stopReport.photos);
+        if(!activeStop || !canReport)return;
         const resume=linkButton(documentRef,'wbs-input','ازسرگیری کار');
         const feedback=documentRef.createElement('p');
         feedback.setAttribute('role','alert');
         resume.onclick=()=>{
-          const result=todayApi.saveInterruption(project.id,refOf(item),{id:interruption.id,resume:true},actor);
+          const result=todayApi.saveInterruption(project.id,refOf(item),{id:activeStop.id,resume:true},actor);
           if(!result.ok){feedback.textContent='ازسرگیری ثبت نشد. دسترسی و وضعیت کار را بررسی کنید.';return;}
-          closeWbsSheet();
-          onChanged?.();
+          closeWbsSheet();onChanged?.();
         };
         root.append(resume,feedback);
       }});
-      return;
-    }
-    openDailyExecutionReport({projectId:project.id,item,actor,day:today,statusControls:true,
-      onChanged,onReturn:returnToCalendar,onSubmitted(updated){if(item.kind==='standalone')standaloneMode='pending';else activeMode=timeState(updated,tehranTodayJalali());}});
   };
-  if(canReport)report.type='button';
   const canChangeProgress=canReport && !executionInterruption(entity,today);
   const progress=progressCircle(documentRef,entity,{summary:{},onClick:canChangeProgress?event=>{
     event.stopPropagation();
@@ -658,7 +674,11 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   }
   const reportMeta=documentRef.createElement('div');
   reportMeta.className='today-card-report-meta';
-  reportMeta.append(report);
+  const reportActions=documentRef.createElement('div');
+  reportActions.className='today-card-report-actions';
+  if(stopReport || (canReport && entity.type!=='خرید'))reportActions.append(stop);
+  reportActions.append(report);
+  reportMeta.append(reportActions);
   const latest = latestActivity(entity);
   if (latest) {
     const textEl = documentRef.createElement('span');
@@ -743,14 +763,14 @@ function relativeTime(ts) {
 
 const executionFilterFields=[
   ['assignee','مسئول پیگیری',(_project,item)=>item.entity.assigneeContactId],
-  ['approver','مسئول تأیید',(_project,item)=>item.entity.approvalContactId],
+  ['approver','مسئول تأیید',(_project,item)=>executionApproverIds(item.entity)],
   ['contractor','پیمانکار',(project,item)=>contractorForItem(project,item).contact?.id],
   ['priority','اهمیت',(_project,item)=>item.entity.priority || 'normal'],
 ];
 
 export function filterExecutionCards(project,items,filters){
   return items.filter(item=>executionFilterFields.every(([key,,value])=>
-    !filters[key] || String(value(project,item)??'')===filters[key]));
+    !filters[key] || [value(project,item)].flat().map(String).includes(filters[key])));
 }
 
 function openExecutionDetailsFilter(documentRef,project,items,onApply){
@@ -841,8 +861,7 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
   if(!standalone)header.className+=' today-task-toolbar-stacked';
   tabs.setAttribute('role','tablist');
   tabs.setAttribute('aria-label','دسته‌های لیست کارها');
-  const modes=['today','waiting','blocked',...TODAY_MODES.filter(mode=>mode!=='today')];
-  for(const mode of (standalone?modes:['all',...modes])){
+  for(const mode of (standalone?[...TODAY_MODES,'waiting','blocked']:['all',...TODAY_MODES,'waiting','blocked'])){
     const button=documentRef.createElement('button');
     button.type='button';
     button.className='wbs-tree-mode-tab'+(mode===selectedMode?' active':'');
@@ -928,5 +947,13 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
   timer.unref?.();
   documentRef.addEventListener('visibilitychange',refreshDate);
   frame.append(header,body);
+  documentRef.defaultView?.requestAnimationFrame(()=>{
+    const selected=tabs.querySelector('[aria-selected="true"]');
+    if(!frame.isConnected || !selected || tabs.scrollWidth<=tabs.clientWidth)return;
+    const strip=tabs.getBoundingClientRect();
+    const tab=selected.getBoundingClientRect();
+    tabs.scrollLeft+=(tab.left+tab.width/2)-(strip.left+strip.width/2);
+  });
   return frame;
 }
+
