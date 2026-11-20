@@ -114,6 +114,8 @@
 .today-detail-card{display:block;background:#fff;border:1px solid #e5ded3;border-radius:var(--wbs-frame-radius,5px);padding:10px 12px;margin:0 0 10px;color:var(--text);font-size:13px;text-decoration:none;}
 .today-detail-card h2{margin:0;font-size:14px;font-weight:700;}
 .today-detail-progress .today-progress-circle{display:inline-flex;position:relative;flex:none;vertical-align:middle;}
+.today-detail-wrap.wbs-costline-detail-row{grid-template-columns:auto minmax(0,1fr);align-items:start;gap:8px;}
+.today-detail-wrap.wbs-costline-detail-row > span:last-child{width:100%;min-width:0;white-space:normal;overflow-wrap:anywhere;text-align:start;}
 .today-detail-card > .wbs-costline-detail-row:last-child{border-bottom:0;}
 .today-detail-empty-report{margin-bottom:0;}
 .today-detail-rowline{display:flex;justify-content:space-between;align-items:center;gap:8px;}

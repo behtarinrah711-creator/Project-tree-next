@@ -50,9 +50,10 @@ function formatScheduleEndpoint(value){
 function formatMoment(value){ return value ? new Intl.DateTimeFormat('fa-IR-u-ca-persian', { timeZone:'Asia/Tehran', year:'numeric', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }).format(new Date(value)) : ''; }
 function reportsOf(entity){ return (entity.executionReports || []).filter(report => report && !report.trashed).slice().reverse(); }
 function commentsOf(entity){ return (entity.executionComments || []).filter(comment => comment && !comment.trashed).slice().sort((a,b) => Number(b.createdAt) - Number(a.createdAt)); }
-function detailRow(documentRef, label, value){
+function detailRow(documentRef, label, value, {wrap=false}={}){
   const row = documentRef.createElement('div');
   row.className = 'wbs-costline-detail-row';
+  if(wrap)row.classList.add('today-detail-wrap');
   const name = documentRef.createElement('span');
   if(label instanceof Node) name.appendChild(label);
   else name.textContent = label;
@@ -283,7 +284,7 @@ function renderExecutionReportCard(documentRef,entity,day,{historical=false}={})
   if(historical){
     const status=dailyExecutionStatus(entity,day);
     reportCard.append(detailRow(documentRef,'وضعیت کار',DAILY_EXECUTION_LABELS[status.status]||'نامشخص'));
-    if(status.reason)reportCard.append(detailRow(documentRef,'دلیل',[status.reason,status.description].filter(Boolean).join(' · ')));
+    if(status.reason)reportCard.append(detailRow(documentRef,'دلیل',[status.reason,status.description].filter(Boolean).join(' · '),{wrap:true}));
   }
   return {reportCard,release};
 }
@@ -311,7 +312,7 @@ function previousExecutionDays(documentRef,item,day,refresh,editContext){
       }
       for(const entry of events.filter(value=>value.day===date)){
         const label=entry.type==='planned_pause'?'انتظار':entry.type==='execution_obstacle'?(entry.multiday?'متوقف':'مانع اجرا'):DAILY_EXECUTION_LABELS[entry.status];
-        section.append(detailRow(documentRef,label,[entry.reason,entry.description,entry.resumeOn?formatDate(entry.resumeOn):''].filter(Boolean).join(' · ')));
+        section.append(detailRow(documentRef,label,[entry.reason,entry.description,entry.resumeOn?formatDate(entry.resumeOn):''].filter(Boolean).join(' · '),{wrap:true}));
         appendReportPhotos(section,entry.photos);
       }
       const notes=comments.filter(comment=>executionReportDay(comment)===date);
@@ -358,7 +359,7 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
   summary.append(detailRow(documentRef,'مسئول کار',assignee?contactName(assignee):'—'),
     detailRow(documentRef,'مسئول تأیید',approver?contactName(approver):'—'));
   if(contractor)summary.append(detailRow(documentRef,'پیمانکار',contactName(contractor)));
-  if(current.reason)summary.append(detailRow(documentRef,'دلیل',[current.reason,current.description].filter(Boolean).join(' · ')));
+  if(current.reason)summary.append(detailRow(documentRef,'دلیل',[current.reason,current.description].filter(Boolean).join(' · '),{wrap:true}));
   root.append(schedule,progress,summary);
   if(item.kind==='standalone' && entity.oddJobType){
     const expense=detailCard(documentRef);
@@ -392,8 +393,10 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
     heading.textContent='آخرین وضعیت';
     const label=entry.type==='planned_pause'?'انتظار':entry.multiday?'متوقف':'مانع اجرا';
     card.append(heading,detailRow(documentRef,label,
-      ['شروع '+formatDate(entry.day),entry.resumeOn?'ادامه '+formatDate(entry.resumeOn):'',entry.reason,entry.description,entry.type==='execution_obstacle'?(INTERRUPTION_ELIGIBILITY[entry.eligibility]||INTERRUPTION_ELIGIBILITY.pending):'']
-        .filter(Boolean).join(' · ')));
+      ['شروع '+formatDate(entry.day),entry.resumeOn?'ادامه '+formatDate(entry.resumeOn):'',entry.reason,entry.description]
+        .filter(Boolean).join(' · '),{wrap:true}));
+    if(entry.type==='execution_obstacle')card.append(detailRow(documentRef,'وضعیت مجاز بودن',
+      INTERRUPTION_ELIGIBILITY[entry.eligibility]||INTERRUPTION_ELIGIBILITY.pending));
     appendReportPhotos(card,entry.photos);
     root.append(card);
   }else if(latest){
@@ -838,7 +841,8 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
   if(!standalone)header.className+=' today-task-toolbar-stacked';
   tabs.setAttribute('role','tablist');
   tabs.setAttribute('aria-label','دسته‌های لیست کارها');
-  for(const mode of (standalone?[...TODAY_MODES,'waiting','blocked']:['all',...TODAY_MODES,'waiting','blocked'])){
+  const modes=['today','waiting','blocked',...TODAY_MODES.filter(mode=>mode!=='today')];
+  for(const mode of (standalone?modes:['all',...modes])){
     const button=documentRef.createElement('button');
     button.type='button';
     button.className='wbs-tree-mode-tab'+(mode===selectedMode?' active':'');
