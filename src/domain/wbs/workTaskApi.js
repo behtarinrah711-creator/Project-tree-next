@@ -5,7 +5,7 @@ import { contactRepository } from '../../data/contactRepository.js';
 import { workTaskRepository } from '../../data/workTaskRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
 import { FOLLOW_UP_WORK_TYPE, ODD_JOB_TYPES, WORK_TYPES } from './normalize.js';
-import { TASK_PRIORITIES, activeWorkTasks, normalizeWorkTask, workTaskProgress } from './workTaskModel.js';
+import { TASK_PRIORITIES, activeWorkTasks, executionApproverIds, normalizeWorkTask, workTaskProgress } from './workTaskModel.js';
 import { validatePredecessors } from './scheduling.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { cardFundingKey, placeCardFunding } from './fundingReceipts.js';
@@ -30,7 +30,8 @@ function validate(projectId, workId, input){
   const assigneeContactId = String(input?.assigneeContactId || '');
   const counterpartyContactId = String(input?.counterpartyContactId || '');
   const contractorContactId = String(input?.contractorContactId || '');
-  const approvalContactId = String(input?.approvalContactId || '');
+  const executionApproverContactIds=executionApproverIds(input);
+  const approvalContactId=executionApproverContactIds[0]||'';
   const activityId = input.type === FOLLOW_UP_WORK_TYPE ? '' : String(input?.activityId || '');
   const contractTemplateId=String(input?.contractTemplateId || '');
   if(input.hasContract && contractTemplateId && !(projectRepository.find(projectId)?.contractTemplates || []).some(t=>!t.trashed && String(t.id)===contractTemplateId)) return {ok:false,code:'contract_template'};
@@ -43,7 +44,7 @@ function validate(projectId, workId, input){
   if(assigneeContactId && !contactRepository.get(projectId, assigneeContactId)) return { ok:false, code:'assignee' };
   if(counterpartyContactId && !contactRepository.get(projectId, counterpartyContactId)) return { ok:false, code:'counterparty' };
   if(contractorContactId && !contactRepository.get(projectId, contractorContactId)) return { ok:false, code:'contractor' };
-  if(approvalContactId && !contactRepository.get(projectId, approvalContactId)) return { ok:false, code:'approver' };
+  if(executionApproverContactIds.some(id=>{const contact=contactRepository.get(projectId,id);return !contact || contact.trashed;})) return { ok:false, code:'approver' };
   if(activityId && !activityRepository.get(projectId, activityId)) return { ok:false, code:'activity' };
   if(input.scheduleMode==='auto' && (!Number.isInteger(input.scheduleDuration)||input.scheduleDuration<1
     || !input.scheduleStart || !input.scheduleEnd || !input.predecessorIds?.length))return {ok:false,code:'automatic_schedule'};
@@ -53,7 +54,7 @@ function validate(projectId, workId, input){
     contractTemplateId:input.hasContract ? contractTemplateId : '',
     activityId, activityIds:activityId ? [activityId] : [], activities:activityId ? [activityId] : [],
     requiresManagementApproval:Boolean(approvalContactId),
-    approvalContactId, contractApproverContactIds:input.hasContract?contractApproverContactIds:[],
+    approvalContactId, ...(Array.isArray(input.executionApproverContactIds)?{executionApproverContactIds}:{}), contractApproverContactIds:input.hasContract?contractApproverContactIds:[],
   } };
 }
 
@@ -180,6 +181,9 @@ export const workTaskApi = {
   update(projectId, workId, taskId, patch, clock = Date.now){
     const current = workTaskRepository.get(projectId, workId, taskId);
     if(!current) return { ok:false, code:'not_found' };
+    if(current.completionState==='pending_approval' && Array.isArray(patch.executionApproverContactIds)
+      && JSON.stringify(executionApproverIds(current))!==JSON.stringify(executionApproverIds(patch)))
+      return {ok:false,code:'approver'};
     const linkedContract=linkedWorkTaskContract(projectId,workId,taskId);
     const currentTemplateId=String(current.contractTemplateId || linkedContract?.templateId || '');
     const next = { ...current, contractTemplateId:currentTemplateId, ...patch };

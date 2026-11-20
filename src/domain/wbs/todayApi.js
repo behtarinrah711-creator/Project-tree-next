@@ -1,5 +1,6 @@
 import {toEnglishDigits} from '../../ui/digits.js';
 import {projectRepository} from '../../data/projectRepository.js';
+import {executionApproverIds,pendingExecutionApproverIds} from './workTaskModel.js';
 import {approveExecutionEntity} from './executionApproval.js';
 import { canWriteProjectModule } from '../../modules/roleManagement/permissionState.js';
 import { uid } from '../../data/projectFactories.js';
@@ -41,7 +42,7 @@ function mutate(projectId, ref, updater, { completion } = {}){
 }
 
 function completeExecution(entity,ref,by,at,day){
-  const immediate = !entity.approvalContactId;
+  const immediate = !executionApproverIds(entity).length;
   const status = immediate ? 'approved' : 'pending_approval';
   const workProgress = immediate
     ? {progress:100,status:'completed'}
@@ -271,7 +272,7 @@ export const todayApi = {
     const day = tehranTodayJalali(new Date(at));
     const result = mutate(projectId, ref, entity => entity.actualStart
       ? completeExecution(entity,ref,by,at,day) : entity);
-    if(result.ok && ref.kind === 'task') workTaskApi.setCompleted(projectId, ref.workId, ref.id, Boolean(result.entity.actualStart && !result.entity.approvalContactId));
+    if(result.ok && ref.kind === 'task') workTaskApi.setCompleted(projectId, ref.workId, ref.id, Boolean(result.entity.actualStart && !executionApproverIds(result.entity).length));
     return result;
   },
 
@@ -279,7 +280,9 @@ export const todayApi = {
     const at = clock(); const by = actorValue(actor);
     const entity=todayRepository.get(projectId,ref);
     if(ref.kind==='standalone' && entity?.oddJobType && (entity.expenseApprovalStatus!=='pending' || !by.contactId || entity.expenseApproverContactId!==by.contactId))return {ok:false,code:'forbidden'};
-    return mutate(projectId,ref,entity=>approveExecutionEntity(entity,ref.kind,by,at),{completion:true});
+    if(executionApproverIds(entity).length>1 && (entity.completionState!=='pending_approval'
+      || !pendingExecutionApproverIds(entity).includes(by.contactId)))return {ok:false,code:'forbidden'};
+    return mutate(projectId,ref,entity=>approveExecutionEntity(entity,ref.kind,by,at),{completion:saved=>saved.completed||undefined});
   },
 
   cancelApproval(projectId, ref, actor, clock = Date.now){
@@ -374,3 +377,4 @@ export const todayApi = {
     }), { completion:false });
   },
 };
+
