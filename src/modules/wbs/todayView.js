@@ -579,6 +579,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
       onChanged,onReturn:returnToCalendar,onSubmitted(updated){if(item.kind==='standalone')standaloneMode='pending';else activeMode=timeState(updated,tehranTodayJalali());}});
   };
   const stop=linkButton(documentRef,'today-card-stop',stopReport?'مشاهدهٔ توقف':'+ ثبت توقف');
+  if(!stopReport)stop.setAttribute('aria-label','ثبت توقف');
   stop.onclick=event=>{
     event.stopPropagation();
     if(!stopReport){openExecutionInterruption(project,item,actor,onChanged,returnToCalendar);return;}
@@ -716,6 +717,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   if(stopReport || (canReport && entity.type!=='خرید'))reportActions.append(stop);
   if(stopReport && canReport && entity.type!=='خرید'){
     const addStop=linkButton(documentRef,'today-card-stop','+ ثبت توقف');
+    addStop.setAttribute('aria-label','ثبت توقف');
     addStop.onclick=event=>{
       event.stopPropagation();
       openExecutionInterruption(project,item,actor,onChanged,returnToCalendar,{plannedOnly:true});
