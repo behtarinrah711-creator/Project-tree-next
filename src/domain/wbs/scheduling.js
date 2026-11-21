@@ -271,7 +271,7 @@ export function validatePredecessors(items, consumerId, selectedIds){
   };
   candidates.filter(row => row.kind === 'stage').forEach(row => descendants.set(row.id, collect(row.item)));
   if(selected.some(id => selected.some(other => id !== other && descendants.get(id)?.has(other)))) return { ok:false, code:'duplicate_scope' };
-  const edges = new Map(candidates.map(row => [row.id, [...(row.item.predecessorIds || [])].map(String)]));
+  const edges = new Map(candidates.map(row => [row.id, [...dependencyRows(row.item).map(link=>link.predecessorId), ...(row.item.executionHistory||[]).filter(entry=>entry?.type==='planned_pause' && !entry.resumedOn && entry.resumePredecessorId).map(entry=>String(entry.resumePredecessorId))]]));
   edges.set(String(consumerId), selected);
   const visiting = new Set(); const visited = new Set();
   const cycle = id => {
@@ -422,29 +422,71 @@ export function rescheduleAutomaticTasks(project){
 }
 
 
-export function resumeDayFromPredecessor(range,lagDays=0){
-  return range && Number.isInteger(lagDays)?range.end+1+lagDays:null;
+export function resumeDayFromPredecessor(range,lagDays=0,type='FS',duration=1){
+  if(!range || !Number.isInteger(lagDays))return null;
+  return range.start+dependencyOffset({type,lagDays},range.end-range.start+1,duration);
 }
 
-export function plannedPauseSegments(item,range,lookup){
-  if(!range)return [];
+export function plannedPauseProjection(item,range,lookup){
+  const segments=[], windows=new Map();
+  if(!range)return {segments,windows};
   const pauses=(item.executionHistory||[])
     .filter(entry=>entry?.type==='planned_pause' && entry.multiday)
     .slice().sort((a,b)=>a.day.localeCompare(b.day));
   let start=range.start,end=range.end;
-  const segments=[];
   for(const pause of pauses){
     const stop=jalaliDayNumber(pause.day);
+    if(stop===null || stop<start || stop>end)continue;
     const predecessor=pause.resumePredecessorId?lookup(pause.resumePredecessorId):null;
     const plannedResume=jalaliDayNumber(pause.resumeOn);
+    const remaining=pause.resumeDurationDays??end-stop+1;
+    const bound=resumeDayFromPredecessor(predecessor,pause.resumeLagDays,pause.resumeRelationType,remaining);
     const resume=jalaliDayNumber(pause.resumedOn)
       ?? (pause.resumeMode==='auto'
-        ? (resumeDayFromPredecessor(predecessor,pause.resumeLagDays) ?? plannedResume)
+        ? (bound===null?plannedResume:pause.resumeRelationType?Math.max(stop+1,bound):bound)
         : !pause.resumeMode && predecessor?Math.max(plannedResume??stop+1,predecessor.end+1):plannedResume);
-    if(stop===null || resume===null || resume<=Math.max(start,stop) || stop>end)continue;
+    if(resume===null || resume<=stop)continue;
     if(stop>start)segments.push({start,end:stop-1});
-    end+=resume-Math.max(start,stop);
     start=resume;
+    end=resume+remaining-1;
+    windows.set(pause,{stop,resume,remaining});
   }
-  return [...segments,{start,end}];
+  segments.push({start,end});
+  return {segments,windows};
+}
+
+export function plannedPauseSegments(item,range,lookup){
+  return plannedPauseProjection(item,range,lookup).segments;
+}
+
+export function interruptionScheduleLookup(items){
+  const rows=new Map(flattenDependencyCandidates(items).map(row=>[row.id,row]));
+  const cache=new Map(), visiting=new Set();
+  function lookup(id){
+    if(cache.has(id))return cache.get(id);
+    const row=rows.get(id);
+    if(!row || visiting.has(id))return null;
+    visiting.add(id);
+    const range=scheduleRangeOf({...row.item,kind:row.kind});
+    const segments=plannedPauseSegments(row.item,range,lookup);
+    const result=segments.length?{start:segments[0].start,end:segments.at(-1).end}:range;
+    visiting.delete(id);
+    cache.set(id,result);
+    return result;
+  }
+  return lookup;
+}
+
+export function previewPlannedPause(item,range,pause,lookup){
+  const history=(item.executionHistory||[]).filter(entry=>!pause.id || entry.id!==pause.id);
+  const projection=plannedPauseProjection({...item,executionHistory:[...history,pause]},range,lookup);
+  const window=projection.windows.get(pause);
+  const original=plannedPauseProjection(item,range,lookup).windows;
+  const conflicts=history.some(entry=>{
+    if(entry?.type!=='planned_pause' || !entry.multiday)return false;
+    if(entry.day===pause.day)return true;
+    if(projection.windows.has(entry))return false;
+    return original.has(entry);
+  });
+  return {window,conflicts,end:projection.segments.at(-1)?.end};
 }
