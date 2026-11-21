@@ -422,6 +422,10 @@ export function rescheduleAutomaticTasks(project){
 }
 
 
+export function resumeDayFromPredecessor(range,lagDays=0){
+  return range && Number.isInteger(lagDays)?range.end+1+lagDays:null;
+}
+
 export function plannedPauseSegments(item,range,lookup){
   if(!range)return [];
   const pauses=(item.executionHistory||[])
@@ -434,7 +438,9 @@ export function plannedPauseSegments(item,range,lookup){
     const predecessor=pause.resumePredecessorId?lookup(pause.resumePredecessorId):null;
     const plannedResume=jalaliDayNumber(pause.resumeOn);
     const resume=jalaliDayNumber(pause.resumedOn)
-      ?? (predecessor?Math.max(plannedResume??stop+1,predecessor.end+1):plannedResume);
+      ?? (pause.resumeMode==='auto'
+        ? (resumeDayFromPredecessor(predecessor,pause.resumeLagDays) ?? plannedResume)
+        : !pause.resumeMode && predecessor?Math.max(plannedResume??stop+1,predecessor.end+1):plannedResume);
     if(stop===null || resume===null || resume<=Math.max(start,stop) || stop>end)continue;
     if(stop>start)segments.push({start,end:stop-1});
     end+=resume-Math.max(start,stop);

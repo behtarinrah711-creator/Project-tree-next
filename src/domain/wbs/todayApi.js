@@ -1,4 +1,4 @@
-import {flattenDependencyCandidates,validatePredecessors} from './scheduling.js';
+import {flattenDependencyCandidates,jalaliDayNumber,resumeDayFromPredecessor,scheduleDate,scheduleRangeOf,validatePredecessors} from './scheduling.js';
 import {toEnglishDigits} from '../../ui/digits.js';
 import {projectRepository} from '../../data/projectRepository.js';
 import {executionApproverIds,pendingExecutionApproverIds} from './workTaskModel.js';
@@ -83,9 +83,15 @@ export const todayApi = {
     if(draft.resume){
       if(!previous || previous.resumedOn || previous.day>day)return {ok:false,code:'invalid_interruption'};
       if(previous.type==='planned_pause' && previous.resumePredecessorId){
-        const predecessor=flattenDependencyCandidates(projectRepository.find(projectId)?.tasks)
-          .find(row=>row.id===previous.resumePredecessorId)?.item;
-        if(!predecessor || !(predecessor.completed || predecessor.done || predecessor.completionState==='approved') || day<previous.resumeOn)
+        const source=flattenDependencyCandidates(projectRepository.find(projectId)?.tasks)
+          .find(row=>row.id===previous.resumePredecessorId);
+        const predecessor=source?.item;
+        const auto=previous.resumeMode==='auto';
+        const range=source?scheduleRangeOf({...source.item,kind:source.kind}):null;
+        const earliest=auto?resumeDayFromPredecessor(range,previous.resumeLagDays):jalaliDayNumber(previous.resumeOn);
+        const needsCompletion=!auto || previous.resumeLagDays>=0;
+        if(!predecessor || earliest===null || jalaliDayNumber(day)<earliest ||
+          (needsCompletion && !(predecessor.completed || predecessor.done || predecessor.completionState==='approved')))
           return {ok:false,code:'resume_predecessor_pending'};
       }
       return mutate(projectId,ref,current=>({...current,returnedToTodayOn:day,updatedAt:at,
@@ -108,13 +114,23 @@ export const todayApi = {
     const normalizeDate=value=>toEnglishDigits(String(value||'').trim())
       .replace(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/,(_,year,month,date)=>[year,month.padStart(2,'0'),date.padStart(2,'0')].join('/'));
     const start=previous?.day||normalizeDate(draft.day)||day;
-    const resumeOn=normalizeDate(draft.resumeOn);
+    let resumeOn=normalizeDate(draft.resumeOn);
     const resumePredecessorId=planned?String(draft.resumePredecessorId??previous?.resumePredecessorId??''):'';
+    const resumeMode=planned?(draft.resumeMode??previous?.resumeMode??''):'';
+    const resumeLagDays=resumeMode==='auto'?Number(draft.resumeLagDays??previous?.resumeLagDays??0):0;
+    if(resumeMode && !['manual','auto'].includes(resumeMode))return {ok:false,code:'invalid_resume'};
     if(resumePredecessorId){
       const items=projectRepository.find(projectId)?.tasks;
       const links=[...new Set([...(entity.predecessorIds||[]),resumePredecessorId])];
       if(resumePredecessorId===String(ref.workId) || !validatePredecessors(items,ref.id,links).ok)return {ok:false,code:'invalid_resume_predecessor'};
-    }
+      if(resumeMode==='auto'){
+        const source=flattenDependencyCandidates(items).find(row=>row.id===resumePredecessorId);
+        const range=source?scheduleRangeOf({...source.item,kind:source.kind}):null;
+        const calculated=resumeDayFromPredecessor(range,resumeLagDays);
+        if(calculated===null || Math.abs(resumeLagDays)>99999)return {ok:false,code:'invalid_resume'};
+        resumeOn=scheduleDate(calculated);
+      }
+    }else if(resumeMode==='auto')return {ok:false,code:'invalid_resume_predecessor'};
     const reason=String(draft.reason||'').trim(),description=String(draft.description||'').trim();
     const contact=(projectRepository.find(projectId)?.contacts||[]).find(person=>person && !person.trashed && String(person.id)===draft.contactId);
     if(!reason)return {ok:false,code:'reason_required'};
@@ -137,7 +153,7 @@ export const todayApi = {
       const person=contacts.find(contact=>String(contact.id)===id);
       return {id,name:[person.firstName,person.lastName].filter(Boolean).join(' ')||person.name||person.title||''};
     });
-    const details={day:start,reason,description,resumeOn,...(planned?{resumePredecessorId}:{}),multiday:!!draft.multiday,
+    const details={day:start,reason,description,resumeOn,...(planned?{resumePredecessorId,resumeMode,resumeLagDays}:{}),multiday:!!draft.multiday,
       ...(draft.isDailyReport?{isDailyReport:true,reasonId:draft.reasonId,attributedContacts}:{}),
       role:planned?'':draft.role,contactId:planned?'':String(contact?.id||''),
       contactName:planned?'':String(contact?.name||contact?.title||''),

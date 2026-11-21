@@ -103,8 +103,10 @@
 }
 .wbs-compact-task-form .wbs-calculated-dates .wbs-date-input:disabled::after{display:none;}
 .wbs-dependency-directions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;}
-.wbs-dependency-directions button,.wbs-dependency-steps button{border:1px solid #ddd;border-radius:5px;background:#f1f1f1;color:inherit;font:inherit;min-height:32px;}
+.wbs-dependency-directions button,.wbs-dependency-stepper button{border:1px solid #ddd;border-radius:5px;background:#f1f1f1;color:inherit;font:inherit;min-height:32px;}
 .wbs-dependency-directions [aria-pressed="true"]{background:#e4edff;border-color:#2157b1;color:#17499a;}
-.wbs-dependency-stepper:not([hidden]){display:flex;justify-self:end;align-items:stretch;}
-.wbs-dependency-steps{display:grid;}
-.wbs-dependency-stepper .wbs-input{width:auto;min-width:72px;}
+.wbs-dependency-offset{display:grid;gap:8px;}
+.wbs-dependency-stepper:not([hidden]){display:grid;grid-template-columns:44px minmax(0,1fr) 44px;gap:6px;}
+.wbs-dependency-stepper button{min-width:0;min-height:40px;}
+.wbs-dependency-stepper .wbs-input{width:100%;text-align:center;}
+.today-resume-manual .wbs-dependency-offset{display:none;}
