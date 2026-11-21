@@ -499,3 +499,6 @@ button.today-table-progress { cursor: pointer; }
 .today-table-footer .today-card-avatar { width: 26px; height: 26px; }
 .today-table-footer .today-card-avatar svg { width: 18px; height: 18px; }
 .today-execution-table > .today-card-approval-actions { margin: 0; }
+
+.today-report-stop-dates.today-stop-dates-auto{grid-template-columns:minmax(0,1fr);}
+.today-stop-dates-auto > [hidden]{display:none;}
