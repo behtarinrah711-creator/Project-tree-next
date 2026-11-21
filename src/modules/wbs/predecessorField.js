@@ -24,12 +24,12 @@ export function validInitialRelations(initial, candidates = []){
   return normalizeRelations(initial).filter(row => candidateIds.has(row.predecessorId));
 }
 
-export function predecessorField({ documentRef = document, project, consumerId, initial = [], onChange = () => {} } = {}){
+export function predecessorField({ documentRef = document, project, consumerId, initial = [], single = false, excludeIds = [], allowCandidate = () => true, onChange = () => {} } = {}){
   const root = documentRef.createElement('div'); root.className = 'wbs-predecessor-field wbs-dependency-cards';
   const caption=documentRef.createElement('h3');
   caption.className='wbs-task-form-section';
   caption.textContent='پیش‌نیازها';
-  const candidates = flattenDependencyCandidates(project?.tasks || []).filter(row => row.id !== String(consumerId));
+  const candidates = flattenDependencyCandidates(project?.tasks || []).filter(row => row.id !== String(consumerId) && !excludeIds.includes(row.id) && allowCandidate(row));
   const relations = new Map(validInitialRelations(initial, candidates).map(row => [row.predecessorId, row]));
   const chips = documentRef.createElement('div'); chips.className = 'wbs-predecessor-list';
   const add = documentRef.createElement('button'); add.type = 'button'; add.className = 'wbs-choice wbs-dependency-add'; add.textContent = '+ افزودن پیش‌نیاز';
@@ -71,7 +71,6 @@ export function predecessorField({ documentRef = document, project, consumerId, 
       const directions=documentRef.createElement('div');
       directions.className='wbs-dependency-directions';
       const stepper=documentRef.createElement('div');stepper.className='wbs-dependency-stepper';
-      const steps=documentRef.createElement('div');steps.className='wbs-dependency-steps';
       const changeDays=days=>{
         const magnitude=Math.max(0,Math.min(99999,days));
         if(!magnitude)direction=0;
@@ -86,7 +85,7 @@ export function predecessorField({ documentRef = document, project, consumerId, 
       up.setAttribute('aria-label','افزایش تعداد روز');
       const down=button('⌄',()=>changeDays(Math.abs(relation.lagDays)-1));
       down.setAttribute('aria-label','کاهش تعداد روز');
-      steps.append(up,down);stepper.append(value,steps);
+      stepper.append(down,value,up);
       const choices=[[-1,'زودتر'],[0,'بدون فاصله'],[1,'دیرتر']].map(([sign,label])=>{
         const choice=button(label,()=>{
           direction=sign;
@@ -100,7 +99,10 @@ export function predecessorField({ documentRef = document, project, consumerId, 
         value.textContent=new Intl.NumberFormat('fa-IR').format(Math.abs(relation.lagDays))+' روز';
       };
       draw();
-      chip.append(header,typeRow,directions,stepper);
+      chip.append(header);
+      if(!single)chip.append(typeRow);
+      const offset=documentRef.createElement('div');offset.className='wbs-dependency-offset';
+      offset.append(directions,stepper);chip.append(offset);
       chips.appendChild(chip);
     });
   };
@@ -119,6 +121,7 @@ export function predecessorField({ documentRef = document, project, consumerId, 
     openExecutionBranchFilter(project,tree,key=>{
       const id=byTreeId.get(key);
       if(!id)return;
+      if(single)relations.clear();
       relations.set(id,{predecessorId:id,type:'FS',lagDays:0});
       paint();
       onChange();

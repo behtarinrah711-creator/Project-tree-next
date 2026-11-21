@@ -607,7 +607,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
           const result=todayApi.saveInterruption(project.id,refOf(item),{id:activeStop.id,resume:true},actor);
           if(!result.ok){
             feedback.textContent=result.code==='resume_predecessor_pending'
-              ?'برای ازسرگیری، پیش‌نیاز باید تکمیل و موعد شروع مجدد فرا رسیده باشد.'
+              ?'هنوز شرایط شروع مجدد بر اساس پیش‌نیاز و تاریخ تنظیم‌شده برقرار نیست.'
               :'ازسرگیری ثبت نشد. دسترسی و وضعیت کار را بررسی کنید.';
             return;
           }

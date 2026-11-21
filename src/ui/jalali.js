@@ -57,6 +57,15 @@ export function formatJalaliDisplay(str){
   return toPersianDigits(p[2]) + ' ' + (JALALI_MONTHS[m-1]||'') + ' ' + toPersianDigits(p[0]);
 }
 
+export function formatJalaliWithWeekday(value){
+  if(!value)return '';
+  const [year,month,day]=String(value).split(/[/-]/).map(Number);
+  if(!year||!month||!day)return formatJalaliDisplay(value);
+  const {gy,gm,gd}=jalaliToGregorian(year,month,day);
+  const weekday=new Intl.DateTimeFormat('fa-IR',{weekday:'long',timeZone:'UTC'}).format(Date.UTC(gy,gm-1,gd));
+  return weekday+' '+formatJalaliDisplay(value);
+}
+
 const jalaliPick = { y:1400, m:1, d:1, onPick:null, maxDate:null };
 let installed = false;
 

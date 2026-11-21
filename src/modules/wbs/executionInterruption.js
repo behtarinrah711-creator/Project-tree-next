@@ -1,12 +1,13 @@
-import {flattenDependencyCandidates} from '../../domain/wbs/scheduling.js';
+import {flattenDependencyCandidates,resumeDayFromPredecessor,scheduleDate,scheduleRangeOf} from '../../domain/wbs/scheduling.js';
 import {appendReportPhotos} from './dailyExecutionReport.js';
 import {openSearchPicker} from '../../ui/searchPickerAdapter.js';
 import {openNumpadGeneric} from '../../ui/numpad.js';
-import {formatJalaliDisplay} from '../../ui/jalali.js';
+import {formatJalaliWithWeekday} from '../../ui/jalali.js';
 import {todayApi} from '../../domain/wbs/todayApi.js';
 import {INACTIVE_REASONS,tehranTodayJalali} from '../../domain/wbs/todayDomain.js';
 import {mountFileUploader} from '../files/fileUploader.js';
 import {fieldRow,openWbsSheet} from './wbsSheet.js';
+import {predecessorField} from './predecessorField.js';
 
 export const INTERRUPTION_ELIGIBILITY={pending:'در دست بررسی',eligible:'مجاز',ineligible:'غیرمجاز'};
 const roles={contractor:'پیمانکار',assignee:'مسئول پیگیری',approver:'مسئول تأیید',client:'کارفرما',supplier:'تأمین‌کننده',other:'مخاطب دیگر',external:'عامل بیرونی',unknown:'در دست بررسی'};
@@ -36,36 +37,54 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn){
       onSelect:selected=>{draft.reasonId=selected.id;draft.reason=selected.name;reason.textContent=selected.name;},
     }));
     root.append(fieldRow('دلیل توقف',reason));
+    let refreshResume=()=>{};
     const date=(label,key)=>{
-      const node=button(draft[key]?formatJalaliDisplay(draft[key]):'انتخاب تاریخ',()=>
-        window.KarhaUI?.openJalaliPicker?.(draft[key]||current,value=>{draft[key]=value;node.textContent=formatJalaliDisplay(value);}));
+      const node=button(draft[key]?formatJalaliWithWeekday(draft[key]):'انتخاب تاریخ',()=>
+        window.KarhaUI?.openJalaliPicker?.(draft[key]||current,value=>{
+          draft[key]=value;
+          if(key==='resumeOn')manualResume=value;
+          node.textContent=formatJalaliWithWeekday(value);
+          refreshResume();
+        }));
       return fieldRow(label,node);
     };
+    let manualResume=draft.resumeOn||'';
     const dates=document.createElement('div');
     dates.className='today-report-stop-dates';
-    dates.append(date('تاریخ شروع توقف','day'),date(planned?'تاریخ شروع مجدد کار':'تاریخ ادامه','resumeOn'));
+    const resumeRow=date(planned?'تاریخ شروع مجدد کار':'تاریخ ادامه','resumeOn');
+    dates.append(date('تاریخ شروع توقف','day'),resumeRow);
     root.append(dates);
     if(planned){
-      const candidates=flattenDependencyCandidates(project.tasks||[]).filter(row=>row.kind!=='stage' && row.id!==String(item.id) && row.id!==String(item.workId));
-      const predecessor=button('انتخاب کنید',()=>openSearchPicker({
-        title:'پیش‌نیاز شروع مجدد',contextKey:'execution-resume-predecessor:'+item.id,
-        items:[{id:'',name:'بدون پیش‌نیاز'},...candidates.map(row=>({
-          id:row.id,name:[...row.parentPath,row.title].filter(Boolean).join(' · '),
-        }))],
-        onSelect:selected=>{draft.resumePredecessorId=selected.id;predecessor.textContent=selected.name;},
-      }));
-      root.append(fieldRow('پیش‌نیاز شروع مجدد',predecessor));
-      const source=item.entity.dependencies?.length?item.entity
-        :item.entity.predecessorIds?.length?item.entity:item.work;
-      const ids=source?.dependencies?.length?source.dependencies.map(link=>link.predecessorId):source?.predecessorIds||[];
-      const titles=flattenDependencyCandidates(project.tasks||[])
-        .filter(record=>ids.some(value=>String(value)===String(record.id)))
-        .map(record=>record.title||record.text).filter(Boolean);
-      if(titles.length){
-        const value=document.createElement('div');
-        value.className='wbs-input';value.textContent=titles.join('، ');
-        root.append(fieldRow('پیش‌نیاز ثبت‌شده',value));
-      }
+      const resumeButton=resumeRow.querySelector('button');
+      const modes=document.createElement('div');modes.className='today-resume-modes';
+      const manual=button('دستی',()=>{draft.resumeMode='manual';refreshResume();});
+      const automatic=button('خودکار',()=>{draft.resumeMode='auto';refreshResume();});
+      modes.append(manual,automatic);root.append(modes);
+      draft.resumeMode='manual';
+      const candidates=flattenDependencyCandidates(project.tasks);
+      const dependency=predecessorField({project,consumerId:item.id,single:true,
+        excludeIds:[String(item.workId||'')],allowCandidate:row=>row.kind!=='stage',
+        onChange:()=>refreshResume()});
+      root.append(dependency.element);
+      refreshResume=()=>{
+        const relation=dependency.relations()[0];
+        draft.resumePredecessorId=relation?.predecessorId||'';
+        draft.resumeLagDays=relation?.lagDays||0;
+        modes.hidden=!relation;
+        if(!relation)draft.resumeMode='manual';
+        const auto=draft.resumeMode==='auto';
+        manual.setAttribute('aria-pressed',String(!auto));
+        automatic.setAttribute('aria-pressed',String(auto));
+        dependency.element.classList.toggle('today-resume-manual',!auto);
+        const row=candidates.find(candidate=>candidate.id===draft.resumePredecessorId);
+        const range=row?scheduleRangeOf({...row.item,kind:row.kind}):null;
+        const calculated=resumeDayFromPredecessor(range,draft.resumeLagDays);
+        draft.resumeOn=auto?(calculated===null?'':scheduleDate(calculated)):manualResume;
+        resumeButton.disabled=auto;
+        resumeButton.textContent=draft.resumeOn?formatJalaliWithWeekday(draft.resumeOn)
+          :auto?'پیش‌نیاز تاریخ پایان ندارد':'انتخاب تاریخ';
+      };
+      refreshResume();
     }
     const description=document.createElement('textarea');
     description.className='wbs-input';description.rows=3;
@@ -118,7 +137,7 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn){
         const choice=button(title,()=>renderForm(root,planned,'ثبت '+title));
         const note=document.createElement('small');
         note.textContent=description;
-        choice.classList.add('today-report-stop-choice');
+        choice.classList.add('today-report-stop-choice',planned?'is-allowed':'is-unallowed');
         choice.append(note);root.append(choice);
       }
     },
@@ -178,7 +197,7 @@ export function openExecutionDelayReport(project,items,{actor,canReview,refresh}
         const button=document.createElement('button');
         button.type='button';button.className='wbs-input';button.textContent='انتخاب تاریخ';
         button.onclick=()=>window.KarhaUI?.openJalaliPicker?.(filters[key]||tehranTodayJalali(),value=>{
-          filters[key]=value;button.textContent=formatJalaliDisplay(value);paint();
+          filters[key]=value;button.textContent=formatJalaliWithWeekday(value);paint();
         });
         root.append(fieldRow(label,button));
       }
@@ -190,8 +209,8 @@ export function openExecutionDelayReport(project,items,{actor,canReview,refresh}
           item.className='today-detail-card';
           const title=document.createElement('strong');title.textContent=path;
           const summary=document.createElement('p');
-          summary.textContent=[formatJalaliDisplay(entry.day),entry.reason,obstacleRole(entry.role),attributedContacts(entry).map(contact=>contact.name).join('، '),
-            entry.resumedOn?'رفع مانع '+formatJalaliDisplay(entry.resumedOn):'',
+          summary.textContent=[formatJalaliWithWeekday(entry.day),entry.reason,obstacleRole(entry.role),attributedContacts(entry).map(contact=>contact.name).join('، '),
+            entry.resumedOn?'رفع مانع '+formatJalaliWithWeekday(entry.resumedOn):'',
             entry.multiday?'چندروزه':entry.durationHours==null?'تمام‌روز':entry.durationHours+' ساعت',
             INTERRUPTION_ELIGIBILITY[eligibilityOf(entry)],
             entry.reviewed?'اثر بر موعد: '+entry.impactDays+' روز':''].filter(Boolean).join(' · ');

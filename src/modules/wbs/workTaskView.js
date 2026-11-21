@@ -11,7 +11,7 @@ import { projectRepository } from '../../data/projectRepository.js';
 import { FOLLOW_UP_WORK_TYPE, ODD_JOB_TYPES, WORK_TYPES, WORK_TYPE_TOGGLES, taskCostOf } from '../../domain/wbs/normalize.js';
 import { workTaskApi } from '../../domain/wbs/workTaskApi.js';
 import { TASK_PRIORITIES, activeWorkTasks, executionApproverIds, isTaskComplete } from '../../domain/wbs/workTaskModel.js';
-import { formatJalaliDisplay, jalaliToGregorian } from '../../ui/jalali.js';
+import { formatJalaliWithWeekday } from '../../ui/jalali.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
@@ -67,13 +67,6 @@ function clearSelection(control,label,clear,hasValue){
   return {wrap,paint};
 }
 
-function workDateLabel(value){
-  const [year,month,day]=value.split('/').map(Number);
-  const {gy,gm,gd}=jalaliToGregorian(year,month,day);
-  const weekday=new Intl.DateTimeFormat('fa-IR',{weekday:'long',timeZone:'UTC'}).format(Date.UTC(gy,gm-1,gd));
-  return weekday+' '+formatJalaliDisplay(value);
-}
-
 function optionButton({ name, value, options, onChange, placeholder = 'انتخاب کنید', clearLabel }){
   const root=document.createElement('div');root.className='wbs-task-option-select';
   const input=document.createElement('input');input.type='hidden';input.name=name;input.value=String(value ?? '');
@@ -118,7 +111,7 @@ function dateField(documentRef, name, label, value, onChange){
   button.type = 'button'; button.name = name; button.className = 'wbs-input wbs-date-input';
   button.dataset.value = value || '';
   const selection=clearSelection(button,label,()=>{button.dataset.value='';paint();onChange?.();},()=>Boolean(button.dataset.value));
-  const paint = () => { button.textContent = button.dataset.value ? workDateLabel(button.dataset.value) : 'انتخاب کنید';selection.paint(); };
+  const paint = () => { button.textContent = button.dataset.value ? formatJalaliWithWeekday(button.dataset.value) : 'انتخاب کنید';selection.paint(); };
   button.repaintDate=paint;
   button.addEventListener('click', () => documentRef.defaultView?.KarhaUI?.openJalaliPicker?.(button.dataset.value, next => {
     button.dataset.value = next; paint(); onChange?.();
@@ -675,9 +668,9 @@ export async function openStandaloneWorkSheet({projectId,onChanged,saveStandalon
         choice('نوع کار','oddJobType',types.map(value=>({value,label:value})));
         person('مسئول پیگیری','assigneeContactId');
         choice('درجه اهمیت','priority',Object.entries(PRIORITY_LABELS).map(([value,label])=>({value,label})));
-        ftSelectRow(fields,'تاریخ شروع',formatJalaliDisplay(draft.scheduleStart),()=>window.KarhaUI?.openJalaliPicker?.(
+        ftSelectRow(fields,'تاریخ شروع',formatJalaliWithWeekday(draft.scheduleStart),()=>window.KarhaUI?.openJalaliPicker?.(
           draft.scheduleStart,value=>update('scheduleStart',value)),{placeholder:'انتخاب تاریخ'});
-        ftSelectRow(fields,'تاریخ پایان',formatJalaliDisplay(draft.scheduleEnd),()=>window.KarhaUI?.openJalaliPicker?.(
+        ftSelectRow(fields,'تاریخ پایان',formatJalaliWithWeekday(draft.scheduleEnd),()=>window.KarhaUI?.openJalaliPicker?.(
           draft.scheduleEnd,value=>update('scheduleEnd',value)),{placeholder:'انتخاب تاریخ'});
         person('مسئول تأیید','expenseApproverContactId');
         ftNumberRow(fields,'مبلغ',draft.amount,value=>{draft.amount=toEnglishDigits(String(value)).replace(/[^\d]/g,'');},
