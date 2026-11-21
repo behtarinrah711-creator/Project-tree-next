@@ -88,8 +88,6 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
         draft.resumePredecessorId=relation?.predecessorId||'';
         draft.resumeLagDays=relation?.lagDays||0;
         draft.resumeRelationType=relation?.type||'FS';
-        modes.hidden=!relation;
-        if(!relation)draft.resumeMode='manual';
         const auto=draft.resumeMode==='auto';
         manual.setAttribute('aria-pressed',String(!auto));
         automatic.setAttribute('aria-pressed',String(auto));
@@ -103,7 +101,7 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
         duration.textContent=draft.resumeDurationDays
           ?new Intl.NumberFormat('fa-IR').format(draft.resumeDurationDays)+' روز':'انتخاب کنید';
         const preview=previewPlannedPause(item.entity,range,{...pause,resumeDurationDays:draft.resumeDurationDays},lookup);
-        draft.resumeOn=auto?(preview.window?scheduleDate(preview.window.resume):''):manualResume;
+        draft.resumeOn=auto?(relation && preview.window?scheduleDate(preview.window.resume):''):manualResume;
         resumeButton.disabled=auto;
         resumeRow.hidden=auto;
         dates.classList.toggle('today-stop-dates-auto',auto);
@@ -112,7 +110,8 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
         datesPreview[0].textContent=valid?formatJalaliWithWeekday(scheduleDate(preview.window.resume)):'—';
         datesPreview[1].textContent=valid?formatJalaliWithWeekday(scheduleDate(preview.end)):'—';
         scheduleFeedback.hidden=valid || (!auto && !manualResume && !!baseline);
-        scheduleFeedback.textContent=preview.conflicts?'این بازه با توقف دیگری تداخل دارد.'
+        scheduleFeedback.textContent=auto && !relation?'برای محاسبهٔ شروع مجدد، پیش‌نیاز را انتخاب کنید.'
+          :preview.conflicts?'این بازه با توقف دیگری تداخل دارد.'
           :!baseline?'تاریخ توقف باید در یکی از بازه‌های اجرای کار باشد.'
           :auto?'تاریخ پیش‌نیاز را بررسی کنید.':'تاریخ شروع مجدد باید بعد از شروع توقف باشد.';
       };
@@ -189,7 +188,9 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
           invalid_start:'تاریخ شروع توقف را بررسی کنید.',
           invalid_remaining_duration:'مدت باقی‌مانده را بررسی کنید.',
           invalid_resume:'تاریخ ادامه را بررسی کنید.',
-          invalid_resume_predecessor:'پیش‌نیاز شروع مجدد معتبر نیست یا وابستگی حلقوی دارد.',
+          invalid_resume_predecessor:draft.resumeMode==='auto' && !draft.resumePredecessorId
+            ?'برای محاسبهٔ شروع مجدد، پیش‌نیاز را انتخاب کنید.'
+            :'پیش‌نیاز شروع مجدد معتبر نیست یا وابستگی حلقوی دارد.',
           contact_required:'طرف‌های منتسب را دوباره انتخاب کنید.',
           interruption_exists:'برای این بازه توقف ثبت شده است.',
         })[result.code]||'ذخیره انجام نشد. وضعیت کار را بررسی کنید.';
