@@ -675,7 +675,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     axis.append(timing.bar);
     schedule.append(dates,axis);
   }else if(entity.scheduleStart || entity.scheduleEnd)schedule.append(dates);
-  appendRow('زمان‌بندی',schedule.childNodes.length?schedule:'—');
+  appendRow('زمان‌بندی',(timing||entity.scheduleStart||entity.scheduleEnd)?schedule:'—');
   const activityBar = documentRef.createElement('div');
   activityBar.className = 'today-card-activity';
   const person=documentRef.createElement('div');
@@ -729,7 +729,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     summary.textContent=description;
     update.append(summary);
   }
-  appendRow('به‌روزرسانی',update.childNodes.length?update:'—');
+  appendRow('به‌روزرسانی',(latest||reportWithPhotos||description)?update:'—');
   activityBar.append(reportMeta);
   appendRow('مسئول پیگیری',activityBar,'today-table-footer');
   if(approval?.action){
