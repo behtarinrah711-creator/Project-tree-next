@@ -60,7 +60,7 @@ export function interruptionTimeline(documentRef,item,project,container,{draft,l
   for(const piece of pieces){
     const part=documentRef.createElement('div');
     part.className='today-stop-timeline-part is-'+piece.type;
-    part.style.flexGrow=String(piece.end-piece.start);
+    part.dataset.duration=String(piece.end-piece.start);
     const label=documentRef.createElement('span');
     label.textContent=piece.type==='work'?'مرحله '+number.format(++counters.work):'توقف '+number.format(++counters.pause);
     const bar=documentRef.createElement('span');
