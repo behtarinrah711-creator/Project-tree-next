@@ -46,6 +46,15 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn){
     dates.append(date('تاریخ شروع توقف','day'),date(planned?'تاریخ شروع مجدد کار':'تاریخ ادامه','resumeOn'));
     root.append(dates);
     if(planned){
+      const candidates=flattenDependencyCandidates(project.tasks||[]).filter(row=>row.kind!=='stage' && row.id!==String(item.id) && row.id!==String(item.workId));
+      const predecessor=button('انتخاب کنید',()=>openSearchPicker({
+        title:'پیش‌نیاز شروع مجدد',contextKey:'execution-resume-predecessor:'+item.id,
+        items:[{id:'',name:'بدون پیش‌نیاز'},...candidates.map(row=>({
+          id:row.id,name:[...row.parentPath,row.title].filter(Boolean).join(' · '),
+        }))],
+        onSelect:selected=>{draft.resumePredecessorId=selected.id;predecessor.textContent=selected.name;},
+      }));
+      root.append(fieldRow('پیش‌نیاز شروع مجدد',predecessor));
       const source=item.entity.dependencies?.length?item.entity
         :item.entity.predecessorIds?.length?item.entity:item.work;
       const ids=source?.dependencies?.length?source.dependencies.map(link=>link.predecessorId):source?.predecessorIds||[];
@@ -125,6 +134,7 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn){
           description_required:'توضیحات را وارد کنید.',
           invalid_start:'تاریخ شروع توقف را بررسی کنید.',
           invalid_resume:'تاریخ ادامه را بررسی کنید.',
+          invalid_resume_predecessor:'پیش‌نیاز شروع مجدد معتبر نیست یا وابستگی حلقوی دارد.',
           contact_required:'طرف‌های منتسب را دوباره انتخاب کنید.',
           interruption_exists:'برای این بازه توقف ثبت شده است.',
         })[result.code]||'ذخیره انجام نشد. وضعیت کار را بررسی کنید.';

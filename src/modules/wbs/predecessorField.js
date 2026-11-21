@@ -2,6 +2,8 @@ import { openNumpadGeneric } from '../../ui/numpad.js';
 import { flattenDependencyCandidates, validatePredecessors } from '../../domain/wbs/scheduling.js';
 import { openExecutionBranchFilter, selectableWbsTree } from './executionBranchFilter.js';
 
+import { openStaticChoicePicker } from '../contracts/contractPickers.js';
+
 const RELATION_TYPES = Object.freeze(['FS','SS','FF']);
 
 const RELATION_LABELS={FS:'پایان به شروع (FS)',SS:'شروع به شروع (SS)',FF:'پایان به پایان (FF)'};
@@ -56,16 +58,12 @@ export function predecessorField({ documentRef = document, project, consumerId, 
       remove.setAttribute('aria-label','حذف پیش‌نیاز '+title.textContent);
       header.append(text,remove);
 
-      const type=documentRef.createElement('select');
-      type.className='wbs-predecessor-type';
+      const type=button(RELATION_LABELS[relation.type],()=>openStaticChoicePicker(
+        'نوع رابطه','گزینه‌ها',RELATION_TYPES.map(value=>({value,label:RELATION_LABELS[value]})),relation.type,
+        value=>{relation.type=value;type.textContent=RELATION_LABELS[value];onChange();},null,{preserveOrder:true}));
+      type.className='wbs-input wbs-predecessor-type';
       type.setAttribute('aria-label','نوع رابطه');
-      for(const value of RELATION_TYPES){
-        const option=documentRef.createElement('option');
-        option.value=value;option.textContent=RELATION_LABELS[value];type.append(option);
-      }
-      type.value=relation.type;
-      type.onchange=()=>{relation.type=type.value;onChange();};
-      const typeRow=documentRef.createElement('label');
+      const typeRow=documentRef.createElement('div');
       typeRow.className='wbs-dependency-control';typeRow.append('نوع رابطه',type);
 
       let direction=Math.sign(relation.lagDays);
@@ -101,8 +99,7 @@ export function predecessorField({ documentRef = document, project, consumerId, 
         value.textContent=new Intl.NumberFormat('fa-IR').format(Math.abs(relation.lagDays))+' روز';
       };
       draw();
-      const lagLabel=documentRef.createElement('span');lagLabel.textContent='فاصلهٔ زمانی';
-      chip.append(header,typeRow,lagLabel,directions,stepper);
+      chip.append(header,typeRow,directions,stepper);
       chips.appendChild(chip);
     });
   };

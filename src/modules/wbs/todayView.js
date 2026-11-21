@@ -1,3 +1,4 @@
+import {flattenDependencyCandidates} from '../../domain/wbs/scheduling.js';
 import {executionApproverIds} from "../../domain/wbs/workTaskModel.js";
 import {INTERRUPTION_ELIGIBILITY,openExecutionInterruption} from "./executionInterruption.js";
 import {openSearchPicker} from '../../ui/searchPickerAdapter.js';
@@ -591,6 +592,11 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
         }
         root.append(detailRow(documentRef,'تاریخ شروع توقف',formatDate(stopReport.day)));
         if(stopReport.resumeOn)root.append(detailRow(documentRef,'تاریخ ادامه',formatDate(stopReport.resumeOn)));
+        if(stopReport.resumePredecessorId){
+          const predecessor=flattenDependencyCandidates(project.tasks)
+            .find(row=>row.id===stopReport.resumePredecessorId);
+          root.append(detailRow(documentRef,'پیش‌نیاز شروع مجدد',predecessor?.title||'—'));
+        }
         if(stopReport.attributedContacts?.length)root.append(detailRow(documentRef,'طرف‌های منتسب',stopReport.attributedContacts.map(person=>person.name).join('، ')));
         appendReportPhotos(root,stopReport.photos);
         if(!activeStop || !canReport)return;
@@ -599,7 +605,12 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
         feedback.setAttribute('role','alert');
         resume.onclick=()=>{
           const result=todayApi.saveInterruption(project.id,refOf(item),{id:activeStop.id,resume:true},actor);
-          if(!result.ok){feedback.textContent='ازسرگیری ثبت نشد. دسترسی و وضعیت کار را بررسی کنید.';return;}
+          if(!result.ok){
+            feedback.textContent=result.code==='resume_predecessor_pending'
+              ?'برای ازسرگیری، پیش‌نیاز باید تکمیل و موعد شروع مجدد فرا رسیده باشد.'
+              :'ازسرگیری ثبت نشد. دسترسی و وضعیت کار را بررسی کنید.';
+            return;
+          }
           resumed=true;dismiss();onChanged?.();
         };
         root.append(resume,feedback);

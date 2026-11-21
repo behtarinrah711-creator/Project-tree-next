@@ -46,7 +46,7 @@ import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { stopIntervalForItem } from '../../domain/wbs/fundingReceipts.js';
 import { activeWbsScope, WBS_VIEW_SCOPES } from './viewScopes.js';
 import { openCreateWorkTaskSheet, renderWorkTasks } from './workTaskView.js';
-import { PROJECT_FINISH_MILESTONE_ID, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
+import { PROJECT_FINISH_MILESTONE_ID, flattenDependencyCandidates, plannedPauseSegments, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
 import { canDeletePlanning, canViewPlanning, canWritePlanning, planningAccessLevel } from '../roleManagement/planningAccess.js';
 import {
   advanceExpansionLevel,
@@ -365,6 +365,12 @@ function flattenTimeline(items){
 
 function renderTimeline(items){
   const rows = flattenTimeline(items);
+  const candidates=new Map(flattenDependencyCandidates(projectOf()?.tasks).map(row=>[row.id,row]));
+  const lookup=id=>{
+    const row=candidates.get(id);
+    return row?scheduleRangeOf(row.kind==='workTask'?{...row.item,kind:'workTask'}:row.item):null;
+  };
+  for(const entry of rows)entry.segments=plannedPauseSegments(entry.item,entry.range,lookup);
   const analysis = projectScheduleAnalysis(projectOf());
   if(Number.isFinite(analysis.projectFinish)) rows.push({
     item:{ id:PROJECT_FINISH_MILESTONE_ID, kind:'milestone', text:'پایان پروژه', systemMilestone:true },
@@ -373,7 +379,7 @@ function renderTimeline(items){
   });
   const scheduled = rows.filter(x => x.range);
   const min = scheduled.length ? Math.min(...scheduled.map(x => x.range.start)) : 0;
-  const max = scheduled.length ? Math.max(...scheduled.map(x => x.range.end)) : min + 27;
+  const max = scheduled.length ? Math.max(...scheduled.map(x => x.segments?.at(-1)?.end ?? x.range.end)) : min + 27;
   const days = Math.max(28, max - min + 1);
   const dayWidth = 24;
   const width = days * dayWidth;
@@ -423,26 +429,28 @@ function tBarRow(entry, min, dayWidth){
   const row = document.createElement('div');
   row.className = 'wbs-gantt-line';
   if(entry.range){
-    const bar = document.createElement('button');
-    bar.type = 'button';
-    const task = entry.item.kind === 'workTask';
-    bar.className = 'wbs-gantt-bar' + (isStage(entry.item) ? ' is-stage' : '') + (task ? ' is-task' : '') + (entry.item.kind === 'milestone' ? ' is-milestone' : '');
-    bar.style.left = `${(entry.range.start - min) * dayWidth}px`;
-    bar.style.width = `${Math.max(dayWidth, (entry.range.end - entry.range.start + 1) * dayWidth)}px`;
-    bar.style.backgroundColor = timelineColor(entry.item);
-    const stop = stopIntervalForItem(projectOf(), entry.item);
-    if(stop && entry.range){
-      const left = Math.max(0, stop.start - entry.range.start);
-      const span = Math.max(1, entry.range.end - entry.range.start + 1);
-      const from = Math.min(100, (left / span) * 100);
-      const to = Math.min(100, ((Math.min(stop.end, entry.range.end) - entry.range.start + 1) / span) * 100);
-      bar.style.backgroundImage = `linear-gradient(90deg, ${timelineColor(entry.item)} ${from}%, rgba(255,255,255,.72) ${from}%, rgba(255,255,255,.72) ${to}%, ${timelineColor(entry.item)} ${to}%)`;
-      bar.title = `توقف مالی ${stop.duration} روز`;
-    } else bar.title = `${entry.range.startDate || ''} تا ${entry.range.endDate || ''}`;
-    if(entry.item.kind !== 'milestone') bar.addEventListener('click', () => task
-      ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render, readOnly:!canWritePlanning(activePlanningLevel) || entry.item.completionState === 'approved' || entry.item.completed, canDelete:canDeletePlanning(activePlanningLevel) })
-      : openItemDetails(entry.item));
-    row.appendChild(bar);
+    for(const segment of entry.segments?.length?entry.segments:[entry.range]){
+      const bar = document.createElement('button');
+      bar.type = 'button';
+      const task = entry.item.kind === 'workTask';
+      bar.className = 'wbs-gantt-bar' + (isStage(entry.item) ? ' is-stage' : '') + (task ? ' is-task' : '') + (entry.item.kind === 'milestone' ? ' is-milestone' : '');
+      bar.style.left = `${(segment.start - min) * dayWidth}px`;
+      bar.style.width = `${Math.max(dayWidth, (segment.end - segment.start + 1) * dayWidth)}px`;
+      bar.style.backgroundColor = timelineColor(entry.item);
+      const stop = stopIntervalForItem(projectOf(), entry.item);
+      if(stop && entry.range){
+        const left = Math.max(0, stop.start - segment.start);
+        const span = Math.max(1, segment.end - segment.start + 1);
+        const from = Math.min(100, (left / span) * 100);
+        const to = Math.min(100, ((Math.min(stop.end, segment.end) - segment.start + 1) / span) * 100);
+        bar.style.backgroundImage = `linear-gradient(90deg, ${timelineColor(entry.item)} ${from}%, rgba(255,255,255,.72) ${from}%, rgba(255,255,255,.72) ${to}%, ${timelineColor(entry.item)} ${to}%)`;
+        bar.title = `توقف مالی ${stop.duration} روز`;
+      } else bar.title = `${entry.range.startDate || ''} تا ${entry.range.endDate || ''}`;
+      if(entry.item.kind !== 'milestone') bar.addEventListener('click', () => task
+        ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render, readOnly:!canWritePlanning(activePlanningLevel) || entry.item.completionState === 'approved' || entry.item.completed, canDelete:canDeletePlanning(activePlanningLevel) })
+        : openItemDetails(entry.item));
+      row.appendChild(bar);
+    }
   }else if(isWork(entry.item) || entry.item.kind === 'workTask'){
     const empty = document.createElement('button');
     empty.type = 'button'; empty.className = 'wbs-gantt-unscheduled'; empty.textContent = 'بدون تاریخ';

@@ -89,7 +89,19 @@
 .wbs-dependency-header small{display:block;color:#666;}
 .wbs-dependency-header .wbs-activity-remove{color:var(--danger,#b83b35);font-size:20px;flex:none;}
 .wbs-dependency-control{display:flex;align-items:center;justify-content:space-between;gap:8px;}
-.wbs-dependency-control select{min-width:0;max-width:65%;}
+.wbs-dependency-control .wbs-predecessor-type{width:65%;min-width:0;white-space:normal;}
+.wbs-calculated-dates:not([hidden]){
+  display:grid;grid-template-columns:repeat(2,minmax(0,1fr));
+  background:#e8f3ff;border-radius:8px;margin-block:8px 12px;
+}
+.wbs-compact-task-form .wbs-calculated-dates .wbs-field{
+  display:grid;grid-template-columns:minmax(0,1fr);text-align:center;padding:6px;gap:2px;border:0;
+}
+.wbs-calculated-dates .wbs-field + .wbs-field{border-inline-start:1px solid #bccddd;}
+.wbs-compact-task-form .wbs-calculated-dates .wbs-date-input:disabled{
+  opacity:1;background:transparent;border:0;padding-inline:0;text-align:center;
+}
+.wbs-compact-task-form .wbs-calculated-dates .wbs-date-input:disabled::after{display:none;}
 .wbs-dependency-directions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:4px;}
 .wbs-dependency-directions button,.wbs-dependency-steps button{border:1px solid #ddd;border-radius:5px;background:#f1f1f1;color:inherit;font:inherit;min-height:32px;}
 .wbs-dependency-directions [aria-pressed="true"]{background:#e4edff;border-color:#2157b1;color:#17499a;}

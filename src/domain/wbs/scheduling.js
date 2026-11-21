@@ -420,3 +420,25 @@ export function rescheduleAutomaticTasks(project){
   });
   return {...project,tasks:apply(project.tasks||[])};
 }
+
+
+export function plannedPauseSegments(item,range,lookup){
+  if(!range)return [];
+  const pauses=(item.executionHistory||[])
+    .filter(entry=>entry?.type==='planned_pause' && entry.multiday)
+    .slice().sort((a,b)=>a.day.localeCompare(b.day));
+  let start=range.start,end=range.end;
+  const segments=[];
+  for(const pause of pauses){
+    const stop=jalaliDayNumber(pause.day);
+    const predecessor=pause.resumePredecessorId?lookup(pause.resumePredecessorId):null;
+    const plannedResume=jalaliDayNumber(pause.resumeOn);
+    const resume=jalaliDayNumber(pause.resumedOn)
+      ?? (predecessor?Math.max(plannedResume??stop+1,predecessor.end+1):plannedResume);
+    if(stop===null || resume===null || resume<=Math.max(start,stop) || stop>end)continue;
+    if(stop>start)segments.push({start,end:stop-1});
+    end+=resume-Math.max(start,stop);
+    start=resume;
+  }
+  return [...segments,{start,end}];
+}
