@@ -620,9 +620,8 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   const canChangeProgress=canReport && !executionInterruption(entity,today);
   const percent=Math.max(0,Math.min(100,Number(entity.progress)||0));
   const progress=documentRef.createElement(canChangeProgress?'button':'div');
-  progress.className='today-table-progress';
+  progress.className=percent>0?'today-table-progress has-progress':'today-table-progress';
   progress.dataset.percent=String(percent);
-  progress.classList.toggle('has-progress',percent>0);
   const progressBar=documentRef.createElement('progress');
   progressBar.max=100;
   progressBar.value=percent;
