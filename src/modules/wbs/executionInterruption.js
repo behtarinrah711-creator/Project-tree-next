@@ -90,8 +90,8 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
   };
   const renderForm=(root,planned,title)=>{
     draft.type=planned?'planned_pause':'execution_obstacle';
-    const count=(item.entity.executionHistory||[]).filter(entry=>['planned_pause','execution_obstacle'].includes(entry.type)).length;
-    sheet.querySelector('.sheet-caption').textContent=title+' '+new Intl.NumberFormat('fa-IR').format(count+1);
+    const count=(item.entity.executionHistory||[]).filter(entry=>entry?.type==='planned_pause').length;
+    sheet.querySelector('.sheet-caption').textContent=planned?title+' '+new Intl.NumberFormat('fa-IR').format(count+1):title;
     sheet.querySelector('.wbs-sheet-save').hidden=false;
     root.replaceChildren();
     const reason=button('انتخاب دلیل',()=>openSearchPicker({
