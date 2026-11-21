@@ -1,4 +1,4 @@
-import {interruptionScheduleLookup,jalaliDayNumber,previewPlannedPause,scheduleDate,scheduleRangeOf} from '../../domain/wbs/scheduling.js';
+import {interruptionScheduleLookup,jalaliDayNumber,plannedPauseProjection,previewPlannedPause,scheduleDate,scheduleRangeOf} from '../../domain/wbs/scheduling.js';
 import {appendReportPhotos} from './dailyExecutionReport.js';
 import {openSearchPicker} from '../../ui/searchPickerAdapter.js';
 import {openNumpadGeneric} from '../../ui/numpad.js';
@@ -14,6 +14,68 @@ const roles={contractor:'پیمانکار',assignee:'مسئول پیگیری',ap
 const name=contact=>[contact?.firstName,contact?.lastName].filter(Boolean).join(' ')||contact?.name||contact?.title||'';
 const id=contact=>String(contact?.id||'');
 
+export function interruptionTimeline(documentRef,item,project,container,{draft,live=false,lookup}={}){
+  container.replaceChildren();
+  const entity=item.entity;
+  const kind=['task','standalone'].includes(item.kind)?'workTask':item.kind;
+  const range=scheduleRangeOf({...entity,kind});
+  const history=entity.executionHistory||[];
+  const entries=draft?[...history,draft]:history;
+  if(!live && !entries.some(entry=>['planned_pause','execution_obstacle'].includes(entry?.type)))return false;
+  const projection=plannedPauseProjection({...entity,executionHistory:entries},range,lookup??interruptionScheduleLookup(project.tasks));
+  const end=projection.segments.at(-1)?.end;
+  if(!range || end===undefined){
+    if(live)container.textContent='بازهٔ زمان‌بندی کار مشخص نیست.';
+    return false;
+  }
+  const pauses=[...projection.windows].map(([,window])=>({start:window.stop,end:window.resume,type:'allowed'}));
+  for(const entry of entries){
+    if(entry?.type!=='execution_obstacle')continue;
+    const start=jalaliDayNumber(entry.day);
+    const resume=jalaliDayNumber(entry.resumedOn||entry.resumeOn);
+    if(start!==null && (entry!==draft || resume>start)){
+      pauses.push({start,end:resume??(entry.multiday?end+1:start+1),type:'unallowed'});
+    }
+  }
+  if(!live && !pauses.length)return false;
+  const bounds=[...new Set([range.start,end+1,...pauses.flatMap(pause=>[pause.start,pause.end])
+    .filter(day=>day>range.start && day<=end)])].sort((a,b)=>a-b);
+  const pieces=[];
+  for(let index=0;index<bounds.length-1;index++){
+    const start=bounds[index], finish=bounds[index+1];
+    const type=pauses.find(pause=>pause.type==='allowed' && pause.start<=start && pause.end>start)?.type
+      || pauses.find(pause=>pause.start<=start && pause.end>start)?.type || 'work';
+    if(pieces.at(-1)?.type===type)pieces.at(-1).end=finish;
+    else pieces.push({start,end:finish,type});
+  }
+  const strip=documentRef.createElement('div');
+  strip.className='today-stop-timeline-strip';
+  strip.dir='rtl';
+  const counters={work:0,pause:0};
+  const number=new Intl.NumberFormat('fa-IR');
+  const shortDate=day=>{
+    const [,month,date]=scheduleDate(day).split('/').map(Number);
+    return number.format(date)+' '+['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'][month-1];
+  };
+  for(const piece of pieces){
+    const part=documentRef.createElement('div');
+    part.className='today-stop-timeline-part is-'+piece.type;
+    part.style.flexGrow=String(piece.end-piece.start);
+    const label=documentRef.createElement('span');
+    label.textContent=piece.type==='work'?'مرحله '+number.format(++counters.work):'توقف '+number.format(++counters.pause);
+    const bar=documentRef.createElement('span');
+    bar.className='today-stop-timeline-bar';
+    bar.setAttribute('aria-hidden','true');
+    const date=documentRef.createElement('small');
+    const last=piece.end-Number(piece.type==='work');
+    date.textContent=shortDate(piece.start)+' تا '+shortDate(last);
+    part.append(label,bar,date);
+    strip.append(part);
+  }
+  container.append(strip);
+  return true;
+}
+
 export function openExecutionInterruption(project,item,actor,refresh,onReturn,{plannedOnly=false}={}){
   const current=tehranTodayJalali();
   const draft={multiday:true,day:current,role:'unknown',contactIds:[]};
@@ -28,7 +90,8 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
   };
   const renderForm=(root,planned,title)=>{
     draft.type=planned?'planned_pause':'execution_obstacle';
-    sheet.querySelector('.sheet-caption').textContent=title;
+    const count=(item.entity.executionHistory||[]).filter(entry=>['planned_pause','execution_obstacle'].includes(entry.type)).length;
+    sheet.querySelector('.sheet-caption').textContent=title+' '+new Intl.NumberFormat('fa-IR').format(count+1);
     sheet.querySelector('.wbs-sheet-save').hidden=false;
     root.replaceChildren();
     const reason=button('انتخاب دلیل',()=>openSearchPicker({
@@ -54,6 +117,10 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
     const resumeRow=date(planned?'تاریخ شروع مجدد کار':'تاریخ ادامه','resumeOn');
     dates.append(date('تاریخ شروع توقف','day'),resumeRow);
     root.append(dates);
+    const forecast=document.createElement('div');
+    forecast.className='today-stop-timeline';
+    forecast.setAttribute('aria-live','polite');
+    const lookup=interruptionScheduleLookup(project.tasks);
     if(planned){
       const resumeButton=resumeRow.querySelector('button');
       const modes=document.createElement('div');modes.className='today-resume-modes';
@@ -61,7 +128,6 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
       const automatic=button('خودکار',()=>{draft.resumeMode='auto';refreshResume();});
       modes.append(manual,automatic);root.append(modes);
       draft.resumeMode='manual';
-      const lookup=interruptionScheduleLookup(project.tasks);
       const range=scheduleRangeOf({...item.entity,kind:item.kind==='task'||item.kind==='standalone'?'workTask':item.kind});
       const duration=button('',()=>openNumpadGeneric(draft.resumeDurationDays??'',value=>{
         durationOverride=Number(value);
@@ -72,14 +138,6 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
       const dependency=predecessorField({project,consumerId:item.id,single:true,
         excludeIds:[String(item.workId||'')],allowCandidate:row=>row.kind!=='stage',
         onChange:()=>refreshResume()});
-      const forecast=document.createElement('div');
-      forecast.className='wbs-calculated-dates today-stop-forecast';
-      forecast.setAttribute('aria-live','polite');
-      const datesPreview=['شروع مجدد','پایان پیش‌بینی‌شده'].map(label=>{
-        const value=document.createElement('strong');
-        forecast.append(fieldRow(label,value));
-        return value;
-      });
       const scheduleFeedback=document.createElement('p');
       scheduleFeedback.setAttribute('role','status');
       root.append(dependency.element,forecast,scheduleFeedback);
@@ -107,14 +165,18 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
         dates.classList.toggle('today-stop-dates-auto',auto);
         resumeButton.textContent=draft.resumeOn?formatJalaliWithWeekday(draft.resumeOn):'انتخاب تاریخ';
         const valid=!!preview.window && !preview.conflicts && (!auto || !!lookup(draft.resumePredecessorId));
-        datesPreview[0].textContent=valid?formatJalaliWithWeekday(scheduleDate(preview.window.resume)):'—';
-        datesPreview[1].textContent=valid?formatJalaliWithWeekday(scheduleDate(preview.end)):'—';
+        interruptionTimeline(document,item,project,forecast,{live:true,lookup,
+          draft:valid?{...pause,resumeOn:draft.resumeOn,resumeDurationDays:draft.resumeDurationDays}:undefined});
         scheduleFeedback.hidden=valid || (!auto && !manualResume && !!baseline);
         scheduleFeedback.textContent=auto && !relation?'برای محاسبهٔ شروع مجدد، پیش‌نیاز را انتخاب کنید.'
           :preview.conflicts?'این بازه با توقف دیگری تداخل دارد.'
           :!baseline?'تاریخ توقف باید در یکی از بازه‌های اجرای کار باشد.'
           :auto?'تاریخ پیش‌نیاز را بررسی کنید.':'تاریخ شروع مجدد باید بعد از شروع توقف باشد.';
       };
+      refreshResume();
+    }else{
+      root.append(forecast);
+      refreshResume=()=>interruptionTimeline(document,item,project,forecast,{live:true,lookup,draft});
       refreshResume();
     }
     const description=document.createElement('textarea');
