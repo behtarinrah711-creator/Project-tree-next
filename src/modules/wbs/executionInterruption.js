@@ -83,6 +83,33 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
   const ref={kind:item.kind,id:item.id,workId:item.workId};
   const photos=[];
   let uploader,feedback,saved=false;
+  const errors=new Map();
+  function registerField(key,row,control){
+    const message=document.createElement('small');
+    message.className='today-stop-error';
+    message.id='today-stop-error-'+key;
+    message.hidden=true;
+    row.after(message);
+    errors.set(key,{message,control});
+  }
+  function fieldError(key,text){
+    const field=errors.get(key);
+    if(!field)return;
+    const {message,control}=field;
+    message.textContent=text;
+    message.hidden=!text;
+    if(text){
+      control.setAttribute('aria-invalid','true');
+      control.setAttribute('aria-describedby',message.id);
+    }else{
+      control.removeAttribute('aria-invalid');
+      control.removeAttribute('aria-describedby');
+    }
+  }
+  function reveal(control){
+    control.scrollIntoView({block:'center'});
+    control.focus({preventScroll:true});
+  }
   const button=(label,onclick)=>{
     const node=document.createElement('button');
     node.className='wbs-input';node.type='button';node.textContent=label;node.onclick=onclick;
@@ -97,14 +124,17 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
     const reason=button('انتخاب دلیل',()=>openSearchPicker({
       title:'دلیل توقف',contextKey:'execution-stop-reason',
       items:Object.entries(INACTIVE_REASONS).map(([id,name])=>({id,name})),
-      onSelect:selected=>{draft.reasonId=selected.id;draft.reason=selected.name;reason.textContent=selected.name;},
+      onSelect:selected=>{draft.reasonId=selected.id;draft.reason=selected.name;reason.textContent=selected.name;fieldError('reason','');},
     }));
-    root.append(fieldRow('دلیل توقف',reason));
+    const reasonRow=fieldRow('دلیل توقف',reason);
+    root.append(reasonRow);
+    registerField('reason',reasonRow,reason);
     let refreshResume=()=>{};
     const date=(label,key)=>{
       const node=button(draft[key]?formatJalaliWithWeekday(draft[key]):'انتخاب تاریخ',()=>
         window.KarhaUI?.openJalaliPicker?.(draft[key]||current,value=>{
           draft[key]=value;
+          fieldError('day','');fieldError('resumeOn','');
           if(key==='resumeOn')manualResume=value;
           node.textContent=formatJalaliWithWeekday(value);
           refreshResume();
@@ -115,8 +145,11 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
     const dates=document.createElement('div');
     dates.className='today-report-stop-dates';
     const resumeRow=date(planned?'تاریخ شروع مجدد کار':'تاریخ ادامه','resumeOn');
-    dates.append(date('تاریخ شروع توقف','day'),resumeRow);
+    const startRow=date('تاریخ شروع توقف','day');
+    dates.append(startRow,resumeRow);
     root.append(dates);
+    registerField('day',dates,startRow.querySelector('button'));
+    registerField('resumeOn',errors.get('day').message,resumeRow.querySelector('button'));
     const forecast=document.createElement('div');
     forecast.className='today-stop-timeline';
     forecast.setAttribute('aria-live','polite');
@@ -124,23 +157,28 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
     if(planned){
       const resumeButton=resumeRow.querySelector('button');
       const modes=document.createElement('div');modes.className='today-resume-modes';
-      const manual=button('دستی',()=>{draft.resumeMode='manual';refreshResume();});
-      const automatic=button('خودکار',()=>{draft.resumeMode='auto';refreshResume();});
+      const manual=button('دستی',()=>{draft.resumeMode='manual';fieldError('mode','');fieldError('resumeOn','');fieldError('dependency','');refreshResume();});
+      const automatic=button('خودکار',()=>{draft.resumeMode='auto';fieldError('mode','');fieldError('resumeOn','');fieldError('dependency','');refreshResume();});
       modes.append(manual,automatic);root.append(modes);
+      registerField('mode',modes,manual);
       draft.resumeMode='manual';
       const range=scheduleRangeOf({...item.entity,kind:item.kind==='task'||item.kind==='standalone'?'workTask':item.kind});
       const duration=button('',()=>openNumpadGeneric(draft.resumeDurationDays??'',value=>{
         durationOverride=Number(value);
+        fieldError('duration','');
         refreshResume();
       },{suffix:' روز',group:false,maxLen:5,validate:value=>/^\d+$/.test(value)&&Number(value)>0?'':'مدت باقی‌مانده را وارد کنید'}));
       let durationOverride=null;
-      root.append(fieldRow('مدت باقی‌ماندهٔ اجرا',duration));
+      const durationRow=fieldRow('مدت باقی‌ماندهٔ اجرا',duration);
+      root.append(durationRow);
+      registerField('duration',durationRow,duration);
       const dependency=predecessorField({project,consumerId:item.id,single:true,
         excludeIds:[String(item.workId||'')],allowCandidate:row=>row.kind!=='stage',
-        onChange:()=>refreshResume()});
+        onChange:()=>{fieldError('dependency','');refreshResume();}});
       const scheduleFeedback=document.createElement('p');
       scheduleFeedback.setAttribute('role','status');
       root.append(dependency.element,forecast,scheduleFeedback);
+      registerField('dependency',dependency.element,dependency.element.querySelector('button'));
       refreshResume=()=>{
         const relation=dependency.relations()[0];
         draft.resumePredecessorId=relation?.predecessorId||'';
@@ -181,8 +219,11 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
     }
     const description=document.createElement('textarea');
     description.className='wbs-input';description.rows=3;
-    description.addEventListener('input',()=>{draft.description=description.value;});
-    root.append(fieldRow('توضیحات',description));
+    description.required=true;
+    description.addEventListener('input',()=>{draft.description=description.value;fieldError('description','');});
+    const descriptionRow=fieldRow('توضیحات (الزامی)',description);
+    root.append(descriptionRow);
+    registerField('description',descriptionRow,description);
     if(!planned){
       const selected=document.createElement('div');
       const paint=()=>{
@@ -204,19 +245,27 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
         }));
         picker.setAttribute('aria-label',label);
         selected.append(picker);
+        if(errors.has('contacts')){errors.get('contacts').control=picker;fieldError('contacts','');}
       };
       paint();
-      root.append(fieldRow('طرف‌های منتسب',selected));
+      const contactsRow=fieldRow('طرف‌های منتسب',selected);
+      root.append(contactsRow);
+      registerField('contacts',contactsRow,selected.lastElementChild);
     }
     const attachments=document.createElement('div');
-    root.append(fieldRow('مستندات',attachments));
+    const attachmentsRow=fieldRow('مستندات',attachments);
+    root.append(attachmentsRow);
+    attachments.tabIndex=-1;
+    registerField('attachments',attachmentsRow,attachments);
     uploader=mountFileUploader(attachments,{projectId:project.id,recordId:item.id,category:'reports',
       files:photos,label:'افزودن عکس',buttonLabel:true,allowReplace:true});
     const note=document.createElement('small');
     note.textContent='این ثبت، گزارش روزهای توقف است.';
     feedback=document.createElement('p');
     feedback.setAttribute('role','alert');
-    root.append(note,feedback);
+    feedback.className='today-stop-error';feedback.tabIndex=-1;
+    root.prepend(feedback);
+    root.append(note);
   };
   let formRoot;
   const sheet=openWbsSheet({
@@ -239,23 +288,55 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
     },
     onSave(){
       if(!draft.type)return false;
-      if(uploader?.isBusy()){feedback.textContent='ابتدا بارگذاری عکس‌ها را تمام کنید';return false;}
+      feedback.textContent='';
+      for(const key of errors.keys())fieldError(key,'');
+      const planned=draft.type==='planned_pause';
+      const auto=draft.resumeMode==='auto';
+      const issues=[];
+      if(!Object.hasOwn(INACTIVE_REASONS,draft.reasonId))issues.push(['reason','دلیل توقف را انتخاب کنید.']);
+      if(jalaliDayNumber(draft.day)===null)issues.push(['day','تاریخ شروع توقف را انتخاب کنید.']);
+      else if(!planned && jalaliDayNumber(draft.day)>jalaliDayNumber(current))issues.push(['day','تاریخ توقف غیرمجاز نمی‌تواند بعد از امروز باشد.']);
+      if(!auto && planned && !draft.resumeOn)issues.push(['resumeOn','تاریخ شروع مجدد کار را انتخاب کنید.']);
+      else if(!auto && draft.resumeOn && (planned?jalaliDayNumber(draft.resumeOn)<=jalaliDayNumber(draft.day):jalaliDayNumber(draft.resumeOn)<jalaliDayNumber(draft.day))){
+        issues.push(['resumeOn',planned?'تاریخ شروع مجدد باید بعد از تاریخ شروع توقف باشد.':'تاریخ ادامه نمی‌تواند قبل از تاریخ شروع توقف باشد.']);
+      }
+      if(auto && !draft.resumePredecessorId)issues.push(['dependency','برای محاسبهٔ تاریخ شروع مجدد، یک پیش‌نیاز انتخاب کنید.']);
+      if(!draft.description?.trim())issues.push(['description','شرح توقف را وارد کنید.']);
+      if(uploader?.isBusy())issues.push(['attachments','صبر کنید تا بارگذاری عکس‌ها کامل شود.']);
+      if(issues.length){
+        for(const [key,message] of issues)fieldError(key,message);
+        reveal(errors.get(issues[0][0]).control);
+        return false;
+      }
       const result=todayApi.saveInterruption(project.id,ref,{...draft,photos,isDailyReport:true},actor);
       if(!result.ok){
-        feedback.textContent=({
-          forbidden:'ثبت برای مسئول پیگیریِ دارای دسترسی اجرا مجاز است.',
-          locked:'کار تکمیل شده یا در انتظار تأیید است.',
-          reason_required:'دلیل توقف را انتخاب کنید.',
-          description_required:'توضیحات را وارد کنید.',
-          invalid_start:'تاریخ شروع توقف را بررسی کنید.',
-          invalid_remaining_duration:'مدت باقی‌مانده را بررسی کنید.',
-          invalid_resume:'تاریخ ادامه را بررسی کنید.',
-          invalid_resume_predecessor:draft.resumeMode==='auto' && !draft.resumePredecessorId
-            ?'برای محاسبهٔ شروع مجدد، پیش‌نیاز را انتخاب کنید.'
-            :'پیش‌نیاز شروع مجدد معتبر نیست یا وابستگی حلقوی دارد.',
-          contact_required:'طرف‌های منتسب را دوباره انتخاب کنید.',
-          interruption_exists:'برای این بازه توقف ثبت شده است.',
-        })[result.code]||'ذخیره انجام نشد. وضعیت کار را بررسی کنید.';
+        const issue=({
+          reason_required:['reason','دلیل توقف را دوباره انتخاب کنید.'],
+          description_required:['description','شرح توقف را وارد کنید.'],
+          invalid_start:['day','تاریخ شروع توقف باید در بازهٔ اجرای کار باشد.'],
+          invalid_resume_mode:['mode','روش تعیین تاریخ شروع مجدد را انتخاب کنید.'],
+          invalid_resume_relation:['dependency','نوع رابطه باید پایان به شروع، شروع به شروع یا پایان به پایان باشد.'],
+          invalid_resume_lag:['dependency','فاصلهٔ پیش‌نیاز باید عدد صحیح و حداکثر ۹۹٬۹۹۹ روز باشد.'],
+          invalid_remaining_duration:['duration','مدت باقی‌مانده باید بین ۱ تا ۹۹٬۹۹۹ روز باشد.'],
+          invalid_duration:['duration','مدت توقف باید بیشتر از صفر و حداکثر ۲۴ ساعت باشد.'],
+          invalid_resume:[auto?'dependency':'resumeOn',auto?'با زمان‌بندی پیش‌نیاز، تاریخ شروع مجدد معتبر به دست نیامد. تاریخ شروع توقف و پیش‌نیاز را بررسی کنید.':'تاریخ شروع مجدد باید بعد از شروع توقف و سازگار با برنامهٔ کار باشد.'],
+          invalid_resume_predecessor:['dependency','پیش‌نیاز معتبر نیست یا وابستگی حلقوی دارد. پیش‌نیاز دیگری انتخاب کنید.'],
+          unscheduled_resume_predecessor:['dependency','پیش‌نیاز انتخاب‌شده زمان‌بندی ندارد. تاریخ‌های آن را ثبت کنید یا پیش‌نیاز دیگری انتخاب کنید.'],
+          contact_required:['contacts','یکی از طرف‌های منتسب دیگر در فهرست مخاطبان پروژه نیست. آن را دوباره انتخاب کنید.'],
+          interruption_exists:['day','بازهٔ انتخابی با توقف ثبت‌شدهٔ دیگری هم‌پوشانی دارد. تاریخ توقف یا شروع مجدد را تغییر دهید.'],
+        })[result.code];
+        if(issue && errors.has(issue[0])){
+          fieldError(...issue);
+          reveal(errors.get(issue[0]).control);
+        }else{
+          feedback.textContent=({
+            forbidden:'فقط مسئول پیگیریِ دارای دسترسی اجرا می‌تواند توقف ثبت کند.',
+            locked:'این کار تکمیل شده یا در انتظار تأیید است و امکان ثبت توقف ندارد.',
+            invalid_interruption:'وضعیت توقف تغییر کرده است. فرم را ببندید و دوباره باز کنید.',
+            invalid_duration:'مدت توقف باید بیشتر از صفر و حداکثر ۲۴ ساعت باشد.',
+          })[result.code]||'توقف ذخیره نشد. دوباره تلاش کنید.';
+          reveal(feedback);
+        }
         return false;
       }
       refresh?.();
