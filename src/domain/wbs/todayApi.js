@@ -125,11 +125,12 @@ export const todayApi = {
     const resumePredecessorId=planned?String(draft.resumePredecessorId??previous?.resumePredecessorId??''):'';
     const resumeMode=planned?(draft.resumeMode??previous?.resumeMode??''):'';
     const resumeLagDays=resumeMode==='auto'?Number(draft.resumeLagDays??previous?.resumeLagDays??0):0;
-    if(resumeMode && !['manual','auto'].includes(resumeMode))return {ok:false,code:'invalid_resume'};
+    if(!date(start) || (!planned && start>day))return {ok:false,code:'invalid_start'};
+    if(resumeMode && !['manual','auto'].includes(resumeMode))return {ok:false,code:'invalid_resume_mode'};
     const resumeRelationType=planned?(draft.resumeRelationType??previous?.resumeRelationType??'FS'):'';
     const resumeDurationDays=planned?(draft.resumeDurationDays??previous?.resumeDurationDays??null):null;
-    if(planned && (!['FS','SS','FF'].includes(resumeRelationType) || !Number.isInteger(resumeLagDays) || Math.abs(resumeLagDays)>99999))
-      return {ok:false,code:'invalid_resume'};
+    if(planned && !['FS','SS','FF'].includes(resumeRelationType))return {ok:false,code:'invalid_resume_relation'};
+    if(planned && (!Number.isInteger(resumeLagDays) || Math.abs(resumeLagDays)>99999))return {ok:false,code:'invalid_resume_lag'};
     if(resumeDurationDays!==null && (!Number.isInteger(resumeDurationDays)||resumeDurationDays<1||resumeDurationDays>99999))
       return {ok:false,code:'invalid_remaining_duration'};
     if(resumePredecessorId){
@@ -138,15 +139,22 @@ export const todayApi = {
           .map(entry=>entry.resumePredecessorId).filter(Boolean),resumePredecessorId])];
       if(resumePredecessorId===String(ref.workId) || !validatePredecessors(items,ref.id,links).ok)return {ok:false,code:'invalid_resume_predecessor'};
     }
-    if(resumeMode==='auto' && (!resumePredecessorId || !lookup(resumePredecessorId)))
-      return {ok:false,code:'invalid_resume_predecessor'};
+    if(resumeMode==='auto' && !resumePredecessorId)return {ok:false,code:'invalid_resume_predecessor'};
+    if(resumeMode==='auto' && !lookup(resumePredecessorId))return {ok:false,code:'unscheduled_resume_predecessor'};
     if(planned && draft.multiday && (range || draft.resumeDurationDays!=null || resumeMode==='auto')){
       const preview=previewPlannedPause(entity,range,{
         id:previous?.id,type:'planned_pause',multiday:true,day:start,resumeOn,
         resumeMode,resumePredecessorId,resumeLagDays,resumeRelationType,resumeDurationDays,
       },lookup);
       if(preview.conflicts)return {ok:false,code:'interruption_exists'};
-      if(!preview.window)return {ok:false,code:'invalid_resume'};
+      if(!preview.window){
+        const stop=jalaliDayNumber(start);
+        const baseline=stop===null?null:previewPlannedPause(entity,range,{
+          id:previous?.id,type:'planned_pause',multiday:true,day:start,
+          resumeMode:'manual',resumeOn:scheduleDate(stop+1),
+        },lookup).window;
+        return {ok:false,code:baseline?'invalid_resume':'invalid_start'};
+      }
       resumeOn=scheduleDate(preview.window.resume);
       if(entries.some(entry=>entry?.type==='execution_obstacle' && entry.multiday && entry.day<resumeOn
         && (!entry.resumedOn || entry.resumedOn>start)))return {ok:false,code:'interruption_exists'};
@@ -155,7 +163,6 @@ export const todayApi = {
     const contact=(projectRepository.find(projectId)?.contacts||[]).find(person=>person && !person.trashed && String(person.id)===draft.contactId);
     if(!reason)return {ok:false,code:'reason_required'};
     if(!description)return {ok:false,code:'description_required'};
-    if(!date(start) || (!planned && start>day))return {ok:false,code:'invalid_start'};
     if((planned && !date(resumeOn)) || (resumeOn && (!date(resumeOn)||resumeOn<start||planned && resumeOn===start)))
       return {ok:false,code:'invalid_resume'};
     if(draft.durationHours!=null && !(Number.isFinite(draft.durationHours)&&draft.durationHours>0&&draft.durationHours<=24))
