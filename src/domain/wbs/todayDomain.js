@@ -6,14 +6,14 @@ export function executionInterruption(entity,day){
   const history=entity.executionHistory||[];
   const open=entry=>entry?.day<=day && (!entry.resumedOn||day<entry.resumedOn);
   return history.findLast(entry=>entry?.type==='execution_obstacle' && entry.multiday && open(entry))
-    || history.findLast(entry=>entry?.type==='planned_pause' && open(entry) && day<entry.resumeOn);
+    || history.findLast(entry=>entry?.type==='planned_pause' && open(entry) && (day<entry.resumeOn || entry.resumePredecessorId));
 }
 
 export function interruptionReportOf(entity,day){
   return (entity?.executionHistory||[]).findLast(entry=>entry?.isDailyReport===true
     && ['planned_pause','execution_obstacle'].includes(entry.type)
     && entry.day<=day && (entry.day===day || ((!entry.resumedOn || day<entry.resumedOn)
-      && (entry.type!=='planned_pause' || day<entry.resumeOn))));
+      && (entry.type!=='planned_pause' || day<entry.resumeOn || entry.resumePredecessorId))));
 }
 
 export const TODAY_MODES = Object.freeze(['overdue','today','future','pending','unscheduled']);

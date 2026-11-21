@@ -336,6 +336,11 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       const durationButton=numericButton('taskDuration',duration,{suffix:' روز',onChange:value=>{
         duration=value;updateSchedule('duration');
       }});
+      const manualDates=documentRef.createElement('div');
+      const calculatedDates=documentRef.createElement('div');
+      calculatedDates.className='wbs-calculated-dates';
+      calculatedDates.hidden=true;
+      calculatedDates.setAttribute('aria-live','polite');
       const warning=documentRef.createElement('p');
       warning.className='wbs-sheet-hint';
       warning.setAttribute('role','status');
@@ -357,6 +362,9 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
           setDate(end,manualEnd);
         }
         wasAutomatic=auto;
+        const dates=auto?calculatedDates:manualDates;
+        if(startRow.parentNode!==dates)dates.append(startRow,endRow);
+        calculatedDates.hidden=!auto;
         start.disabled=auto;
         let first=jalaliDayNumber(start.dataset.value),last=jalaliDayNumber(end.dataset.value);
         if(auto){
@@ -393,12 +401,13 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       root.append(fieldRow('درجه اهمیت',priority));
       section('زمان‌بندی');
       if(!saveStandalone)root.append(fieldRow('روش زمان‌بندی',mode));
-      root.append(startRow,endRow);
+      manualDates.append(startRow,endRow);
+      root.append(manualDates);
       if(!saveStandalone)root.append(fieldRow('مدت انجام کار',durationButton),warning);
       if(!saveStandalone){
         const dependency = predecessorField({ documentRef, project:projectRepository.find(projectId), consumerId:task?.id || `new:${work.id}`, initial:task?(task.dependencies?.length?task.dependencies:task.predecessorIds||[])
           :!activeWorkTasks(work).length?(work.dependencies?.length?work.dependencies:work.predecessorIds||[]):[], onChange:()=>updateSchedule('dependency') });
-        root.append(dependency.element);
+        root.append(dependency.element,calculatedDates);
         root._taskDependency=dependency;
       }
       section('مسئولان');

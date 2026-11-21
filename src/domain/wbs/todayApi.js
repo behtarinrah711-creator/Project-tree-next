@@ -1,3 +1,4 @@
+import {flattenDependencyCandidates,validatePredecessors} from './scheduling.js';
 import {toEnglishDigits} from '../../ui/digits.js';
 import {projectRepository} from '../../data/projectRepository.js';
 import {executionApproverIds,pendingExecutionApproverIds} from './workTaskModel.js';
@@ -81,6 +82,12 @@ export const todayApi = {
     const date=value=>typeof value==='string' && /^\d{4}\/\d{2}\/\d{2}$/.test(value);
     if(draft.resume){
       if(!previous || previous.resumedOn || previous.day>day)return {ok:false,code:'invalid_interruption'};
+      if(previous.type==='planned_pause' && previous.resumePredecessorId){
+        const predecessor=flattenDependencyCandidates(projectRepository.find(projectId)?.tasks)
+          .find(row=>row.id===previous.resumePredecessorId)?.item;
+        if(!predecessor || !(predecessor.completed || predecessor.done || predecessor.completionState==='approved') || day<previous.resumeOn)
+          return {ok:false,code:'resume_predecessor_pending'};
+      }
       return mutate(projectId,ref,current=>({...current,returnedToTodayOn:day,updatedAt:at,
         executionHistory:current.executionHistory.map(entry=>entry.id===previous.id?{...entry,resumedOn:day,resumedBy:by}:entry)}));
     }
@@ -102,6 +109,12 @@ export const todayApi = {
       .replace(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/,(_,year,month,date)=>[year,month.padStart(2,'0'),date.padStart(2,'0')].join('/'));
     const start=previous?.day||normalizeDate(draft.day)||day;
     const resumeOn=normalizeDate(draft.resumeOn);
+    const resumePredecessorId=planned?String(draft.resumePredecessorId??previous?.resumePredecessorId??''):'';
+    if(resumePredecessorId){
+      const items=projectRepository.find(projectId)?.tasks;
+      const links=[...new Set([...(entity.predecessorIds||[]),resumePredecessorId])];
+      if(resumePredecessorId===String(ref.workId) || !validatePredecessors(items,ref.id,links).ok)return {ok:false,code:'invalid_resume_predecessor'};
+    }
     const reason=String(draft.reason||'').trim(),description=String(draft.description||'').trim();
     const contact=(projectRepository.find(projectId)?.contacts||[]).find(person=>person && !person.trashed && String(person.id)===draft.contactId);
     if(!reason)return {ok:false,code:'reason_required'};
@@ -124,7 +137,7 @@ export const todayApi = {
       const person=contacts.find(contact=>String(contact.id)===id);
       return {id,name:[person.firstName,person.lastName].filter(Boolean).join(' ')||person.name||person.title||''};
     });
-    const details={day:start,reason,description,resumeOn,multiday:!!draft.multiday,
+    const details={day:start,reason,description,resumeOn,...(planned?{resumePredecessorId}:{}),multiday:!!draft.multiday,
       ...(draft.isDailyReport?{isDailyReport:true,reasonId:draft.reasonId,attributedContacts}:{}),
       role:planned?'':draft.role,contactId:planned?'':String(contact?.id||''),
       contactName:planned?'':String(contact?.name||contact?.title||''),
