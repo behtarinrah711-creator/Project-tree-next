@@ -488,5 +488,12 @@ export function previewPlannedPause(item,range,pause,lookup){
     if(projection.windows.has(entry))return false;
     return original.has(entry);
   });
-  return {window,conflicts,end:projection.segments.at(-1)?.end};
+  const pauses=[...projection.windows.keys()];
+  const finishConflict=pauses.some((entry,index)=>{
+    const next=projection.windows.get(pauses[index+1]);
+    if(!next || entry.resumedOn || entry.resumeMode!=='auto' || entry.resumeRelationType!=='FF')return false;
+    const predecessor=lookup(entry.resumePredecessorId);
+    return predecessor && next.stop-1<predecessor.end+entry.resumeLagDays;
+  });
+  return {window,conflicts:conflicts||finishConflict,end:projection.segments.at(-1)?.end};
 }
