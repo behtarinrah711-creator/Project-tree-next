@@ -159,9 +159,12 @@ function renderCounterparty(container, { type, contacts, activities, value, onSe
   const button = documentRef.createElement('button');
   button.type = 'button'; button.name = 'taskCounterparty'; button.className = 'wbs-input';
   button.dataset.value = value || '';
+  const select = id => {button.dataset.value=String(id);onSelect(button.dataset.value);paint();};
+  const selection=clearSelection(button,label,()=>select(''),()=>type==='پیمانکار' && Boolean(button.dataset.value));
   const paint = () => {
     const selected = contacts.find(contact => String(contact.id) === String(button.dataset.value));
     button.textContent = selected ? contactName(selected) : type === 'پیمانکار' ? 'انتخاب کنید' : `انتخاب ${label}`;
+    selection.paint();
   };
   button.addEventListener('click', () => openSearchPicker({
     title:`انتخاب ${label}`, listTitle:'مخاطبین', selectedTitle:`${label} منتخب`,
@@ -181,25 +184,24 @@ function renderCounterparty(container, { type, contacts, activities, value, onSe
     onAdd:()=>{
       window.KarhaSearchTemplate?.close(false);
       window.KarhaApp?.modules?.get('people')?.openContactForm?.(null,{pickerMode:true,onCreated:created=>{
-        contacts.push(created);button.dataset.value=String(created.id);onSelect(button.dataset.value);paint();
+        contacts.push(created);select(created.id);
       }});
     },
-    onSelect:selected => {
-      button.dataset.value = String(selected.id);
-      onSelect(button.dataset.value);
-      paint();
-    },
+    onSelect:selected=>select(selected.id),
   }));
   paint();
-  container.appendChild(fieldRow(label, button));
+  container.appendChild(fieldRow(label, selection.wrap));
 }
 
 function renderActivity(container,{activities,value,onSelect,workId,documentRef}){
   const button=documentRef.createElement('button');
   button.type='button';button.name='taskActivity';button.className='wbs-input';button.dataset.value=value || '';
+  const select=id=>{button.dataset.value=String(id);onSelect(button.dataset.value);paint();};
+  const selection=clearSelection(button,'فعالیت',()=>select(''),()=>Boolean(button.dataset.value));
   const paint=()=>{
     const selected=activities.find(activity=>String(activity.id)===String(button.dataset.value));
-    button.textContent=selected?.name || 'انتخاب فعالیت';
+    button.textContent=selected?.name || 'انتخاب کنید';
+    selection.paint();
   };
   button.addEventListener('click',()=>openSearchPicker({
     title:'انتخاب فعالیت',listTitle:'فعالیت‌ها',selectedTitle:'فعالیت منتخب',
@@ -209,12 +211,12 @@ function renderActivity(container,{activities,value,onSelect,workId,documentRef}
     onAdd:()=>{
       window.KarhaSearchTemplate?.close(false);
       window.KarhaApp?.modules?.get('activities')?.openActivityForm?.({pickerMode:true,onCreated:created=>{
-        activities.push(created);button.dataset.value=String(created.id);onSelect(button.dataset.value);paint();
+        activities.push(created);select(created.id);
       }});
     },
-    onSelect:selected=>{button.dataset.value=String(selected.id);onSelect(button.dataset.value);paint();},
+    onSelect:selected=>select(selected.id),
   }));
-  paint();container.appendChild(fieldRow('فعالیت',button));
+  paint();container.appendChild(fieldRow('فعالیت',selection.wrap));
 }
 
 function taskForm({ projectId, work, task = null, onChanged, readOnly=false, canDelete=true, saveStandalone }){

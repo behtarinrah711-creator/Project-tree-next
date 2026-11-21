@@ -30,6 +30,7 @@ const TYPE_CLASSES = new Map([['اجرا','type-1'],['خرید','type-2'],['نی
 const PRIORITY_LABELS = Object.freeze({ low:'بحرانی', normal:'عادی', high:'مهم' });
 const PRIORITY_CLASSES = Object.freeze({ low:'priority-low', normal:'priority-normal', high:'priority-high' });
 let standaloneMode='today';
+let shoppingMode='today';
 const toolbarFilters=new Map();
 let activeMode = 'today'; let activeProjectId = null;
 
@@ -333,13 +334,22 @@ function previousExecutionDays(documentRef,item,day,refresh,editContext){
   return {root,release(){releases.forEach(release=>release());}};
 }
 
+function executionModule(item){
+  return item.kind!=='standalone' && item.entity.type==='خرید' ? 'execution:shopping' : 'execution:today';
+}
+
+function purchaseAmountLabel(item){
+  return new Intl.NumberFormat('fa-IR').format(item.amount ?? 0)+' تومان';
+}
+
 function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,approval){
   const root=documentRef.createElement('div');
   root.className='today-detail';
   const entity=item.entity;
   const current=dailyExecutionStatus(entity,day);
   const currentActor=currentExecutionActor(project);
-  const writable=!approval && canWriteProjectModule(project.id,'execution:today');
+  const shopping=executionModule(item)==='execution:shopping';
+  const writable=!approval && canWriteProjectModule(project.id,executionModule(item));
 
   const summary=detailCard(documentRef);
   const statusChip=documentRef.createElement('b');
@@ -364,7 +374,8 @@ function renderExecutionDetail(documentRef,project,item,day,refresh,afterClose,a
   const contractor=contractorForItem(project,item).contact;
   summary.append(detailRow(documentRef,'مسئول کار',assignee?contactName(assignee):'—'),
     detailRow(documentRef,'مسئول تأیید',approvers.map(contactName).join('، ')||'—'));
-  if(contractor)summary.append(detailRow(documentRef,'پیمانکار',contactName(contractor)));
+  if(shopping)summary.append(detailRow(documentRef,'مبلغ',purchaseAmountLabel(item)));
+  else if(contractor)summary.append(detailRow(documentRef,'پیمانکار',contactName(contractor)));
   if(current.reason)summary.append(inactiveReasonRow(documentRef,current,todayReportOf(entity,day)));
   root.append(schedule,progress,summary);
   if(item.kind==='standalone' && entity.oddJobType){
@@ -527,7 +538,8 @@ function planningTaskActions(documentRef,project,item,onChanged){
 
 function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCalendar,approval){
   const card=documentRef.createElement('article');
-  card.className='today-task-card wbs-costline-work';
+  const shopping=executionModule(item)==='execution:shopping';
+  card.className='today-task-card wbs-costline-work'+(shopping?' shopping-item-card':'');
   card.dataset.entityId=item.id;
   card.dataset.entityKind=item.kind;
   const heading=documentRef.createElement('div');
@@ -540,14 +552,14 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   titles.innerHTML=`<strong>${esc(entity.title||entity.text||'')} <small class="wbs-task-priority ${priorityClass}">${esc(priorityLabel)}</small></strong><span>${esc(item.path.join(' · '))}</span>`;
   const assignee=(project.contacts||[]).find(contact=>!contact.trashed && String(contact.id)===String(entity.assigneeContactId));
   const contractor=contractorForItem(project,item).contact;
-  if(contractor){
+  if(shopping || contractor){
     const name=documentRef.createElement('span');
     const cName=contactName(contractor);
     const label=documentRef.createElement('span');
     label.className='today-card-contractor-label';
-    label.textContent='پیمانکار:';
+    label.textContent=shopping?'مبلغ:':'پیمانکار:';
     name.className='today-card-contractor-name';
-    name.textContent=cName.replace(/^پیمانکار(?:\s*[:：]\s*|\s+|$)/u,'');
+    name.textContent=shopping?purchaseAmountLabel(item):cName.replace(/^پیمانکار(?:\s*[:：]\s*|\s+|$)/u,'');
     titles.append(label,name);
   }
   const openDetails=()=>openTodayDetails(documentRef,project,item,today,onChanged,returnToCalendar,approval);
@@ -557,7 +569,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   const activeStop=executionInterruption(entity,today);
   const stopReport=interruptionReportOf(entity,today)||activeStop;
   const saved=!!todayReportOf(entity,today);
-  const canEditToday=!approval && today===tehranTodayJalali() && canWriteProjectModule(project.id,'execution:today');
+  const canEditToday=!approval && today===tehranTodayJalali() && canWriteProjectModule(project.id,executionModule(item));
   const actor=canEditToday?currentExecutionActor(project):null;
   const canReport=canEditToday && isExecutionAssignee(entity,actor) && !['approved','pending_approval'].includes(executionStatus(entity));
   const report=documentRef.createElement(canReport || stopReport?'button':'span');
@@ -571,7 +583,11 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     event.stopPropagation();
     if(!canReport || stopReport)return;
     openDailyExecutionReport({projectId:project.id,item,actor,day:today,statusControls:true,
-      onChanged,onReturn:returnToCalendar,onSubmitted(updated){if(item.kind==='standalone')standaloneMode='pending';else activeMode=timeState(updated,tehranTodayJalali());}});
+      onChanged,onReturn:returnToCalendar,onSubmitted(updated){
+        if(shopping)shoppingMode=timeState(updated,tehranTodayJalali());
+        else if(item.kind==='standalone')standaloneMode='pending';
+        else activeMode=timeState(updated,tehranTodayJalali());
+      }});
   };
   const stop=linkButton(documentRef,'today-card-stop',stopReport?'مشاهدهٔ توقف':'ثبت توقف');
   stop.onclick=event=>{
@@ -609,6 +625,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
       if(!raw||!Number.isInteger(value)||value<0||value>100){window.KarhaUI?.showToast?.('درصد پیشرفت باید بین صفر تا صد باشد');return false;}
       const result=todayApi.setProgress(project.id,refOf(item),value,currentExecutionActor(project));
       if(!result.ok){window.KarhaUI?.showToast?.('ثبت درصد پیشرفت انجام نشد');return false;}
+      if(shopping && value===100)shoppingMode=timeState(result.entity,tehranTodayJalali());
       onChanged?.();
     },{suffix:'٪',group:false,maxLen:3,allowPaste:false});
   }:undefined});
@@ -628,12 +645,12 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     menu.querySelector?.('.nb-more')?.setAttribute('aria-label','عملیات خرده‌کار');
     heading.append(menu);
   }
-  if(!approval && (item.kind==='task' || item.kind==='work')){
+  if(!approval && (!shopping || canWriteProjectModule(project.id,executionModule(item))) && (item.kind==='task' || item.kind==='work')){
     const actions=planningTaskActions(documentRef,project,item,onChanged);
     if(actions){
       heading.classList.add('has-oddjob-menu');
       const menu=contractActionsMenu(actions);
-      menu.querySelector('.nb-more')?.setAttribute('aria-label','عملیات کار برنامه');
+      menu.querySelector('.nb-more')?.setAttribute('aria-label',shopping?'عملیات خرید':'عملیات کار برنامه');
       heading.append(menu);
     }
   }
@@ -684,8 +701,8 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   reportMeta.className='today-card-report-meta';
   const reportActions=documentRef.createElement('div');
   reportActions.className='today-card-report-actions';
-  if(stopReport || (canReport && entity.type!=='خرید'))reportActions.append(stop);
-  reportActions.append(report);
+  if(!approval && (stopReport || canReport))reportActions.append(stop);
+  if(!approval)reportActions.append(report);
   reportMeta.append(reportActions);
   const latest = latestActivity(entity);
   if (latest) {
@@ -839,14 +856,14 @@ function openExecutionDetailsFilter(documentRef,project,items,onApply,activeDeta
 export function renderTodayView(project,documentRef=document,onChanged,{standalone=false,shopping=null}={}){
   if(activeProjectId!==String(project?.id||'')){
     activeProjectId=String(project?.id||'');
-    activeMode='today';standaloneMode='today';toolbarFilters.clear();
+    activeMode='today';standaloneMode='today';shoppingMode='today';toolbarFilters.clear();
   }
   const today=tehranTodayJalali();
   const view=shopping?'shopping':standalone?'oddjobs':'today';
   const filterKey=String(project.id)+':'+view;
   if(!toolbarFilters.has(filterKey))toolbarFilters.set(filterKey,{branch:'',details:{}});
   const filters=toolbarFilters.get(filterKey);
-  const selectedMode=shopping?shopping.mode:standalone?standaloneMode:activeMode;
+  const selectedMode=shopping?shoppingMode:standalone?standaloneMode:activeMode;
   const collect=shopping?shopping.collect:standalone?collectStandaloneWorks:collectTodayItems;
   const all=collect(project,today,{includeApproved:true});
   let items=selectedMode==='all'?collect(project,today)
@@ -867,7 +884,7 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
     return tb - ta;
   });
   const frame=documentRef.createElement('section');
-  frame.className=shopping?'wbs-view-frame wbs-shopping-frame is-shopping-view':'wbs-view-frame wbs-today-frame is-today-view';
+  frame.className=shopping?'wbs-view-frame wbs-today-frame wbs-shopping-frame is-shopping-view':'wbs-view-frame wbs-today-frame is-today-view';
   frame.dataset.view=view;
   if(shopping && project.id)frame.dataset.projectId=String(project.id);
   frame.dataset.mode=selectedMode;
@@ -887,7 +904,7 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
     button.setAttribute('role','tab');
     button.setAttribute('aria-selected',String(mode===selectedMode));
     if(mode==='pending')button.title='کارهای تکمیل‌شدهٔ در انتظار تأیید';
-    button.addEventListener('click',()=>{if(shopping)shopping.setMode(mode);else if(standalone)standaloneMode=mode;else activeMode=mode;onChanged?.();});
+    button.addEventListener('click',()=>{if(shopping)shoppingMode=mode;else if(standalone)standaloneMode=mode;else activeMode=mode;onChanged?.();});
     tabs.appendChild(button);
   }
   const filter=documentRef.createElement('button');
@@ -899,8 +916,7 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
   }
   filter.onclick=()=>openExecutionBranchFilter(project,tree,id=>{filters.branch=id;onChanged?.();},selectedBranch);
   const showCalendar=options=>openExecutionCalendar(projectRepository.find(project.id)||project,
-    (source,item,day,selection)=>shopping?shopping.renderCard(documentRef,source,item,day,onChanged)
-      :renderTodaySummary(documentRef,source,item,day,onChanged,()=>showCalendar(selection)),{...options,collect});
+    (source,item,day,selection)=>renderTodaySummary(documentRef,source,item,day,onChanged,()=>showCalendar(selection)),{...options,collect});
   const calendar=linkButton(documentRef,'wbs-tree-mode-tab today-task-filter','تقویم');
   calendar.onclick=()=>showCalendar();
   header.append(tabs);
@@ -944,9 +960,9 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
   }
   header.append(footer);
   const body=documentRef.createElement('div');
-  body.className=shopping?'wbs-view-body wbs-shopping-body':'wbs-view-body wbs-today-body';
+  body.className=shopping?'wbs-view-body wbs-today-body wbs-shopping-body':'wbs-view-body wbs-today-body';
   if(!items.length)body.innerHTML='<div class="empty-state">موردی در این بخش وجود ندارد.</div>';
-  else items.forEach(item=>body.appendChild((shopping?.renderCard||renderTodaySummary)(documentRef,project,item,today,onChanged)));
+  else items.forEach(item=>body.appendChild(renderTodaySummary(documentRef,project,item,today,onChanged)));
   const stopWatching=()=>{
     clearInterval(timer);
     documentRef.removeEventListener('visibilitychange',refreshDate);

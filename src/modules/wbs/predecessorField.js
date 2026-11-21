@@ -26,7 +26,9 @@ export function validInitialRelations(initial, candidates = []){
 
 export function predecessorField({ documentRef = document, project, consumerId, initial = [], onChange = () => {} } = {}){
   const root = documentRef.createElement('div'); root.className = 'wbs-predecessor-field wbs-dependency-cards';
-  const caption = documentRef.createElement('span'); caption.className = 'wbs-field-label'; caption.textContent = 'پیش‌نیازها';
+  const caption=documentRef.createElement('h3');
+  caption.className='wbs-task-form-section';
+  caption.textContent='پیش‌نیازها';
   const candidates = flattenDependencyCandidates(project?.tasks || []).filter(row => row.id !== String(consumerId));
   const relations = new Map(validInitialRelations(initial, candidates).map(row => [row.predecessorId, row]));
   const chips = documentRef.createElement('div'); chips.className = 'wbs-predecessor-list';
@@ -36,7 +38,7 @@ export function predecessorField({ documentRef = document, project, consumerId, 
     chips.replaceChildren();
     [...relations.values()].forEach(relation => {
       const row = candidates.find(item => item.id === relation.predecessorId); if(!row) return;
-      const chip = documentRef.createElement('div'); chip.className = 'wbs-activity-row wbs-predecessor-row';
+      const chip = documentRef.createElement('div'); chip.className = 'wbs-predecessor-row';
 
       const header=documentRef.createElement('div');
       header.className='wbs-dependency-header';
