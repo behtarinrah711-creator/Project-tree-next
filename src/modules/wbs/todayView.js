@@ -599,6 +599,11 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
         }
         if(stopReport.attributedContacts?.length)root.append(detailRow(documentRef,'طرف‌های منتسب',stopReport.attributedContacts.map(person=>person.name).join('، ')));
         appendReportPhotos(root,stopReport.photos);
+        if(canReport && entity.type!=='خرید'){
+          const addStop=linkButton(documentRef,'wbs-input','ثبت توقف مجاز دیگر');
+          addStop.onclick=()=>openExecutionInterruption(project,item,actor,onChanged,undefined,{plannedOnly:true});
+          root.append(addStop);
+        }
         if(!activeStop || !canReport)return;
         const resume=linkButton(documentRef,'wbs-input','ازسرگیری کار');
         const feedback=documentRef.createElement('p');
