@@ -502,5 +502,11 @@ button.today-table-progress { cursor: pointer; }
 
 .today-report-stop-dates.today-stop-dates-auto{grid-template-columns:minmax(0,1fr);}
 .today-stop-dates-auto > [hidden]{display:none;}
-.today-stop-forecast .wbs-field{grid-template-columns:minmax(0,1fr);text-align:center;padding:8px;gap:4px;}
-.today-stop-forecast strong{overflow-wrap:anywhere;}
+
+.today-stop-timeline{min-width:0;border:1px solid var(--border,#ddd);border-radius:8px;padding:8px;}
+.today-stop-timeline-strip{display:flex;flex-wrap:wrap;gap:4px 0;}
+.today-stop-timeline-part{display:grid;gap:4px;flex-basis:66px;min-width:0;text-align:center;font-size:.75rem;}
+.today-stop-timeline-part small{font-size:inherit;overflow-wrap:anywhere;}
+.today-stop-timeline-bar{height:10px;border-radius:4px;background:#2463d4;}
+.today-stop-timeline-part.is-allowed .today-stop-timeline-bar{background:transparent;}
+.today-stop-timeline-part.is-unallowed .today-stop-timeline-bar{background:#c62828;}
