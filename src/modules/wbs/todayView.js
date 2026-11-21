@@ -621,12 +621,16 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   const percent=Math.max(0,Math.min(100,Number(entity.progress)||0));
   const progress=documentRef.createElement(canChangeProgress?'button':'div');
   progress.className='today-table-progress';
+  progress.dataset.percent=String(percent);
+  progress.classList.toggle('has-progress',percent>0);
   const progressBar=documentRef.createElement('progress');
   progressBar.max=100;
   progressBar.value=percent;
   const progressLabel=toPersianDigits(percent)+'٪';
   progressBar.setAttribute('aria-label','پیشرفت کار');
   const progressText=documentRef.createElement('span');
+  progressText.className='today-table-progress-label';
+  progressText.setAttribute('aria-hidden','true');
   progressText.textContent=progressLabel;
   progress.append(progressBar,progressText);
   if(canChangeProgress){
@@ -679,15 +683,10 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   start.textContent=entity.scheduleStart?'شروع '+formatScheduleEndpoint(entity.scheduleStart):'';
   const end=documentRef.createElement('span');
   end.textContent=entity.scheduleEnd?'پایان '+formatScheduleEndpoint(entity.scheduleEnd):'';
-  const statusText=documentRef.createElement('span');
-  const plannedStatus=timing?.status||scheduleStatus(entity,today);
-  statusText.className='today-schedule-status'+(plannedStatus?' is-'+plannedStatus.tone:'');
-  statusText.textContent=plannedStatus?.text||'';
-  dates.append(start,statusText,end);
+  dates.append(start,end);
   const stopTimeline=documentRef.createElement('div');
   stopTimeline.className='today-stop-timeline';
   if(interruptionTimeline(documentRef,item,project,stopTimeline)){
-    if(plannedStatus) schedule.append(statusText);
     schedule.append(stopTimeline);
   }else if(timing){
     const axis=documentRef.createElement('span');
@@ -710,8 +709,6 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   identity.append(name);
   person.append(avatar,identity);
   activityBar.append(person);
-  const reportMeta=documentRef.createElement('div');
-  reportMeta.className='today-card-report-meta';
   const reportActions=documentRef.createElement('div');
   reportActions.className='today-card-report-actions';
   if(stopReport || (canReport && entity.type!=='خرید'))reportActions.append(stop);
@@ -725,7 +722,6 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     reportActions.append(addStop);
   }
   reportActions.append(report);
-  reportMeta.append(reportActions);
   const latest = latestActivity(entity);
   const update=documentRef.createElement('span');
   update.className='today-table-update';
@@ -759,8 +755,8 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     update.append(summary);
   }
   appendRow('به‌روزرسانی',(latest||reportWithPhotos||description)?update:'—');
-  activityBar.append(reportMeta);
   appendRow('مسئول پیگیری',activityBar,'today-table-footer');
+  appendRow('اقدامات',reportActions,'today-table-actions');
   if(approval?.action){
     const actions=documentRef.createElement('div');
     actions.className='today-card-approval-actions';
