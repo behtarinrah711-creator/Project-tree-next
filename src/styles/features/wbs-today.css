@@ -505,7 +505,7 @@ button.today-table-progress { cursor: pointer; }
 
 .today-stop-timeline{min-width:0;border:1px solid var(--border,#ddd);border-radius:8px;padding:8px;}
 .today-stop-timeline-strip{display:flex;flex-wrap:wrap;gap:4px 0;}
-.today-stop-timeline-part{display:grid;gap:4px;flex-basis:66px;min-width:0;text-align:center;font-size:.75rem;}
+.today-stop-timeline-part{display:grid;gap:4px;flex-basis:66px;flex-grow:1;flex-grow:attr(data-duration type(<number>), 1);min-width:0;text-align:center;font-size:.75rem;}
 .today-stop-timeline-part small{font-size:inherit;overflow-wrap:anywhere;}
 .today-stop-timeline-bar{height:10px;border-radius:4px;background:#2463d4;}
 .today-stop-timeline-part.is-allowed .today-stop-timeline-bar{background:transparent;}
