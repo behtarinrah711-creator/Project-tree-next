@@ -400,3 +400,97 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
 
 .today-detail-reason.wbs-costline-detail-row{grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:start;}
 .today-detail-reason.wbs-costline-detail-row > span:last-child{min-width:0;max-width:100%;white-space:normal;overflow-wrap:anywhere;text-align:start;}
+
+.today-task-card.wbs-costline-work.today-execution-table,
+.wbs-today-frame .today-task-card.wbs-costline-work.today-execution-table {
+  --today-table-line: #e2e4e7;
+  padding: 0;
+  direction: rtl;
+  color: #343434;
+  font-size: 12px;
+}
+.today-table-row {
+  display: grid;
+  grid-template-columns: minmax(0, 27%) minmax(0, 1fr);
+}
+.today-table-row + .today-table-row { border-block-start: 1px solid var(--today-table-line); }
+.today-table-label {
+  display: grid;
+  align-content: center;
+  background: #f3f4f5;
+  border-inline-end: 1px solid var(--today-table-line);
+  padding: 7px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+.today-table-menu { justify-items: center; }
+.today-table-menu .nb-more { margin: 0; color: #1565c0; }
+.today-table-value { min-width: 0; padding: 7px 8px; overflow-wrap: anywhere; }
+.today-table-heading .today-card-titles {
+  display: block;
+  width: 100%;
+  padding: 8px;
+  border: 0;
+  color: inherit;
+  background: #f9fafb;
+  text-align: start;
+  font: inherit;
+  cursor: pointer;
+}
+.today-table-heading .today-card-titles strong { font-size: 14px; text-align: start; }
+.today-table-progress {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+}
+button.today-table-progress { cursor: pointer; }
+.today-table-progress progress {
+  flex: 1;
+  min-width: 0;
+  height: 20px;
+  appearance: none;
+  border: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #e1e4e7;
+}
+.today-table-progress progress::-webkit-progress-bar { background: #e1e4e7; }
+.today-table-progress progress::-webkit-progress-value { background: #16763e; }
+.today-table-progress progress::-moz-progress-bar { background: #16763e; }
+.today-table-schedule, .today-table-update { display: grid; gap: 5px; }
+.today-table-dates {
+  display: grid;
+  grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+}
+.today-table-dates > :last-child { text-align: end; }
+.today-table-dates .today-schedule-status { font-size: 10px; }
+.today-table-axis {
+  position: relative;
+  display: grid;
+  align-items: center;
+  height: 10px;
+  border-inline: 1px solid #60666d;
+}
+.today-table-axis::after {
+  content: "";
+  position: absolute;
+  inset: 1px 0;
+  background: repeating-linear-gradient(to left, transparent 0 calc(12.5% - 1px), #60666d calc(12.5% - 1px) 12.5%);
+  pointer-events: none;
+}
+.today-table-axis .today-schedule-bar { height: 3px; }
+.today-table-update .today-activity-thumbs { display: flex; }
+.today-table-report-summary { white-space: pre-line; }
+.today-table-footer .today-card-activity { padding: 0; border: 0; margin: 0; background: transparent; }
+.today-table-footer .today-card-avatar { width: 26px; height: 26px; }
+.today-table-footer .today-card-avatar svg { width: 18px; height: 18px; }
+.today-execution-table > .today-card-approval-actions { margin: 0; }

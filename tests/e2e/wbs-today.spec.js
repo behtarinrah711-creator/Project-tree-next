@@ -125,7 +125,7 @@ test('completion enters pending approval, rejection returns Today with typed new
   await card.locator('.today-report-circle').click();
   await page.locator('[name="reportDescription"]').fill('گزارش تکمیل قالب‌بندی');
   await page.locator('#wbsSheetOverlay .wbs-sheet-save').click();
-  await card.locator('.today-progress-circle').click();
+  await card.getByRole('button',{name:/ویرایش پیشرفت/}).click();
   await expect(page.locator('#numpadDisplay')).toContainText('۰');
   await page.locator('#numpadBackspace').click();
   for(const digit of '100') await page.locator(`.numpad-key[data-d="${digit}"]`).click();
@@ -147,7 +147,7 @@ test('completion enters pending approval, rejection returns Today with typed new
   await sheet.getByRole('button',{name:'مشاهدهٔ سابقه'}).click();
   await expect(sheet.locator('.today-comment').first()).toContainText('نیاز به اصلاح');
   await sheet.getByRole('button',{name:'بستن'}).click();
-  await card.locator('.today-progress-circle').click();
+  await card.getByRole('button',{name:/ویرایش پیشرفت/}).click();
   await expect(page.locator('#numpadDisplay')).toContainText('۱۰۰');
   await page.locator('#numpadDoneBtn').click();
   await expect(card).toHaveCount(0);
