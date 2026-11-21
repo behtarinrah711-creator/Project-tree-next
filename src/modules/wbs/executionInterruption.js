@@ -1,4 +1,4 @@
-import {flattenDependencyCandidates,resumeDayFromPredecessor,scheduleDate,scheduleRangeOf} from '../../domain/wbs/scheduling.js';
+import {interruptionScheduleLookup,jalaliDayNumber,previewPlannedPause,scheduleDate,scheduleRangeOf} from '../../domain/wbs/scheduling.js';
 import {appendReportPhotos} from './dailyExecutionReport.js';
 import {openSearchPicker} from '../../ui/searchPickerAdapter.js';
 import {openNumpadGeneric} from '../../ui/numpad.js';
@@ -14,7 +14,7 @@ const roles={contractor:'پیمانکار',assignee:'مسئول پیگیری',ap
 const name=contact=>[contact?.firstName,contact?.lastName].filter(Boolean).join(' ')||contact?.name||contact?.title||'';
 const id=contact=>String(contact?.id||'');
 
-export function openExecutionInterruption(project,item,actor,refresh,onReturn){
+export function openExecutionInterruption(project,item,actor,refresh,onReturn,{plannedOnly=false}={}){
   const current=tehranTodayJalali();
   const draft={multiday:true,day:current,role:'unknown',contactIds:[]};
   const contacts=(project.contacts||[]).filter(contact=>contact && !contact.trashed);
@@ -61,28 +61,60 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn){
       const automatic=button('خودکار',()=>{draft.resumeMode='auto';refreshResume();});
       modes.append(manual,automatic);root.append(modes);
       draft.resumeMode='manual';
-      const candidates=flattenDependencyCandidates(project.tasks);
+      const lookup=interruptionScheduleLookup(project.tasks);
+      const range=scheduleRangeOf({...item.entity,kind:item.kind==='task'||item.kind==='standalone'?'workTask':item.kind});
+      const duration=button('',()=>openNumpadGeneric(draft.resumeDurationDays??'',value=>{
+        durationOverride=Number(value);
+        refreshResume();
+      },{suffix:' روز',group:false,maxLen:5,validate:value=>/^\d+$/.test(value)&&Number(value)>0?'':'مدت باقی‌مانده را وارد کنید'}));
+      let durationOverride=null;
+      root.append(fieldRow('مدت باقی‌ماندهٔ اجرا',duration));
       const dependency=predecessorField({project,consumerId:item.id,single:true,
         excludeIds:[String(item.workId||'')],allowCandidate:row=>row.kind!=='stage',
         onChange:()=>refreshResume()});
-      root.append(dependency.element);
+      const forecast=document.createElement('div');
+      forecast.className='wbs-calculated-dates today-stop-forecast';
+      forecast.setAttribute('aria-live','polite');
+      const datesPreview=['شروع مجدد','پایان پیش‌بینی‌شده'].map(label=>{
+        const value=document.createElement('strong');
+        forecast.append(fieldRow(label,value));
+        return value;
+      });
+      const scheduleFeedback=document.createElement('p');
+      scheduleFeedback.setAttribute('role','status');
+      root.append(dependency.element,forecast,scheduleFeedback);
       refreshResume=()=>{
         const relation=dependency.relations()[0];
         draft.resumePredecessorId=relation?.predecessorId||'';
         draft.resumeLagDays=relation?.lagDays||0;
+        draft.resumeRelationType=relation?.type||'FS';
         modes.hidden=!relation;
         if(!relation)draft.resumeMode='manual';
         const auto=draft.resumeMode==='auto';
         manual.setAttribute('aria-pressed',String(!auto));
         automatic.setAttribute('aria-pressed',String(auto));
         dependency.element.classList.toggle('today-resume-manual',!auto);
-        const row=candidates.find(candidate=>candidate.id===draft.resumePredecessorId);
-        const range=row?scheduleRangeOf({...row.item,kind:row.kind}):null;
-        const calculated=resumeDayFromPredecessor(range,draft.resumeLagDays);
-        draft.resumeOn=auto?(calculated===null?'':scheduleDate(calculated)):manualResume;
+        const stop=jalaliDayNumber(draft.day);
+        const pause={...draft,resumeOn:manualResume};
+        const baseline=stop===null?null:previewPlannedPause(item.entity,range,{
+          ...pause,resumeMode:'manual',resumeOn:scheduleDate(stop+1),
+        },lookup).window;
+        draft.resumeDurationDays=durationOverride??baseline?.remaining??null;
+        duration.textContent=draft.resumeDurationDays
+          ?new Intl.NumberFormat('fa-IR').format(draft.resumeDurationDays)+' روز':'انتخاب کنید';
+        const preview=previewPlannedPause(item.entity,range,{...pause,resumeDurationDays:draft.resumeDurationDays},lookup);
+        draft.resumeOn=auto?(preview.window?scheduleDate(preview.window.resume):''):manualResume;
         resumeButton.disabled=auto;
-        resumeButton.textContent=draft.resumeOn?formatJalaliWithWeekday(draft.resumeOn)
-          :auto?'پیش‌نیاز تاریخ پایان ندارد':'انتخاب تاریخ';
+        resumeRow.hidden=auto;
+        dates.classList.toggle('today-stop-dates-auto',auto);
+        resumeButton.textContent=draft.resumeOn?formatJalaliWithWeekday(draft.resumeOn):'انتخاب تاریخ';
+        const valid=!!preview.window && !preview.conflicts && (!auto || !!lookup(draft.resumePredecessorId));
+        datesPreview[0].textContent=valid?formatJalaliWithWeekday(scheduleDate(preview.window.resume)):'—';
+        datesPreview[1].textContent=valid?formatJalaliWithWeekday(scheduleDate(preview.end)):'—';
+        scheduleFeedback.hidden=valid || (!auto && !manualResume && !!baseline);
+        scheduleFeedback.textContent=preview.conflicts?'این بازه با توقف دیگری تداخل دارد.'
+          :!baseline?'تاریخ توقف باید در یکی از بازه‌های اجرای کار باشد.'
+          :auto?'تاریخ پیش‌نیاز را بررسی کنید.':'تاریخ شروع مجدد باید بعد از شروع توقف باشد.';
       };
       refreshResume();
     }
@@ -125,11 +157,14 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn){
     feedback.setAttribute('role','alert');
     root.append(note,feedback);
   };
+  let formRoot;
   const sheet=openWbsSheet({
     title:'ثبت توقف',historyKey:'execution-interruption:'+item.id,autoFocus:false,
     keepParent:!!onReturn,
     onClose:()=>{uploader?.destroy();if(saved)onReturn?.();},
     body(root){
+      formRoot=root;
+      if(plannedOnly)return;
       for(const [planned,title,description] of [
         [true,'توقف مجاز','وقفه‌ای که از قبل هماهنگ شده است.'],
         [false,'توقف غیرمجاز','توقف ناشی از مانع یا تخلف خارج از برنامه.'],
@@ -152,6 +187,7 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn){
           reason_required:'دلیل توقف را انتخاب کنید.',
           description_required:'توضیحات را وارد کنید.',
           invalid_start:'تاریخ شروع توقف را بررسی کنید.',
+          invalid_remaining_duration:'مدت باقی‌مانده را بررسی کنید.',
           invalid_resume:'تاریخ ادامه را بررسی کنید.',
           invalid_resume_predecessor:'پیش‌نیاز شروع مجدد معتبر نیست یا وابستگی حلقوی دارد.',
           contact_required:'طرف‌های منتسب را دوباره انتخاب کنید.',
@@ -164,7 +200,8 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn){
       return true;
     },
   });
-  sheet.querySelector('.wbs-sheet-save').hidden=true;
+  if(plannedOnly)renderForm(formRoot,true,'ثبت توقف مجاز');
+  else sheet.querySelector('.wbs-sheet-save').hidden=true;
 }
 
 const eligibilityOf=entry=>entry.type==='planned_pause'?'eligible':entry.isDailyReport?'ineligible':entry.eligibility||'pending';

@@ -100,7 +100,7 @@ export function predecessorField({ documentRef = document, project, consumerId, 
       };
       draw();
       chip.append(header);
-      if(!single)chip.append(typeRow);
+      chip.append(typeRow);
       const offset=documentRef.createElement('div');offset.className='wbs-dependency-offset';
       offset.append(directions,stepper);chip.append(offset);
       chips.appendChild(chip);

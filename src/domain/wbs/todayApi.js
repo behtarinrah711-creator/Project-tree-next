@@ -1,4 +1,4 @@
-import {flattenDependencyCandidates,jalaliDayNumber,resumeDayFromPredecessor,scheduleDate,scheduleRangeOf,validatePredecessors} from './scheduling.js';
+import {dependencyRows,flattenDependencyCandidates,interruptionScheduleLookup,jalaliDayNumber,previewPlannedPause,scheduleDate,scheduleRangeOf,validatePredecessors} from './scheduling.js';
 import {toEnglishDigits} from '../../ui/digits.js';
 import {projectRepository} from '../../data/projectRepository.js';
 import {executionApproverIds,pendingExecutionApproverIds} from './workTaskModel.js';
@@ -77,21 +77,28 @@ export const todayApi = {
     if(!entity || entity.trashed || !by.contactId || String(entity.assigneeContactId)!==by.contactId)return {ok:false,code:'forbidden'};
     if(!draft.review && !draft.eligibility && (entity.completed || ['approved','pending_approval'].includes(entity.completionState)))return {ok:false,code:'locked'};
     const at=clock(), day=tehranTodayJalali(new Date(at));
+    const items=projectRepository.find(projectId)?.tasks;
+    const range=scheduleRangeOf({...entity,kind:ref.kind==='task'||ref.kind==='standalone'?'workTask':ref.kind});
+    const lookup=interruptionScheduleLookup(items);
     const entries=entity.executionHistory||[];
     const previous=entries.find(entry=>entry?.id && entry.id===draft.id && ['planned_pause','execution_obstacle'].includes(entry.type));
     const date=value=>typeof value==='string' && /^\d{4}\/\d{2}\/\d{2}$/.test(value);
     if(draft.resume){
       if(!previous || previous.resumedOn || previous.day>day)return {ok:false,code:'invalid_interruption'};
       if(previous.type==='planned_pause' && previous.resumePredecessorId){
-        const source=flattenDependencyCandidates(projectRepository.find(projectId)?.tasks)
+        const source=flattenDependencyCandidates(items)
           .find(row=>row.id===previous.resumePredecessorId);
         const predecessor=source?.item;
         const auto=previous.resumeMode==='auto';
-        const range=source?scheduleRangeOf({...source.item,kind:source.kind}):null;
-        const earliest=auto?resumeDayFromPredecessor(range,previous.resumeLagDays):jalaliDayNumber(previous.resumeOn);
-        const needsCompletion=!auto || previous.resumeLagDays>=0;
+        const type=previous.resumeRelationType||'FS';
+        const forecast=auto?previewPlannedPause(entity,range,previous,lookup).window:null;
+        const earliest=auto&&forecast?forecast.resume:jalaliDayNumber(previous.resumeOn);
+        const needsCompletion=type==='FS' && (!auto || previous.resumeLagDays>=0);
+        const needsStart=type==='SS' && previous.resumeLagDays>=0;
+        const complete=predecessor?.completed || predecessor?.done || predecessor?.completionState==='approved';
+        const started=predecessor?.actualStart || Number(predecessor?.progress)>0 || complete;
         if(!predecessor || earliest===null || jalaliDayNumber(day)<earliest ||
-          (needsCompletion && !(predecessor.completed || predecessor.done || predecessor.completionState==='approved')))
+          (needsCompletion&&!complete) || (needsStart&&!started))
           return {ok:false,code:'resume_predecessor_pending'};
       }
       return mutate(projectId,ref,current=>({...current,returnedToTodayOn:day,updatedAt:at,
@@ -119,18 +126,31 @@ export const todayApi = {
     const resumeMode=planned?(draft.resumeMode??previous?.resumeMode??''):'';
     const resumeLagDays=resumeMode==='auto'?Number(draft.resumeLagDays??previous?.resumeLagDays??0):0;
     if(resumeMode && !['manual','auto'].includes(resumeMode))return {ok:false,code:'invalid_resume'};
+    const resumeRelationType=planned?(draft.resumeRelationType??previous?.resumeRelationType??'FS'):'';
+    const resumeDurationDays=planned?(draft.resumeDurationDays??previous?.resumeDurationDays??null):null;
+    if(planned && (!['FS','SS','FF'].includes(resumeRelationType) || !Number.isInteger(resumeLagDays) || Math.abs(resumeLagDays)>99999))
+      return {ok:false,code:'invalid_resume'};
+    if(resumeDurationDays!==null && (!Number.isInteger(resumeDurationDays)||resumeDurationDays<1||resumeDurationDays>99999))
+      return {ok:false,code:'invalid_remaining_duration'};
     if(resumePredecessorId){
-      const items=projectRepository.find(projectId)?.tasks;
-      const links=[...new Set([...(entity.predecessorIds||[]),resumePredecessorId])];
+      const links=[...new Set([...dependencyRows(entity).map(link=>link.predecessorId),
+        ...entries.filter(entry=>entry!==previous && entry?.type==='planned_pause' && !entry.resumedOn)
+          .map(entry=>entry.resumePredecessorId).filter(Boolean),resumePredecessorId])];
       if(resumePredecessorId===String(ref.workId) || !validatePredecessors(items,ref.id,links).ok)return {ok:false,code:'invalid_resume_predecessor'};
-      if(resumeMode==='auto'){
-        const source=flattenDependencyCandidates(items).find(row=>row.id===resumePredecessorId);
-        const range=source?scheduleRangeOf({...source.item,kind:source.kind}):null;
-        const calculated=resumeDayFromPredecessor(range,resumeLagDays);
-        if(calculated===null || Math.abs(resumeLagDays)>99999)return {ok:false,code:'invalid_resume'};
-        resumeOn=scheduleDate(calculated);
-      }
-    }else if(resumeMode==='auto')return {ok:false,code:'invalid_resume_predecessor'};
+    }
+    if(resumeMode==='auto' && (!resumePredecessorId || !lookup(resumePredecessorId)))
+      return {ok:false,code:'invalid_resume_predecessor'};
+    if(planned && draft.multiday && (range || draft.resumeDurationDays!=null || resumeMode==='auto')){
+      const preview=previewPlannedPause(entity,range,{
+        id:previous?.id,type:'planned_pause',multiday:true,day:start,resumeOn,
+        resumeMode,resumePredecessorId,resumeLagDays,resumeRelationType,resumeDurationDays,
+      },lookup);
+      if(preview.conflicts)return {ok:false,code:'interruption_exists'};
+      if(!preview.window)return {ok:false,code:'invalid_resume'};
+      resumeOn=scheduleDate(preview.window.resume);
+      if(entries.some(entry=>entry?.type==='execution_obstacle' && entry.multiday && entry.day<resumeOn
+        && (!entry.resumedOn || entry.resumedOn>start)))return {ok:false,code:'interruption_exists'};
+    }
     const reason=String(draft.reason||'').trim(),description=String(draft.description||'').trim();
     const contact=(projectRepository.find(projectId)?.contacts||[]).find(person=>person && !person.trashed && String(person.id)===draft.contactId);
     if(!reason)return {ok:false,code:'reason_required'};
@@ -146,14 +166,14 @@ export const todayApi = {
     if(draft.isDailyReport && contactIds.some(id=>!contacts.some(person=>String(person.id)===id)))return {ok:false,code:'contact_required'};
     if(draft.isDailyReport && (!Object.hasOwn(INACTIVE_REASONS,draft.reasonId) || INACTIVE_REASONS[draft.reasonId]!==reason))
       return {ok:false,code:'reason_required'};
-    if(draft.isDailyReport && (executionInterruption(entity,day) || interruptionReportOf(entity,start)
+    if(draft.isDailyReport && (!planned || !range) && (executionInterruption(entity,day) || interruptionReportOf(entity,start)
       || entries.some(entry=>entry.isDailyReport && !entry.resumedOn && entry.day>=start && (!planned || entry.day<resumeOn))))
       return {ok:false,code:'interruption_exists'};
     const attributedContacts=planned?[]:contactIds.map(id=>{
       const person=contacts.find(contact=>String(contact.id)===id);
       return {id,name:[person.firstName,person.lastName].filter(Boolean).join(' ')||person.name||person.title||''};
     });
-    const details={day:start,reason,description,resumeOn,...(planned?{resumePredecessorId,resumeMode,resumeLagDays}:{}),multiday:!!draft.multiday,
+    const details={day:start,reason,description,resumeOn,...(planned?{resumePredecessorId,resumeMode,resumeLagDays,resumeRelationType,resumeDurationDays}:{}),multiday:!!draft.multiday,
       ...(draft.isDailyReport?{isDailyReport:true,reasonId:draft.reasonId,attributedContacts}:{}),
       role:planned?'':draft.role,contactId:planned?'':String(contact?.id||''),
       contactName:planned?'':String(contact?.name||contact?.title||''),

@@ -46,7 +46,7 @@ import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { stopIntervalForItem } from '../../domain/wbs/fundingReceipts.js';
 import { activeWbsScope, WBS_VIEW_SCOPES } from './viewScopes.js';
 import { openCreateWorkTaskSheet, renderWorkTasks } from './workTaskView.js';
-import { PROJECT_FINISH_MILESTONE_ID, flattenDependencyCandidates, plannedPauseSegments, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
+import { PROJECT_FINISH_MILESTONE_ID, interruptionScheduleLookup, plannedPauseSegments, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
 import { canDeletePlanning, canViewPlanning, canWritePlanning, planningAccessLevel } from '../roleManagement/planningAccess.js';
 import {
   advanceExpansionLevel,
@@ -365,11 +365,7 @@ function flattenTimeline(items){
 
 function renderTimeline(items){
   const rows = flattenTimeline(items);
-  const candidates=new Map(flattenDependencyCandidates(projectOf()?.tasks).map(row=>[row.id,row]));
-  const lookup=id=>{
-    const row=candidates.get(id);
-    return row?scheduleRangeOf(row.kind==='workTask'?{...row.item,kind:'workTask'}:row.item):null;
-  };
+  const lookup=interruptionScheduleLookup(projectOf()?.tasks);
   for(const entry of rows)entry.segments=plannedPauseSegments(entry.item,entry.range,lookup);
   const analysis = projectScheduleAnalysis(projectOf());
   if(Number.isFinite(analysis.projectFinish)) rows.push({
