@@ -44,7 +44,8 @@
 3. تست متناسب را اجرا کن.
 4. Commit واضح بساز و Branch را Push کن.
 5. با GitHub Connector یک PR به `main` بساز؛ PR موجود را تکرار نکن.
-6. پس از ساخت یا به‌روزرسانی هر PR، شماره و لینک PR را همراه با [لینک دیپلوی لایو ساُسا](https://github.com/behtarinrah711-creator/Project-tree-next/actions/workflows/deploy-arvan.yml) گزارش کن. منتظر CI نمان، مگر اینکه کاربر بخواهد.
+6. پس از ساخت یا به‌روزرسانی هر PR، بلافاصله شماره و لینک PR، [لینک ساُسا](https://saosa.ir/) و [لینک دیپلوی لایو ساُسا](https://github.com/behtarinrah711-creator/Project-tree-next/actions/workflows/deploy-arvan.yml) گزارش کن. منتظر نتیجهٔ تست‌های خودکار یا دیپلوی نمان و وضعیت آن‌ها را پیگیری نکن، مگر به درخواست صریح کاربر.
+7. هر موضوع را یک‌بار بررسی کن. اگر کاربر خطایی گزارش کرد، پیگیری را به همان خطا محدود کن.
 
 ## Check, Fix and Merge
 
