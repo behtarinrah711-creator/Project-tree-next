@@ -511,6 +511,9 @@ button.today-table-progress { cursor: pointer; }
 .today-stop-timeline-part.is-allowed .today-stop-timeline-bar{background:transparent;}
 .today-stop-timeline-part.is-unallowed .today-stop-timeline-bar{background:#c62828;}
 
+.today-stop-error{display:block;color:#b42318;margin:4px 0 10px;font-size:.875rem;}
+.today-stop-error[hidden],.today-stop-error:empty{display:none;}
+#wbsSheetOverlay [aria-describedby^="today-stop-error-"][aria-invalid="true"]{outline:1px solid #b42318;outline-offset:1px;}
 .today-table-progress-label {
   position: absolute;
   inset-inline-start: 4px;

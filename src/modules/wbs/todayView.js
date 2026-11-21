@@ -1013,4 +1013,3 @@ export function renderTodayView(project,documentRef=document,onChanged,{standalo
   });
   return frame;
 }
-
