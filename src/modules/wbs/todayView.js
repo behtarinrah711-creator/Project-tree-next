@@ -542,7 +542,8 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     name.textContent=label;
     const cell=documentRef.createElement('div');
     cell.className='today-table-value';
-    cell.append(value||'—');
+    if(typeof value==='string')cell.textContent=value||'—';
+    else cell.append(value);
     row.append(name,cell);
     card.append(row);
   };
@@ -613,7 +614,9 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   progressBar.value=percent;
   const progressLabel=toPersianDigits(percent)+'٪';
   progressBar.setAttribute('aria-label','پیشرفت کار');
-  progress.append(progressBar,progressLabel);
+  const progressText=documentRef.createElement('span');
+  progressText.textContent=progressLabel;
+  progress.append(progressBar,progressText);
   if(canChangeProgress){
     progress.type='button';
     progress.setAttribute('aria-label','ویرایش پیشرفت، '+progressLabel);

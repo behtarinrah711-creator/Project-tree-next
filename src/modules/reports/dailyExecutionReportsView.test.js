@@ -50,7 +50,7 @@ test('a card link opens complete report text for only that work across all dates
   assert.equal(totals.textContent,'۲ گزارش پیشرفت · ۱ ثبت دلیل شروع نشدن');
   const cards = days.children.flatMap(day=>day.children.filter(child=>child.tag==='details'));
   assert.equal(cards.length,3);
-  assert.equal(days.children.flatMap(day=>day.children).filter(node=>node.className.split(' ').includes('today-execution-table')).length,3);
+  assert.equal(days.children.flatMap(day=>day.children).filter(node=>node.className?.split(' ').includes('today-execution-table')).length,3);
   assert.ok(cards.every(card=>card.open));
   assert.deepEqual(cards.map(card=>card.children[1].textContent),
     ['نصب ردیف ۲','نصب ردیف ۱','تأمین نشدن مصالح\nسنگ نما نرسید']);
