@@ -73,13 +73,11 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
         excludeIds:[String(item.workId||'')],allowCandidate:row=>row.kind!=='stage',
         onChange:()=>refreshResume()});
       const forecast=document.createElement('div');
-      forecast.className='wbs-calculated-dates';
+      forecast.className='wbs-calculated-dates today-stop-forecast';
       forecast.setAttribute('aria-live','polite');
       const datesPreview=['شروع مجدد','پایان پیش‌بینی‌شده'].map(label=>{
-        const cell=document.createElement('div');
-        const caption=document.createElement('span');caption.textContent=label;
         const value=document.createElement('strong');
-        cell.append(caption,value);forecast.append(cell);
+        forecast.append(fieldRow(label,value));
         return value;
       });
       const scheduleFeedback=document.createElement('p');
