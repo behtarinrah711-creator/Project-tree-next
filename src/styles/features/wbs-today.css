@@ -425,6 +425,10 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
 }
 .today-table-menu { justify-items: center; }
 .today-table-menu .nb-more { margin: 0; color: #1565c0; }
+.today-execution-table .today-table-menu .contract-menu-wrap .nb-project-menu {
+  inset-inline: 0 auto;
+}
+
 .today-table-value { min-width: 0; padding: 7px 8px; overflow-wrap: anywhere; }
 .today-table-heading .today-card-titles {
   display: block;
