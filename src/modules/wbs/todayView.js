@@ -1,6 +1,6 @@
 import {flattenDependencyCandidates} from '../../domain/wbs/scheduling.js';
 import {executionApproverIds} from "../../domain/wbs/workTaskModel.js";
-import {INTERRUPTION_ELIGIBILITY,openExecutionInterruption} from "./executionInterruption.js";
+import {INTERRUPTION_ELIGIBILITY,interruptionTimeline,openExecutionInterruption} from "./executionInterruption.js";
 import {openSearchPicker} from '../../ui/searchPickerAdapter.js';
 import {openNumpadGeneric} from '../../ui/numpad.js';
 import {executionFilterTree,openExecutionBranchFilter} from './executionBranchFilter.js';
@@ -578,7 +578,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
     openDailyExecutionReport({projectId:project.id,item,actor,day:today,statusControls:true,
       onChanged,onReturn:returnToCalendar,onSubmitted(updated){if(item.kind==='standalone')standaloneMode='pending';else activeMode=timeState(updated,tehranTodayJalali());}});
   };
-  const stop=linkButton(documentRef,'today-card-stop',stopReport?'مشاهدهٔ توقف':'ثبت توقف');
+  const stop=linkButton(documentRef,'today-card-stop',stopReport?'مشاهدهٔ توقف':'+ ثبت توقف');
   stop.onclick=event=>{
     event.stopPropagation();
     if(!stopReport){openExecutionInterruption(project,item,actor,onChanged,returnToCalendar);return;}
@@ -599,11 +599,6 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
         }
         if(stopReport.attributedContacts?.length)root.append(detailRow(documentRef,'طرف‌های منتسب',stopReport.attributedContacts.map(person=>person.name).join('، ')));
         appendReportPhotos(root,stopReport.photos);
-        if(canReport && entity.type!=='خرید'){
-          const addStop=linkButton(documentRef,'wbs-input','ثبت توقف مجاز دیگر');
-          addStop.onclick=()=>openExecutionInterruption(project,item,actor,onChanged,undefined,{plannedOnly:true});
-          root.append(addStop);
-        }
         if(!activeStop || !canReport)return;
         const resume=linkButton(documentRef,'wbs-input','ازسرگیری کار');
         const feedback=documentRef.createElement('p');
@@ -688,13 +683,18 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   statusText.className='today-schedule-status'+(plannedStatus?' is-'+plannedStatus.tone:'');
   statusText.textContent=plannedStatus?.text||'';
   dates.append(start,statusText,end);
-  if(timing){
+  const stopTimeline=documentRef.createElement('div');
+  stopTimeline.className='today-stop-timeline';
+  if(interruptionTimeline(documentRef,item,project,stopTimeline)){
+    if(plannedStatus) schedule.append(statusText);
+    schedule.append(stopTimeline);
+  }else if(timing){
     const axis=documentRef.createElement('span');
     axis.className='today-table-axis';
     axis.append(timing.bar);
     schedule.append(dates,axis);
   }else if(entity.scheduleStart || entity.scheduleEnd)schedule.append(dates);
-  appendRow('زمان‌بندی',(timing||entity.scheduleStart||entity.scheduleEnd)?schedule:'—');
+  appendRow('زمان‌بندی',schedule.childElementCount?schedule:'—');
   const activityBar = documentRef.createElement('div');
   activityBar.className = 'today-card-activity';
   const person=documentRef.createElement('div');
@@ -714,6 +714,14 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   const reportActions=documentRef.createElement('div');
   reportActions.className='today-card-report-actions';
   if(stopReport || (canReport && entity.type!=='خرید'))reportActions.append(stop);
+  if(stopReport && canReport && entity.type!=='خرید'){
+    const addStop=linkButton(documentRef,'today-card-stop','+ ثبت توقف');
+    addStop.onclick=event=>{
+      event.stopPropagation();
+      openExecutionInterruption(project,item,actor,onChanged,returnToCalendar,{plannedOnly:true});
+    };
+    reportActions.append(addStop);
+  }
   reportActions.append(report);
   reportMeta.append(reportActions);
   const latest = latestActivity(entity);
