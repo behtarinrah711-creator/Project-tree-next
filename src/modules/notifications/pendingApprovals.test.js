@@ -105,7 +105,7 @@ test('the approval inbox renders the original cards with only review controls',(
       assert.ok(card.className.split(' ').includes(css));
       const buttons=card.nodes().filter(node=>node.tag==='button');
       if(group==='execution'){
-        assert.ok(card.nodes().some(node=>node.className==='today-card-heading today-card-summary'));
+        assert.ok(card.nodes().some(node=>node.className==='today-table-row today-table-heading'));
         assert.ok(card.nodes().some(node=>node.tag==='span' && node.className.startsWith('today-report-circle')));
         const actions=card.children.at(-1);
         assert.equal(actions.className,'today-card-approval-actions');

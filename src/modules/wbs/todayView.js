@@ -527,31 +527,35 @@ function planningTaskActions(documentRef,project,item,onChanged){
 
 function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCalendar,approval){
   const card=documentRef.createElement('article');
-  card.className='today-task-card wbs-costline-work';
+  card.className='today-task-card wbs-costline-work today-execution-table';
   card.dataset.entityId=item.id;
   card.dataset.entityKind=item.kind;
   const heading=documentRef.createElement('div');
-  heading.className='today-card-heading today-card-summary';
+  heading.className='today-table-row today-table-heading';
+  const menuCell=documentRef.createElement('div');
+  menuCell.className='today-table-label today-table-menu';
+  const appendRow=(label,value,className='')=>{
+    const row=documentRef.createElement('div');
+    row.className='today-table-row'+(className?' '+className:'');
+    const name=documentRef.createElement('span');
+    name.className='today-table-label';
+    name.textContent=label;
+    const cell=documentRef.createElement('div');
+    cell.className='today-table-value';
+    if(typeof value==='string')cell.textContent=value||'—';
+    else cell.append(value);
+    row.append(name,cell);
+    card.append(row);
+  };
   const {entity}=item;
   const titles=linkButton(documentRef,'today-card-titles','');
   const priority = entity.priority || 'normal';
   const priorityLabel = PRIORITY_LABELS[priority] || PRIORITY_LABELS.normal;
   const priorityClass = PRIORITY_CLASSES[priority] || 'priority-normal';
-  titles.innerHTML=`<strong>${esc(entity.title||entity.text||'')} <small class="wbs-task-priority ${priorityClass}">${esc(priorityLabel)}</small></strong><span>${esc(item.path.join(' · '))}</span>`;
+  titles.innerHTML=`<strong>${esc(entity.title||entity.text||'')} <small class="wbs-task-priority ${priorityClass}">${esc(priorityLabel)}</small></strong>`;
   const assignee=(project.contacts||[]).find(contact=>!contact.trashed && String(contact.id)===String(entity.assigneeContactId));
   const contractor=contractorForItem(project,item).contact;
-  if(contractor){
-    const name=documentRef.createElement('span');
-    const cName=contactName(contractor);
-    const label=documentRef.createElement('span');
-    label.className='today-card-contractor-label';
-    label.textContent='پیمانکار:';
-    name.className='today-card-contractor-name';
-    name.textContent=cName.replace(/^پیمانکار(?:\s*[:：]\s*|\s+|$)/u,'');
-    titles.append(label,name);
-  }
-  const openDetails=()=>openTodayDetails(documentRef,project,item,today,onChanged,returnToCalendar,approval);
-  heading.onclick=openDetails;
+  titles.onclick=()=>openTodayDetails(documentRef,project,item,today,onChanged,returnToCalendar,approval);
   const current=dailyExecutionStatus(entity,today);
   const status=current.reasonId==='officialHoliday'?'holiday':current.status;
   const activeStop=executionInterruption(entity,today);
@@ -602,20 +606,33 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
       }});
   };
   const canChangeProgress=canReport && !executionInterruption(entity,today);
-  const progress=progressCircle(documentRef,entity,{summary:{},onClick:canChangeProgress?event=>{
-    event.stopPropagation();
-    openNumpadGeneric(String(Number(entity.progress)||0),raw=>{
-      const value=Number(raw);
-      if(!raw||!Number.isInteger(value)||value<0||value>100){window.KarhaUI?.showToast?.('درصد پیشرفت باید بین صفر تا صد باشد');return false;}
-      const result=todayApi.setProgress(project.id,refOf(item),value,currentExecutionActor(project));
-      if(!result.ok){window.KarhaUI?.showToast?.('ثبت درصد پیشرفت انجام نشد');return false;}
-      onChanged?.();
-    },{suffix:'٪',group:false,maxLen:3,allowPaste:false});
-  }:undefined});
-  if(!canChangeProgress)progress.onclick=event=>event.stopPropagation();
-  heading.append(titles,progress);
+  const percent=Math.max(0,Math.min(100,Number(entity.progress)||0));
+  const progress=documentRef.createElement(canChangeProgress?'button':'div');
+  progress.className='today-table-progress';
+  const progressBar=documentRef.createElement('progress');
+  progressBar.max=100;
+  progressBar.value=percent;
+  const progressLabel=toPersianDigits(percent)+'٪';
+  progressBar.setAttribute('aria-label','پیشرفت کار');
+  const progressText=documentRef.createElement('span');
+  progressText.textContent=progressLabel;
+  progress.append(progressBar,progressText);
+  if(canChangeProgress){
+    progress.type='button';
+    progress.setAttribute('aria-label','ویرایش پیشرفت، '+progressLabel);
+    progress.onclick=event=>{
+      event.stopPropagation();
+      openNumpadGeneric(String(Number(entity.progress)||0),raw=>{
+        const value=Number(raw);
+        if(!raw||!Number.isInteger(value)||value<0||value>100){window.KarhaUI?.showToast?.('درصد پیشرفت باید بین صفر تا صد باشد');return false;}
+        const result=todayApi.setProgress(project.id,refOf(item),value,currentExecutionActor(project));
+        if(!result.ok){window.KarhaUI?.showToast?.('ثبت درصد پیشرفت انجام نشد');return false;}
+        onChanged?.();
+      },{suffix:'٪',group:false,maxLen:3,allowPaste:false});
+    };
+  }
+  heading.append(menuCell,titles);
   if(item.kind==='standalone' && entity.oddJobType && !approval && canWriteProjectModule(project.id,'execution:today')){
-    heading.classList.add('has-oddjob-menu');
     const canDelete=projectPermissionState(project.id,['execution:today']).levels['execution:today']==='full';
     const menu=contractActionsMenu({
       onEdit:()=>openStandaloneWorkSheet({projectId:project.id,existing:entity,onChanged,saveStandalone:draft=>updateStandaloneWork(project.id,draft)}),
@@ -626,60 +643,56 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
       },'بله',{cancelLabel:'خیر'}):undefined,
     });
     menu.querySelector?.('.nb-more')?.setAttribute('aria-label','عملیات خرده‌کار');
-    heading.append(menu);
+    menuCell.append(menu);
   }
   if(!approval && (item.kind==='task' || item.kind==='work')){
     const actions=planningTaskActions(documentRef,project,item,onChanged);
     if(actions){
-      heading.classList.add('has-oddjob-menu');
       const menu=contractActionsMenu(actions);
       menu.querySelector('.nb-more')?.setAttribute('aria-label','عملیات کار برنامه');
-      heading.append(menu);
+      menuCell.append(menu);
     }
   }
-  card.appendChild(heading);
+  card.append(heading);
+  appendRow('مسیر',(item.path||[]).join(' · '));
+  const contractorName=contractor?contactName(contractor).replace(/^پیمانکار(?:\s*[:：]\s*|\s+|$)/u,''):'';
+  appendRow('پیمانکار',contractorName);
+  appendRow('پیشرفت',progress);
   const timing=scheduleBar(documentRef,entity,today);
+  const schedule=documentRef.createElement('span');
+  schedule.className='today-table-schedule';
+  const dates=documentRef.createElement('span');
+  dates.className='today-table-dates';
+  const start=documentRef.createElement('span');
+  start.textContent=entity.scheduleStart?'شروع '+formatScheduleEndpoint(entity.scheduleStart):'';
+  const end=documentRef.createElement('span');
+  end.textContent=entity.scheduleEnd?'پایان '+formatScheduleEndpoint(entity.scheduleEnd):'';
+  const statusText=documentRef.createElement('span');
+  const plannedStatus=timing?.status||scheduleStatus(entity,today);
+  statusText.className='today-schedule-status'+(plannedStatus?' is-'+plannedStatus.tone:'');
+  statusText.textContent=plannedStatus?.text||'';
+  dates.append(start,statusText,end);
   if(timing){
-    const schedule=documentRef.createElement('div');
-    schedule.className='today-card-schedule';
-    if(timing.status?.text){
-      const label=documentRef.createElement('small');
-      label.className='today-schedule-status is-'+timing.status.tone;
-      if(timing.status.tone==='remaining'){
-        label.innerHTML='<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>';
-      }
-      label.append(timing.status.text);
-      schedule.append(label);
-    }
-    const dates=documentRef.createElement('div');
-    dates.className='today-schedule-dates';
-    const start=documentRef.createElement('span');
-    start.textContent=formatScheduleEndpoint(entity.scheduleStart);
-    const end=documentRef.createElement('span');
-    end.textContent=formatScheduleEndpoint(entity.scheduleEnd);
-    dates.append(start,end);
-    schedule.append(timing.bar,dates);
-    card.append(schedule);
-  }
-  // Bottom activity bar: latest update + small photo thumbs
+    const axis=documentRef.createElement('span');
+    axis.className='today-table-axis';
+    axis.append(timing.bar);
+    schedule.append(dates,axis);
+  }else if(entity.scheduleStart || entity.scheduleEnd)schedule.append(dates);
+  appendRow('زمان‌بندی',(timing||entity.scheduleStart||entity.scheduleEnd)?schedule:'—');
   const activityBar = documentRef.createElement('div');
   activityBar.className = 'today-card-activity';
-  if(assignee){
-    const person=documentRef.createElement('div');
-    person.className='today-card-person';
-    const avatar=documentRef.createElement('span');
-    avatar.className='today-card-avatar';
-    avatar.setAttribute('aria-hidden','true');
-    avatar.innerHTML='<svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 18.5c1.2-2.8 3.4-4.2 6.5-4.2s5.3 1.4 6.5 4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
-    const identity=documentRef.createElement('div');
-    const role=documentRef.createElement('span');
-    role.textContent='مسئول پیگیری:';
-    const name=documentRef.createElement('strong');
-    name.textContent=contactName(assignee);
-    identity.append(role,name);
-    person.append(avatar,identity);
-    activityBar.append(person);
-  }
+  const person=documentRef.createElement('div');
+  person.className='today-card-person';
+  const avatar=documentRef.createElement('span');
+  avatar.className='today-card-avatar';
+  avatar.setAttribute('aria-hidden','true');
+  avatar.innerHTML='<svg viewBox="0 0 24 24" focusable="false"><circle cx="12" cy="8" r="3.2"/><path d="M5.5 18.5c1.2-2.8 3.4-4.2 6.5-4.2s5.3 1.4 6.5 4.2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+  const identity=documentRef.createElement('div');
+  const name=documentRef.createElement('strong');
+  name.textContent=assignee?contactName(assignee):'—';
+  identity.append(name);
+  person.append(avatar,identity);
+  activityBar.append(person);
   const reportMeta=documentRef.createElement('div');
   reportMeta.className='today-card-report-meta';
   const reportActions=documentRef.createElement('div');
@@ -688,13 +701,16 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   reportActions.append(report);
   reportMeta.append(reportActions);
   const latest = latestActivity(entity);
+  const update=documentRef.createElement('span');
+  update.className='today-table-update';
   if (latest) {
     const textEl = documentRef.createElement('span');
     textEl.className = 'today-activity-text';
-    textEl.textContent = latest.text;
-    reportMeta.append(textEl);
+    textEl.textContent = toPersianDigits(relativeTime(latest.at))||'—';
+    update.append(textEl);
   }
-  const reportWithPhotos=reportsOf(entity).find(report=>report.photos?.some(photo=>photo?.hasThumbnail));
+  const reports=reportsOf(entity);
+  const reportWithPhotos=reports.find(report=>report.photos?.some(photo=>photo?.hasThumbnail));
   if(reportWithPhotos){
     const photos=reportWithPhotos.photos.filter(photo=>photo?.hasThumbnail).slice(0,3);
     const thumbs=documentRef.createElement('span');
@@ -707,10 +723,18 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
       thumbs.appendChild(image);
       loadActivityThumbnail(documentRef,image,photo);
     }
-    activityBar.appendChild(thumbs);
+    update.append(thumbs);
   }
+  const description=String(reports[0]?.description||'').trim();
+  if(description){
+    const summary=documentRef.createElement('span');
+    summary.className='today-table-report-summary';
+    summary.textContent=description;
+    update.append(summary);
+  }
+  appendRow('به‌روزرسانی',(latest||reportWithPhotos||description)?update:'—');
   activityBar.append(reportMeta);
-  card.append(activityBar);
+  appendRow('مسئول پیگیری',activityBar,'today-table-footer');
   if(approval?.action){
     const actions=documentRef.createElement('div');
     actions.className='today-card-approval-actions';
