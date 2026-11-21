@@ -57,6 +57,7 @@ export function interruptionTimeline(documentRef,item,project,container,{draft,l
     const [,month,date]=scheduleDate(day).split('/').map(Number);
     return number.format(date)+' '+['فروردین','اردیبهشت','خرداد','تیر','مرداد','شهریور','مهر','آبان','آذر','دی','بهمن','اسفند'][month-1];
   };
+  if(!live)strip.classList.add('is-compact');
   for(const piece of pieces){
     const part=documentRef.createElement('div');
     part.className='today-stop-timeline-part is-'+piece.type;
@@ -69,10 +70,28 @@ export function interruptionTimeline(documentRef,item,project,container,{draft,l
     const date=documentRef.createElement('small');
     const last=piece.end-Number(piece.type==='work');
     date.textContent=shortDate(piece.start)+' تا '+shortDate(last);
-    part.append(label,bar,date);
+    if(live)part.append(label,bar,date);
+    else part.append(bar);
     strip.append(part);
   }
   container.append(strip);
+  if(!live){
+    const dates=documentRef.createElement('div');
+    dates.className='today-stop-timeline-boundaries';
+    dates.dir='rtl';
+    const stops=pieces.filter(piece=>piece.type!=='work');
+    const stopDays=new Set(stops.flatMap(piece=>[piece.start,Math.min(piece.end,end)]));
+    const redDays=new Set(stops.filter(piece=>piece.type==='unallowed')
+      .flatMap(piece=>[piece.start,Math.min(piece.end,end)]));
+    const days=[...new Set([range.start,...stopDays,end])].sort((a,b)=>a-b);
+    for(const day of days){
+      const date=documentRef.createElement('span');
+      if(redDays.has(day))date.className='is-unallowed';
+      date.textContent=shortDate(day);
+      dates.append(date);
+    }
+    container.append(dates);
+  }
   return true;
 }
 

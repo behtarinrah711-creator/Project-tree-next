@@ -444,9 +444,9 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
 }
 .today-table-heading .today-card-titles strong { font-size: 14px; text-align: start; }
 .today-table-progress {
-  display: flex;
+  position: relative;
+  display: grid;
   align-items: center;
-  gap: 7px;
   width: 100%;
   padding: 0;
   border: 0;
@@ -456,7 +456,7 @@ body:has(.wbs-home-root :is(.is-today-view,.is-shopping-view)) .content,
 }
 button.today-table-progress { cursor: pointer; }
 .today-table-progress progress {
-  flex: 1;
+  width: 100%;
   min-width: 0;
   height: 20px;
   appearance: none;
@@ -470,8 +470,8 @@ button.today-table-progress { cursor: pointer; }
 .today-table-progress progress::-moz-progress-bar { background: #16763e; }
 .today-table-schedule, .today-table-update { display: grid; gap: 5px; }
 .today-table-dates {
-  display: grid;
-  grid-template-columns: minmax(0, auto) minmax(0, 1fr) minmax(0, auto);
+  display: flex;
+  justify-content: space-between;
   align-items: center;
   gap: 4px;
   font-size: 10px;
@@ -514,3 +514,25 @@ button.today-table-progress { cursor: pointer; }
 .today-stop-error{display:block;color:#b42318;margin:4px 0 10px;font-size:.875rem;}
 .today-stop-error[hidden],.today-stop-error:empty{display:none;}
 #wbsSheetOverlay [aria-describedby^="today-stop-error-"][aria-invalid="true"]{outline:1px solid #b42318;outline-offset:1px;}
+.today-table-progress-label {
+  position: absolute;
+  inset-inline-start: 4px;
+  inset-inline-start: clamp(4px, calc(attr(data-percent type(<number>), 0) * 1% - 34px), calc(100% - 34px));
+  min-inline-size: 30px;
+  border-radius: 3px;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 10px;
+  line-height: 16px;
+  pointer-events: none;
+}
+.today-table-progress.has-progress .today-table-progress-label { background: #16763e; color: #fff; }
+.today-table-actions .today-card-report-actions { flex-wrap: nowrap; overflow-x: auto; }
+.today-table-actions .today-card-report-actions > * { flex: 0 0 auto; white-space: nowrap; }
+.today-table-schedule .today-stop-timeline { border: 0; padding: 0; }
+.today-stop-timeline-strip.is-compact { flex-wrap: nowrap; gap: 0; border-radius: 4px; overflow: hidden; }
+.today-stop-timeline-strip.is-compact .today-stop-timeline-part { flex-basis: 0; }
+.today-stop-timeline-strip.is-compact .today-stop-timeline-bar { height: 6px; border-radius: 0; }
+.today-stop-timeline-boundaries { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 2px 5px; margin-block-start: 4px; font-size: 10px; }
+.today-stop-timeline-boundaries span { white-space: nowrap; }
+.today-stop-timeline-boundaries .is-unallowed { color: #aa2424; }
