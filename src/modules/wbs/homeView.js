@@ -600,6 +600,7 @@ function renderRow(item, codes, view, depth, treeLayout){
   const wrap = document.createElement('div');
   wrap.className = depth === 0 ? 'wbs-card' : 'wbs-branch';
   wrap.className += ' wbs-depth-' + Math.min(6, depth);
+  wrap.appendChild(row);
   if(treeLayout){
     wrap.className += ' wbs-tree-level-' + Math.min(8,depth);
     if(depth){
@@ -610,7 +611,6 @@ function renderRow(item, codes, view, depth, treeLayout){
     }
     if(depth)row.classList.add('has-tree-parent');
   }
-  wrap.appendChild(row);
   if(!readOnlyView){
     bindRowDrag(row, {
       id:item.id,
