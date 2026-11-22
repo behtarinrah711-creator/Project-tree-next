@@ -260,7 +260,7 @@ for(const [mode, levels] of [['base',1],['none',2],['single',3],['multiple',4]])
       await expect(row).toBeVisible();
       await expect(row.locator('.wbs-title')).toHaveCSS('font-size','14px');
       await expect(row.locator('.wbs-title')).toHaveCSS('font-weight','700');
-      await expect(row).not.toHaveCSS('background-color','rgb(255, 255, 255)');
+      await expect(row).toHaveCSS('background-color','rgb(255, 255, 255)');
     }
     const parent=page.locator('.wbs-row',{hasText:`سطح ${levels}`});
     await parent.locator('.wbs-add').click();
