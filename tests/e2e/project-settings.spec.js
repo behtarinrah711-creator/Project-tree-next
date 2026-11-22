@@ -146,7 +146,7 @@ for(const stageMode of ['base','none','single','multiple']){
     await expect(subwork).toBeVisible();
     await expect(subwork.locator('.wbs-type-chip')).toHaveCount(0);
     const saved=await page.evaluate(()=>window.KarhaAppData.getSnapshot().projects.find(p=>p.id==='info').tasks.find(t=>t.id==='work').workTasks[0]);
-    expect(saved).toMatchObject({isSubwork:true,workId:'work',assigneeContactId:'contact'});
+    expect(saved).toMatchObject({isSubwork:true,workId:'work',type:'اجرا',assigneeContactId:'contact'});
   });
 }
 

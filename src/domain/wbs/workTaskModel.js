@@ -83,7 +83,7 @@ export function normalizeWorkTask(task, workId = ''){
     id:String(task.id || ''),
     workId:String(workId || task.workId || ''),
     title:String(task.title || task.text || '').trim(),
-    type:WORK_TYPES.includes(task.type) ? task.type : '',
+    type:task.isSubwork || WORK_TYPES.includes(task.type) ? String(task.type || '') : '',
     scheduleStart:/^\d{4}\/\d{2}\/\d{2}$/.test(String(task.scheduleStart || '')) ? task.scheduleStart : '',
     scheduleEnd:/^\d{4}\/\d{2}\/\d{2}$/.test(String(task.scheduleEnd || '')) ? task.scheduleEnd : '',
     priority:TASK_PRIORITIES.includes(task.priority) ? task.priority : 'normal',

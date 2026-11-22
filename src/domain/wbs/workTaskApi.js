@@ -38,7 +38,7 @@ function validate(projectId, workId, input){
   const contractApproverContactIds=[...new Set((Array.isArray(input?.contractApproverContactIds)?input.contractApproverContactIds:[]).map(String).filter(Boolean))];
   if(input.hasContract && contractApproverContactIds.some(id=>{const contact=contactRepository.get(projectId,id);return !contact || contact.trashed;}))return {ok:false,code:'approver'};
   if(!title) return { ok:false, code:'title' };
-  if(input?.type !== '' && !WORK_TYPES.includes(input?.type)) return { ok:false, code:'type' };
+  if(!input.isSubwork && input?.type !== '' && !WORK_TYPES.includes(input?.type)) return { ok:false, code:'type' };
   if(!TASK_PRIORITIES.includes(input?.priority)) return { ok:false, code:'priority' };
   if(!Number.isFinite(weight) || weight <= 0) return { ok:false, code:'weight' };
   if(assigneeContactId && !contactRepository.get(projectId, assigneeContactId)) return { ok:false, code:'assignee' };
