@@ -2049,3 +2049,16 @@ textarea.contract-project-item-input{
 .contract-progress-circle--rejected{--contract-ring-color:#b42318;}
 
 .contract-reason-sheet.wbs-sheet-centered-header .sheet-caption{inset-inline:76px;}
+
+.contract-statement-form .contract-advance-amounts > .ft-row{
+  display:grid !important;
+  grid-template-columns:minmax(0,1fr) auto;
+  align-items:center;
+  gap:8px;
+}
+.contract-statement-form .contract-advance-amounts .ft-value{text-align:left;}
+.contract-statement-form .contract-advance-requested{
+  background:#f0f0f0;
+  padding-inline:10px;
+}
+.contract-statement-form .contract-advance-requested .ft-value:not(.ft-placeholder){font-weight:700;}

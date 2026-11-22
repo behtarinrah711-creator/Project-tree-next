@@ -135,14 +135,14 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
   const payableAdvanceRows=advanceRows.filter(row=>row.balance>0);
   let advanceRow=payableAdvanceRows.find(row=>row.key===record?.advanceRow?.key) ||
     (payableAdvanceRows.length===1?payableAdvanceRows[0]:null);
-  let advanceAmount=advanceRow?record?.statementAmount ?? advanceRow.balance:'';
+  let advanceAmount=advanceRow?record?.statementAmount ?? '':'';
   let advanceDeduction=record?.advanceDeduction||'';
   const availableAdvance=availableContractAdvance(project,contract.id,record?.id);
   const label=statementType==='advance'?'پرداخت پیش‌پرداخت':statementType==='retention-release'?'آزاد کردن حسن انجام کار'
     :(record?'اصلاح':'ایجاد')+' صورت‌وضعیت '+statementTypes.find(([value])=>value===statementType)[1];
   let date=record?.date||todayJalaliStr();
   const sheet=openWbsSheet({
-    title:label,historyKey:'statement-form:'+contract.id,
+    title:label,historyKey:'statement-form:'+contract.id,autoFocus:statementType!=='advance',
     body(root){
       const contractInfo=contractRowData(project.id,contract);
       const identity=element('div','contract-statement-identity');
@@ -174,11 +174,24 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
             ftSelectRow(fields,'ردیف پرداخت',choices.find(choice=>choice.value===advanceRow?.key)?.label||'انتخاب کنید',()=>
               openStaticChoicePicker('ردیف پرداخت','پیش‌پرداخت‌های قرارداد',choices,advanceRow?.key,key=>{
                 advanceRow=payableAdvanceRows.find(row=>row.key===key);
-                advanceAmount=advanceRow.balance;
+                advanceAmount='';
                 refresh();
               }));
           }
-          if(advanceRow)ftNumberRow(fields,'مبلغ درخواستی',advanceAmount,value=>{advanceAmount=value;},{suffix:'تومان'});
+          if(advanceRow){
+            const amounts=element('div','form-template contract-advance-amounts');
+            const requested=ftNumberRow(amounts,'مبلغ درخواستی',advanceAmount,value=>{
+              advanceAmount=value;
+            },{suffix:'تومان',onCommit:refresh});
+            requested.classList.add('contract-advance-requested');
+            const remaining=advanceRow.balance-numericValue(advanceAmount);
+            if(remaining<0){
+              amounts.append(element('p','wbs-note','مبلغ درخواستی از مانده قابل درخواست بیشتر است.'));
+            }else{
+              ftAmountSummary(amounts,'مانده پس از این درخواست',remaining);
+            }
+            fields.append(amounts);
+          }
           return;
         }
         if(statementType==='final'){
