@@ -191,7 +191,7 @@
   border: 0;
   border-radius: 0;
   box-shadow: none;
-  background: transparent;
+  background: #fff;
 }
 .wbs-branch-layout :is(.wbs-title,.wbs-task-title) {
   color: #0b1b34;
