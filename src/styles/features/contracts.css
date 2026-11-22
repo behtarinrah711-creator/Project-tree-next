@@ -2079,11 +2079,23 @@ textarea.contract-project-item-input{
 .contract-statement-form .contract-advance-requested .ft-value:not(.ft-placeholder){font-weight:700;}
 
 :is(#contractsPageBody,#accountingPageBody,.contract-status-sheet,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-workflow-panel .contract-progress.contract-progress--horizontal{
-  display:flex;flex-wrap:nowrap;overflow-x:auto;gap:8px;scrollbar-width:none;max-width:100%;
+  display:flex;flex-wrap:nowrap;overflow-x:auto;gap:8px;scrollbar-width:none;width:100%;min-width:0;max-width:100%;
 }
-.contract-workflow-panel .contract-progress--horizontal > .contract-progress-step{display:block;flex:0 0 132px;min-width:132px;}
+:is(#contractsPageBody,#accountingPageBody,.contract-status-sheet,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-workflow-panel .contract-progress.contract-progress--horizontal > .contract-progress-step{
+  display:block;
+  flex:0 0 auto;
+  min-width:max-content;
+}
+.contract-progress.contract-progress--horizontal .contract-stage-button{padding-inline:8px;}
+.contract-progress.contract-progress--horizontal .contract-progress-label{white-space:nowrap;overflow-wrap:normal;}
 .contract-workflow-panel .contract-progress--horizontal > .contract-progress-step::after{display:none;}
 .contract-progress--horizontal .contract-stage-button{width:100%;}
 .contract-export-document[data-document-kind="advance"]{background:#fff;padding:16px;}
 .contract-advance-print .contract-document-quantities th:first-child{width:30%;white-space:normal;}
 .contract-advance-print .contract-document-quantities td:last-child{text-align:right;direction:rtl;}
+
+#contractPreviewPage .contract-export-document[data-document-kind="advance"]{font-size:13px;padding:12px;}
+#contractPreviewPage [data-document-kind="advance"] > h2{font-size:16px;margin:0 0 4px;}
+#contractPreviewPage [data-document-kind="advance"] > p{font-size:12px;margin:0 0 8px;}
+#contractPreviewPage .contract-advance-print .contract-financial-table{font-size:12px;line-height:1.65;}
+#contractPreviewPage .contract-advance-print .contract-financial-table :is(th,td){padding:5px 7px;}

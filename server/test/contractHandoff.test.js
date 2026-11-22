@@ -588,7 +588,13 @@ test('advance workflow edits drafts, routes approval and pays without a signed c
   const request={contractId:'c',statementType:'advance',advanceRowKey:'advance-row',date:'1405/09/01',amount:80};
   assert.equal(await act('save_statement',request),200);
   assert.equal(record.status,'draft');
+  assert.equal(record.creationEvent.action,'create');
+  Object.assign(f.payload.contractStatusReports[0],{status:'final',isDraft:false,
+    approvalStatus:'pending',submittedAt:record.createdAt,creationEvent:undefined});
+  assert.equal(await act('approve_statement'),400);
   assert.equal(await act('save_statement',{...request,amount:60}),200);
+  assert.equal(record.approvalHistory.at(-1).action,'edit_advance');
+  assert.equal(record.creationEvent.at,record.createdAt);
   assert.equal(await act('send_finance'),409);
   f.setPermissions({modules:{contracts:'view',accounting:'create'}});
   assert.equal(await act('submit_advance'),403);
@@ -610,6 +616,7 @@ test('advance workflow edits drafts, routes approval and pays without a signed c
   assert.equal(await act('record_payment',{amount:25,receipts:['receipt']}),200);
   assert.equal(record.paidAmount,25);
   assert.equal(record.payments[0].receipts[0].id,'receipt');
+  assert.equal(record.approvalHistory.at(-1).action,'record_payment');
   assert.equal(await act('record_payment',{amount:1,receipts:['receipt']}),400);
   const handler=createFileUploadHandler({pool:f.pool,sessionSecret:'s',storage:f.storage});
   const access=async method=>{

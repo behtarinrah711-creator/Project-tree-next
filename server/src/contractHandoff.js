@@ -8,7 +8,7 @@ import {applyExecutionApproval,approveExecutionEntity,executionApprovalItem,reje
 import {tehranTodayJalali} from '../../src/domain/wbs/todayDomain.js';
 import {saveAddendumDraft} from './contractAddendum.js';
 import {canDeleteAddendumRecord,canDeleteContractAddenda,parentContractOf} from '../../src/domain/contractAddenda.js';
-import {contractApproverIds,saveContractReviewEdit,transitionContractApproval} from '../../src/domain/contractApproval.js';
+import {canEditAdvanceRequest,contractApproverIds,hasAdvanceSubmission,saveContractReviewEdit,transitionContractApproval} from '../../src/domain/contractApproval.js';
 import {syncContractPartyData} from '../../src/domain/contractPartyData.js';
 import {authenticate} from './auth.js';
 import {readJson,sendJson} from './http.js';
@@ -128,7 +128,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       }else if(statement && saveDraft) transition=saveStatement(row.payload,statementParent,contract,contractId,body,actor,Date.now());
       else if(statement && ['submit_advance','withdraw_advance'].includes(body.action)){
         const approvers=contractApproverIds(statementParent);
-        const canSubmit=contract.statementType==='advance' && contract.status==='draft' && approvers.length && statementParent.accountingStatus==='accepted';
+        const canSubmit=canEditAdvanceRequest(contract) && approvers.length && statementParent.accountingStatus==='accepted';
         const rowBalance=contractAdvanceRows(row.payload,statementParent,contract.id).find(item=>item.key===contract.advanceRow?.key);
         if(contract.statementType!=='advance' || (body.action==='submit_advance' && (!canSubmit || (contract.advanceRow && (!rowBalance || contract.statementAmount>rowBalance.balance))))){
           sendJson(response,409,{message:'پیش‌پرداخت در وضعیت فعلی قابل ارسال برای تأیید نیست'});return true;
@@ -198,7 +198,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
             const reviewers=contractApproverIds(statementParent);
             const rowBalance=contractAdvanceRows(row.payload,statementParent,contract.id).find(item=>item.key===contract.advanceRow?.key);
             if(statementParent.accountingStatus!=='accepted' ||
-              (reviewers.length && (contract.status!=='final' || contract.approvalStatus!=='approved' || !reviewers.every(id=>contract.approvedContactIds?.includes(id)))) ||
+              (reviewers.length && (!hasAdvanceSubmission(contract) || contract.status!=='final' || contract.approvalStatus!=='approved' || !reviewers.every(id=>contract.approvedContactIds?.includes(id)))) ||
               (contract.advanceRow && (!rowBalance || contract.statementAmount>rowBalance.balance))){
               sendJson(response,409,{message:'شرایط ارسال پیش‌پرداخت به مالی تکمیل نشده است'});return true;
             }

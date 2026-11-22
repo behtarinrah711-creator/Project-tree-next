@@ -1,5 +1,5 @@
 import {canReuseReturnedSignature,isContractSigned,isContractInFinance} from './contractHandoff.js';
-import { contractApprovalState, contractApproverIds } from './contractApproval.js';
+import { contractApprovalState, contractApproverIds, hasAdvanceSubmission } from './contractApproval.js';
 
 function linkedTask(project,contract){
   for(const work of project?.tasks || []){
@@ -21,8 +21,9 @@ export function contractProgressSteps(contract,project){
     const approved=contract.accountingStatus==='accepted';
     const steps=[{id:'created',label:'ثبت درخواست پیش‌پرداخت',done:!!contract.id}];
     if(reviewers.length){
-      steps.push({id:'advance-submit',label:'ارسال جهت تأیید',done:contract.status==='final'},
-        {id:'approved',label:'تأیید پیش‌پرداخت',done:contract.status==='final' && contract.approvalStatus==='approved'});
+      const submitted=hasAdvanceSubmission(contract);
+      steps.push({id:'advance-submit',label:'ارسال جهت تأیید',done:submitted},
+        {id:'approved',label:'تأیید پیش‌پرداخت',done:submitted && contract.approvalStatus==='approved'});
     }
     steps.push({id:'finance',label:'ارسال به مالی',done:sent},
       {id:'finance-approved',label:'تأیید مالی',done:approved,rejected:contract.accountingStatus==='rejected'},

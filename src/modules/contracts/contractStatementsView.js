@@ -5,7 +5,7 @@ import {renderInlineContractReject} from './contractReasonSheet.js';
 import {openContractPreview} from './contractPreviewView.js';
 import {statementWorkRows,resolveStatementWork} from '../../domain/statementWork.js';
 import { projectRepository } from '../../data/projectRepository.js';
-import { canReviewContract } from '../../domain/contractApproval.js';
+import { canReviewContract, canEditAdvanceRequest, hasAdvanceSubmission } from '../../domain/contractApproval.js';
 import { accountStatements, approvedStatement, statementAccount, statementAddenda, contractStatementTotals, finalStatementSummary, statementAmounts, statementsFor, contractAdvanceDeductionBalance, advanceDeductionFromPercent, contractAdvanceRows } from '../../domain/contractStatements.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
@@ -358,7 +358,7 @@ function statementPreviewContent(contract,record){
           ['موعد یا شرط پرداخت',row.dueText||'—'],['مبلغ قراردادی',money(row.total)],
         ]:[]),
         ['مبلغ درخواستی',money(record.statementAmount||0)],['پرداخت‌شده',money(record.paidAmount||0)],
-        ['وضعیت تأیید',record.approvalStatus==='approved'?'تأیید شده':record.approvalStatus==='pending'?'در انتظار تأیید':'ارسال نشده'],
+        ['وضعیت تأیید',!hasAdvanceSubmission(record)?'ارسال نشده':record.approvalStatus==='approved'?'تأیید شده':record.approvalStatus==='pending'?'در انتظار تأیید':'ارسال نشده'],
         ['وضعیت مالی',approvedStatement(record)?'تأیید شده':record.accountingStatus==='sent'?'در انتظار تأیید':record.accountingStatus==='rejected'?'برگشت خورده':'ارسال نشده'],
         ...(record.note?[['توضیحات',record.note]]:[]),
       ]);
@@ -405,13 +405,13 @@ function openAdvanceStep(project,contract,record,onChanged,{finance=false,approv
       root.append(table([['وضعیت مرحله',active.done?'انجام شده':active.rejected?'رد شده':'انجام نشده'],['مبلغ درخواستی',money(record.statementAmount||0)]]));
       root.append(button('پیش‌نمایش پیش‌پرداخت',trigger=>openContractPreview(project,contract,{trigger,
         documentPreview:{title:'پیش‌نمایش پیش‌پرداخت',content:statementPreviewContent(contract,record)}})));
-      if(active.id==='created' && writable && record.status==='draft'){
+      if(active.id==='created' && writable && canEditAdvanceRequest(record)){
         root.append(button('ویرایش پیش‌پرداخت',()=>openStatementForm(project,contract,onChanged,record)));
       }
       if(active.id==='advance-submit' && writable && current===active.id){
         root.append(button('ارسال جهت تأیید',()=>run('submit_advance')));
       }
-      if(active.id==='approved' && record.approvalStatus==='pending'){
+      if(active.id==='approved' && record.approvalStatus==='pending' && hasAdvanceSubmission(record)){
         if(approval?.action){
           root.append(approval.action);
           if(approval.reject)root.append(renderInlineContractReject(approval.reject,onChanged));
@@ -561,7 +561,7 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
   const progress=renderContractProgressCircle(document,record,project,event=>{event.stopPropagation();open();});
   const writable=!approval && record.statementType && canWriteProjectModule(project.id,'contracts');
   const deletable=writable && canDeleteContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id]);
-  const editable=record.status==='draft';
+  const editable=record.statementType==='advance'?canEditAdvanceRequest(record):record.status==='draft';
   const buildDocument=()=>statementPreviewContent(contract,record);
   const heading=renderContractCardHeading(project,contract,{
     onEdit:writable?()=>editable?openStatementForm(project,contract,onChanged,record):toast(title+' در وضعیت فعلی قابل ویرایش نیست'):undefined,
@@ -587,7 +587,7 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
 
   heading.children[2].hidden=true;
   row.append(heading,renderContractWorkflowPanel(document,record,project,{onOpen:open,expanded:!!approval || record.statementType==='advance',heading}));
-  if(approval?.action && record.approvalStatus==='pending'){
+  if(approval?.action && record.approvalStatus==='pending' && (record.statementType!=='advance' || hasAdvanceSubmission(record))){
     const actions=element('div','contract-addendum-toolbar');
     actions.append(button(approval.action.textContent,()=>approval.action.click()));
     if(approval.reject)actions.append(renderInlineContractReject(approval.reject,onChanged));

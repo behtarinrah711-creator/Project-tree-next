@@ -64,8 +64,20 @@ export function canRevokeContractApproval(contract,actor){
     contractApproverIds(contract).includes(String(actor.contactId)) &&
     approvedContractContactIds(contract).includes(String(actor.contactId));
 }
+export function hasAdvanceSubmission(record){
+  return record.status!=='draft' && (!!record.approvalHistory?.some(event=>['submit','approve'].includes(event.action)) ||
+    !!record.approvedContactIds?.length || !!record.sentToAccountingAt);
+}
+
+export function canEditAdvanceRequest(record){
+  return record.statementType==='advance' && !record.trashed && !record.signedAt &&
+    !record.sentToAccountingAt && !['sent','accepted','withdrawn'].includes(record.accountingStatus) &&
+    !(Number(record.paidAmount)>0) && (record.status==='draft' || !hasAdvanceSubmission(record));
+}
+
 export function canReviewContract(contract,actor){
-  return contractApprovalState(contract)==='pending' && !!actor?.contactId &&
+  return (contract.statementType!=='advance' || hasAdvanceSubmission(contract)) &&
+    contractApprovalState(contract)==='pending' && !!actor?.contactId &&
     contractApproverIds(contract).includes(String(actor.contactId)) && !(contract.approvedContactIds || []).includes(String(actor.contactId));
 }
 export function canEditContractReview(contract,actor){
