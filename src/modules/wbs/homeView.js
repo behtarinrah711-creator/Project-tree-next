@@ -45,7 +45,7 @@ import { openNumpadGeneric } from '../../ui/numpad.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { stopIntervalForItem } from '../../domain/wbs/fundingReceipts.js';
 import { activeWbsScope, WBS_VIEW_SCOPES } from './viewScopes.js';
-import { openCreateWorkTaskSheet, renderWorkTasks } from './workTaskView.js';
+import { openCreateWorkTaskSheet, renderWorkTasks, treeWorkTypeChip } from './workTaskView.js';
 import { PROJECT_FINISH_MILESTONE_ID, interruptionScheduleLookup, plannedPauseSegments, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
 import { canDeletePlanning, canViewPlanning, canWritePlanning, planningAccessLevel } from '../roleManagement/planningAccess.js';
 import {
@@ -542,7 +542,7 @@ function openGeneralDetailSheet(item){
   });
 }
 
-function renderRow(item, codes, view, depth){
+function renderRow(item, codes, view, depth, treeLayout){
   const stage = isStage(item);
   const displayedProgress = stage ? rollupProgress([item]) : progressOf(item);
   const checked = displayedProgress === 100;
@@ -576,6 +576,7 @@ function renderRow(item, codes, view, depth){
     <button type="button" class="wbs-title">
       ${code ? `<b>${escapeHtml(code)}</b>` : ''}
       <span class="wbs-title-text">${escapeHtml(item.text || '')}</span>
+      ${treeLayout && !stage ? treeWorkTypeChip(item.type) : ''}
     </button>
     <span class="wbs-meta${view === 'estimate' ? ' is-estimate' : ''}${view === 'progress' ? ' is-progress' : ''}">${escapeHtml(meta.join(' · '))}</span>
     ${!readOnlyView && mayAdd ? `<button type="button" class="wbs-add" aria-label="${mayAddSubwork ? 'افزودن زیرکار' : stage ? 'افزودن' : 'ساخت کار'}">+</button>` : ''}
@@ -598,6 +599,12 @@ function renderRow(item, codes, view, depth){
   const wrap = document.createElement('div');
   wrap.className = depth === 0 ? 'wbs-card' : 'wbs-branch';
   wrap.className += ' wbs-depth-' + Math.min(6, depth);
+  if(treeLayout){
+    wrap.style.setProperty('--wbs-tree-depth',depth);
+    if(depth)wrap.insertAdjacentHTML('afterbegin','<span class="wbs-tree-continuation" aria-hidden="true"></span>');
+    row.insertAdjacentHTML('afterbegin','<span class="wbs-tree-link" aria-hidden="true"></span>');
+    if(depth)row.classList.add('has-tree-parent');
+  }
   wrap.appendChild(row);
   if(!readOnlyView){
     bindRowDrag(row, {
@@ -609,9 +616,9 @@ function renderRow(item, codes, view, depth){
       },
     });
   }
-  if(open) kids.forEach(child => wrap.appendChild(renderRow(child, codes, view, depth + 1)));
+  if(open) kids.forEach(child => wrap.appendChild(renderRow(child, codes, view, depth + 1, treeLayout)));
   if(open && canHoldWorkTasks(item) && workTasks.length){
-    const taskGroup = renderWorkTasks({ documentRef:document, projectId:projectIdOf(), work:item, view, onChanged:render, readOnly:permissionReadOnly, canDelete:canDeletePlanning(activePlanningLevel) });
+    const taskGroup = renderWorkTasks({ documentRef:document, projectId:projectIdOf(), work:item, view, treeDepth:treeLayout ? depth + 1 : null, onChanged:render, readOnly:permissionReadOnly, canDelete:canDeletePlanning(activePlanningLevel) });
     if(taskGroup) wrap.appendChild(taskGroup);
   }
   return wrap;
@@ -761,7 +768,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   }
 
   const tree = document.createElement('div');
-  tree.className = 'wbs-tree';
+  tree.className = currentView === 'tree' ? 'wbs-tree wbs-branch-layout' : 'wbs-tree';
   const items = (project.tasks || []).filter(x => !x.trashed && !isPendingUiDelete(x.id));
   const effectiveView = currentView === 'tree' ? currentTreeMode : currentView;
   const codes = wbsCodeMap(items);
@@ -771,7 +778,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   }));
   else if(!items.length) tree.innerHTML = `<div class="empty-state">${baseMode ? 'کاری ثبت نشده است.' : 'مرحله یا کاری ثبت نشده است.'}</div>`;
   else if(currentView === 'timeline') tree.appendChild(renderTimeline(items));
-  else items.forEach(item => tree.appendChild(renderRow(item, codes, effectiveView, 0)));
+  else items.forEach(item => tree.appendChild(renderRow(item, codes, effectiveView, 0, currentView === 'tree')));
   root.appendChild(tree);
 
   if(currentView === 'tree' && currentTreeMode === 'estimate'){
