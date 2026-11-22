@@ -129,6 +129,16 @@
   direction: rtl;
 }
 
+.wbs-tree-level-0 { --wbs-tree-depth: 0; }
+.wbs-tree-level-1 { --wbs-tree-depth: 1; }
+.wbs-tree-level-2 { --wbs-tree-depth: 2; }
+.wbs-tree-level-3 { --wbs-tree-depth: 3; }
+.wbs-tree-level-4 { --wbs-tree-depth: 4; }
+.wbs-tree-level-5 { --wbs-tree-depth: 5; }
+.wbs-tree-level-6 { --wbs-tree-depth: 6; }
+.wbs-tree-level-7 { --wbs-tree-depth: 7; }
+.wbs-tree-level-8 { --wbs-tree-depth: 8; }
+
 .wbs-branch-layout :is(.wbs-card,.wbs-branch,.wbs-task-branch) {
   --wbs-node-center: calc(22px + var(--wbs-tree-depth) * var(--wbs-tree-step));
   --wbs-node-color: color-mix(in srgb, #102748, #d7eaff min(92%,calc(var(--wbs-tree-depth) * 24%)));
