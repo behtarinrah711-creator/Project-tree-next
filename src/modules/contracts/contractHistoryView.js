@@ -4,7 +4,7 @@ const historyDate=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{timeZone:'Asia/T
 const historyTime=new Intl.DateTimeFormat('fa-IR',{timeZone:'Asia/Tehran',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
 const moment=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{timeZone:'Asia/Tehran',year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
 
-export function renderContractHistory(documentRef,contract,{finance=false,compact=false}={}){
+export function renderContractHistory(documentRef,contract,{finance=false,compact=false,actions,payment}={}){
   const details=documentRef.createElement('details');details.className='contract-history';
   const summary=documentRef.createElement('summary');summary.textContent='تاریخچه';details.appendChild(summary);
   details.onclick=event=>event.stopPropagation();
@@ -16,8 +16,11 @@ export function renderContractHistory(documentRef,contract,{finance=false,compac
     ? {action:'create',at:contract.createdAt,actor:contract.createdBy || (isAdvance?contract.submittedBy:undefined)} : null);
   const completion=isAddendum && contract.completedAt && !history.some(e=>e.action==='complete' && e.at===contract.completedAt)
     ? {action:'complete',at:contract.completedAt,actor:contract.completedBy} : null;
-  const events=finance && !isAdvance?(contract.financeHistory || history.filter(e=>financialActions.includes(e.action)))
+  const fullHistory=finance && !isAdvance?(contract.financeHistory || history.filter(e=>financialActions.includes(e.action)))
     : [creation,completion,...history].filter(Boolean);
+  const events=payment
+    ? [{action:'record_payment',at:payment.at,actor:payment.actor,amount:payment.amount}]
+    : actions?fullHistory.filter(entry=>actions.includes(entry.action)):fullHistory;
   const entries=[];
   const actorsMatch=(a,b)=>a.at===b.at && (a.actor?.id || a.actor?.name)===(b.actor?.id || b.actor?.name);
   for(const entry of events){
@@ -33,6 +36,7 @@ export function renderContractHistory(documentRef,contract,{finance=false,compac
   }
   entries.forEach(entry=>{
     const row=documentRef.createElement('div');row.className='contract-history-entry';
+    if(isAdvance && ['reject','reject_finance','revoke_finance'].includes(entry.action))row.className+=' is-rejected';
     const heading=documentRef.createElement('div');
     const date=new Date(entry.at);
     const label=isAdvance && entry.action==='create' ? 'درخواست پیش‌پرداخت ثبت شد' : isAddendum && entry.action==='complete' ? 'تکمیل الحاقیه اعلام شد' : labels[entry.action];

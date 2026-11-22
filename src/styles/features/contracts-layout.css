@@ -71,6 +71,10 @@
 .contract-history-sheet .contract-history-stamp{display:flex;justify-content:space-between;flex-wrap:wrap;gap:4px 12px;margin-top:4px;padding-top:4px;border-top:1px solid #e7e9ec;font-size:11px;font-weight:400;line-height:1.5;color:var(--text-dim,#626870);}
 .contract-history-sheet .contract-history-entry p{margin:4px 0 0;font-size:12px;font-weight:400;line-height:1.6;white-space:pre-wrap;}
 
+.contract-history-sheet .contract-history-entry.is-rejected{background:#fff1f0;border-color:#bb3931;}
+.contract-advance-stage-sheet .contract-review-action.danger{background:#ffeded;color:#ab2929;}
+.contract-advance-stage-sheet .contract-review-action.success{background:#187638;color:#fff;}
+
 /* Compact card metadata and unboxed tools, distinct from workflow stages. */
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading{row-gap:4px;padding-block:10px 4px;}
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-card-heading .contract-title{font-size:15px;line-height:1.7;margin:0;}

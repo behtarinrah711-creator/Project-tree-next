@@ -86,7 +86,9 @@ export function renderContractWorkflowPanel(documentRef,record,project,{onOpen,e
   }
   const list=renderContractProgress(documentRef,record,project,onOpen,openCompleted);
   body.append(list);
-  if(reason){const message=documentRef.createElement('p');message.className='contract-rejection-reason';message.textContent='دلیل برگشت: '+reason;body.append(message);}
+  if(reason){const message=documentRef.createElement('p');message.className='contract-rejection-reason';message.textContent=record.statementType==='advance'
+    ? (record.accountingStatus==='rejected'?'رد شده توسط مالی':'برگشت از تأیید')+' · '+reason
+    : 'دلیل برگشت: '+reason;body.append(message);}
   panel.append(body);paint();
   if(expanded && record.statementType==='advance')requestAnimationFrame(paint);
   return panel;
