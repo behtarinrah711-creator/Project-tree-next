@@ -72,3 +72,13 @@ test('only the active document stage opens an action and summary controls are ab
  assert.match(returned.children[0].children[1].textContent,/نسخه ناقص/);
  assert.equal(returned.children[0].children.length,2);
 });
+
+test('advance opens current, completed and rejected stages and disables future stages',()=>{
+ const make=()=>({children:[],dataset:{},setAttribute(){},append(...nodes){this.children.push(...nodes);},appendChild(node){this.children.push(node);}});
+ const record={id:'a',statementType:'advance',status:'draft',approvalContactIds:['reviewer']};
+ const render=patch=>renderContractProgress({createElement:make},{...record,...patch},null,()=>{}).children;
+ const enabled=items=>items.filter(item=>!item.children[0].disabled).map(item=>item.dataset.step);
+ assert.deepEqual(enabled(render({})),['created','advance-submit']);
+ assert.deepEqual(enabled(render({accountingStatus:'rejected'})),['created','advance-submit','finance-approved']);
+ assert.deepEqual(enabled(render({status:'final',approvalStatus:'pending',approvalHistory:[{action:'submit'}]})),['created','advance-submit','approved']);
+});

@@ -377,6 +377,7 @@ function openAdvanceStep(project,contract,record,onChanged,{finance=false,approv
   const writable=!finance && !approval && canWriteProjectModule(project.id,'contracts');
   const financeWritable=finance && canWriteProjectModule(project.id,financeScope(project.id));
   const current=steps.find(item=>!item.done)?.id;
+  if(active.id!==current && !active.done && !active.rejected)return;
   const paid=Number(record.paidAmount||0);
   const remaining=Math.max(0,Number(record.netAmount)-paid);
   const paymentStatus=paid===0?'پرداخت‌نشده':remaining?'پرداخت جزئی':'پرداخت کامل';
@@ -478,7 +479,7 @@ function openAdvanceStep(project,contract,record,onChanged,{finance=false,approv
           repaint();
           const container=element('section');root.append(container);
           const uploader=attach(container,files,false);uploaders.push(uploader);
-          root.append(button('ثبت پرداخت',()=>{
+          root.append(actionButton('ثبت پرداخت',()=>{
             if(uploader.isBusy()){toast('ابتدا بارگذاری فیش را کامل کنید');return;}
             run('record_payment',{amount:numericValue(amountValue),receipts:files.map(file=>file.id)});
           }));
