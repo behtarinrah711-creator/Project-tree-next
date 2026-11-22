@@ -1,3 +1,5 @@
+import {mountFileUploader} from '../files/fileUploader.js';
+import {openContractReasonSheet} from './contractReasonSheet.js';
 import {canDeleteContractDocument} from '../../domain/contractHandoff.js';
 import {renderInlineContractReject} from './contractReasonSheet.js';
 import {openContractPreview} from './contractPreviewView.js';
@@ -346,15 +348,22 @@ function statementPreviewContent(contract,record){
     documentNode.dir='rtl';
     if(record.statementType==='advance'){
       const row=record.advanceRow;
-      documentNode.append(element('h2','',title),element('p','',contract.contractNo||''),table([
+      documentNode.dataset.documentKind='advance';
+      const summary=element('div','contract-advance-print');
+      documentNode.append(element('h2','',title),element('p','',contract.contractNo||''),summary);
+      const detail=table([
         ['تاریخ درخواست',formatJalaliDisplay(record.date)||'—'],
         ...(row?[
           ['ردیف قرارداد',format.format(row.number)],['شرح پیش‌پرداخت',row.description||'—'],
           ['موعد یا شرط پرداخت',row.dueText||'—'],['مبلغ قراردادی',money(row.total)],
         ]:[]),
         ['مبلغ درخواستی',money(record.statementAmount||0)],['پرداخت‌شده',money(record.paidAmount||0)],
+        ['وضعیت تأیید',record.approvalStatus==='approved'?'تأیید شده':record.approvalStatus==='pending'?'در انتظار تأیید':'ارسال نشده'],
+        ['وضعیت مالی',approvedStatement(record)?'تأیید شده':record.accountingStatus==='sent'?'در انتظار تأیید':record.accountingStatus==='rejected'?'برگشت خورده':'ارسال نشده'],
         ...(record.note?[['توضیحات',record.note]]:[]),
-      ]));
+      ]);
+      detail.classList.add('contract-document-quantities');
+      summary.append(detail);
       return documentNode;
     }
     documentNode.append(element('h2','',title),element('p','',contract.contractNo||''),element('p','',formatJalaliDisplay(record.date)||''),
@@ -362,7 +371,96 @@ function statementPreviewContent(contract,record){
     return documentNode;
   }
 
+function openAdvanceStep(project,contract,record,onChanged,{finance=false,approval,step,openSheet=openWbsSheet}={}){
+  const steps=contractProgressSteps(record,project);
+  const active=step || steps.find(item=>!item.done) || steps.at(-1);
+  const writable=!finance && !approval && canWriteProjectModule(project.id,'contracts');
+  const financeWritable=finance && canWriteProjectModule(project.id,financeScope(project.id));
+  const current=steps.find(item=>!item.done)?.id;
+  const paid=Number(record.paidAmount||0);
+  const remaining=Math.max(0,Number(record.netAmount)-paid);
+  const paymentStatus=paid===0?'پرداخت‌نشده':remaining?'پرداخت جزئی':'پرداخت کامل';
+  let pending=false;
+  const run=async(action,options={})=>{
+    if(pending)return false;
+    pending=true;
+    try{
+      const updated=await saveContractHandoff(project.id,record,action,options);
+      onChanged();
+      openAdvanceStep(currentProject(project),contract,updated,onChanged,{finance,approval,openSheet});
+      return true;
+    }catch(error){toast(error.message);return false;}
+    finally{pending=false;}
+  };
+  const showReason=(title,action)=>openContractReasonSheet({
+    title,historyKey:action+':'+record.id,fieldLabel:'دلیل (الزامی)',submit:reason=>run(action,{reason}),
+  });
+  const uploaders=[];
+  openSheet({title:active.label,showSave:false,autoFocus:false,historyKey:'statement:'+record.id,reuseHistoryOnReplace:true,
+    onClose:()=>uploaders.forEach(uploader=>uploader.destroy()),
+    body(root){
+      root.classList.add('contract-status-sheet');
+      if(finance)root.append(renderContractWorkflowPanel(document,record,project,{onOpen:(_,step)=>
+        openAdvanceStep(project,contract,record,onChanged,{finance,step,openSheet}),openCompleted:true}));
+      root.append(table([['وضعیت مرحله',active.done?'انجام شده':active.rejected?'رد شده':'انجام نشده'],['مبلغ درخواستی',money(record.statementAmount||0)]]));
+      root.append(button('پیش‌نمایش پیش‌پرداخت',trigger=>openContractPreview(project,contract,{trigger,
+        documentPreview:{title:'پیش‌نمایش پیش‌پرداخت',content:statementPreviewContent(contract,record)}})));
+      if(active.id==='created' && writable && record.status==='draft'){
+        root.append(button('ویرایش پیش‌پرداخت',()=>openStatementForm(project,contract,onChanged,record)));
+      }
+      if(active.id==='advance-submit' && writable && current===active.id){
+        root.append(button('ارسال جهت تأیید',()=>run('submit_advance')));
+      }
+      if(active.id==='approved' && record.approvalStatus==='pending'){
+        if(approval?.action){
+          root.append(approval.action);
+          if(approval.reject)root.append(renderInlineContractReject(approval.reject,onChanged));
+        }else if(writable && record.submittedBy?.id===currentExecutionActor(project)?.id){
+          root.append(button('پس گرفتن درخواست تأیید',()=>showReason('پس گرفتن پیش‌پرداخت','withdraw_advance')));
+        }
+      }
+      if(active.id==='finance' && writable && current===active.id){
+        root.append(button('ارسال به مالی',()=>run('send_finance')));
+      }
+      if(active.id==='finance-approved' && financeWritable && record.accountingStatus==='sent'){
+        root.append(button('تأیید مالی',()=>run('approve_finance')),
+          button('برگشت برای اصلاح',()=>showReason('برگشت پیش‌پرداخت','reject_finance')));
+      }
+      if(active.id==='paid'){
+        root.append(table([['وضعیت پرداخت',paymentStatus],['پرداخت‌شده',money(paid)],['مانده پرداخت',money(remaining)]]));
+        const attach=(root,files,readOnly)=>mountFileUploader(root,{projectId:project.id,recordId:record.id,
+          category:'advance-receipts',files,readOnly,onError:toast,label:'افزودن فیش پرداخت',buttonLabel:true});
+        for(const payment of record.payments||[]){
+          root.append(table([['مبلغ واریز',money(payment.amount)],['زمان واریز',new Date(payment.at).toLocaleString('fa-IR')]]));
+          if(payment.receipts?.length){
+            const container=element('section');root.append(container);
+            uploaders.push(attach(container,payment.receipts,true));
+          }
+        }
+        if(financeWritable && approvedStatement(record) && remaining){
+          const form=element('div','form-template'),files=[];
+          root.append(form);
+          let amountValue='';
+          const repaint=()=>{
+            form.replaceChildren();
+            ftNumberRow(form,'مبلغ واریز',amountValue,value=>{amountValue=value;},{suffix:'تومان',onCommit:repaint});
+          };
+          repaint();
+          const container=element('section');root.append(container);
+          const uploader=attach(container,files,false);uploaders.push(uploader);
+          root.append(button('ثبت پرداخت',()=>{
+            if(uploader.isBusy()){toast('ابتدا بارگذاری فیش را کامل کنید');return;}
+            run('record_payment',{amount:numericValue(amountValue),receipts:files.map(file=>file.id)});
+          }));
+        }
+      }
+      root.append(button('تاریخچه',()=>openContractHistory(record,{finance})));
+    },
+  });
+}
+
 function openStatement(project,contract,record,onChanged,{finance=false,approval}={}){
+  if(record.statementType==='advance')return openAdvanceStep(project,contract,record,onChanged,{finance,approval});
   let pending=false;
   const reopen=()=>{
     const source=currentProject(project);
@@ -429,6 +527,7 @@ function openStatement(project,contract,record,onChanged,{finance=false,approval
 }
 
 export function openStatementAction(project,contract,record,onChanged,{approval,step,openSheet=openWbsSheet}={}){
+  if(record.statementType==='advance')return openAdvanceStep(project,contract,record,onChanged,{approval,step,openSheet});
   const active=contractProgressSteps(record,project).find(item=>!item.done);
   if(!active || (step && step.id!==active.id))return;
   if(active.id==='signed')return openContractSignedUpload(project,record,{onChanged,finance:!!approval,label:'صورت‌وضعیت'});
@@ -465,13 +564,13 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
   const editable=record.status==='draft';
   const buildDocument=()=>statementPreviewContent(contract,record);
   const heading=renderContractCardHeading(project,contract,{
-    onEdit:writable?()=>editable?openStatementForm(project,contract,onChanged,record):toast('صورت‌وضعیت در وضعیت فعلی قابل ویرایش نیست'):undefined,
+    onEdit:writable?()=>editable?openStatementForm(project,contract,onChanged,record):toast(title+' در وضعیت فعلی قابل ویرایش نیست'):undefined,
     onExport:trigger=>{
       const documentNode=buildDocument();
       openContractExport(project,{title,contractNo:contract.contractNo||''},{trigger,markup:documentNode.outerHTML});
     },
     onDelete:deletable?()=>{
-      if(!canDeleteContractDocument(record)){toast('صورت‌وضعیت در وضعیت فعلی قابل حذف نیست');return;}
+      if(!canDeleteContractDocument(record)){toast(title+' در وضعیت فعلی قابل حذف نیست');return;}
       openConfirm('آیا می‌خواهید '+title+' را حذف کنید؟',()=>saveContractHandoff(project.id,record,'delete_statement')
         .then(()=>{onChanged();toast(title+(record.addendumNo?' ('+record.addendumNo+')':'')+' حذف شد.');})
         .catch(error=>toast(error.message)),'بله',{cancelLabel:'خیر'});
@@ -481,10 +580,13 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
   const main=heading.children[0];
   main.children[0].textContent=title;
   main.children[1].dir='rtl';
-  main.children[1].textContent=[record.addendumNo,Number(record.statementAmount??record.stageAmount)?money(record.statementAmount??record.stageAmount):'',formatJalaliDisplay(record.date)].filter(Boolean).join(' | ');
+  if(record.statementType==='advance'){
+    main.children[1].replaceChildren(element('strong','',money(record.statementAmount||0)),
+      document.createTextNode(' | '+formatJalaliDisplay(record.date)));
+  }else main.children[1].textContent=[record.addendumNo,Number(record.statementAmount??record.stageAmount)?money(record.statementAmount??record.stageAmount):'',formatJalaliDisplay(record.date)].filter(Boolean).join(' | ');
 
   heading.children[2].hidden=true;
-  row.append(heading,renderContractWorkflowPanel(document,record,project,{onOpen:open,expanded:!!approval,heading}));
+  row.append(heading,renderContractWorkflowPanel(document,record,project,{onOpen:open,expanded:!!approval || record.statementType==='advance',heading}));
   if(approval?.action && record.approvalStatus==='pending'){
     const actions=element('div','contract-addendum-toolbar');
     actions.append(button(approval.action.textContent,()=>approval.action.click()));

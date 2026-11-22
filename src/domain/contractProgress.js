@@ -14,6 +14,22 @@ function linkedTask(project,contract){
 }
 
 export function contractProgressSteps(contract,project){
+  if(contract.statementType==='advance'){
+    const parent=project?.contracts?.find(item=>item.id===contract.contractId);
+    const reviewers=parent?contractApproverIds(parent):contractApproverIds(contract);
+    const sent=!!contract.sentToAccountingAt || ['sent','accepted'].includes(contract.accountingStatus);
+    const approved=contract.accountingStatus==='accepted';
+    const steps=[{id:'created',label:'ثبت درخواست پیش‌پرداخت',done:!!contract.id}];
+    if(reviewers.length){
+      steps.push({id:'advance-submit',label:'ارسال جهت تأیید',done:contract.status==='final'},
+        {id:'approved',label:'تأیید پیش‌پرداخت',done:contract.status==='final' && contract.approvalStatus==='approved'});
+    }
+    steps.push({id:'finance',label:'ارسال به مالی',done:sent},
+      {id:'finance-approved',label:'تأیید مالی',done:approved,rejected:contract.accountingStatus==='rejected'},
+      {id:'paid',label:'پرداخت',done:approved && Number(contract.paidAmount||0)>=Number(contract.netAmount)});
+    return steps;
+  }
+
   const task=contract.workTaskId?linkedTask(project,contract):null;
   const reviewers=task ? task.contractApproverContactIds || [] :
     Array.isArray(contract.contractApproverContactIds)?contract.contractApproverContactIds:contractApproverIds(contract);

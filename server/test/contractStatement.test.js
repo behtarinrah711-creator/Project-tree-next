@@ -94,7 +94,7 @@ test('advance requests use a contract row and reserve its balance until released
   assert.equal(first.advanceRow.dueText,'پس از امضا');
   assert.equal(first.advanceRow.total,40000);
   assert.equal(first.stageAmount,0);
-  project.contractStatusReports.push({...first,id:'first-request',accountingStatus:'withdrawn'});
+  project.contractStatusReports.push({...first,id:'first-request',status:'final',isDraft:false,accountingStatus:'withdrawn'});
   assert.equal(save({amount:10001}).ok,false);
   assert.equal(save({amount:10000}).ok,true);
   assert.equal(save({advanceRowKey:'second',amount:20000}).ok,true);

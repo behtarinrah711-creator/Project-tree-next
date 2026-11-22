@@ -9,9 +9,10 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
   root.classList.add('saosa-file-uploader');
   const input=document.createElement('input');input.type='file';input.multiple=true;
   const imagesOnly=['reports','oddjob-invoices'].includes(category);
-  input.accept=imagesOnly?'image/jpeg,image/png,image/heic,image/heif,image/avif,image/webp,.heic,.heif':category==='contracts'?'image/jpeg,image/png,image/heic,image/heif,.heic,.heif,.pdf':'image/jpeg,image/png,image/heic,image/heif,image/avif,image/webp,.heic,.heif,.pdf,.docx,.xlsx,.pptx';
+  const pdfOrImage=['contracts','advance-receipts'].includes(category);
+  input.accept=imagesOnly?'image/jpeg,image/png,image/heic,image/heif,image/avif,image/webp,.heic,.heif':pdfOrImage?'image/jpeg,image/png,image/heic,image/heif,.heic,.heif,.pdf':'image/jpeg,image/png,image/heic,image/heif,image/avif,image/webp,.heic,.heif,.pdf,.docx,.xlsx,.pptx';
   input.setAttribute('aria-label',label);input.disabled=true;root.appendChild(input);
-  const note=document.createElement('p');note.className='saosa-file-note';note.textContent=imagesOnly?'هر عکس ذخیره‌شده تا ۲ مگابایت':category==='contracts'?'عکس ذخیره‌شده تا ۲ مگابایت؛ PDF تا ۲۵ مگابایت':'عکس ذخیره‌شده تا ۲ مگابایت؛ PDF و فایل‌های اداری تا ۲۵ مگابایت';root.appendChild(note);
+  const note=document.createElement('p');note.className='saosa-file-note';note.textContent=imagesOnly?'هر عکس ذخیره‌شده تا ۲ مگابایت':pdfOrImage?'عکس ذخیره‌شده تا ۲ مگابایت؛ PDF تا ۲۵ مگابایت':'عکس ذخیره‌شده تا ۲ مگابایت؛ PDF و فایل‌های اداری تا ۲۵ مگابایت';root.appendChild(note);
   const gallery=document.createElement('div');gallery.className='saosa-file-gallery';root.appendChild(gallery);
   if(readOnly)input.hidden=true;
   const replacement=allowReplace && !readOnly?document.createElement('input'):null;
@@ -63,7 +64,7 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
   if(!readOnly)import('../../../vendor/filepond/filepond.esm.min.js').then(({create})=>{
     if(disposed)return;
     input.disabled=false;
-    pond=create(input,{allowMultiple:true,maxParallelUploads:1,maxFiles:category==='contracts'?30:10,credits:false,
+    pond=create(input,{allowMultiple:true,maxParallelUploads:1,maxFiles:pdfOrImage?30:10,credits:false,
       labelIdle:buttonLabel?'<span class="filepond--label-action">'+label+'</span>':label+' <span class="filepond--label-action">انتخاب</span>',labelFileProcessing:'در حال بارگذاری',labelFileProcessingComplete:'بارگذاری شد',labelFileProcessingError:'بارگذاری انجام نشد',
       labelTapToRetry:'برای تلاش مجدد بزنید',labelTapToCancel:'برای لغو بزنید',labelButtonRemoveItem:'حذف',labelButtonAbortItemProcessing:'لغو',
       beforeAddFile:item=>{if(files.length>=30 && replacingFile===null){onError('حداکثر ۳۰ صفحه انتخاب کنید');return false;}if(item.fileSize>FILE_LIMIT){onError(fileError('file_too_large'));return false;}return true;},
