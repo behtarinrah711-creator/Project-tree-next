@@ -103,11 +103,12 @@ test('leaf stages reserve the same responsive disclosure column as expandable st
 
   const expandable = page.locator('.wbs-row.is-stage', { hasText:'نازک‌کاری' });
   const leaf = page.locator('.wbs-row.is-stage', { hasText:'تأسیسات' });
-  const disclosureWidth = await expandable.locator('.wbs-chev').evaluate(element => element.getBoundingClientRect().width);
-  const spacerWidth = await leaf.locator('.wbs-chev-spacer').evaluate(element => element.getBoundingClientRect().width);
-
-  expect(disclosureWidth).toBe(32);
-  expect(spacerWidth).toBe(disclosureWidth);
+  await expect.poll(() => expandable.locator('.wbs-chev').evaluate(
+    element => element.getBoundingClientRect().width
+  )).toBe(32);
+  await expect.poll(() => leaf.locator('.wbs-chev-spacer').evaluate(
+    element => element.getBoundingClientRect().width
+  )).toBe(32);
 });
 
 test('pointer drag reorders sibling stages before or after without nesting', async ({ page }) => {
