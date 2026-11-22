@@ -1,13 +1,13 @@
 import {statementWorkRows,resolveStatementWork} from '../../src/domain/statementWork.js';
 import {rowAmount,numericValue} from '../../src/modules/contracts/contractPricing.js';
-import {contractApproverIds} from '../../src/domain/contractApproval.js';
+import {contractApproverIds,canEditAdvanceRequest} from '../../src/domain/contractApproval.js';
 import {contractStatementTotals,accountStatements,statementsFor,statementAccount,statementAddenda,approvedStatement,statementAmounts,finalStatementSummary,contractAdvanceDeductionBalance,advanceDeductionFromPercent,contractAdvanceRows} from '../../src/domain/contractStatements.js';
 
 const fail=message=>({ok:false,message});
 
 export function saveStatement(project,parent,current,id,body,actor,at){
   if(parent?.accountingStatus!=='accepted')return fail('ابتدا قرارداد اصلی باید در مالی تأیید شود');
-  if(current && (current.statementType!==body.statementType || current.status!=='draft' || current.approvalStatus==='pending'))return fail(current.statementType==='advance'?'پیش‌پرداخت در وضعیت فعلی قابل ویرایش نیست':'فقط صورت‌وضعیت برگشتی قابل اصلاح است');
+  if(current && (current.statementType!==body.statementType || (current.statementType==='advance'?!canEditAdvanceRequest(current):current.status!=='draft' || current.approvalStatus==='pending')))return fail(current.statementType==='advance'?'پیش‌پرداخت در وضعیت فعلی قابل ویرایش نیست':'فقط صورت‌وضعیت برگشتی قابل اصلاح است');
   const {statementType,date,note}=body;
   if(!['interim','final','retention-release','advance'].includes(statementType) || typeof date!=='string' || !/^\d{4}\/(?:0?[1-9]|1[0-2])\/(?:0?[1-9]|[12]\d|3[01])$/.test(date))return fail('نوع و تاریخ صورت‌وضعیت را وارد کنید');
   const addendumId=statementType==='advance'?null:current?current.addendumId:body.addendumId;
@@ -63,6 +63,10 @@ export function saveStatement(project,parent,current,id,body,actor,at){
   const approvers=contractApproverIds(parent);
   const sequence=current?.sequence ?? Math.max(0,...statementsFor(project,parent.id).map(record=>Number(record.sequence)||0),statementsFor(project,parent.id).length)+1;
   return {ok:true,contract:{...current,id,contractId:parent.id,addendumId:addendum?.id||null,addendumNo:addendum?.contractNo||null,statementType,sequence,date,note:String(note||'').trim().slice(0,2000),
+    ...(statementType==='advance'?{
+      creationEvent:current?.creationEvent || {action:'create',at:current?.createdAt??at,actor:current?current.submittedBy:actor},
+      approvalHistory:[...(current?.approvalHistory||[]),...(current?[{action:'edit_advance',at,actor}]:[])],
+    }:{}),
     operations,advanceRow:advanceRow?{key:advanceRow.key,number:advanceRow.number,description:advanceRow.description,dueText:advanceRow.dueText,total:advanceRow.total}:undefined,advanceDeduction,advanceDeductionPercent,workEntries:linked?body.workEntries:undefined,statementAmount:entered,...(final?{stageAmount:0,cumulativeAmount:final.gross,retentionAmount:0,netAmount:0,finalTotals:{gross:final.gross,retention:final.retention,net:final.net}}:{...amounts,netAmount:amounts.netAmount-advanceDeduction}),status:statementType==='advance'?'draft':'final',isDraft:statementType==='advance',approvalStatus:statementType==='advance'?null:approvers.length?'pending':'approved',
     approvalContactIds:approvers,approvedContactIds:[],submittedAt:statementType==='advance'?null:at,submittedBy:statementType==='advance'?null:actor,
     accountingStatus:null,signedAt:null,signedBy:null,signedFiles:[],signedFilesUpdatedAt:at,createdAt:current?.createdAt ?? at,updatedAt:at}};
@@ -72,6 +76,10 @@ export function recordStatementPayment(statement,value,actor,at,receipts=[]){
   if(statement.accountingStatus!=='accepted' || !Number.isSafeInteger(value) || value<=0 || value>statement.netAmount-(statement.paidAmount||0)){
     return fail('مبلغ پرداخت باید در محدوده مانده قابل پرداخت باشد');
   }
-  return {ok:true,contract:{...statement,paidAmount:(statement.paidAmount||0)+value,updatedAt:at,
+  const paymentEvent={action:'record_payment',at,actor,amount:value};
+  return {ok:true,contract:{...statement,
+    ...(statement.statementType==='advance'?{approvalHistory:[...(statement.approvalHistory||[]),paymentEvent],
+      financeHistory:[...(statement.financeHistory||[]),paymentEvent]}:{}),
+    paidAmount:(statement.paidAmount||0)+value,updatedAt:at,
     payments:[...(statement.payments||[]),{amount:value,actor,at,...(receipts.length?{receipts}:{})}]}};
 }
