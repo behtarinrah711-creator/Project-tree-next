@@ -827,7 +827,7 @@ export function renderWorkTasks({ documentRef = document, projectId, work, view,
     const isContractorTask = task.type === 'پیمانکار';
     const contractor = !treeLayout && isContractorTask ? contactRepository.get(projectId, task.counterpartyContactId ?? task.contractorContactId) : null;
     const contact = !treeLayout && task.assigneeContactId ? contactRepository.get(projectId, task.assigneeContactId) : null;
-    const details = treeLayout ? (task.isSubwork ? '' : treeWorkTypeChip(task.type)) :
+    const details = treeLayout ? '' :
       `${isContractorTask ? `<span class="wbs-task-contractor">${contractor && !contractor.trashed ? escapeHtml(contactName(contractor)) : 'بدون پیمانکار'}</span>` : ''}${contact ? `<span class="wbs-task-assignee">${escapeHtml(contactName(contact))}</span>` : ''}${task.isSubwork?'':`<span class="wbs-task-priority priority-${task.priority}">${escapeHtml(PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal)}</span>`}`;
     const row = documentRef.createElement('button');
     row.type = 'button';
@@ -838,7 +838,7 @@ export function renderWorkTasks({ documentRef = document, projectId, work, view,
       ${treeLayout && readOnly ? '' : '<span class="wbs-grip" aria-label="جابجایی کار" role="button">⋮⋮</span>'}
       <span class="wbs-task-connector" aria-hidden="true"></span>
       <span class="wbs-task-content">
-        <span class="wbs-task-main">${treeLayout || task.isSubwork?'':`<span class="wbs-type-chip ${TYPE_CLASSES.get(task.type) || 'type-7'}">${escapeHtml(task.type || '؟')}</span>`}<span class="wbs-task-title">${escapeHtml(task.title)}</span></span>
+        <span class="wbs-task-main">${treeLayout || task.isSubwork?'':`<span class="wbs-type-chip ${TYPE_CLASSES.get(task.type) || 'type-7'}">${escapeHtml(task.type || '؟')}</span>`}<span class="wbs-task-title">${escapeHtml(task.title)}</span>${treeLayout && !task.isSubwork ? treeWorkTypeChip(task.type) : ''}</span>
         <span class="wbs-task-secondary">${details}${view === 'progress' ? `<span class="wbs-task-progress">٪${new Intl.NumberFormat('fa-IR').format(task.progress || 0)}</span>` : ''}${view === 'estimate' && task.type !== FOLLOW_UP_WORK_TYPE ? `<span class="wbs-task-cost">${new Intl.NumberFormat('fa-IR').format(taskCostOf(task))} تومان</span>` : ''}</span>
       </span>`;
     row.addEventListener('click', event => {
