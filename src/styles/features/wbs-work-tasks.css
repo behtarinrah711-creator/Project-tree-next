@@ -116,3 +116,8 @@
 .wbs-task-branch-controls{grid-column:1;display:flex;gap:4px;margin-inline-end:4px;}
 .wbs-task-branch>.wbs-subwork-list{grid-column:1/-1;}
 .wbs-subwork-list{padding-inline-start:24px;}
+
+/* Match the stage row's 16px grip and 8px gap on the left. */
+.wbs-task-branch>.wbs-add{grid-column:2;grid-row:1;justify-self:end;margin-inline-end:24px;order:0;z-index:1;}
+.wbs-task-branch>.wbs-task-branch-controls,.wbs-task-branch>.wbs-work-task{grid-row:1;}
+.wbs-task-branch>.wbs-add~.wbs-work-task .wbs-task-content{padding-left:48px;}
