@@ -5,7 +5,7 @@ import {renderInlineContractReject} from './contractReasonSheet.js';
 import {openContractPreview} from './contractPreviewView.js';
 import {statementWorkRows,resolveStatementWork} from '../../domain/statementWork.js';
 import { projectRepository } from '../../data/projectRepository.js';
-import { canReviewContract, canEditAdvanceRequest, hasAdvanceSubmission } from '../../domain/contractApproval.js';
+import { canReviewContract, canEditAdvanceRequest, hasAdvanceSubmission, contractApproverIds } from '../../domain/contractApproval.js';
 import { accountStatements, approvedStatement, statementAccount, statementAddenda, contractStatementTotals, finalStatementSummary, statementAmounts, statementsFor, contractAdvanceDeductionBalance, advanceDeductionFromPercent, contractAdvanceRows } from '../../domain/contractStatements.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
@@ -17,7 +17,7 @@ import { openStaticChoicePicker } from './contractPickers.js';
 import { saveContractHandoff } from './contractHandoffApi.js';
 import { contractRowData, renderContractCardHeading } from './contractsModule.js';
 import { contractProgressSteps, renderContractWorkflowPanel, renderContractProgressCircle } from './contractProgressView.js';
-import { openContractHistory } from './contractHistoryView.js';
+import { openContractHistory, renderContractHistory } from './contractHistoryView.js';
 import { openContractExport } from './contractExportView.js';
 import { openConfirm } from '../../ui/confirm.js';
 import { canDeleteContractAddenda } from '../../domain/contractAddenda.js';
@@ -387,7 +387,9 @@ function openAdvanceStep(project,contract,record,onChanged,{finance=false,approv
     try{
       const updated=await saveContractHandoff(project.id,record,action,options);
       onChanged();
-      openAdvanceStep(currentProject(project),contract,updated,onChanged,{finance,approval,openSheet});
+      const source=currentProject(project);
+      openAdvanceStep(source,contract,updated,onChanged,{finance,approval,openSheet,
+        step:action==='approve_finance'?undefined:contractProgressSteps(updated,source).find(item=>item.id===active.id)});
       return true;
     }catch(error){toast(error.message);return false;}
     finally{pending=false;}
@@ -399,41 +401,69 @@ function openAdvanceStep(project,contract,record,onChanged,{finance=false,approv
   openSheet({title:active.label,showSave:false,autoFocus:false,historyKey:'statement:'+record.id,reuseHistoryOnReplace:true,
     onClose:()=>uploaders.forEach(uploader=>uploader.destroy()),
     body(root){
-      root.classList.add('contract-status-sheet');
-      if(finance)root.append(renderContractWorkflowPanel(document,record,project,{onOpen:(_,step)=>
-        openAdvanceStep(project,contract,record,onChanged,{finance,step,openSheet}),openCompleted:true}));
-      root.append(table([['وضعیت مرحله',active.done?'انجام شده':active.rejected?'رد شده':'انجام نشده'],['مبلغ درخواستی',money(record.statementAmount||0)]]));
-      root.append(button('پیش‌نمایش پیش‌پرداخت',trigger=>openContractPreview(project,contract,{trigger,
-        documentPreview:{title:'پیش‌نمایش پیش‌پرداخت',content:statementPreviewContent(contract,record)}})));
-      if(active.id==='created' && writable && canEditAdvanceRequest(record)){
-        root.append(button('ویرایش پیش‌پرداخت',()=>openStatementForm(project,contract,onChanged,record)));
-      }
-      if(active.id==='advance-submit' && writable && current===active.id){
-        root.append(button('ارسال جهت تأیید',()=>run('submit_advance')));
-      }
-      if(active.id==='approved' && record.approvalStatus==='pending' && hasAdvanceSubmission(record)){
-        if(approval?.action){
-          root.append(approval.action);
-          if(approval.reject)root.append(renderInlineContractReject(approval.reject,onChanged));
-        }else if(writable && record.submittedBy?.id===currentExecutionActor(project)?.id){
-          root.append(button('پس گرفتن درخواست تأیید',()=>showReason('پس گرفتن پیش‌پرداخت','withdraw_advance')));
+      root.classList.add('contract-status-sheet','contract-history-sheet','contract-advance-stage-sheet');
+      const showHistory=options=>{
+        const details=renderContractHistory(document,record,{compact:true,...options});
+        details.open=true;
+        details.querySelector('summary').hidden=true;
+        if(details.querySelector('.contract-history-entry'))root.append(details);
+        return details;
+      };
+      const showStatus=(status,person)=>{
+        const card=element('div','contract-history-entry');
+        const heading=element('div','contract-history-entry-heading');
+        heading.append(element('div','contract-history-event',status));
+        if(person)heading.append(element('div','contract-history-actor',person));
+        card.append(heading);root.append(card);
+      };
+      const actionButton=(label,action,variant='')=>button(label,action,'contract-review-action'+(variant?' '+variant:''));
+      if(active.id==='created')showHistory({actions:['create']});
+      if(active.id==='advance-submit'){
+        showHistory({actions:['submit','withdraw_submission']});
+        if(writable && current===active.id)root.append(actionButton('ارسال جهت تأیید',()=>run('submit_advance')));
+        if(writable && record.approvalStatus==='pending' && hasAdvanceSubmission(record) &&
+          record.submittedBy?.id===currentExecutionActor(project)?.id){
+          root.append(actionButton('پس گرفتن از تأیید',()=>showReason('پس گرفتن از تأیید','withdraw_advance'),'danger'));
         }
       }
-      if(active.id==='finance' && writable && current===active.id){
-        root.append(button('ارسال به مالی',()=>run('send_finance')));
+      if(active.id==='approved'){
+        showHistory({actions:['approve','reject','revoke']});
+        if(record.approvalStatus==='pending' && hasAdvanceSubmission(record)){
+          const approvedIds=(record.approvedContactIds||[]).map(String);
+          for(const id of contractApproverIds(record).filter(id=>!approvedIds.includes(id))){
+            const person=project.contacts?.find(contact=>String(contact.id)===id);
+            const name=[person?.firstName,person?.lastName].filter(Boolean).join(' ') || person?.name || person?.title || 'مسئول تأیید';
+            showStatus('در انتظار تأیید',name);
+          }
+          if(approval?.action){
+            root.append(actionButton(approval.action.textContent,()=>approval.action.click()));
+            if(approval.reject)root.append(renderInlineContractReject(approval.reject,onChanged));
+          }
+        }
       }
-      if(active.id==='finance-approved' && financeWritable && record.accountingStatus==='sent'){
-        root.append(button('تأیید مالی',()=>run('approve_finance')),
-          button('برگشت برای اصلاح',()=>showReason('برگشت پیش‌پرداخت','reject_finance')));
+      if(active.id==='finance'){
+        showHistory({actions:['send_finance','withdraw_finance']});
+        if(writable && current===active.id)root.append(actionButton('ارسال به مالی',()=>run('send_finance'),'success'));
+        if(writable && record.accountingStatus==='sent'){
+          root.append(actionButton('پس گرفتن از مالی',()=>showReason('پس گرفتن از مالی','withdraw_finance'),'danger'));
+        }
+      }
+      if(active.id==='finance-approved'){
+        showHistory({actions:['approve_finance','reject_finance','revoke_finance']});
+        if(record.accountingStatus==='sent'){
+          showStatus('در انتظار تأیید مالی');
+          if(financeWritable)root.append(actionButton('تأیید مالی',()=>run('approve_finance')),
+            actionButton('برگشت برای اصلاح',()=>showReason('برگشت پیش‌پرداخت','reject_finance'),'danger'));
+        }
       }
       if(active.id==='paid'){
         root.append(table([['وضعیت پرداخت',paymentStatus],['پرداخت‌شده',money(paid)],['مانده پرداخت',money(remaining)]]));
         const attach=(root,files,readOnly)=>mountFileUploader(root,{projectId:project.id,recordId:record.id,
           category:'advance-receipts',files,readOnly,onError:toast,label:'افزودن فیش پرداخت',buttonLabel:true});
         for(const payment of record.payments||[]){
-          root.append(table([['مبلغ واریز',money(payment.amount)],['زمان واریز',new Date(payment.at).toLocaleString('fa-IR')]]));
+          const entry=showHistory({payment}).querySelector('.contract-history-entry');
           if(payment.receipts?.length){
-            const container=element('section');root.append(container);
+            const container=element('section');entry.append(container);
             uploaders.push(attach(container,payment.receipts,true));
           }
         }
@@ -454,7 +484,6 @@ function openAdvanceStep(project,contract,record,onChanged,{finance=false,approv
           }));
         }
       }
-      root.append(button('تاریخچه',()=>openContractHistory(record,{finance})));
     },
   });
 }
@@ -603,7 +632,14 @@ export function renderAccountingStatements(body,projectId){
   for(const contract of project.contracts||[]){
     if(contract.trashed)continue;
     const records=statementsFor(project,contract.id).filter(record=>['sent','accepted'].includes(record.accountingStatus));
-    for(const record of records)body.append(button((contract.contractNo||'')+' · '+statementTitle(record),()=>openStatement(project,contract,record,()=>renderAccountingStatements(body,projectId),{finance:true})));
+    for(const record of records){
+      const open=button((contract.contractNo||'')+' · '+statementTitle(record),()=>openStatement(project,contract,record,()=>renderAccountingStatements(body,projectId),{finance:true}));
+      if(record.statementType!=='advance'){body.append(open);continue;}
+      const row=element('div','contract-addendum-toolbar');
+      row.append(open,button('پیش‌نمایش',trigger=>openContractPreview(project,contract,{trigger,
+        documentPreview:{title:'پیش‌نمایش پیش‌پرداخت',content:statementPreviewContent(contract,record)}})));
+      body.append(row);
+    }
   }
   if(!body.children.length)body.append(element('p','contract-empty','صورت‌وضعیتی به مالی ارسال نشده است.'));
 }

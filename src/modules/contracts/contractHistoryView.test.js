@@ -59,3 +59,21 @@ test('compact history keeps event, actor and Persian date/time in separate rows'
  assert.equal(legacy.children[1].children[0].children[1].textContent,'کاربر');
  assert.equal(legacy.children[1].children[0].children[2].children[0].textContent,'زمان نامشخص');
 });
+
+test('advance stage history isolates the creation and rejection events and formats a single payment',()=>{
+ const record={statementType:'advance',createdAt:100,createdBy:{name:'ثبت‌کننده'},approvalHistory:[
+   {action:'submit',at:200,actor:{name:'ارسال‌کننده'}},
+   {action:'reject_finance',at:300,actor:{name:'مالی'},reason:'مدرک ناقص بود'},
+ ]};
+ const created=renderContractHistory(documentRef,record,{compact:true,actions:['create']});
+ assert.equal(created.children.length,2);
+ assert.deepEqual(created.children[1].children[0].children.slice(0,2).map(node=>node.textContent),['درخواست پیش‌پرداخت ثبت شد','ثبت‌کننده']);
+ const rejected=renderContractHistory(documentRef,record,{compact:true,actions:['reject_finance']});
+ assert.equal(rejected.children.length,2);
+ assert.equal(rejected.children[1].className,'contract-history-entry is-rejected');
+ assert.equal(rejected.children[1].children[1].textContent,'مدرک ناقص بود');
+ const payment=renderContractHistory(documentRef,record,{compact:true,payment:{at:400,actor:{name:'حسابدار'},amount:12000}});
+ assert.equal(payment.children.length,2);
+ assert.equal(payment.children[1].children[0].children[1].textContent,'حسابدار');
+ assert.equal(payment.children[1].children[1].textContent,'۱۲٬۰۰۰ تومان');
+});
