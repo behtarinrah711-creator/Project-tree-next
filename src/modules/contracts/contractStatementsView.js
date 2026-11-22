@@ -4,7 +4,7 @@ import {openContractPreview} from './contractPreviewView.js';
 import {statementWorkRows,resolveStatementWork} from '../../domain/statementWork.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { canReviewContract } from '../../domain/contractApproval.js';
-import { accountStatements, approvedStatement, statementAccount, statementAddenda, contractStatementTotals, finalStatementSummary, statementAmounts, statementsFor, availableContractAdvance, contractAdvanceRows } from '../../domain/contractStatements.js';
+import { accountStatements, approvedStatement, statementAccount, statementAddenda, contractStatementTotals, finalStatementSummary, statementAmounts, statementsFor, contractAdvanceDeductionBalance, advanceDeductionFromPercent, contractAdvanceRows } from '../../domain/contractStatements.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
 import { fieldRow, openWbsSheet, closeWbsSheet } from '../wbs/wbsSheet.js';
@@ -136,8 +136,12 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
   let advanceRow=payableAdvanceRows.find(row=>row.key===record?.advanceRow?.key) ||
     (payableAdvanceRows.length===1?payableAdvanceRows[0]:null);
   let advanceAmount=advanceRow?record?.statementAmount ?? advanceRow.balance:'';
-  let advanceDeduction=record?.advanceDeduction||'';
-  const availableAdvance=availableContractAdvance(project,contract.id,record?.id);
+  const {paid:paidAdvance,available:availableAdvance}=contractAdvanceDeductionBalance(source,contract.id,record?.id);
+  let deductionPercent=record?.advanceDeductionPercent;
+  const legacyDeduction=record?.advanceDeduction||0;
+  const deductionAmount=()=>addendumId?0:deductionPercent===undefined
+    ? legacyDeduction
+    : advanceDeductionFromPercent(paidAdvance,deductionPercent);
   const label=statementType==='advance'?'پرداخت پیش‌پرداخت':statementType==='retention-release'?'آزاد کردن حسن انجام کار'
     :(record?'اصلاح':'ایجاد')+' صورت‌وضعیت '+statementTypes.find(([value])=>value===statementType)[1];
   let date=record?.date||todayJalaliStr();
@@ -197,13 +201,32 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
             const resolved=resolveStatementWork(workRows,workEntries());
             const gross=(resolved||[]).reduce((sum,row)=>sum+rowAmount(row),0);
             const result=statementAmounts(totals,account,gross,'interim');
-            calculation.replaceChildren(table([['مبلغ کل صورت‌وضعیت',money(gross)],['حسن انجام کار',money(result.retentionAmount)],['کسر بابت پیش‌پرداخت',money(addendumId?0:numericValue(advanceDeduction))],['خالص این صورت‌وضعیت',money(result.netAmount-(addendumId?0:numericValue(advanceDeduction)))]]));
+            const deduction=deductionAmount();
+            const valid=deduction!==null && deduction<=availableAdvance && deduction<=result.netAmount;
+            calculation.replaceChildren(table([
+              ['جمع کارکرد عملیات',money(gross)],['حسن انجام کار',money(result.retentionAmount)],
+              ...(!addendumId && paidAdvance?[
+                ['پیش‌پرداخت واریزشده',money(paidAdvance)],['مانده قابل کسر',money(availableAdvance)],
+              ]:[]),
+            ]));
+            if(!addendumId && availableAdvance){
+              const editor=element('div','form-template');
+              ftNumberRow(editor,'درصد کسر پیش‌پرداخت این دوره',deductionPercent??'',value=>{
+                deductionPercent=numericValue(value);
+              },{suffix:'٪',allowDecimal:true,placeholder:'وارد کنید',onCommit:update});
+              calculation.append(editor);
+            }
+            calculation.append(table([
+              ['کسر پیش‌پرداخت این دوره',deduction===null?'—':money(deduction)],
+              ['خالص قابل پرداخت',valid?money(result.netAmount-deduction):'—'],
+            ]));
+            if(!valid)calculation.append(element('p','wbs-note','مبلغ کسر باید در محدوده مانده پیش‌پرداخت و مبلغ قابل پرداخت باشد.'));
             if(workEntries().length && !resolved)calculation.append(element('p','wbs-note','کارکرد را در محدوده مانده هر ردیف وارد کنید.'));
           };
           for(const [index,row] of workRows.entries()){
             const entry=entries[index];
             entry.method ||= row.measured?'quantity':'amount';
-            const card=element('div','contract-quantity-row form-template');
+            const card=element('div','contract-quantity-row contract-statement-operation form-template');
             card.append(element('h3','contract-statement-operation-title',row.description||'عملیات '+format.format(index+1)));
             const display=value=>row.measured?format.format(value)+' '+(row.unit||''):money(value);
             card.append(table([
@@ -211,13 +234,11 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
               ['کارکرد قبلی',display(row.previous)],
               ['مانده ردیف',row.limit===null?'تعیین نشده':display(Math.max(0,row.limit-row.previous))],
             ]));
-            const equivalent=element('p','wbs-note');
-            const updateRow=()=>{
-              const item=workEntries().find(item=>item.key===row.key);
-              const operation=item && resolveStatementWork([row],[item])?.[0];
-              equivalent.textContent=operation?[row.measured?display(operation.quantity):'',money(rowAmount(operation))].filter(Boolean).join(' | '):'';
-              update();
-            };
+            const equivalent=element('div','contract-statement-operation-result');
+            const item=workEntries().find(item=>item.key===row.key);
+            const operation=item && resolveStatementWork([row],[item])?.[0];
+            if(operation && row.measured)equivalent.append(element('span','',display(operation.quantity)+' | '));
+            equivalent.append(element('strong','',money(operation?rowAmount(operation):0)));
             if(row.measured && row.limit!==null){
               const choices=element('div','ft-row contract-operation-method');
               for(const [method,label] of [['quantity','مقدار'],['percent','درصد']]){
@@ -238,13 +259,9 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
               placeholder:percent?'درصد انجام‌شده':row.measured?'مقدار انجام‌شده':'مبلغ کار انجام‌شده',
               onCommit:refresh,
             });
-            card.append(equivalent);fields.append(card);updateRow();
+            card.append(equivalent);fields.append(card);
           }
           if(!workRows.length)fields.append(element('p','wbs-note','عملیاتی در قرارداد ثبت نشده است.'));
-          if(!addendumId && availableAdvance){
-            ftAmountSummary(fields,'مانده پیش‌پرداخت قابل کسر',availableAdvance);
-            ftNumberRow(fields,'کسر بابت پیش‌پرداخت',advanceDeduction,value=>{advanceDeduction=value;update();},{suffix:'تومان'});
-          }
           update();
           return;
         }
@@ -283,7 +300,17 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
       const value=name=>root.querySelector('[name="'+name+'"]').value.trim();
       const type=statementType;
       if(type==='final' && !final.ready){toast('شرایط صدور صورت‌وضعیت قطعی تکمیل نشده است');return false;}
-      if(type==='interim' && !resolveStatementWork(workRows,workEntries())){toast('کارکرد عملیات قرارداد را معتبر وارد کنید');return false;}
+      if(type==='interim'){
+        const resolved=resolveStatementWork(workRows,workEntries());
+        if(!resolved){toast('کارکرد عملیات قرارداد را معتبر وارد کنید');return false;}
+        const gross=resolved.reduce((sum,row)=>sum+rowAmount(row),0);
+        const net=statementAmounts(totals,account,gross,'interim').netAmount;
+        const deduction=deductionAmount();
+        if(deduction===null || deduction>availableAdvance || deduction>net){
+          toast('کسر پیش‌پرداخت را در محدوده مانده و مبلغ قابل پرداخت وارد کنید');
+          return false;
+        }
+      }
       if(type==='retention-release' && (!operations.length || operations.some(row=>!row.description.trim() || !rowAmount(row) || (row.pricingMode==='quantity' && !row.unit)))){toast('شرح و مبلغ عملیات را کامل کنید');return false;}
       const requestedAmount=numericValue(advanceAmount);
       if(type==='advance' && (!advanceRow || !Number.isSafeInteger(requestedAmount) || requestedAmount<=0 || requestedAmount>advanceRow.balance)){
@@ -291,7 +318,7 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
         return false;
       }
       saving=true;
-      saveContractHandoff(project.id,documentRecord,'save_statement',{contractId:contract.id,addendumId,statementType:type,date,...(type==='interim'?{workEntries:workEntries(),advanceDeduction:addendumId?0:numericValue(advanceDeduction)}:type==='advance'?{amount:requestedAmount,advanceRowKey:advanceRow.key}:type==='final'?{}:{operations}),note:value('note')})
+      saveContractHandoff(project.id,documentRecord,'save_statement',{contractId:contract.id,addendumId,statementType:type,date,...(type==='interim'?{workEntries:workEntries(),advanceDeduction:deductionAmount(),advanceDeductionPercent:addendumId?undefined:deductionPercent}:type==='advance'?{amount:requestedAmount,advanceRowKey:advanceRow.key}:type==='final'?{}:{operations}),note:value('note')})
         .then(()=>{if(root.isConnected)closeWbsSheet();onChanged();})
         .catch(error=>toast(error.message)).finally(()=>{saving=false;});
       return false;

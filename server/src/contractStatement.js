@@ -1,7 +1,7 @@
 import {statementWorkRows,resolveStatementWork} from '../../src/domain/statementWork.js';
 import {rowAmount,numericValue} from '../../src/modules/contracts/contractPricing.js';
 import {contractApproverIds} from '../../src/domain/contractApproval.js';
-import {contractStatementTotals,accountStatements,statementsFor,statementAccount,statementAddenda,approvedStatement,statementAmounts,finalStatementSummary,availableContractAdvance,contractAdvanceRows} from '../../src/domain/contractStatements.js';
+import {contractStatementTotals,accountStatements,statementsFor,statementAccount,statementAddenda,approvedStatement,statementAmounts,finalStatementSummary,contractAdvanceDeductionBalance,advanceDeductionFromPercent,contractAdvanceRows} from '../../src/domain/contractStatements.js';
 
 const fail=message=>({ok:false,message});
 
@@ -50,15 +50,20 @@ export function saveStatement(project,parent,current,id,body,actor,at){
   if(statementType==='retention-release' && (entered<=0 || entered>totals.retained))return fail('مبلغ آزادسازی از مانده حسن انجام کار بیشتر است');
   if(statementType==='interim' && totals.remaining!==null && gross>totals.remaining)return fail('کارکرد از مبلغ به‌روز قرارداد بیشتر است');
   const amounts=statementAmounts(totals,account,gross,statementType);
-  const advanceDeduction=statementType==='interim' && !addendumId ? body.advanceDeduction ?? 0 : 0;
+  const deductsAdvance=statementType==='interim' && !addendumId;
+  const advanceDeductionPercent=deductsAdvance?body.advanceDeductionPercent:undefined;
+  const advanceBalance=contractAdvanceDeductionBalance(project,parent.id,id);
+  const advanceDeduction=!deductsAdvance?0:advanceDeductionPercent===undefined
+    ? body.advanceDeduction ?? 0
+    : advanceDeductionFromPercent(advanceBalance.paid,advanceDeductionPercent);
   if(!Number.isSafeInteger(advanceDeduction) || advanceDeduction<0 ||
-    advanceDeduction>availableContractAdvance(project,parent.id,id) || advanceDeduction>amounts.netAmount){
-    return fail('کسر پیش‌پرداخت باید در محدوده مانده پیش‌پرداخت و خالص صورت‌وضعیت باشد');
+    advanceDeduction>advanceBalance.available || advanceDeduction>amounts.netAmount){
+    return fail('درصد و مبلغ کسر پیش‌پرداخت باید در محدوده مانده پیش‌پرداخت و خالص صورت‌وضعیت باشند');
   }
   const approvers=contractApproverIds(parent);
   const sequence=current?.sequence ?? Math.max(0,...statementsFor(project,parent.id).map(record=>Number(record.sequence)||0),statementsFor(project,parent.id).length)+1;
   return {ok:true,contract:{...current,id,contractId:parent.id,addendumId:addendum?.id||null,addendumNo:addendum?.contractNo||null,statementType,sequence,date,note:String(note||'').trim().slice(0,2000),
-    operations,advanceRow:advanceRow?{key:advanceRow.key,number:advanceRow.number,description:advanceRow.description,dueText:advanceRow.dueText,total:advanceRow.total}:undefined,advanceDeduction,workEntries:linked?body.workEntries:undefined,statementAmount:entered,...(final?{stageAmount:0,cumulativeAmount:final.gross,retentionAmount:0,netAmount:0,finalTotals:{gross:final.gross,retention:final.retention,net:final.net}}:{...amounts,netAmount:amounts.netAmount-advanceDeduction}),status:'final',isDraft:false,approvalStatus:approvers.length?'pending':'approved',
+    operations,advanceRow:advanceRow?{key:advanceRow.key,number:advanceRow.number,description:advanceRow.description,dueText:advanceRow.dueText,total:advanceRow.total}:undefined,advanceDeduction,advanceDeductionPercent,workEntries:linked?body.workEntries:undefined,statementAmount:entered,...(final?{stageAmount:0,cumulativeAmount:final.gross,retentionAmount:0,netAmount:0,finalTotals:{gross:final.gross,retention:final.retention,net:final.net}}:{...amounts,netAmount:amounts.netAmount-advanceDeduction}),status:'final',isDraft:false,approvalStatus:approvers.length?'pending':'approved',
     approvalContactIds:approvers,approvedContactIds:[],submittedAt:at,submittedBy:actor,
     accountingStatus:null,signedAt:null,signedBy:null,signedFiles:[],signedFilesUpdatedAt:at,createdAt:current?.createdAt ?? at,updatedAt:at}};
 }

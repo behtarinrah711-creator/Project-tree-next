@@ -2039,6 +2039,21 @@ textarea.contract-project-item-input{
 .contract-statement-form .contract-statement-operation-title{font-size:13px;line-height:1.65;margin:8px;}
 .contract-statement-form .contract-financial-table{font-size:12px;}
 
+.contract-statement-form .contract-statement-operation{border-bottom:1px solid var(--divider);}
+.contract-statement-form .contract-statement-operation .contract-financial-table :is(th,td){padding:5px 8px;}
+.contract-statement-form .contract-statement-operation > .ft-row{
+  min-height:38px !important;
+  padding-block:4px !important;
+}
+.contract-statement-operation-result{
+  background:#f0f0f0;
+  color:#202124;
+  text-align:center;
+  padding:7px 8px;
+  border-top:1px solid var(--divider);
+  font-size:13px;
+}
+
 .contract-approval-controls{display:grid;gap:8px;padding:12px;}
 .contract-approval-filter-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;}
 .contract-approval-controls .contract-status-filter{width:100%;white-space:normal;}

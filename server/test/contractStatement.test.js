@@ -103,3 +103,19 @@ test('advance requests use a contract row and reserve its balance until released
   project.contractStatusReports.push({id:'legacy',contractId:'c',statementType:'advance',statementAmount:25000,accountingStatus:'accepted'});
   assert.equal(save({amount:15001}).ok,false);
 });
+
+test('interim statements deduct a single percentage of the paid advance from combined work',()=>{
+  const parent={id:'c',amount:100000,retentionPercent:10,accountingStatus:'accepted'};
+  const advance={contractId:'c',statementType:'advance',statementAmount:50000,paidAmount:40000,accountingStatus:'accepted'};
+  const project={contractStatusReports:[advance]};
+  const operations=[10000,20000].map(agreedPrice=>({description:'کار',pricingMode:'agreed',agreedPrice}));
+  const save=percent=>saveStatement(project,parent,null,'new',{
+    statementType:'interim',date:'1405/08/26',operations,advanceDeductionPercent:percent,advanceDeduction:1,
+  },{id:'actor'},1);
+  assert.equal(save(20).contract.advanceDeduction,8000);
+  assert.equal(save(20).contract.netAmount,19000);
+  assert.equal(save(0).contract.advanceDeduction,0);
+  assert.equal(save(101).ok,false);
+  project.contractStatusReports.push({contractId:'c',status:'final',advanceDeduction:35000});
+  assert.equal(save(20).ok,false);
+});
