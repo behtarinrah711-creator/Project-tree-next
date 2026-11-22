@@ -111,8 +111,8 @@
 .wbs-dependency-stepper .wbs-input{width:100%;text-align:center;}
 .today-resume-manual .wbs-dependency-offset{display:none;}
 
-.wbs-task-branch{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:0 4px;direction:rtl;}
+.wbs-task-branch{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;direction:rtl;}
 .wbs-task-branch>.wbs-work-task{grid-column:2;min-width:0;}
-.wbs-task-branch-controls{grid-column:1;display:flex;gap:4px;}
+.wbs-task-branch-controls{grid-column:1;display:flex;gap:4px;margin-inline-end:4px;}
 .wbs-task-branch>.wbs-subwork-list{grid-column:1/-1;}
 .wbs-subwork-list{padding-inline-start:24px;}

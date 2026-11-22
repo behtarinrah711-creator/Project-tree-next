@@ -120,7 +120,7 @@ for(const stageMode of ['base','none','single','multiple']){
   test(`work information excludes removed fields and preserves stored values in ${stageMode}`, async ({ page }) => {
     const work={id:'work',kind:'work',text:'کار تست',manualCost:1234567,progressWeight:1,type:'اجرا',scheduleStart:'1405/06/01',scheduleEnd:'1405/06/03',progress:35,priority:'high',assigneeContactId:'contact',predecessorIds:['previous'],dependencies:[],quantity:2,unit:'متر',unitCost:500,subtasks:[]};
     await page.addInitScript(({stageMode,work}) => {
-      localStorage.setItem('ptnext-v1:app-data',JSON.stringify({schemaVersion:8,activeTab:'info',viewMode:'simple',starredOrder:[],projects:[{id:'info',name:'اطلاعات کار',settings:{stageMode},tasks:[{id:'previous',kind:'work',text:'پیش‌نیاز',subtasks:[]},work]}]}));
+      localStorage.setItem('ptnext-v1:app-data',JSON.stringify({schemaVersion:8,activeTab:'info',viewMode:'simple',starredOrder:[],projects:[{id:'info',name:'اطلاعات کار',settings:{stageMode},contacts:[{id:'contact',firstName:'مسئول',lastName:'آزمایشی'}],tasks:[{id:'previous',kind:'work',text:'پیش‌نیاز',subtasks:[]},work]}]}));
     },{stageMode,work});
     await page.goto('/index.html#/projects/info/planning');
     await page.locator('.wbs-row.is-work',{hasText:'کار تست'}).locator('.wbs-title').click();
@@ -136,13 +136,17 @@ for(const stageMode of ['base','none','single','multiple']){
     for(const key of ['scheduleStart','scheduleEnd','progress','priority','assigneeContactId','predecessorIds','quantity','unit','unitCost']) expect(stored[key]).toEqual(work[key]);
     await page.locator('.wbs-row',{hasText:'کار ویرایش‌شده'}).locator('.wbs-add').click();
     await expect(sheet).toHaveClass(/wbs-work-create-overlay/);
-    await expect(sheet.locator('.sheet-caption')).toContainText('اضافه کردن کار به:');
+    await expect(sheet.locator('.sheet-caption')).toContainText('اضافه کردن زیرکار به:');
     await expect(sheet.locator('.wbs-create-parent')).toHaveText('کار ویرایش‌شده');
-    await expect(sheet.locator('.wbs-field-label')).toHaveText('عنوان کار');
-    await expect(sheet.locator('[name="title"]')).toHaveAttribute('placeholder','مثال: خرید سیم و کابل');
+    await expect(sheet.locator('.wbs-field-label')).toHaveText('عنوان زیرکار');
+    await expect(sheet.locator('[name="title"]')).toHaveAttribute('placeholder','مثال: مرحله یک برق‌کشی');
     await sheet.locator('[name="title"]').fill('خرید سیم و کابل');
     await sheet.locator('.wbs-sheet-save').click();
-    await expect(page.locator('.wbs-work-task',{hasText:'خرید سیم و کابل'})).toBeVisible();
+    const subwork=page.locator('.wbs-work-task',{hasText:'خرید سیم و کابل'});
+    await expect(subwork).toBeVisible();
+    await expect(subwork.locator('.wbs-type-chip')).toHaveCount(0);
+    const saved=await page.evaluate(()=>window.KarhaAppData.getSnapshot().projects.find(p=>p.id==='info').tasks.find(t=>t.id==='work').workTasks[0]);
+    expect(saved).toMatchObject({isSubwork:true,workId:'work',assigneeContactId:'contact'});
   });
 }
 

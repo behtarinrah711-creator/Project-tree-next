@@ -554,7 +554,9 @@ function renderRow(item, codes, view, depth){
   const permissionReadOnly = !canWritePlanning(activePlanningLevel);
   const readOnlyView = view === 'estimate' || view === 'progress' || permissionReadOnly;
   const registrationLevel = isWorkRegistrationLevel(item);
-  const mayAdd = (isWork(item) && !item.completed && item.completionState!=='approved' && item.type!=='خرید') || registrationLevel || treeAddKinds(item).length > 0;
+  const mayAddSubwork = isWork(item) && !item.completed && item.completionState!=='approved'
+    && item.type!=='خرید' && (Boolean(item.type) || !registrationLevel);
+  const mayAdd = mayAddSubwork || registrationLevel || treeAddKinds(item).length > 0;
   const meta = [];
   if(view === 'estimate' && isWork(item)){
     meta.push(new Intl.NumberFormat('fa-IR').format(lineTotal(item)));
@@ -576,7 +578,7 @@ function renderRow(item, codes, view, depth){
       <span class="wbs-title-text">${escapeHtml(item.text || '')}</span>
     </button>
     <span class="wbs-meta${view === 'estimate' ? ' is-estimate' : ''}${view === 'progress' ? ' is-progress' : ''}">${escapeHtml(meta.join(' · '))}</span>
-    ${!readOnlyView && mayAdd ? `<button type="button" class="wbs-add" aria-label="${stage ? 'افزودن' : 'افزودن زیرکار'}">+</button>` : ''}
+    ${!readOnlyView && mayAdd ? `<button type="button" class="wbs-add" aria-label="${mayAddSubwork ? 'افزودن زیرکار' : stage ? 'افزودن' : 'ساخت کار'}">+</button>` : ''}
   `;
   row.querySelector('.wbs-chev')?.addEventListener('click', ev => {
     ev.stopPropagation();
@@ -589,7 +591,7 @@ function renderRow(item, codes, view, depth){
   });
   row.querySelector('.wbs-add')?.addEventListener('click', ev => {
     ev.stopPropagation();
-    if(isWork(item))openWorkCreationSheet({projectId:projectIdOf(),stage:item,onChanged:render,subwork:true});
+    if(mayAddSubwork)openWorkCreationSheet({projectId:projectIdOf(),stage:item,onChanged:render,subwork:true});
     else if(registrationLevel) openWorkRegistration(item.id);
     else openAddMenu(item.id);
   });
