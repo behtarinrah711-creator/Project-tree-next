@@ -72,8 +72,6 @@
 .contract-history-sheet .contract-history-entry p{margin:4px 0 0;font-size:12px;font-weight:400;line-height:1.6;white-space:pre-wrap;}
 
 .contract-history-sheet .contract-history-entry.is-rejected{background:#fff1f0;border-color:#bb3931;}
-.contract-advance-stage-sheet .contract-review-action.danger{background:#ffeded;color:#ab2929;}
-.contract-advance-stage-sheet .contract-review-action.success{background:#187638;color:#fff;}
 
 /* Compact card metadata and unboxed tools, distinct from workflow stages. */
 :is(#contractsPageBody,#accountingPageBody,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-row > .contract-card-heading{row-gap:4px;padding-block:10px 4px;}
@@ -105,7 +103,8 @@
   min-height: clamp(120px, 23dvh, 205px);
   border: 0 !important;
 }
-.contract-status-sheet .contract-finance-actions:has(> button + button) > button.contract-review-action {
+.contract-status-sheet .contract-finance-actions:has(> button + button) > button.contract-review-action,
+.contract-advance-stage-sheet > button.contract-review-action {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -121,11 +120,17 @@
   font-size: 14px;
   font-weight: 600;
 }
-.contract-status-sheet .contract-finance-actions:has(> button + button) > button.contract-review-action.danger {
+.contract-status-sheet .contract-finance-actions:has(> button + button) > button.contract-review-action.danger,
+.contract-advance-stage-sheet > button.contract-review-action.danger {
   border-color: #c74343;
   background: #b53434 !important;
   color: white !important;
 }
+.contract-advance-stage-sheet > button.contract-review-action.success{
+  border-color:#187638;
+  background:#187638 !important;
+}
+.contract-advance-stage-sheet > button.contract-review-action + button.contract-review-action{margin-top:8px;}
 .contract-status-sheet .contract-finance-actions:has(> button + button) > button::before {
   content: "✓" / "";
   display: grid;

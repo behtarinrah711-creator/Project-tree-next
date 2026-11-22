@@ -49,7 +49,9 @@ export function renderContractProgress(documentRef,contract,project,onOpen,openC
     if(onOpen){
       const button=documentRef.createElement('button');button.type='button';button.className='contract-stage-button';
       button.setAttribute('aria-label',step.label+'؛ '+(step.rejected?'رد شده':step.done?'انجام شده':'انجام نشده')+(index===current?'؛ انجام اقدام':''));
-      button.append(label,dot);button.disabled=contract.statementType!=='advance' && index!==current && !(openCompleted && step.done);
+      button.append(label,dot);
+      const advance=contract.statementType==='advance';
+      button.disabled=index!==current && !((advance || openCompleted) && step.done) && !(advance && step.rejected);
       if(!button.disabled)button.onclick=event=>{event.stopPropagation();onOpen(event,step);};
       item.append(button);
     }else item.append(label,dot);
