@@ -147,7 +147,7 @@
 
 .wbs-branch-layout .wbs-row {
   position: relative;
-  padding-inline-start: calc(var(--wbs-node-center) - 12px);
+  padding-inline-start: calc(var(--wbs-node-center) - 16px);
   padding-inline-end: 8px;
   border-block-end: 1px solid #e2e2e2;
   gap: 8px;
@@ -157,12 +157,14 @@
 .wbs-branch-layout .wbs-row.is-work:has(.wbs-chev[aria-expanded="true"])::after { content: none; }
 
 .wbs-branch-layout :is(.wbs-chev,.wbs-chev-spacer) {
-  width: 24px;
-  height: 24px;
-  min-width: 24px;
-  min-height: 24px;
-  flex-basis: 24px;
-  border-radius: 4px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  flex-basis: 32px;
+  border: 4px solid transparent;
+  border-radius: 8px;
+  background-clip: padding-box;
   background: var(--wbs-node-color);
   color: white;
   z-index: 3;
@@ -174,7 +176,7 @@
 .wbs-branch-layout .wbs-work-task {
   grid-template-columns: 16px minmax(0,1fr);
   padding-left: 8px;
-  padding-right: calc(var(--wbs-node-center) + 20px);
+  padding-right: calc(var(--wbs-node-center) + 24px);
   border-bottom: 1px solid #e2e2e2;
 }
 
@@ -183,7 +185,7 @@
 
 .wbs-branch-layout .wbs-task-branch { display: grid; grid-template-columns: minmax(0,1fr); }
 .wbs-branch-layout .wbs-task-branch > .wbs-work-task { grid-column: 1; }
-.wbs-branch-layout .wbs-task-branch-controls { grid-column: 1; grid-row: 1; position: relative; z-index: 3; justify-self: start; margin-inline-start: calc(var(--wbs-node-center) - 12px); pointer-events: none; }
+.wbs-branch-layout .wbs-task-branch-controls { grid-column: 1; grid-row: 1; position: relative; z-index: 3; justify-self: start; margin-inline-start: calc(var(--wbs-node-center) - 16px); pointer-events: none; }
 .wbs-branch-layout .wbs-task-branch-controls button { pointer-events: auto; }
 .wbs-branch-layout .wbs-task-branch > .wbs-add { grid-column: 1; margin-inline-end: 32px; }
 
@@ -210,6 +212,12 @@
   border: 0 !important;
 }
 
+.wbs-branch-layout .wbs-work-task > .wbs-task-connector {
+  left: auto;
+  right: calc(var(--wbs-node-center) - var(--wbs-tree-step));
+  width: var(--wbs-tree-step);
+}
+
 .wbs-branch-layout .has-tree-parent > .wbs-tree-link::before,
 .wbs-branch-layout .wbs-task-branch .wbs-work-task > .wbs-task-connector::before {
   content: '';
@@ -222,6 +230,7 @@
   border-bottom: 1px solid var(--wbs-tree-line);
 }
 
+.wbs-branch-layout .wbs-task-branch .wbs-work-task > .wbs-task-connector::before { right: 0; }
 .wbs-branch-layout .wbs-work-task .wbs-task-connector::after { content: none; }
 
 .wbs-branch-layout :is(.wbs-row:has(> [aria-expanded="true"]) > .wbs-tree-link,.wbs-task-branch:has(> .wbs-subwork-list) > .wbs-work-task > .wbs-task-connector)::after {
@@ -234,4 +243,9 @@
   height: auto;
   border: 0;
   border-right: 1px solid var(--wbs-tree-line);
+}
+
+.wbs-branch-layout .wbs-task-branch:has(> .wbs-subwork-list) > .wbs-work-task > .wbs-task-connector::after {
+  right: auto;
+  left: 0;
 }
