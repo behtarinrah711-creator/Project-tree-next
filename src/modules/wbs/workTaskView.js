@@ -856,7 +856,7 @@ export function renderWorkTasks({ documentRef = document, projectId, work, view,
       add.type='button';add.className='wbs-add';add.textContent='+';
       add.setAttribute('aria-label','افزودن زیرکار');
       add.onclick=()=>openWorkCreationSheet({projectId,stage:work,parentTask:task,subwork:true,onChanged});
-      controls.append(add);
+      branch.append(add);
     }
     if(controls.childElementCount)branch.append(controls);
     branch.append(row);target.append(branch);
