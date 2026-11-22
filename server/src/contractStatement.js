@@ -61,7 +61,11 @@ export function saveStatement(project,parent,current,id,body,actor,at){
     return fail('درصد و مبلغ کسر پیش‌پرداخت باید در محدوده مانده پیش‌پرداخت و خالص صورت‌وضعیت باشند');
   }
   const approvers=contractApproverIds(parent);
-  const sequence=current?.sequence ?? Math.max(0,...statementsFor(project,parent.id).map(record=>Number(record.sequence)||0),statementsFor(project,parent.id).length)+1;
+  const statementRecords=statementsFor(project,parent.id);
+  const numberedRecords=statementType==='advance'
+    ? (project.contractStatusReports||[]).filter(record=>String(record.contractId)===String(parent.id) && record.statementType==='advance')
+    : statementRecords;
+  const sequence=current?.sequence ?? Math.max(0,...numberedRecords.map(record=>Number(record.sequence)||0),numberedRecords.length)+1;
   return {ok:true,contract:{...current,id,contractId:parent.id,addendumId:addendum?.id||null,addendumNo:addendum?.contractNo||null,statementType,sequence,date,note:String(note||'').trim().slice(0,2000),
     ...(statementType==='advance'?{
       creationEvent:current?.creationEvent || {action:'create',at:current?.createdAt??at,actor:current?current.submittedBy:actor},

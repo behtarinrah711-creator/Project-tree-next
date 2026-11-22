@@ -15,9 +15,10 @@ import { makeQuantityRow, numericValue, renderQuantityRows, rowAmount } from './
 import { ftAmountSummary, ftNumberRow, ftSelectRow } from './realContractFormModule.js';
 import { openStaticChoicePicker } from './contractPickers.js';
 import { saveContractHandoff } from './contractHandoffApi.js';
-import { contractRowData, renderContractCardHeading } from './contractsModule.js';
+import { contractProjectPath, contractRowData, renderContractCardHeading } from './contractsModule.js';
 import { contractProgressSteps, renderContractWorkflowPanel, renderContractProgressCircle } from './contractProgressView.js';
 import { openContractHistory, renderContractHistory } from './contractHistoryView.js';
+import { contractDisplayTitle } from './contractTitle.js';
 import { openContractExport } from './contractExportView.js';
 import { openConfirm } from '../../ui/confirm.js';
 import { canDeleteContractAddenda } from '../../domain/contractAddenda.js';
@@ -44,7 +45,7 @@ const financeScope=projectId=>{
 };
 const currentProject=project=>projectRepository.find(project.id)||project;
 export const statementTypes=[['interim','موقت'],['final','قطعی'],['retention-release','آزاد کردن حسن انجام کار'],['advance','پیش‌پرداخت']];
-const statementTitle=record=>record.statementType==='advance'?'پرداخت پیش‌پرداخت':record.statementType==='retention-release'?'آزاد کردن حسن انجام کار':record.statementType==='final'?'صورت‌وضعیت قطعی':'صورت‌وضعیت موقت شماره '+format.format(record.sequence||1);
+const statementTitle=record=>record.statementType==='advance'?'درخواست پرداخت پیش‌پرداخت شمارهٔ '+format.format(record.sequence||1):record.statementType==='retention-release'?'آزاد کردن حسن انجام کار':record.statementType==='final'?'صورت‌وضعیت قطعی':'صورت‌وضعیت موقت شماره '+format.format(record.sequence||1);
 
 function table(rows){
   const node=element('table','contract-financial-table');
@@ -342,7 +343,7 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
   sheet.classList.add('contract-addendum-form');
 }
 
-function statementPreviewContent(contract,record){
+function statementPreviewContent(project,contract,record){
   const title=statementTitle(record);
     const documentNode=element('section','contract-export-document');
     documentNode.dir='rtl';
@@ -350,14 +351,24 @@ function statementPreviewContent(contract,record){
       const row=record.advanceRow;
       documentNode.dataset.documentKind='advance';
       const summary=element('div','contract-advance-print');
-      documentNode.append(element('h2','',title),element('p','',contract.contractNo||''),summary);
+      const heading=element('h2');
+      heading.append(element('strong','',title+' — '+contractDisplayTitle(project,contract)));
+      const path=contractProjectPath(project,contract);
+      documentNode.append(heading);
+      if(path)documentNode.append(element('p','','مسیر قرارداد · '+path));
+      documentNode.append(summary);
+      const total=Number(contract.amount);
+      const contractAmount=contract.amount!=null && contract.amount!=='' && Number.isFinite(total) && !contract.remeasurement
+        ? money(total):'مبلغ قطعی تعیین نشده';
       const detail=table([
+        ['شماره قرارداد',contract.contractNo||'—'],
         ['تاریخ درخواست',formatJalaliDisplay(record.date)||'—'],
+        ['مبلغ کل قرارداد',contractAmount],
         ...(row?[
           ['ردیف قرارداد',format.format(row.number)],['شرح پیش‌پرداخت',row.description||'—'],
-          ['موعد یا شرط پرداخت',row.dueText||'—'],['مبلغ قراردادی',money(row.total)],
+          ['موعد یا شرط پرداخت',row.dueText||'—'],['مبلغ پیش‌پرداخت طبق قرارداد',money(row.total)],
         ]:[]),
-        ['مبلغ درخواستی',money(record.statementAmount||0)],['پرداخت‌شده',money(record.paidAmount||0)],
+        ['مبلغ درخواستی این نوبت',money(record.statementAmount||0)],['پرداخت‌شده',money(record.paidAmount||0)],
         ['وضعیت تأیید',!hasAdvanceSubmission(record)?'ارسال نشده':record.approvalStatus==='approved'?'تأیید شده':record.approvalStatus==='pending'?'در انتظار تأیید':'ارسال نشده'],
         ['وضعیت مالی',approvedStatement(record)?'تأیید شده':record.accountingStatus==='sent'?'در انتظار تأیید':record.accountingStatus==='rejected'?'برگشت خورده':'ارسال نشده'],
         ...(record.note?[['توضیحات',record.note]]:[]),
@@ -507,7 +518,7 @@ function openStatement(project,contract,record,onChanged,{finance=false,approval
     body(root){
       root.classList.add('contract-status-sheet');
       const status=approvedStatement(record)?'تأیید مالی شده':record.accountingStatus==='sent'?'در انتظار تأیید مالی':record.status==='draft'?'برگشت برای اصلاح':record.approvalStatus==='pending'?'در انتظار تأیید':'در انتظار امضا یا ارسال به مالی';
-      root.append(button(record.statementType==='advance'?'پیش‌نمایش پیش‌پرداخت':'پیش‌نمایش صورت‌وضعیت',trigger=>openContractPreview(project,contract,{trigger,documentPreview:{title:'پیش‌نمایش '+statementTitle(record),content:statementPreviewContent(contract,record)}})));
+      root.append(button(record.statementType==='advance'?'پیش‌نمایش پیش‌پرداخت':'پیش‌نمایش صورت‌وضعیت',trigger=>openContractPreview(project,contract,{trigger,documentPreview:{title:'پیش‌نمایش '+statementTitle(record),content:statementPreviewContent(project,contract,record)}})));
       if(finance){
       root.append(table([
         ['شماره قرارداد',contract.contractNo||'—'],['مربوط به',record.addendumNo||'قرارداد اصلی'],['تاریخ',formatJalaliDisplay(record.date)||record.date||'—'],
@@ -591,7 +602,7 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
   const writable=!approval && record.statementType && canWriteProjectModule(project.id,'contracts');
   const deletable=writable && canDeleteContractAddenda(window.KarhaSaosaWorkspaceAccess?.[project.id]);
   const editable=record.statementType==='advance'?canEditAdvanceRequest(record):record.status==='draft';
-  const buildDocument=()=>statementPreviewContent(contract,record);
+  const buildDocument=()=>statementPreviewContent(project,contract,record);
   const heading=renderContractCardHeading(project,contract,{
     onEdit:writable?()=>editable?openStatementForm(project,contract,onChanged,record):toast(title+' در وضعیت فعلی قابل ویرایش نیست'):undefined,
     onExport:trigger=>{
@@ -637,7 +648,7 @@ export function renderAccountingStatements(body,projectId){
       if(record.statementType!=='advance'){body.append(open);continue;}
       const row=element('div','contract-addendum-toolbar');
       row.append(open,button('پیش‌نمایش',trigger=>openContractPreview(project,contract,{trigger,
-        documentPreview:{title:'پیش‌نمایش پیش‌پرداخت',content:statementPreviewContent(contract,record)}})));
+        documentPreview:{title:'پیش‌نمایش پیش‌پرداخت',content:statementPreviewContent(project,contract,record)}})));
       body.append(row);
     }
   }
