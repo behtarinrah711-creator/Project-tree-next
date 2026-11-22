@@ -35,7 +35,7 @@ export function renderContractProgressCircle(documentRef,contract,project,onClic
 
 export function renderContractProgress(documentRef,contract,project,onOpen,openCompleted=false){
   const steps=contractProgressSteps(contract,project);
-  const list=documentRef.createElement('ol');list.className='contract-progress';list.dir='rtl';
+  const list=documentRef.createElement('ol');list.className='contract-progress'+(contract.statementType==='advance'?' contract-progress--horizontal':'');list.dir='rtl';
   list.setAttribute('aria-label',contract.statementType?'مراحل صورت‌وضعیت':contract.parentContractId?'مراحل الحاقیه':'مراحل قرارداد');
   const current=steps.findIndex(step=>!step.done);
   steps.forEach((step,index)=>{
@@ -49,7 +49,7 @@ export function renderContractProgress(documentRef,contract,project,onOpen,openC
     if(onOpen){
       const button=documentRef.createElement('button');button.type='button';button.className='contract-stage-button';
       button.setAttribute('aria-label',step.label+'؛ '+(step.rejected?'رد شده':step.done?'انجام شده':'انجام نشده')+(index===current?'؛ انجام اقدام':''));
-      button.append(label,dot);button.disabled=index!==current && !(openCompleted && step.done);
+      button.append(label,dot);button.disabled=contract.statementType!=='advance' && index!==current && !(openCompleted && step.done);
       if(!button.disabled)button.onclick=event=>{event.stopPropagation();onOpen(event,step);};
       item.append(button);
     }else item.append(label,dot);
@@ -68,7 +68,16 @@ export function renderContractWorkflowPanel(documentRef,record,project,{onOpen,e
   const state=contractApprovalState(record);
   const reason=record.accountingStatus==='rejected'?record.financeRejection?.reason:['incomplete','unapproved','returned'].includes(state)?record.approvalRejectionReason:null;
   if(reason)panel.className+=' is-rejected';
-  const paint=()=>{body.hidden=!expanded;heading?.children[0]?.setAttribute('aria-expanded',String(expanded));};
+  const paint=()=>{
+    body.hidden=!expanded;
+    heading?.children[0]?.setAttribute('aria-expanded',String(expanded));
+    if(expanded && record.statementType==='advance'){
+      const active=list.querySelector('[aria-current="step"]')||list.lastElementChild;
+      if(active && list.scrollWidth>list.clientWidth){
+        list.scrollLeft+=active.getBoundingClientRect().left-list.getBoundingClientRect().left-(list.clientWidth-active.offsetWidth)/2;
+      }
+    }
+  };
   if(heading){
     heading.onclick=()=>{expanded=!expanded;paint();};
     const main=heading.children[0];
@@ -78,5 +87,7 @@ export function renderContractWorkflowPanel(documentRef,record,project,{onOpen,e
   const list=renderContractProgress(documentRef,record,project,onOpen,openCompleted);
   body.append(list);
   if(reason){const message=documentRef.createElement('p');message.className='contract-rejection-reason';message.textContent='دلیل برگشت: '+reason;body.append(message);}
-  panel.append(body);paint();return panel;
+  panel.append(body);paint();
+  if(expanded && record.statementType==='advance')requestAnimationFrame(paint);
+  return panel;
 }

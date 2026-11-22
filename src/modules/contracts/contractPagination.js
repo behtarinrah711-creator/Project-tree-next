@@ -1,5 +1,6 @@
 /** Measure at print width; keep ordinary blocks together and split oversized text. */
 export function paginateContract(source, documentRef=globalThis.document){
+  const advance=source.getAttribute?.('data-document-kind')==='advance';
   const meta=source.querySelectorAll('.doc-contract-meta')[0];
   const documentKind=meta?.getAttribute?.('data-document-kind')==='addendum'?'الحاقیه':'قرارداد';
   const contractNumber=meta?.getAttribute?.('data-contract-number') || source.querySelectorAll('.contract-document-attachment')[0]?.getAttribute?.('data-contract-number') || '';
@@ -88,7 +89,7 @@ export function paginateContract(source, documentRef=globalThis.document){
         box.textContent='نام، نام خانوادگی، امضا و اثر انگشت '+party+':';
         signatures.appendChild(box);
       }
-      sheet.appendChild(signatures);
+      if(!advance)sheet.appendChild(signatures);
       const label=documentRef.createElement('div');label.className='contract-sheet-number';
       label.textContent=(contractNumber?'شماره '+documentKind+': '+contractNumber+' — ':'')+`صفحه ${new Intl.NumberFormat('fa-IR').format(i+1)} از ${new Intl.NumberFormat('fa-IR').format(sheets.length)}`;
       sheet.appendChild(label);
@@ -100,6 +101,7 @@ export function paginateContract(source, documentRef=globalThis.document){
 export function paginateContractMarkup(html,documentRef=globalThis.document){
   const source=documentRef.createElement('div');source.innerHTML=html;
   const wrapper=source.querySelector('.contract-export-document');
+  if(wrapper?.getAttribute('data-document-kind')==='advance')source.setAttribute('data-document-kind','advance');
   if(wrapper){while(wrapper.firstChild)source.insertBefore(wrapper.firstChild,wrapper);wrapper.remove();}
   return paginateContract(source,documentRef).outerHTML;
 }

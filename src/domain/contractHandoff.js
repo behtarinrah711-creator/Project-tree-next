@@ -106,7 +106,8 @@ export function transitionContractHandoff(contract,action,actor,{files=[],reason
       }
       if(changedVersion)for(const event of events){event.reason=reason.trim();event.previousSignedFiles=old.map(file=>({...file}));}
     }else if(action==='send_finance'){
-      if(!isContractSigned(contract)){
+      if(isContractInFinance(contract))return fail('سند قبلاً به مالی ارسال شده است');
+      if(contract.statementType!=='advance' && !isContractSigned(contract)){
         if(!canReuseReturnedSignature(contract))return fail('ابتدا نسخه امضاشده قرارداد را ذخیره کنید');
         const previous=contract.accountingPackage.contract;
         next.signedAt=previous.signedAt;
@@ -118,7 +119,7 @@ export function transitionContractHandoff(contract,action,actor,{files=[],reason
       snapshot.documentActivityName=activityName ?? snapshot.documentActivityName ?? '';
       for(const key of ['accountingPackage','accountingWithdrawal','financeHistory'])delete snapshot[key];
       next.accountingDecision=null;next.financeRejection=null;next.accountingStatus='sent';next.sentToAccountingAt=at;next.sentToAccountingBy={...actor};
-      next.accountingPackage={contract:snapshot,signedFiles:JSON.parse(JSON.stringify(next.signedFiles)),sentAt:at,sentBy:{...actor}};
+      next.accountingPackage={contract:snapshot,signedFiles:JSON.parse(JSON.stringify(next.signedFiles||[])),sentAt:at,sentBy:{...actor}};
       events.push({action});
     }else return fail('عملیات نامعتبر است');
   }

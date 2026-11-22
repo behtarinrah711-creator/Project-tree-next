@@ -572,3 +572,55 @@ test('only an assigned contract editor can save changes during review',async()=>
   assert.equal(saved.result.contract.approvalHistory.at(-1).reason,action.changes.revisionReason);
   assert.equal((await f.call(action)).status,409);
 });
+
+test('advance workflow edits drafts, routes approval and pays without a signed copy',async()=>{
+  const f=fixture();
+  f.payload.projectMembers[0].contactId='reviewer';
+  Object.assign(f.payload.contracts[0],{accountingStatus:'accepted',approvalContactIds:['reviewer'],
+    advanceRows:[{id:'advance-row',pricingMode:'agreed',agreedPrice:100}]});
+  let record={};
+  const act=async(action,fields={})=>{
+    const response=await f.call({action,version:record.handoffVersion||0,updatedAt:record.updatedAt||0,...fields},
+      '/api/v1/projects/p/statements/statement-00000000-0000-4000-8000-000000000002/handoff');
+    if(response.status===200)record=response.result.contract;
+    return response.status;
+  };
+  const request={contractId:'c',statementType:'advance',advanceRowKey:'advance-row',date:'1405/09/01',amount:80};
+  assert.equal(await act('save_statement',request),200);
+  assert.equal(record.status,'draft');
+  assert.equal(await act('save_statement',{...request,amount:60}),200);
+  assert.equal(await act('send_finance'),409);
+  f.setPermissions({modules:{contracts:'view',accounting:'create'}});
+  assert.equal(await act('submit_advance'),403);
+  f.setPermissions({modules:{contracts:'create'}});
+  assert.equal(await act('submit_advance'),200);
+  assert.equal(record.approvalStatus,'pending');
+  assert.equal(await act('save_statement',request),400);
+  assert.equal(await act('approve_statement'),200);
+  assert.equal(await act('send_finance'),200);
+  assert.deepEqual(record.accountingPackage.signedFiles,[]);
+  assert.equal(await act('approve_finance'),403);
+  f.setPermissions({modules:{contracts:'view',accounting:'create'}});
+  assert.equal(await act('approve_finance'),200);
+  assert.equal(await act('record_payment',{amount:25,receipts:['foreign']}),400);
+  const getMetadata=f.storage.metadata;
+  f.storage.metadata=key=>key==='p/advance-receipts/'+record.id+'/receipt'
+    ? {id:'receipt',category:'advance-receipts',projectId:'p',recordId:record.id,mime:'application/pdf',uploadedBy:'member'}
+    : getMetadata(key);
+  assert.equal(await act('record_payment',{amount:25,receipts:['receipt']}),200);
+  assert.equal(record.paidAmount,25);
+  assert.equal(record.payments[0].receipts[0].id,'receipt');
+  assert.equal(await act('record_payment',{amount:1,receipts:['receipt']}),400);
+  const handler=createFileUploadHandler({pool:f.pool,sessionSecret:'s',storage:f.storage});
+  const access=async method=>{
+    let status;
+    const url=new URL('http://local/api/v1/projects/p/files/advance-receipts/'+record.id+(method==='GET'?'/receipt':''));
+    await handler({method,headers:{authorization:'Bearer token'}},{writeHead(code){status=code;},end(){}},url);
+    return status;
+  };
+  f.setPermissions({modules:{contracts:'view',accounting:'none'}});
+  assert.equal(await access('GET'),200);
+  assert.equal(await access('POST'),403);
+  f.setPermissions({modules:{contracts:'none',accounting:'none'}});
+  assert.equal(await access('GET'),403);
+});

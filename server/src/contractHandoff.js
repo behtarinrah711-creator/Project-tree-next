@@ -2,13 +2,13 @@ import {pendingExecutionApproverIds} from '../../src/domain/wbs/workTaskModel.js
 import {hasPaidContractDocument,reviseContract} from '../../src/domain/contractRevision.js';
 import {canDeleteContractDocument} from '../../src/domain/contractHandoff.js';
 import {acceptedMembership} from './acceptedMembership.js';
-import {availableContractAdvance,contractStatementTotals} from '../../src/domain/contractStatements.js';
+import {availableContractAdvance,contractStatementTotals,contractAdvanceRows} from '../../src/domain/contractStatements.js';
 import {saveStatement,recordStatementPayment} from './contractStatement.js';
 import {applyExecutionApproval,approveExecutionEntity,executionApprovalItem,rejectExecutionEntity} from '../../src/domain/wbs/executionApproval.js';
 import {tehranTodayJalali} from '../../src/domain/wbs/todayDomain.js';
 import {saveAddendumDraft} from './contractAddendum.js';
 import {canDeleteAddendumRecord,canDeleteContractAddenda,parentContractOf} from '../../src/domain/contractAddenda.js';
-import {saveContractReviewEdit,transitionContractApproval} from '../../src/domain/contractApproval.js';
+import {contractApproverIds,saveContractReviewEdit,transitionContractApproval} from '../../src/domain/contractApproval.js';
 import {syncContractPartyData} from '../../src/domain/contractPartyData.js';
 import {authenticate} from './auth.js';
 import {readJson,sendJson} from './http.js';
@@ -89,7 +89,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       const contract=(row.payload[collection]||[]).find(c=>String(c.id)===contractId && (addendum || !c.trashed));
       const saveDraft=(addendum && body.action==='save_addendum') || (statement && body.action==='save_statement');
       const statementParent=statement && (row.payload.contracts||[]).find(record=>!record.trashed && String(record.id)===String(contract?.contractId ?? body.contractId));
-      if(statement && (!statementParent || (contract && !contract.statementType) || !['save_statement','delete_statement','approve_statement','reject_statement','save_signed','send_finance','approve_finance','reject_finance','withdraw_finance','record_payment','reopen_signed_contract'].includes(body.action))){sendJson(response,400,{message:'قرارداد یا عملیات صورت‌وضعیت نامعتبر است'});return true;}
+      if(statement && (!statementParent || (contract && !contract.statementType) || !['save_statement','submit_advance','withdraw_advance','delete_statement','approve_statement','reject_statement','save_signed','send_finance','approve_finance','reject_finance','withdraw_finance','record_payment','reopen_signed_contract'].includes(body.action))){sendJson(response,400,{message:'قرارداد یا عملیات صورت‌وضعیت نامعتبر است'});return true;}
       if(!statement && body.action==='record_payment'){sendJson(response,400,{message:'عملیات نامعتبر است'});return true;}
       if(contract?.trashed || (!contract && !saveDraft)){sendJson(response,404,{message:'قرارداد پیدا نشد'});return true;}
       if(Number(body.version)!==Number(contract?.handoffVersion||0) || Number(body.updatedAt)!==Number(contract?.updatedAt||0)){
@@ -126,6 +126,17 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         const at=Date.now();
         transition={ok:true,contract:{...contract,trashed:true,deletedAt:at,deletedBy:actor.id,updatedAt:at}};
       }else if(statement && saveDraft) transition=saveStatement(row.payload,statementParent,contract,contractId,body,actor,Date.now());
+      else if(statement && ['submit_advance','withdraw_advance'].includes(body.action)){
+        const approvers=contractApproverIds(statementParent);
+        const canSubmit=contract.statementType==='advance' && contract.status==='draft' && approvers.length && statementParent.accountingStatus==='accepted';
+        const rowBalance=contractAdvanceRows(row.payload,statementParent,contract.id).find(item=>item.key===contract.advanceRow?.key);
+        if(contract.statementType!=='advance' || (body.action==='submit_advance' && (!canSubmit || (contract.advanceRow && (!rowBalance || contract.statementAmount>rowBalance.balance))))){
+          sendJson(response,409,{message:'پیش‌پرداخت در وضعیت فعلی قابل ارسال برای تأیید نیست'});return true;
+        }
+        transition=body.action==='submit_advance'
+          ? transitionContractApproval({...contract,status:'final',isDraft:false,approvalStatus:null},'submit',actor,{approverIds:approvers})
+          : transitionContractApproval(contract,'withdraw_submission',actor,{reason:body.reason});
+      }
       else if(statement && body.action==='record_payment'){
         if(statementParent.accountingStatus!=='accepted' && statementParent.approvalHistory?.some(event=>event.action==='edit_contract')){
           sendJson(response,409,{message:'قرارداد ویرایش شده است؛ ابتدا تأیید مالی قرارداد را تکمیل کنید'});return true;
@@ -134,7 +145,25 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         if(contract.addendumId && (original.payable!==0 || original.remaining>0)){
           sendJson(response,409,{message:'ابتدا کارکرد و پرداخت قرارداد اصلی را تکمیل کنید'});return true;
         }
-        transition=recordStatementPayment(contract,body.amount,actor,Date.now());
+        const receipts=[];
+        if(body.receipts!==undefined){
+          if(contract.statementType!=='advance' || !Array.isArray(body.receipts) || body.receipts.length>10){
+            sendJson(response,400,{message:'فیش‌های پرداخت نامعتبرند'});return true;
+          }
+          for(const id of new Set(body.receipts)){
+            if(!storage || typeof id!=='string' || !/^[a-zA-Z0-9-]+$/.test(id) || contract.payments?.some(payment=>payment.receipts?.some(file=>file.id===id))){
+              sendJson(response,400,{message:'فیش پرداخت نامعتبر است'});return true;
+            }
+            let file;
+            try{file=await storage.metadata(projectId+'/advance-receipts/'+contractId+'/'+id);}
+            catch(error){if(error.code!=='ENOENT')throw error;}
+            if(!file || String(file.uploadedBy)!==String(accountId)){
+              sendJson(response,400,{message:'فیش پرداخت معتبر پیدا نشد'});return true;
+            }
+            receipts.push(file);
+          }
+        }
+        transition=recordStatementPayment(contract,body.amount,actor,Date.now(),receipts);
       }
       else if(saveDraft) transition=saveAddendumDraft(row.payload,contract,body,actor,contractId,Date.now());
       else if(!addendum && !statement && ['edit_contract_review','edit_contract'].includes(body.action)){
@@ -165,6 +194,16 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       }else{
         let source=contract;
         if(body.action==='send_finance'){
+          if(statement && contract.statementType==='advance'){
+            const reviewers=contractApproverIds(statementParent);
+            const rowBalance=contractAdvanceRows(row.payload,statementParent,contract.id).find(item=>item.key===contract.advanceRow?.key);
+            if(statementParent.accountingStatus!=='accepted' ||
+              (reviewers.length && (contract.status!=='final' || contract.approvalStatus!=='approved' || !reviewers.every(id=>contract.approvedContactIds?.includes(id)))) ||
+              (contract.advanceRow && (!rowBalance || contract.statementAmount>rowBalance.balance))){
+              sendJson(response,409,{message:'شرایط ارسال پیش‌پرداخت به مالی تکمیل نشده است'});return true;
+            }
+            source={...contract,status:'final',isDraft:false,approvalStatus:'approved'};
+          }
           if(statement && contract.advanceDeduction>availableContractAdvance(row.payload,statementParent.id,contract.id)){
             sendJson(response,409,{message:'مانده پیش‌پرداخت برای کسر این صورت‌وضعیت کافی نیست'});return true;
           }

@@ -2077,3 +2077,13 @@ textarea.contract-project-item-input{
   padding-inline:10px;
 }
 .contract-statement-form .contract-advance-requested .ft-value:not(.ft-placeholder){font-weight:700;}
+
+:is(#contractsPageBody,#accountingPageBody,.contract-status-sheet,#reportsPageBody,#notificationsPageBody,.contract-details-body,#contractPendingAddenda) .contract-workflow-panel .contract-progress.contract-progress--horizontal{
+  display:flex;flex-wrap:nowrap;overflow-x:auto;gap:8px;scrollbar-width:none;max-width:100%;
+}
+.contract-workflow-panel .contract-progress--horizontal > .contract-progress-step{display:block;flex:0 0 132px;min-width:132px;}
+.contract-workflow-panel .contract-progress--horizontal > .contract-progress-step::after{display:none;}
+.contract-progress--horizontal .contract-stage-button{width:100%;}
+.contract-export-document[data-document-kind="advance"]{background:#fff;padding:16px;}
+.contract-advance-print .contract-document-quantities th:first-child{width:30%;white-space:normal;}
+.contract-advance-print .contract-document-quantities td:last-child{text-align:right;direction:rtl;}
