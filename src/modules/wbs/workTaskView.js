@@ -809,30 +809,37 @@ export function bindTaskReorder(group, row, { projectId, workId, taskId, onChang
   });
 }
 
-export function renderWorkTasks({ documentRef = document, projectId, work, view, onChanged, readOnly=false, canDelete=true }){
+export function treeWorkTypeChip(type){
+  return type ? `<span class="wbs-type-chip ${TYPE_CLASSES.get(type) || 'type-7'}">${escapeHtml(type)}</span>` : '';
+}
+
+export function renderWorkTasks({ documentRef = document, projectId, work, view, onChanged, readOnly=false, canDelete=true, treeDepth=null }){
+  const treeLayout = treeDepth !== null;
   const tasks = workTaskApi.list(projectId, work.id);
   if(!tasks.length) return null;
   const group = documentRef.createElement('div');
   group.className = 'wbs-work-tasks';
   group.setAttribute('role', 'list');
-  const renderTask=(task,target)=>{
+  const renderTask=(task,target,depth)=>{
     const children=tasks.filter(child=>child.parentTaskId===task.id);
     const expanded=isExpanded(projectId,task.id);
     const complete = isTaskComplete(task);
     const isContractorTask = task.type === 'پیمانکار';
-    const contractor = isContractorTask ? contactRepository.get(projectId, task.counterpartyContactId ?? task.contractorContactId) : null;
-    const contact = task.assigneeContactId ? contactRepository.get(projectId, task.assigneeContactId) : null;
+    const contractor = !treeLayout && isContractorTask ? contactRepository.get(projectId, task.counterpartyContactId ?? task.contractorContactId) : null;
+    const contact = !treeLayout && task.assigneeContactId ? contactRepository.get(projectId, task.assigneeContactId) : null;
+    const details = treeLayout ? (task.isSubwork ? '' : treeWorkTypeChip(task.type)) :
+      `${isContractorTask ? `<span class="wbs-task-contractor">${contractor && !contractor.trashed ? escapeHtml(contactName(contractor)) : 'بدون پیمانکار'}</span>` : ''}${contact ? `<span class="wbs-task-assignee">${escapeHtml(contactName(contact))}</span>` : ''}${task.isSubwork?'':`<span class="wbs-task-priority priority-${task.priority}">${escapeHtml(PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal)}</span>`}`;
     const row = documentRef.createElement('button');
     row.type = 'button';
     row.className = 'wbs-work-task' + (complete ? ' is-complete' : '');
     row.dataset.taskId = task.id;
     row.setAttribute('role', 'listitem');
     row.innerHTML = `
-      <span class="wbs-grip" aria-label="جابجایی کار" role="button">⋮⋮</span>
+      ${treeLayout && readOnly ? '' : '<span class="wbs-grip" aria-label="جابجایی کار" role="button">⋮⋮</span>'}
       <span class="wbs-task-connector" aria-hidden="true"></span>
       <span class="wbs-task-content">
-        <span class="wbs-task-main">${task.isSubwork?'':`<span class="wbs-type-chip ${TYPE_CLASSES.get(task.type) || 'type-7'}">${escapeHtml(task.type || '؟')}</span>`}<span class="wbs-task-title">${escapeHtml(task.title)}</span></span>
-        <span class="wbs-task-secondary">${isContractorTask ? `<span class="wbs-task-contractor">${contractor && !contractor.trashed ? escapeHtml(contactName(contractor)) : 'بدون پیمانکار'}</span>` : ''}${contact ? `<span class="wbs-task-assignee">${escapeHtml(contactName(contact))}</span>` : ''}${task.isSubwork?'':`<span class="wbs-task-priority priority-${task.priority}">${escapeHtml(PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal)}</span>`}${view === 'progress' ? `<span class="wbs-task-progress">٪${new Intl.NumberFormat('fa-IR').format(task.progress || 0)}</span>` : ''}${view === 'estimate' && task.type !== FOLLOW_UP_WORK_TYPE ? `<span class="wbs-task-cost">${new Intl.NumberFormat('fa-IR').format(taskCostOf(task))} تومان</span>` : ''}</span>
+        <span class="wbs-task-main">${treeLayout || task.isSubwork?'':`<span class="wbs-type-chip ${TYPE_CLASSES.get(task.type) || 'type-7'}">${escapeHtml(task.type || '؟')}</span>`}<span class="wbs-task-title">${escapeHtml(task.title)}</span></span>
+        <span class="wbs-task-secondary">${details}${view === 'progress' ? `<span class="wbs-task-progress">٪${new Intl.NumberFormat('fa-IR').format(task.progress || 0)}</span>` : ''}${view === 'estimate' && task.type !== FOLLOW_UP_WORK_TYPE ? `<span class="wbs-task-cost">${new Intl.NumberFormat('fa-IR').format(taskCostOf(task))} تومان</span>` : ''}</span>
       </span>`;
     row.addEventListener('click', event => {
       if(event.target.closest('.wbs-grip')) return;
@@ -841,6 +848,10 @@ export function renderWorkTasks({ documentRef = document, projectId, work, view,
     const branch=documentRef.createElement('div');
     branch.className='wbs-task-branch';
     branch.dataset.taskId=task.id;
+    if(treeLayout){
+      branch.style.setProperty('--wbs-tree-depth',depth);
+      branch.insertAdjacentHTML('afterbegin','<span class="wbs-tree-continuation" aria-hidden="true"></span>');
+    }
     const controls=documentRef.createElement('div');
     controls.className='wbs-task-branch-controls';
     if(children.length){
@@ -858,16 +869,17 @@ export function renderWorkTasks({ documentRef = document, projectId, work, view,
       add.onclick=()=>openWorkCreationSheet({projectId,stage:work,parentTask:task,subwork:true,onChanged});
       branch.append(add);
     }
+    if(treeLayout && !children.length)controls.innerHTML='<span class="wbs-chev-spacer" aria-hidden="true"></span>';
     if(controls.childElementCount)branch.append(controls);
     branch.append(row);target.append(branch);
     if(expanded && children.length){
       const nested=documentRef.createElement('div');
       nested.className='wbs-work-tasks wbs-subwork-list';
-      for(const child of children)renderTask(child,nested);
+      for(const child of children)renderTask(child,nested,depth+1);
       branch.append(nested);
     }
     if(!readOnly)bindTaskReorder(target,row,{projectId,workId:work.id,taskId:task.id,onChanged,documentRef});
   };
-  tasks.filter(task=>!task.parentTaskId).forEach(task=>renderTask(task,group));
+  tasks.filter(task=>!task.parentTaskId).forEach(task=>renderTask(task,group,treeDepth));
   return group;
 }
