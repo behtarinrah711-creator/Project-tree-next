@@ -571,6 +571,7 @@ function renderRow(item, codes, view, depth, treeLayout){
   const row = document.createElement('div');
   row.className = 'wbs-row depth-' + Math.min(6, depth) + (checked ? ' is-done' : '') + (stage ? ' is-stage' : ' is-work');
   row.innerHTML = `
+    ${treeLayout ? '<span class="wbs-tree-link" aria-hidden="true"></span>' : ''}
     ${readOnlyView ? '' : '<span class="wbs-grip" aria-hidden="true">⋮⋮</span>'}
     ${hasExpandableContent ? `<button type="button" class="wbs-chev" aria-label="${open?'بستن':'باز کردن'}" aria-expanded="${open}"><svg class="wbs-chev-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 -960 960 960" width="24" height="24" fill="#1f1f1f" aria-hidden="true" focusable="false"><path d="${BRANCH_ARROW_ICON}"/></svg></button>` : '<span class="wbs-chev-spacer"></span>'}
     <button type="button" class="wbs-title">
@@ -600,9 +601,13 @@ function renderRow(item, codes, view, depth, treeLayout){
   wrap.className = depth === 0 ? 'wbs-card' : 'wbs-branch';
   wrap.className += ' wbs-depth-' + Math.min(6, depth);
   if(treeLayout){
-    wrap.style.setProperty('--wbs-tree-depth',depth);
-    if(depth)wrap.insertAdjacentHTML('afterbegin','<span class="wbs-tree-continuation" aria-hidden="true"></span>');
-    row.insertAdjacentHTML('afterbegin','<span class="wbs-tree-link" aria-hidden="true"></span>');
+    wrap.className += ' wbs-tree-level-' + Math.min(8,depth);
+    if(depth){
+      const continuation = document.createElement('span');
+      continuation.className = 'wbs-tree-continuation';
+      continuation.setAttribute('aria-hidden','true');
+      wrap.appendChild(continuation);
+    }
     if(depth)row.classList.add('has-tree-parent');
   }
   wrap.appendChild(row);
