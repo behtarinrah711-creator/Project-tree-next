@@ -42,14 +42,24 @@ export function contractAdvanceRows(project,contract,excludeId){
   return rows;
 }
 
-export function availableContractAdvance(project,contractId,excludeId){
+export function contractAdvanceDeductionBalance(project,contractId,excludeId){
   const records=statementsFor(project,contractId).filter(record=>record.id!==excludeId);
   const paid=records.filter(record=>record.statementType==='advance' && approvedStatement(record))
     .reduce((sum,record)=>sum+amount(record.paidAmount),0);
   const committed=records.filter(record=>record.status!=='draft' &&
     record.approvalStatus!=='rejected' && !['rejected','withdrawn'].includes(record.accountingStatus))
     .reduce((sum,record)=>sum+amount(record.advanceDeduction),0);
-  return Math.max(0,paid-committed);
+  return {paid,available:Math.max(0,paid-committed)};
+}
+
+export function availableContractAdvance(project,contractId,excludeId){
+  return contractAdvanceDeductionBalance(project,contractId,excludeId).available;
+}
+
+export function advanceDeductionFromPercent(paid,percent){
+  return Number.isFinite(percent) && percent>=0 && percent<=100
+    ? Math.round(paid*percent/100)
+    : null;
 }
 
 export function contractStatementTotals(project,contract,{combined=false}={}){
