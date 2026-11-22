@@ -1,7 +1,7 @@
 import {statementWorkRows,resolveStatementWork} from '../../src/domain/statementWork.js';
 import {rowAmount,numericValue} from '../../src/modules/contracts/contractPricing.js';
 import {contractApproverIds} from '../../src/domain/contractApproval.js';
-import {contractStatementTotals,accountStatements,statementsFor,statementAccount,statementAddenda,approvedStatement,statementAmounts,finalStatementSummary,availableContractAdvance} from '../../src/domain/contractStatements.js';
+import {contractStatementTotals,accountStatements,statementsFor,statementAccount,statementAddenda,approvedStatement,statementAmounts,finalStatementSummary,availableContractAdvance,contractAdvanceRows} from '../../src/domain/contractStatements.js';
 
 const fail=message=>({ok:false,message});
 
@@ -40,6 +40,12 @@ export function saveStatement(project,parent,current,id,body,actor,at){
   }else if(statementType==='retention-release')return fail('عملیات آزادسازی را وارد کنید');
   const entered=final?.gross ?? (!linked && body.operations===undefined?body.amount:operations.reduce((sum,row)=>sum+rowAmount(row),0));
   if(!Number.isSafeInteger(entered) || entered<0 || (['interim','advance'].includes(statementType) && entered===0))return fail('مبلغ صورت‌وضعیت نامعتبر است');
+  const advanceRow=statementType==='advance'
+    ? contractAdvanceRows(project,parent,id).find(row=>row.key===body.advanceRowKey)
+    : null;
+  if(statementType==='advance' && (!advanceRow || entered>advanceRow.balance)){
+    return fail('ردیف پیش‌پرداخت قرارداد را انتخاب کنید و مبلغ را در محدوده مانده آن وارد کنید');
+  }
   const gross=final?0:entered;
   if(statementType==='retention-release' && (entered<=0 || entered>totals.retained))return fail('مبلغ آزادسازی از مانده حسن انجام کار بیشتر است');
   if(statementType==='interim' && totals.remaining!==null && gross>totals.remaining)return fail('کارکرد از مبلغ به‌روز قرارداد بیشتر است');
@@ -52,7 +58,7 @@ export function saveStatement(project,parent,current,id,body,actor,at){
   const approvers=contractApproverIds(parent);
   const sequence=current?.sequence ?? Math.max(0,...statementsFor(project,parent.id).map(record=>Number(record.sequence)||0),statementsFor(project,parent.id).length)+1;
   return {ok:true,contract:{...current,id,contractId:parent.id,addendumId:addendum?.id||null,addendumNo:addendum?.contractNo||null,statementType,sequence,date,note:String(note||'').trim().slice(0,2000),
-    operations,advanceDeduction,workEntries:linked?body.workEntries:undefined,statementAmount:entered,...(final?{stageAmount:0,cumulativeAmount:final.gross,retentionAmount:0,netAmount:0,finalTotals:{gross:final.gross,retention:final.retention,net:final.net}}:{...amounts,netAmount:amounts.netAmount-advanceDeduction}),status:'final',isDraft:false,approvalStatus:approvers.length?'pending':'approved',
+    operations,advanceRow:advanceRow?{key:advanceRow.key,number:advanceRow.number,description:advanceRow.description,dueText:advanceRow.dueText,total:advanceRow.total}:undefined,advanceDeduction,workEntries:linked?body.workEntries:undefined,statementAmount:entered,...(final?{stageAmount:0,cumulativeAmount:final.gross,retentionAmount:0,netAmount:0,finalTotals:{gross:final.gross,retention:final.retention,net:final.net}}:{...amounts,netAmount:amounts.netAmount-advanceDeduction}),status:'final',isDraft:false,approvalStatus:approvers.length?'pending':'approved',
     approvalContactIds:approvers,approvedContactIds:[],submittedAt:at,submittedBy:actor,
     accountingStatus:null,signedAt:null,signedBy:null,signedFiles:[],signedFilesUpdatedAt:at,createdAt:current?.createdAt ?? at,updatedAt:at}};
 }

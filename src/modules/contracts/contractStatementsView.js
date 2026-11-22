@@ -4,7 +4,7 @@ import {openContractPreview} from './contractPreviewView.js';
 import {statementWorkRows,resolveStatementWork} from '../../domain/statementWork.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { canReviewContract } from '../../domain/contractApproval.js';
-import { accountStatements, approvedStatement, statementAccount, statementAddenda, contractStatementTotals, finalStatementSummary, statementAmounts, statementsFor, availableContractAdvance } from '../../domain/contractStatements.js';
+import { accountStatements, approvedStatement, statementAccount, statementAddenda, contractStatementTotals, finalStatementSummary, statementAmounts, statementsFor, availableContractAdvance, contractAdvanceRows } from '../../domain/contractStatements.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
 import { fieldRow, openWbsSheet, closeWbsSheet } from '../wbs/wbsSheet.js';
@@ -42,7 +42,7 @@ const financeScope=projectId=>{
 };
 const currentProject=project=>projectRepository.find(project.id)||project;
 export const statementTypes=[['interim','موقت'],['final','قطعی'],['retention-release','آزاد کردن حسن انجام کار'],['advance','پیش‌پرداخت']];
-const statementTitle=record=>record.statementType==='advance'?'پیش‌پرداخت':record.statementType==='retention-release'?'آزاد کردن حسن انجام کار':record.statementType==='final'?'صورت‌وضعیت قطعی':'صورت‌وضعیت موقت شماره '+format.format(record.sequence||1);
+const statementTitle=record=>record.statementType==='advance'?'پرداخت پیش‌پرداخت':record.statementType==='retention-release'?'آزاد کردن حسن انجام کار':record.statementType==='final'?'صورت‌وضعیت قطعی':'صورت‌وضعیت موقت شماره '+format.format(record.sequence||1);
 
 function table(rows){
   const node=element('table','contract-financial-table');
@@ -131,10 +131,14 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
     Object.assign(operations[0],{description:record.note||'کارکرد صورت‌وضعیت',pricingMode:'agreed',agreedPrice:record.statementType==='final'?record.cumulativeAmount:record.stageAmount});
   }
   const statementType=documentRecord.statementType;
-  let advanceAmount=record?.statementAmount||'';
+  const advanceRows=statementType==='advance'?contractAdvanceRows(source,contract,record?.id):[];
+  const payableAdvanceRows=advanceRows.filter(row=>row.balance>0);
+  let advanceRow=payableAdvanceRows.find(row=>row.key===record?.advanceRow?.key) ||
+    (payableAdvanceRows.length===1?payableAdvanceRows[0]:null);
+  let advanceAmount=advanceRow?record?.statementAmount ?? advanceRow.balance:'';
   let advanceDeduction=record?.advanceDeduction||'';
   const availableAdvance=availableContractAdvance(project,contract.id,record?.id);
-  const label=statementType==='advance'?'پیش‌پرداخت':statementType==='retention-release'?'آزاد کردن حسن انجام کار'
+  const label=statementType==='advance'?'پرداخت پیش‌پرداخت':statementType==='retention-release'?'آزاد کردن حسن انجام کار'
     :(record?'اصلاح':'ایجاد')+' صورت‌وضعیت '+statementTypes.find(([value])=>value===statementType)[1];
   let date=record?.date||todayJalaliStr();
   const sheet=openWbsSheet({
@@ -156,7 +160,25 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
       const refresh=()=>{
         fields.replaceChildren();
         if(statementType==='advance'){
-          ftNumberRow(fields,'مبلغ پیش‌پرداخت',advanceAmount,value=>{advanceAmount=value;},{suffix:'تومان'});
+          if(!advanceRows.length){
+            fields.append(element('p','contract-meta','جدول پیش‌پرداخت در قرارداد ردیفی ندارد'));
+            return;
+          }
+          for(const row of advanceRows){
+            const title='پیش‌پرداخت '+format.format(row.number);
+            fields.append(table([[title,row.description||'—'],['مبلغ قراردادی',money(row.total)],
+              ['موعد یا شرط پرداخت',row.dueText||'—'],['مانده قابل درخواست',money(row.balance)]]));
+          }
+          if(payableAdvanceRows.length>1){
+            const choices=payableAdvanceRows.map(row=>({value:row.key,label:'پیش‌پرداخت '+format.format(row.number)}));
+            ftSelectRow(fields,'ردیف پرداخت',choices.find(choice=>choice.value===advanceRow?.key)?.label||'انتخاب کنید',()=>
+              openStaticChoicePicker('ردیف پرداخت','پیش‌پرداخت‌های قرارداد',choices,advanceRow?.key,key=>{
+                advanceRow=payableAdvanceRows.find(row=>row.key===key);
+                advanceAmount=advanceRow.balance;
+                refresh();
+              }));
+          }
+          if(advanceRow)ftNumberRow(fields,'مبلغ درخواستی',advanceAmount,value=>{advanceAmount=value;},{suffix:'تومان'});
           return;
         }
         if(statementType==='final'){
@@ -263,8 +285,13 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
       if(type==='final' && !final.ready){toast('شرایط صدور صورت‌وضعیت قطعی تکمیل نشده است');return false;}
       if(type==='interim' && !resolveStatementWork(workRows,workEntries())){toast('کارکرد عملیات قرارداد را معتبر وارد کنید');return false;}
       if(type==='retention-release' && (!operations.length || operations.some(row=>!row.description.trim() || !rowAmount(row) || (row.pricingMode==='quantity' && !row.unit)))){toast('شرح و مبلغ عملیات را کامل کنید');return false;}
+      const requestedAmount=numericValue(advanceAmount);
+      if(type==='advance' && (!advanceRow || !Number.isSafeInteger(requestedAmount) || requestedAmount<=0 || requestedAmount>advanceRow.balance)){
+        toast('ردیف پیش‌پرداخت را انتخاب کنید و مبلغ را در محدوده مانده آن وارد کنید');
+        return false;
+      }
       saving=true;
-      saveContractHandoff(project.id,documentRecord,'save_statement',{contractId:contract.id,addendumId,statementType:type,date,...(type==='interim'?{workEntries:workEntries(),advanceDeduction:addendumId?0:numericValue(advanceDeduction)}:type==='advance'?{amount:numericValue(advanceAmount)}:type==='final'?{}:{operations}),note:value('note')})
+      saveContractHandoff(project.id,documentRecord,'save_statement',{contractId:contract.id,addendumId,statementType:type,date,...(type==='interim'?{workEntries:workEntries(),advanceDeduction:addendumId?0:numericValue(advanceDeduction)}:type==='advance'?{amount:requestedAmount,advanceRowKey:advanceRow.key}:type==='final'?{}:{operations}),note:value('note')})
         .then(()=>{if(root.isConnected)closeWbsSheet();onChanged();})
         .catch(error=>toast(error.message)).finally(()=>{saving=false;});
       return false;
@@ -277,6 +304,19 @@ function statementPreviewContent(contract,record){
   const title=statementTitle(record);
     const documentNode=element('section','contract-export-document');
     documentNode.dir='rtl';
+    if(record.statementType==='advance'){
+      const row=record.advanceRow;
+      documentNode.append(element('h2','',title),element('p','',contract.contractNo||''),table([
+        ['تاریخ درخواست',formatJalaliDisplay(record.date)||'—'],
+        ...(row?[
+          ['ردیف قرارداد',format.format(row.number)],['شرح پیش‌پرداخت',row.description||'—'],
+          ['موعد یا شرط پرداخت',row.dueText||'—'],['مبلغ قراردادی',money(row.total)],
+        ]:[]),
+        ['مبلغ درخواستی',money(record.statementAmount||0)],['پرداخت‌شده',money(record.paidAmount||0)],
+        ...(record.note?[['توضیحات',record.note]]:[]),
+      ]));
+      return documentNode;
+    }
     documentNode.append(element('h2','',title),element('p','',contract.contractNo||''),element('p','',formatJalaliDisplay(record.date)||''),
       operationSummary(record.operations||[]),table([['کارکرد این سند',money(record.statementAmount??record.stageAmount??0)],['کارکرد تجمعی',money(record.cumulativeAmount||0)],['حسن انجام کار',money(record.retentionAmount||0)],['کسر پیش‌پرداخت',money(record.advanceDeduction||0)],['خالص قابل پرداخت',money(record.netAmount??record.approvedAmount??record.stageAmount??0)],['پرداخت‌شده',money(record.paidAmount||0)]]));
     return documentNode;
@@ -300,7 +340,7 @@ function openStatement(project,contract,record,onChanged,{finance=false,approval
     body(root){
       root.classList.add('contract-status-sheet');
       const status=approvedStatement(record)?'تأیید مالی شده':record.accountingStatus==='sent'?'در انتظار تأیید مالی':record.status==='draft'?'برگشت برای اصلاح':record.approvalStatus==='pending'?'در انتظار تأیید':'در انتظار امضا یا ارسال به مالی';
-      root.append(button('پیش‌نمایش صورت‌وضعیت',trigger=>openContractPreview(project,contract,{trigger,documentPreview:{title:'پیش‌نمایش '+statementTitle(record),content:statementPreviewContent(contract,record)}})));
+      root.append(button(record.statementType==='advance'?'پیش‌نمایش پیش‌پرداخت':'پیش‌نمایش صورت‌وضعیت',trigger=>openContractPreview(project,contract,{trigger,documentPreview:{title:'پیش‌نمایش '+statementTitle(record),content:statementPreviewContent(contract,record)}})));
       if(finance){
       root.append(table([
         ['شماره قرارداد',contract.contractNo||'—'],['مربوط به',record.addendumNo||'قرارداد اصلی'],['تاریخ',formatJalaliDisplay(record.date)||record.date||'—'],

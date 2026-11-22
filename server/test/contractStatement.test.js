@@ -80,3 +80,26 @@ test('operation totals are calculated by the server and an approved release does
   project.contractStatusReports.push({...final,accountingStatus:'accepted'});
   assert.equal(save('retention-release',[agreed(20)]).ok,true);
 });
+
+test('advance requests use a contract row and reserve its balance until released',()=>{
+  const parent={id:'c',accountingStatus:'accepted',advanceRows:[
+    {id:'first',description:'خرید مصالح',dueText:'پس از امضا',pricingMode:'agreed',agreedPrice:'۴۰٬۰۰۰'},
+    {id:'second',pricingMode:'agreed',agreedPrice:20000},
+  ]};
+  const project={contractStatusReports:[]};
+  const request={statementType:'advance',date:'1405/08/26',advanceRowKey:'first',amount:30000};
+  const save=(patch={},current=null)=>saveStatement(project,parent,current,current?.id||'new',{...request,...patch},{id:'actor'},1);
+  assert.equal(save({advanceRowKey:'missing'}).ok,false);
+  const first=save().contract;
+  assert.equal(first.advanceRow.dueText,'پس از امضا');
+  assert.equal(first.advanceRow.total,40000);
+  assert.equal(first.stageAmount,0);
+  project.contractStatusReports.push({...first,id:'first-request',accountingStatus:'withdrawn'});
+  assert.equal(save({amount:10001}).ok,false);
+  assert.equal(save({amount:10000}).ok,true);
+  assert.equal(save({advanceRowKey:'second',amount:20000}).ok,true);
+  project.contractStatusReports[0].status='draft';
+  assert.equal(save({amount:40000}).ok,true);
+  project.contractStatusReports.push({id:'legacy',contractId:'c',statementType:'advance',statementAmount:25000,accountingStatus:'accepted'});
+  assert.equal(save({amount:15001}).ok,false);
+});

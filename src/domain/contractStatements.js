@@ -1,3 +1,5 @@
+import {hasPaymentRowData,rowAmount} from '../modules/contracts/contractPricing.js';
+
 export const statementsFor=(project,id)=>(project.contractStatusReports||[]).filter(record=>!record.trashed && String(record.contractId)===String(id));
 export const approvedStatement=record=>record.accountingStatus==='accepted' || (!record.statementType && record.approvalStatus==='approved');
 const amount=value=>Number.isFinite(Number(value))?Number(value):0;
@@ -17,6 +19,28 @@ export function statementAccount(contract,addendum){
 
 export const accountStatements=(project,contract)=>statementsFor(project,contract.id)
   .filter(record=>(record.addendumId||null)===(contract.statementAddendumId||null));
+
+export function contractAdvanceRows(project,contract,excludeId){
+  const requests=statementsFor(project,contract.id).filter(record=>record.statementType==='advance' && record.id!==excludeId);
+  const reserved=record=>record.status!=='draft' && record.approvalStatus!=='rejected' &&
+    record.accountingStatus!=='rejected' ? amount(record.statementAmount) : amount(record.paidAmount);
+  const rows=(contract.advanceRows||[]).filter(hasPaymentRowData).map((row,index)=>{
+    const key=row.id || 'advance-'+index;
+    const total=rowAmount(row);
+    const linked=requests.filter(record=>record.advanceRow?.key===key);
+    const balance=Math.max(0,total-linked.reduce((sum,record)=>sum+reserved(record),0));
+    return {key,number:index+1,description:row.description||'',dueText:row.dueText||'',total,balance};
+  });
+  // Older documents have no row link; reserve their amounts in contract order.
+  const keys=new Set(rows.map(row=>row.key));
+  let unlinked=requests.filter(record=>!keys.has(record.advanceRow?.key)).reduce((sum,record)=>sum+reserved(record),0);
+  for(const row of rows){
+    const allocated=Math.min(unlinked,row.balance);
+    row.balance-=allocated;
+    unlinked-=allocated;
+  }
+  return rows;
+}
 
 export function availableContractAdvance(project,contractId,excludeId){
   const records=statementsFor(project,contractId).filter(record=>record.id!==excludeId);
