@@ -849,8 +849,11 @@ export function renderWorkTasks({ documentRef = document, projectId, work, view,
     branch.className='wbs-task-branch';
     branch.dataset.taskId=task.id;
     if(treeLayout){
-      branch.style.setProperty('--wbs-tree-depth',depth);
-      branch.insertAdjacentHTML('afterbegin','<span class="wbs-tree-continuation" aria-hidden="true"></span>');
+      branch.className += ' wbs-tree-level-' + Math.min(8,depth);
+      const continuation = documentRef.createElement('span');
+      continuation.className = 'wbs-tree-continuation';
+      continuation.setAttribute('aria-hidden','true');
+      branch.appendChild(continuation);
     }
     const controls=documentRef.createElement('div');
     controls.className='wbs-task-branch-controls';
