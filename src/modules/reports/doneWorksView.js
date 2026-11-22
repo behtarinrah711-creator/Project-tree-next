@@ -12,8 +12,10 @@ export function completedWorks(project){
   const walk = (nodes, path) => (nodes || []).forEach(node => {
     if(!node || node.trashed) return;
     const next = path.concat(node.text || node.title || '').filter(Boolean);
-    (node.workTasks || []).forEach(task => {
-      if(task && !task.trashed && (task.completionState === 'approved' || task.completed)) rows.push(rowOf(task, next, { kind:'task', id:task.id, workId:node.id }));
+    const tasks=node.workTasks||[];
+    tasks.forEach(task => {
+      const parent=task?.parentTaskId?tasks.find(row=>row?.id===task.parentTaskId):null;
+      if(task && !task.trashed && (task.completionState === 'approved' || task.completed)) rows.push(rowOf(task, parent?[...next,parent.title]:next, { kind:'task', id:task.id, workId:node.id }));
     });
     if(node.completionState === 'approved' || node.completed) rows.push(rowOf(node, path, { kind:'work', id:node.id }));
     walk(node.subtasks, next);

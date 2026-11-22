@@ -18,6 +18,7 @@ import { openNumpadGeneric } from '../../ui/numpad.js';
 import {selectableWbsTree,openExecutionBranchFilter} from './executionBranchFilter.js';
 import { isExpanded, toggleExpanded } from './wbsExpandState.js';
 import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
+import { openWorkCreationSheet } from './workCreationSheet.js';
 import { predecessorField } from './predecessorField.js';
 
 const PRIORITY_LABELS = Object.freeze({ low:'بحرانی', normal:'عادی', high:'مهم' });
@@ -214,13 +215,14 @@ function renderActivity(container,{activities,value,onSelect,workId,documentRef}
 
 function taskForm({ projectId, work, task = null, onChanged, readOnly=false, canDelete=true, saveStandalone }){
   const editing = Boolean(task);
+  const subwork=task?.isSubwork===true;
   const documentRef = document;
   const linkedContract=task ? linkedContractForWork(projectId,work.id,task.id) : null;
   const contractor=linkedContract ? contactRepository.get(projectId,linkedContract.contractorId || linkedContract.contactId) : null;
   let titleEditor;
   let saving=false;
   const overlay=openWbsSheet({
-    title:'کار:', presentation:'stage-create', autoFocus:false,
+    title:subwork?'زیرکار:':'کار:', presentation:'stage-create', autoFocus:false,
     historyKey:`wbs-work-task:${projectId}:${task?.id || work.id}`,
     saveLabel:'ذخیره',readOnly,
     body(root){
@@ -230,7 +232,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         heading.className='wbs-task-form-section';heading.textContent=text;
         root.append(heading);
       };
-      section('مشخصات کار');
+      if(!subwork)section('مشخصات کار');
       const contacts = contactRepository.list(projectId).filter(contact => contact && !contact.trashed);
       const activities=activityRepository.list(projectId).filter(activity=>activity && !activity.trashed);
       let counterpartyContactId = task?.counterpartyContactId ?? contractor?.id ?? '';
@@ -287,11 +289,12 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       };
       const initialType=task?.type || '';
       const type=optionButton({name:'taskType',value:initialType,clearLabel:'نوع کار',options:WORK_TYPES.map(value=>({id:value,name:value})), onChange:renderTypeFields});
-      root.appendChild(fieldRow('نوع کار',type));
-      root.append(togglesContainer, contractSummary);
-      root.appendChild(counterpartyContainer);
-      renderTypeFields(initialType);
-      root.appendChild(activityContainer);
+      if(!subwork)root.appendChild(fieldRow('نوع کار',type));
+      if(!subwork)root.append(togglesContainer, contractSummary);
+      if(!subwork)root.appendChild(counterpartyContainer);
+      if(!subwork)renderTypeFields(initialType);
+      else amountContainer.append(fieldRow('مبلغ',numericButton('taskAmount',amount,{money:true})));
+      if(!subwork)root.appendChild(activityContainer);
       const templateContainer=documentRef.createElement('div');
       const templateButton=documentRef.createElement('button');templateButton.type='button';templateButton.name='taskContractTemplate';templateButton.className='wbs-input';
       templateButton.dataset.value=task?.contractTemplateId || linkedContract?.templateId || '';
@@ -307,7 +310,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         items:[{id:'',name:'بدون قالب'},...templates().map(t=>({id:t.id,name:t.title || 'قالب قرارداد'}))],
         onSelect:selected=>{templateButton.dataset.value=String(selected.id);paintTemplate();}
       }));
-      templateContainer.appendChild(fieldRow('قالب قرارداد',templateButton));root.appendChild(templateContainer);
+      templateContainer.appendChild(fieldRow('قالب قرارداد',templateButton));if(!subwork)root.appendChild(templateContainer);
       togglesContainer.addEventListener('change',paintTemplate);paintTemplate();
 
       const preferredMode=editing?(task.scheduleMode||'manual'):'';
@@ -376,7 +379,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
           first=requiredScheduleStart({dependencies:relations},Math.max(1,duration),lookup);
           setDate(start,first===null?'':scheduleDate(first));
           setDate(end,first!==null && duration>0?scheduleDate(first+duration-1):'');
-          warning.textContent=first===null?'برای زمان‌بندی خودکار، پیش‌نیاز تاریخ‌دار لازم است.'
+          warning.textContent=first===null?(subwork && relations.length?'تاریخ‌ها پس از زمان‌بندی پیش‌نیاز محاسبه می‌شوند.':'برای زمان‌بندی خودکار، پیش‌نیاز را انتخاب کنید.')
             :duration<=0?'مدت را وارد کنید یا تاریخ پایان معتبر انتخاب کنید.':'';
         }else{
           if((trigger==='duration'||(trigger==='start' && last===null)) && first!==null && duration>0){
@@ -391,19 +394,19 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         durationButton.textContent=duration?new Intl.NumberFormat('fa-IR').format(duration)+' روز':'وارد کردن مدت';
       }
       const priority=optionButton({name:'taskPriority',value:task?.priority || 'normal',clearLabel:'درجه اهمیت',options:TASK_PRIORITIES.map(value=>({id:value,name:PRIORITY_LABELS[value]}))});
-      root.append(fieldRow('درجه اهمیت',priority));
+      if(!subwork)root.append(fieldRow('درجه اهمیت',priority));
       section('زمان‌بندی');
       if(!saveStandalone)root.append(fieldRow('روش زمان‌بندی',mode));
       manualDates.append(startRow,endRow);
       root.append(manualDates);
       if(!saveStandalone)root.append(fieldRow('مدت انجام کار',durationButton),warning);
       if(!saveStandalone){
-        const dependency = predecessorField({ documentRef, project:projectRepository.find(projectId), consumerId:task?.id || `new:${work.id}`, initial:task?(task.dependencies?.length?task.dependencies:task.predecessorIds||[])
+        const dependency = predecessorField({ documentRef, project:projectRepository.find(projectId), consumerId:task?.id || `new:${work.id}`, excludeIds:subwork?[String(work.id),String(task.parentTaskId||'')]:[], initial:task?(task.dependencies?.length?task.dependencies:task.predecessorIds||[])
           :!activeWorkTasks(work).length?(work.dependencies?.length?work.dependencies:work.predecessorIds||[]):[], onChange:()=>updateSchedule('dependency') });
         root.append(dependency.element,calculatedDates);
         root._taskDependency=dependency;
       }
-      section('مسئولان');
+      if(!subwork)section('مسئولان');
 
       const assignee = documentRef.createElement('button');
       assignee.type = 'button'; assignee.name = 'taskAssignee'; assignee.className = 'wbs-input';
@@ -423,7 +426,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         onSelect:selected => { assignee.dataset.value = String(selected.id); paintAssignee(); },
       }));
       paintAssignee();
-      root.appendChild(fieldRow('مسئول پیگیری', assigneeSelection.wrap));
+      if(!subwork)root.appendChild(fieldRow('مسئول پیگیری', assigneeSelection.wrap));
 
       const approvers=documentRef.createElement('div');
       let approverIds=executionApproverIds(task);
@@ -453,7 +456,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         approvers.append(add);
       };
       paintApprovers();
-      root.append(fieldRow('مسئولان تأیید کار',approvers));
+      if(!subwork)root.append(fieldRow('مسئولان تأیید کار',approvers));
       root._executionApproverIds=()=>approverIds;
 
       const contractApprovers=documentRef.createElement('div');
@@ -484,15 +487,16 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         controls.appendChild(select);contractApprovers.appendChild(fieldRow('مسئول تأیید قرارداد',controls));
       };
       togglesContainer.addEventListener('change',paintContractApprovers);
-      root.appendChild(contractApprovers);paintContractApprovers();
+      if(!subwork)root.appendChild(contractApprovers);paintContractApprovers();
       root._contractApproverIds=()=>contractApproverContactIds;
 
-      if(contractor){
+      if(!subwork && contractor){
         const note = documentRef.createElement('div');
         note.className = 'wbs-note';
         note.textContent = `پیمانکار از قرارداد خوانده می‌شود: ${contactName(contractor)}`;
         root.appendChild(note);
       }
+      if(subwork)root.append(fieldRow('درجه اهمیت',priority));
       root.append(amountContainer,fieldRow('وزن',numericButton('taskWeight',task?.weight || 1)));
       if(!saveStandalone)updateSchedule('initial');
 
@@ -500,7 +504,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         if(canDelete){
           const remove = documentRef.createElement('button');
           remove.type = 'button'; remove.className = 'wbs-task-delete';
-          remove.textContent='حذف کار';
+          remove.textContent=subwork?'حذف زیرکار':'حذف کار';
           remove.addEventListener('click', () => {
             requestPlanningTaskDelete({documentRef,projectId,workId:work.id,taskId:task.id,onChanged:()=>{
               closeWbsSheet();
@@ -520,13 +524,13 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       }
       const draft = {
         title:(titleEditor.textContent || '').trim(),
-        type:root.querySelector('[name="taskType"]').value,
+        type:(root.querySelector('[name="taskType"]')?.value ?? task?.type ?? ''),
         scheduleStart:root.querySelector('[name="taskStart"]').dataset.value,
         scheduleEnd:root.querySelector('[name="taskEnd"]').dataset.value,
         ...(!saveStandalone?{scheduleMode:root.querySelector('[name="taskScheduleMode"]').value||'manual',
           scheduleDuration:Number(root.querySelector('[name="taskDuration"]').dataset.value)}:{}),
         priority:root.querySelector('[name="taskPriority"]').value||'normal',
-        assigneeContactId:root.querySelector('[name="taskAssignee"]').dataset.value,
+        assigneeContactId:root.querySelector('[name="taskAssignee"]')?.dataset.value || '',
         activityId:root.querySelector('[name="taskActivity"]')?.dataset.value || '',
         contractTemplateId:root.querySelector('[name="taskContractTemplate"]')?.dataset.value || '',
         counterpartyContactId:root.querySelector('[name="taskCounterparty"]')?.dataset.value || '',
@@ -538,14 +542,14 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         predecessorIds:root._taskDependency?.value() || [],
         dependencies:root._taskDependency?.relations() || [],
         hasContract:!!root.querySelector('[name="hasContract"]')?.checked,
-        hasProgressReport:root.querySelector('[name="taskType"]').value==='پیمانکار'
+        hasProgressReport:(root.querySelector('[name="taskType"]')?.value ?? task?.type ?? '')==='پیمانکار'
           ?Boolean(task?.type==='پیمانکار' && task.hasProgressReport):!!root.querySelector('[name="hasProgressReport"]')?.checked,
         hasInvoice:!!root.querySelector('[name="hasInvoice"]')?.checked,
         hasPreInvoice:!!root.querySelector('[name="hasPreInvoice"]')?.checked,
         hasLaborPayroll:!!root.querySelector('[name="hasLaborPayroll"]')?.checked,
         isRental:!!root.querySelector('[name="isRental"]')?.checked,
       };
-      if(draft.scheduleMode==='auto' && (!draft.scheduleStart||!draft.scheduleEnd||!draft.scheduleDuration)){
+      if(draft.scheduleMode==='auto' && (!draft.scheduleDuration || !draft.predecessorIds.length || (!subwork && (!draft.scheduleStart || !draft.scheduleEnd)))){
         root.querySelector('.wbs-sheet-hint')?.scrollIntoView?.({block:'nearest'});
         return false;
       }
@@ -588,7 +592,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
     },
   });
   overlay.classList.add('wbs-task-form-overlay');
-  titleEditor=documentRef.createElement('span');titleEditor.className='wbs-stage-edit-title';titleEditor.contentEditable=readOnly?'false':'true';titleEditor.setAttribute('role','textbox');titleEditor.setAttribute('aria-label','عنوان کار');titleEditor.textContent=task?.title || '';titleEditor.addEventListener('keydown',event=>{if(event.key==='Enter')event.preventDefault();});overlay.querySelector('.sheet-caption').append(' ',titleEditor);
+  titleEditor=documentRef.createElement('span');titleEditor.className='wbs-stage-edit-title';titleEditor.contentEditable=readOnly?'false':'true';titleEditor.setAttribute('role','textbox');titleEditor.setAttribute('aria-label',subwork?'عنوان زیرکار':'عنوان کار');titleEditor.textContent=task?.title || '';titleEditor.addEventListener('keydown',event=>{if(event.key==='Enter')event.preventDefault();});overlay.querySelector('.sheet-caption').append(' ',titleEditor);
 }
 
 export async function openStandaloneWorkSheet({projectId,onChanged,saveStandalone,existing=null}){
@@ -722,7 +726,8 @@ export function bindTaskReorder(group, row, { projectId, workId, taskId, onChang
     if(event.button === 2) return;
     event.preventDefault(); event.stopPropagation();
     activeTaskDragCleanup?.();
-    const rows = () => Array.from(group.querySelectorAll(':scope > .wbs-work-task'));
+    const moving=row.parentElement?.classList.contains('wbs-task-branch')?row.parentElement:row;
+    const rows = () => Array.from(group.querySelectorAll(':scope > .wbs-task-branch, :scope > .wbs-work-task'));
     const startRows = rows();
     if(startRows.length < 2) return;
     const initialIds = startRows.map(item => String(item.dataset.taskId));
@@ -740,19 +745,19 @@ export function bindTaskReorder(group, row, { projectId, workId, taskId, onChang
       if(ev.pointerId !== pointerId) return;
       ev.preventDefault?.();
       moved = true;
-      const others = rows().filter(item => item !== row);
+      const others = rows().filter(item => item !== moving);
       let before = null;
       for(const candidate of others){
         const rect = candidate.getBoundingClientRect();
         if(ev.clientY < rect.top + rect.height / 2){ before = candidate; break; }
       }
       if(before){
-        group.insertBefore(row, before);
+        group.insertBefore(moving, before);
       }else if(others.length){
-        group.appendChild(row);
+        group.appendChild(moving);
       }
       if(indicator){
-        group.insertBefore(indicator, before || row);
+        group.insertBefore(indicator, before || moving);
         indicator.classList.add('is-visible');
       }
     };
@@ -810,7 +815,9 @@ export function renderWorkTasks({ documentRef = document, projectId, work, view,
   const group = documentRef.createElement('div');
   group.className = 'wbs-work-tasks';
   group.setAttribute('role', 'list');
-  tasks.forEach(task => {
+  const renderTask=(task,target)=>{
+    const children=tasks.filter(child=>child.parentTaskId===task.id);
+    const expanded=isExpanded(projectId,task.id);
     const complete = isTaskComplete(task);
     const isContractorTask = task.type === 'پیمانکار';
     const contractor = isContractorTask ? contactRepository.get(projectId, task.counterpartyContactId ?? task.contractorContactId) : null;
@@ -824,15 +831,43 @@ export function renderWorkTasks({ documentRef = document, projectId, work, view,
       <span class="wbs-grip" aria-label="جابجایی کار" role="button">⋮⋮</span>
       <span class="wbs-task-connector" aria-hidden="true"></span>
       <span class="wbs-task-content">
-        <span class="wbs-task-main"><span class="wbs-type-chip ${TYPE_CLASSES.get(task.type) || 'type-7'}">${escapeHtml(task.type || '؟')}</span><span class="wbs-task-title">${escapeHtml(task.title)}</span></span>
-        <span class="wbs-task-secondary">${isContractorTask ? `<span class="wbs-task-contractor">${contractor && !contractor.trashed ? escapeHtml(contactName(contractor)) : 'بدون پیمانکار'}</span>` : ''}${contact ? `<span class="wbs-task-assignee">${escapeHtml(contactName(contact))}</span>` : ''}<span class="wbs-task-priority priority-${task.priority}">${escapeHtml(PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal)}</span>${view === 'progress' ? `<span class="wbs-task-progress">٪${new Intl.NumberFormat('fa-IR').format(task.progress || 0)}</span>` : ''}${view === 'estimate' && task.type !== FOLLOW_UP_WORK_TYPE ? `<span class="wbs-task-cost">${new Intl.NumberFormat('fa-IR').format(taskCostOf(task))} تومان</span>` : ''}</span>
+        <span class="wbs-task-main">${task.isSubwork?'':`<span class="wbs-type-chip ${TYPE_CLASSES.get(task.type) || 'type-7'}">${escapeHtml(task.type || '؟')}</span>`}<span class="wbs-task-title">${escapeHtml(task.title)}</span></span>
+        <span class="wbs-task-secondary">${isContractorTask ? `<span class="wbs-task-contractor">${contractor && !contractor.trashed ? escapeHtml(contactName(contractor)) : 'بدون پیمانکار'}</span>` : ''}${contact ? `<span class="wbs-task-assignee">${escapeHtml(contactName(contact))}</span>` : ''}${task.isSubwork?'':`<span class="wbs-task-priority priority-${task.priority}">${escapeHtml(PRIORITY_LABELS[task.priority] || PRIORITY_LABELS.normal)}</span>`}${view === 'progress' ? `<span class="wbs-task-progress">٪${new Intl.NumberFormat('fa-IR').format(task.progress || 0)}</span>` : ''}${view === 'estimate' && task.type !== FOLLOW_UP_WORK_TYPE ? `<span class="wbs-task-cost">${new Intl.NumberFormat('fa-IR').format(taskCostOf(task))} تومان</span>` : ''}</span>
       </span>`;
     row.addEventListener('click', event => {
       if(event.target.closest('.wbs-grip')) return;
       taskForm({ projectId, work, task, onChanged, readOnly, canDelete });
     });
-    group.appendChild(row);
-    if(!readOnly) bindTaskReorder(group, row, { projectId, workId:work.id, taskId:task.id, onChanged, documentRef });
-  });
+    const branch=documentRef.createElement('div');
+    branch.className='wbs-task-branch';
+    branch.dataset.taskId=task.id;
+    const controls=documentRef.createElement('div');
+    controls.className='wbs-task-branch-controls';
+    if(children.length){
+      const arrow=documentRef.createElement('button');
+      arrow.type='button';arrow.className='wbs-chev';arrow.textContent=expanded?'▾':'◂';
+      arrow.setAttribute('aria-label',expanded?'بستن زیرکارها':'باز کردن زیرکارها');
+      arrow.setAttribute('aria-expanded',String(expanded));
+      arrow.onclick=()=>{toggleExpanded(projectId,task.id);onChanged?.();};
+      controls.append(arrow);
+    }
+    if(!task.isSubwork && !readOnly && !complete && task.type!=='خرید' && view!=='estimate' && view!=='progress'){
+      const add=documentRef.createElement('button');
+      add.type='button';add.className='wbs-add';add.textContent='+';
+      add.setAttribute('aria-label','افزودن زیرکار');
+      add.onclick=()=>openWorkCreationSheet({projectId,stage:work,parentTask:task,subwork:true,onChanged});
+      controls.append(add);
+    }
+    if(controls.childElementCount)branch.append(controls);
+    branch.append(row);target.append(branch);
+    if(expanded && children.length){
+      const nested=documentRef.createElement('div');
+      nested.className='wbs-work-tasks wbs-subwork-list';
+      for(const child of children)renderTask(child,nested);
+      branch.append(nested);
+    }
+    if(!readOnly)bindTaskReorder(target,row,{projectId,workId:work.id,taskId:task.id,onChanged,documentRef});
+  };
+  tasks.filter(task=>!task.parentTaskId).forEach(task=>renderTask(task,group));
   return group;
 }

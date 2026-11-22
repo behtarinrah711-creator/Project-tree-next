@@ -5,7 +5,7 @@ import { contactRepository } from '../../data/contactRepository.js';
 import { workTaskRepository } from '../../data/workTaskRepository.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
 import { FOLLOW_UP_WORK_TYPE, ODD_JOB_TYPES, WORK_TYPES } from './normalize.js';
-import { TASK_PRIORITIES, activeWorkTasks, executionApproverIds, normalizeWorkTask, workTaskProgress } from './workTaskModel.js';
+import { TASK_PRIORITIES, activeWorkTasks, executionApproverIds, inheritSubworkFields, normalizeWorkTask, workTaskProgress } from './workTaskModel.js';
 import { validatePredecessors } from './scheduling.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { cardFundingKey, placeCardFunding } from './fundingReceipts.js';
@@ -47,7 +47,7 @@ function validate(projectId, workId, input){
   if(executionApproverContactIds.some(id=>{const contact=contactRepository.get(projectId,id);return !contact || contact.trashed;})) return { ok:false, code:'approver' };
   if(activityId && !activityRepository.get(projectId, activityId)) return { ok:false, code:'activity' };
   if(input.scheduleMode==='auto' && (!Number.isInteger(input.scheduleDuration)||input.scheduleDuration<1
-    || !input.scheduleStart || !input.scheduleEnd || !input.predecessorIds?.length))return {ok:false,code:'automatic_schedule'};
+    || (!input.isSubwork && (!input.scheduleStart || !input.scheduleEnd)) || !input.predecessorIds?.length))return {ok:false,code:'automatic_schedule'};
   if(!validDateRange(input.scheduleStart || '', input.scheduleEnd || '')) return { ok:false, code:'dates' };
   if(workId && !workTaskRepository.work(projectId, workId)) return { ok:false, code:'work' };
   return { ok:true, value:{ ...input, title, weight, assigneeContactId, counterpartyContactId, contractorContactId,
@@ -152,16 +152,19 @@ export const workTaskApi = {
   list:(projectId, workId) => workTaskRepository.list(projectId, workId),
   get:(projectId, workId, taskId) => workTaskRepository.get(projectId, workId, taskId),
   create(projectId, workId, draft, clock = Date.now){
-    const checked = validate(projectId, workId, draft);
+    const work = workTaskRepository.work(projectId, workId);
+    const parent=draft.parentTaskId?activeWorkTasks(work).find(task=>String(task.id)===String(draft.parentTaskId)):work;
+    if(draft.isSubwork && (!parent || parent.isSubwork))return {ok:false,code:'work'};
+    const checked = validate(projectId, workId, inheritSubworkFields(draft,parent));
     if(!checked.ok) return checked;
     const now = clock(); const id = uid();
     const dependencyCheck = validatePredecessors(projectRepository.find(projectId)?.tasks || [], id, draft.predecessorIds || []);
     if(!dependencyCheck.ok) return dependencyCheck;
-    const work = workTaskRepository.work(projectId, workId);
     const firstTask = activeWorkTasks(work).length === 0;
-    const inherited = firstTask ? predecessorIds(work?.predecessorIds) : [];
-    const inheritedDependencies = firstTask && Array.isArray(work?.dependencies)
-      ? work.dependencies.map(row => ({ ...row }))
+    const firstSubwork=draft.isSubwork && !activeWorkTasks(work).some(task=>task.isSubwork && (task.parentTaskId||'')===(draft.parentTaskId||''));
+    const inherited = (firstSubwork || firstTask && !draft.isSubwork) ? predecessorIds(parent?.predecessorIds) : [];
+    const inheritedDependencies = inherited.length && Array.isArray(parent?.dependencies)
+      ? parent.dependencies.map(row => ({ ...row }))
       : [];
     const explicitIds = predecessorIds(checked.value.predecessorIds);
     const task = normalizeWorkTask({
@@ -172,7 +175,7 @@ export const workTaskApi = {
         : inheritedDependencies,
       id, workId, completed:false, completedAt:null, createdAt:now, updatedAt:now,
     }, workId);
-    const saved = workTaskRepository.save(projectId, workId, task, { clearWorkPredecessors:firstTask && inherited.length > 0 });
+    const saved = workTaskRepository.save(projectId, workId, task, { clearWorkPredecessors:!draft.isSubwork && firstTask && inherited.length > 0 });
     if(!saved) return { ok:false, code:'persist' };
     syncContractFromWorkTask(projectId,workId,saved,clock);
     syncWorkCompletion(projectId, workId); publish(projectId);
@@ -186,7 +189,9 @@ export const workTaskApi = {
       return {ok:false,code:'approver'};
     const linkedContract=linkedWorkTaskContract(projectId,workId,taskId);
     const currentTemplateId=String(current.contractTemplateId || linkedContract?.templateId || '');
-    const next = { ...current, contractTemplateId:currentTemplateId, ...patch };
+    const work=workTaskRepository.work(projectId,workId);
+    const parent=current.parentTaskId?activeWorkTasks(work).find(task=>String(task.id)===String(current.parentTaskId)):work;
+    const next = inheritSubworkFields({ ...current, contractTemplateId:currentTemplateId, ...patch },parent);
     if(linkedContract && !(linkedContract.isDraft || linkedContract.status==='draft') && !next.hasContract){
       return {ok:false,code:'contract_locked'};
     }
@@ -206,6 +211,9 @@ export const workTaskApi = {
     });
     if(!saved) return { ok:false, code:'persist' };
     syncContractFromWorkTask(projectId,workId,saved,clock);
+    if(activeWorkTasks(work).some(task=>task.parentTaskId===saved.id))workTaskRepository.mutate(projectId,workId,node=>({
+      ...node,workTasks:node.workTasks.map(task=>task.parentTaskId===saved.id?inheritSubworkFields(task,saved):task),
+    }));
     if(cardFundingKey(projectRepository.find(projectId), taskId) !== beforeKey){
       projectRepository.updateProject(projectId, row => placeCardFunding(row, taskId));
     }
@@ -218,11 +226,12 @@ export const workTaskApi = {
   remove(projectId, workId, taskId, clock = Date.now){
     const current = workTaskRepository.get(projectId, workId, taskId);
     if(!current) return { ok:false, code:'not_found' };
+    if(activeWorkTasks(workTaskRepository.work(projectId,workId)).some(task=>task.parentTaskId===current.id))return {ok:false,code:'has_subworks'};
     const remaining = workTaskRepository.list(projectId, workId).filter(task => String(task.id) !== String(taskId));
     const saved = workTaskRepository.mutate(projectId, workId, work => ({
       ...work,
-      predecessorIds:remaining.length ? work.predecessorIds : predecessorIds(current.predecessorIds),
-      dependencies:remaining.length ? (work.dependencies || []) : (current.dependencies || []),
+      predecessorIds:remaining.length || current.isSubwork ? work.predecessorIds : predecessorIds(current.predecessorIds),
+      dependencies:remaining.length || current.isSubwork ? (work.dependencies || []) : (current.dependencies || []),
       workTasks:(work.workTasks || []).map(task => String(task?.id) === String(taskId)
         ? { ...task, trashed:true, deletedAt:clock(), updatedAt:clock() }
         : task),
@@ -249,15 +258,19 @@ export const workTaskApi = {
   reorder(projectId, workId, orderedIds, clock = Date.now){
     const ids = (orderedIds || []).map(String);
     const active = workTaskRepository.list(projectId, workId);
-    if(ids.length !== active.length || new Set(ids).size !== active.length || active.some(task => !ids.includes(String(task.id)))){
+    const first=active.find(task=>String(task.id)===ids[0]);
+    const siblings=active.filter(task=>(task.parentTaskId||'')===(first?.parentTaskId||''));
+    if(!first || ids.length !== siblings.length || new Set(ids).size !== siblings.length || siblings.some(task => !ids.includes(String(task.id)))){
       return { ok:false, code:'order' };
     }
     const order = new Map(ids.map((id, index) => [id, index]));
     const saved = workTaskRepository.mutate(projectId, workId, work => {
-      const visible = (work.workTasks || []).filter(task => task && !task.trashed)
+      const allVisible = (work.workTasks || []).filter(task => task && !task.trashed);
+      const selectedIds=new Set(orderedIds.map(String));
+      const visible=allVisible.filter(task=>selectedIds.has(String(task.id)))
         .sort((a, b) => order.get(String(a.id)) - order.get(String(b.id)));
       const trashed = (work.workTasks || []).filter(task => task?.trashed);
-      return { ...work, workTasks:[...visible, ...trashed], updatedAt:clock() };
+      return { ...work, workTasks:[...allVisible.map(task=>selectedIds.has(String(task.id))?visible.shift():task), ...trashed], updatedAt:clock() };
     });
     if(!saved) return { ok:false, code:'persist' };
     publish(projectId);

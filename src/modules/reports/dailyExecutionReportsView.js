@@ -42,8 +42,10 @@ export function collectDailyExecutionReports(project){
       if(!node || node.trashed) continue;
       add(node, path, { kind:'work', workId:node.id, id:node.id });
       const next = [...path, node.text || node.title].filter(Boolean);
-      for(const task of node.workTasks || []){
-        if(task) add(task, next, { kind:'task', workId:node.id, id:task.id });
+      const tasks=node.workTasks||[];
+      for(const task of tasks){
+        const parent=task?.parentTaskId?tasks.find(row=>row?.id===task.parentTaskId):null;
+        if(task) add(task, parent?[...next,parent.title]:next, { kind:'task', workId:node.id, id:task.id });
       }
       walk(node.subtasks, next);
     }

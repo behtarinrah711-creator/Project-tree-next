@@ -65,13 +65,18 @@ export function buildTimelineRows(items, projectId, {
     const childDepth = visibleDepth + (shown ? 1 : 0);
     if(shown && !expanded(item.id)) return;
     visit(item.subtasks, depth + 1, childDepth, branchRootId);
-    activeWorkTasks(item).forEach(task => {
-      const taskItem = {...task, kind:'workTask', text:task.title, parentWork:item};
-      if(visible({item:taskItem, kind:'workTask', depth:depth + 1})){
-        rows.push({item:taskItem, kind:'workTask', depth:childDepth, sourceDepth:depth + 1,
-          range:scheduleRangeOf(taskItem), shadeLevel:0, rootId:branchRootId});
+    const tasks=activeWorkTasks(item);
+    const addTask=(task,sourceDepth,rowDepth)=>{
+      const children=tasks.filter(child=>child.parentTaskId===task.id);
+      const taskItem={...task,kind:'workTask',text:task.title,parentWork:item,...(children.length?{subworkChildren:children}:{})};
+      const taskShown=visible({item:taskItem,kind:'workTask',depth:sourceDepth});
+      if(taskShown)rows.push({item:taskItem,kind:'workTask',...(children.length?{grouping:true}:{}),
+        depth:rowDepth,sourceDepth,range:scheduleRangeOf(taskItem),shadeLevel:0,rootId:branchRootId});
+      if(!taskShown || expanded(task.id)){
+        for(const child of children)addTask(child,sourceDepth+1,rowDepth+Number(taskShown));
       }
-    });
+    };
+    for(const task of tasks.filter(task=>!task.parentTaskId))addTask(task,depth+1,childDepth);
   });
   visit(items);
   return sortTimelineRows(rows, orderMode);

@@ -415,7 +415,7 @@ function tNameRow(entry){
   const task = entry.item.kind === 'workTask';
   const milestone = entry.item.kind === 'milestone';
   row.className = 'wbs-gantt-name depth-' + Math.min(entry.depth, 6) + (isStage(entry.item) ? ' is-stage' : (task ? ' is-task' : (milestone ? ' is-milestone' : ' is-work')));
-  const kids = task ? [] : [...(entry.item.subtasks || []).filter(x => x && !x.trashed), ...activeWorkTasks(entry.item)];
+  const kids = task ? entry.item.subworkChildren || [] : [...(entry.item.subtasks || []).filter(x => x && !x.trashed), ...activeWorkTasks(entry.item)];
   row.innerHTML = `${kids.length ? '<button type="button" class="wbs-gantt-chev">'+(isExpanded(projectIdOf(), entry.item.id)?'▾':'◂')+'</button>' : '<span class="wbs-gantt-chev"></span>'}<span>${escapeHtml(entry.item.text)}</span>`;
   row.querySelector('button')?.addEventListener('click', () => { toggleExpanded(projectIdOf(), String(entry.item.id)); render(); });
   return row;
@@ -554,7 +554,7 @@ function renderRow(item, codes, view, depth){
   const permissionReadOnly = !canWritePlanning(activePlanningLevel);
   const readOnlyView = view === 'estimate' || view === 'progress' || permissionReadOnly;
   const registrationLevel = isWorkRegistrationLevel(item);
-  const mayAdd = registrationLevel || treeAddKinds(item).length > 0;
+  const mayAdd = (isWork(item) && !item.completed && item.completionState!=='approved' && item.type!=='خرید') || registrationLevel || treeAddKinds(item).length > 0;
   const meta = [];
   if(view === 'estimate' && isWork(item)){
     meta.push(new Intl.NumberFormat('fa-IR').format(lineTotal(item)));
@@ -576,7 +576,7 @@ function renderRow(item, codes, view, depth){
       <span class="wbs-title-text">${escapeHtml(item.text || '')}</span>
     </button>
     <span class="wbs-meta${view === 'estimate' ? ' is-estimate' : ''}${view === 'progress' ? ' is-progress' : ''}">${escapeHtml(meta.join(' · '))}</span>
-    ${!readOnlyView && mayAdd ? `<button type="button" class="wbs-add" aria-label="${stage ? 'افزودن' : 'ساخت کار'}">+</button>` : ''}
+    ${!readOnlyView && mayAdd ? `<button type="button" class="wbs-add" aria-label="${stage ? 'افزودن' : 'افزودن زیرکار'}">+</button>` : ''}
   `;
   row.querySelector('.wbs-chev')?.addEventListener('click', ev => {
     ev.stopPropagation();
@@ -589,7 +589,8 @@ function renderRow(item, codes, view, depth){
   });
   row.querySelector('.wbs-add')?.addEventListener('click', ev => {
     ev.stopPropagation();
-    if(registrationLevel) openWorkRegistration(item.id);
+    if(isWork(item))openWorkCreationSheet({projectId:projectIdOf(),stage:item,onChanged:render,subwork:true});
+    else if(registrationLevel) openWorkRegistration(item.id);
     else openAddMenu(item.id);
   });
   const wrap = document.createElement('div');

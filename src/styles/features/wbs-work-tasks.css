@@ -1,13 +1,13 @@
 .wbs-work-tasks{position:relative;margin:0;padding:0 calc(var(--wbs-parent-indent,8px) + 16px) 5px 8px;background:#fff;}
 .wbs-work-task{position:relative;box-sizing:border-box;width:100%;min-width:0;min-height:48px;display:grid;grid-template-columns:16px minmax(0,1fr) 38px;align-items:stretch;gap:0;padding:0;border:0;border-bottom:1px solid var(--divider,#e4ddd3);background:#fff;color:var(--text,#26221e);font:inherit;text-align:right;cursor:pointer;direction:ltr;}
-.wbs-work-task:last-child{border-bottom:0;}
+.wbs-task-branch:last-child>.wbs-work-task{border-bottom:0;}
 .wbs-work-task > .wbs-grip{grid-column:1;grid-row:1;align-self:center;}
 .wbs-task-connector{grid-column:3;grid-row:1;position:relative;display:block;box-sizing:border-box;align-self:stretch;width:38px;border-right:1px solid var(--text-dim,#8a8176);}
 .wbs-task-content{grid-column:2;grid-row:1;}
 .wbs-task-connector::after{content:'';position:absolute;right:0;top:50%;width:20px;border-bottom:1px solid var(--text-dim,#8a8176);}
-.wbs-work-task:last-child .wbs-task-connector{height:auto;align-self:stretch;}
-.wbs-work-task:last-child .wbs-task-connector::before{content:'';position:absolute;right:0;top:0;height:50%;border-right:1px solid var(--text-dim,#8a8176);}
-.wbs-work-task:last-child .wbs-task-connector{border-right:0;}
+.wbs-task-branch:last-child>.wbs-work-task .wbs-task-connector{height:auto;align-self:stretch;}
+.wbs-task-branch:last-child>.wbs-work-task .wbs-task-connector::before{content:'';position:absolute;right:0;top:0;height:50%;border-right:1px solid var(--text-dim,#8a8176);}
+.wbs-task-branch:last-child>.wbs-work-task .wbs-task-connector{border-right:0;}
 .wbs-work-task.is-complete .wbs-task-connector{border-right:3px solid var(--success);}
 .wbs-work-task.is-complete .wbs-task-connector::after{right:-3px;border-bottom:3px solid var(--success);}
 .wbs-task-content{box-sizing:border-box;min-width:0;display:flex;flex-direction:column;justify-content:center;gap:3px;padding:6px 4px 6px 0;direction:rtl;}
@@ -110,3 +110,9 @@
 .wbs-dependency-stepper button{min-width:0;min-height:40px;}
 .wbs-dependency-stepper .wbs-input{width:100%;text-align:center;}
 .today-resume-manual .wbs-dependency-offset{display:none;}
+
+.wbs-task-branch{display:grid;grid-template-columns:auto minmax(0,1fr);align-items:center;gap:0 4px;direction:rtl;}
+.wbs-task-branch>.wbs-work-task{grid-column:2;min-width:0;}
+.wbs-task-branch-controls{grid-column:1;display:flex;gap:4px;}
+.wbs-task-branch>.wbs-subwork-list{grid-column:1/-1;}
+.wbs-subwork-list{padding-inline-start:24px;}

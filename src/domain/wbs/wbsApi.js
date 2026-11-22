@@ -2,6 +2,7 @@ import { projectItemRepository } from '../../data/projectItemRepository.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { uid } from '../../data/projectFactories.js';
 import { markDirty as adapterMarkDirty, persist as adapterPersist } from '../../sync/persistAdapter.js';
+import { inheritSubworkFields } from './workTaskModel.js';
 import { stampCreate, stampUpdate } from './timestamps.js';
 import {
   KIND_STAGE,
@@ -163,6 +164,7 @@ export const wbsApi = {
     const ids = activityIdsOf(applied);
     applied.activities = ids;
     applied.activityIds = ids;
+    if(Array.isArray(applied.workTasks))applied.workTasks=applied.workTasks.map(task=>task?.parentTaskId?task:inheritSubworkFields(task,applied));
     const beforeKey = cardFundingKey(projectRepository.find(projectId), itemId);
     const next = stampUpdate(applied, clock);
     const saved = persistNode(projectId, found, next);

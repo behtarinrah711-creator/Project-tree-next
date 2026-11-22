@@ -61,6 +61,11 @@ function expandableLevels(items, {
       if(nodeVisible(node, depth) && (visibleChildren.length || visibleTasks.length)){
         if(!levels[depth]) levels[depth] = [];
         levels[depth].push(String(node.id));
+        const taskParents=new Set(visibleTasks.map(task=>task.parentTaskId).filter(Boolean));
+        if(taskParents.size){
+          levels[depth+1]??=[];
+          levels[depth+1].push(...taskParents);
+        }
         walk(children, depth + 1);
       }
     });

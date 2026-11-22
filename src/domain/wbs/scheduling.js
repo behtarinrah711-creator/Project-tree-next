@@ -69,6 +69,7 @@ export function progressVariance(item, today = tehranTodayDayNumber()){
 
 export function scheduleRangeOf(item){
   if(item?.kind === 'workTask'){
+    if(item.subworkChildren?.length)return aggregateRange(item.subworkChildren.map(task=>({...task,kind:'workTask'})));
     const start = jalaliDayNumber(item.scheduleStart); const end = jalaliDayNumber(item.scheduleEnd);
     return start !== null && end !== null && end >= start ? { start, end, startDate:item.scheduleStart, endDate:item.scheduleEnd } : null;
   }
@@ -146,7 +147,16 @@ export function flattenDependencyCandidates(items){
     const title = node.text || '';
     const path = title ? [...parentPath, title] : parentPath;
     out.push({ id:String(node.id), kind:isStage(node) ? 'stage' : 'work', title, parentPath, item:node });
-    if(canHoldWorkTasks(node)) activeWorkTasks(node).forEach(task => out.push({ id:String(task.id), kind:'workTask', title:task.title || '', parentPath:path, workId:String(node.id), item:task }));
+    if(canHoldWorkTasks(node)){
+      const tasks=activeWorkTasks(node);
+      for(const task of tasks){
+        const children=tasks.filter(child=>child.parentTaskId===task.id);
+        const parent=tasks.find(candidate=>candidate.id===task.parentTaskId);
+        out.push({id:String(task.id),kind:'workTask',title:task.title||'',
+          parentPath:parent?[...path,parent.title]:path,workId:String(node.id),
+          item:children.length?{...task,subworkChildren:children}:task});
+      }
+    }
     visit(node.subtasks, path);
   });
   visit(items); return out;
@@ -156,19 +166,19 @@ export function buildEffectiveNetwork(items){
   const candidates = flattenDependencyCandidates(items); const byId = new Map(candidates.map(row => [row.id, row]));
   const effectiveIds = row => {
     if(!row) return [];
-    if(row.kind === 'workTask') return [row.id];
+    if(row.kind === 'workTask') return row.item.subworkChildren?.map(task=>String(task.id)) || [row.id];
     if(row.kind === 'work'){
       const tasks = activeWorkTasks(row.item);
-      return tasks.length ? tasks.map(task => String(task.id)) : [row.id];
+      return tasks.length ? tasks.filter(task=>!tasks.some(child=>child.parentTaskId===task.id)).map(task => String(task.id)) : [row.id];
     }
-    const ids = activeWorkTasks(row.item).map(task => String(task.id));
+    const ids = activeWorkTasks(row.item).filter(task=>!activeWorkTasks(row.item).some(child=>child.parentTaskId===task.id)).map(task => String(task.id));
     const walk = nodes => (nodes || []).filter(node => node && !node.trashed).forEach(node => {
       if(isStage(node)){ ids.push(...activeWorkTasks(node).map(task => String(task.id))); walk(node.subtasks); }
       else ids.push(...effectiveIds(byId.get(String(node.id))));
     });
     walk(row.item.subtasks); return [...new Set(ids)];
   };
-  const effective = candidates.filter(row => row.kind === 'workTask' || (row.kind === 'work' && activeWorkTasks(row.item).length === 0));
+  const effective = candidates.filter(row => (row.kind === 'workTask' && !row.item.subworkChildren?.length) || (row.kind === 'work' && activeWorkTasks(row.item).length === 0));
   const unresolved = [];
   const activities = effective.map(row => {
     const range = scheduleRangeOf(row.kind === 'workTask' ? { ...row.item, kind:'workTask' } : row.item);
@@ -208,12 +218,12 @@ export function effectiveDependencyLinks(items){
   const byId = new Map(candidates.map(row => [row.id, row]));
   const leafIds = row => {
     if(!row) return [];
-    if(row.kind === 'workTask') return [row.id];
+    if(row.kind === 'workTask') return row.item.subworkChildren?.map(task=>String(task.id)) || [row.id];
     if(row.kind === 'work'){
       const tasks = activeWorkTasks(row.item);
-      return tasks.length ? tasks.map(task => String(task.id)) : [row.id];
+      return tasks.length ? tasks.filter(task=>!tasks.some(child=>child.parentTaskId===task.id)).map(task => String(task.id)) : [row.id];
     }
-    const ids = activeWorkTasks(row.item).map(task => String(task.id));
+    const ids = activeWorkTasks(row.item).filter(task=>!activeWorkTasks(row.item).some(child=>child.parentTaskId===task.id)).map(task => String(task.id));
     const walk = nodes => (nodes || []).filter(node => node && !node.trashed).forEach(node => {
       if(isStage(node)){ ids.push(...activeWorkTasks(node).map(task => String(task.id))); walk(node.subtasks); }
       else ids.push(...leafIds(byId.get(String(node.id))));
@@ -237,7 +247,7 @@ export function effectiveDependencyLinks(items){
 
   const links = [];
   candidates.forEach(consumer => {
-    if(consumer.kind === 'stage') return;
+    if(consumer.kind === 'stage' || consumer.item.subworkChildren?.length) return;
     if(consumer.kind === 'work' && activeWorkTasks(consumer.item).length) return;
     if(!rangeFor(consumer)) return;
     dependencyRows(consumer.item).forEach(dependency => {
@@ -273,6 +283,9 @@ export function validatePredecessors(items, consumerId, selectedIds){
   if(selected.some(id => selected.some(other => id !== other && descendants.get(id)?.has(other)))) return { ok:false, code:'duplicate_scope' };
   const edges = new Map(candidates.map(row => [row.id, [...dependencyRows(row.item).map(link=>link.predecessorId), ...(row.item.executionHistory||[]).filter(entry=>entry?.type==='planned_pause' && !entry.resumedOn && entry.resumePredecessorId).map(entry=>String(entry.resumePredecessorId))]]));
   edges.set(String(consumerId), selected);
+  for(const row of candidates){
+    if(row.item.subworkChildren?.length)edges.set(row.id,row.item.subworkChildren.map(task=>String(task.id)));
+  }
   const visiting = new Set(); const visited = new Set();
   const cycle = id => {
     if(visiting.has(id)) return true; if(visited.has(id)) return false;
@@ -390,16 +403,22 @@ export function rescheduleAutomaticTasks(project){
     visiting.add(id);
     const {item,kind}=row;
     let range;
-    if(kind==='workTask'){
+    if(kind==='workTask' && item.subworkChildren?.length){
+      const childRanges=item.subworkChildren.map(child=>resolve(String(child.id)));
+      range=childRanges.every(Boolean)?{start:Math.min(...childRanges.map(value=>value.start)),end:Math.max(...childRanges.map(value=>value.end))}:null;
+    }else if(kind==='workTask'){
       const duration=item.scheduleDuration;
-      const start=item.scheduleMode==='auto' && Number.isInteger(duration) && duration>0
-        && !item.actualStart && !item.completed && !item.done && !['pending_approval','approved'].includes(item.completionState)
-        ? requiredScheduleStart(item,duration,resolve):null;
+      const automatic=item.scheduleMode==='auto' && Number.isInteger(duration) && duration>0
+        && !item.actualStart && !item.completed && !item.done && !['pending_approval','approved'].includes(item.completionState);
+      const start=automatic?requiredScheduleStart(item,duration,resolve):null;
       if(start!==null){
         const end=start+duration-1;
         range={start,end};
         const scheduleStart=scheduleDate(start),scheduleEnd=scheduleDate(end);
         if(item.scheduleStart!==scheduleStart||item.scheduleEnd!==scheduleEnd)changes.set(id,{scheduleStart,scheduleEnd});
+      }else if(automatic && item.isSubwork){
+        range=null;
+        if(item.scheduleStart || item.scheduleEnd)changes.set(id,{scheduleStart:'',scheduleEnd:''});
       }else range=scheduleRangeOf({...item,kind:'workTask'});
     }else{
       const children=[...(item.workTasks||[]),...(item.subtasks||[])].filter(child=>child&&!child.trashed);
