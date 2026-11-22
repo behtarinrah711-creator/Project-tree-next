@@ -228,16 +228,16 @@ test('Work Task create, edit, connector and modes share one persisted model', as
     expect(grip.x + grip.width).toBeLessThanOrEqual(content.x);
     expect(connector.x).toBeGreaterThanOrEqual(content.x + content.width - 1);
     const taskTitle = await task.locator('.wbs-task-title').boundingBox();
-    const taskChip = await task.locator('.wbs-task-secondary .wbs-type-chip').boundingBox();
+    const taskChip = await task.locator('.wbs-task-main .wbs-type-chip').boundingBox();
     const arrow = await work.locator('.wbs-chev').boundingBox();
-    expect(Math.abs(taskTitle.x + taskTitle.width - (taskChip.x + taskChip.width))).toBeLessThanOrEqual(1);
-    expect(taskChip.y).toBeGreaterThanOrEqual(taskTitle.y + taskTitle.height);
+    expect(taskChip.x + taskChip.width).toBeLessThanOrEqual(taskTitle.x);
+    expect(Math.abs(taskChip.y + taskChip.height / 2 - (taskTitle.y + taskTitle.height / 2))).toBeLessThanOrEqual(1);
     expect(Math.abs(connector.x + connector.width - (arrow.x + arrow.width / 2))).toBeLessThanOrEqual(1);
   }
   await expect(work.locator('.wbs-type-chip')).toHaveCount(0);
   await expect(task.locator('.wbs-type-chip')).toHaveCount(1);
   await expect(task.locator('.wbs-check')).toHaveCount(0);
-  await expect(task.locator('.wbs-task-secondary')).toHaveText('خرید');
+  await expect(task.locator('.wbs-task-main .wbs-type-chip')).toHaveText('خرید');
   await expect(task.locator('.wbs-task-assignee, .wbs-task-contractor, .wbs-task-priority')).toHaveCount(0);
   await expect(task.locator('.wbs-row')).toHaveCount(0);
   expect(await task.evaluate(element => element.scrollWidth <= element.clientWidth)).toBe(true);
