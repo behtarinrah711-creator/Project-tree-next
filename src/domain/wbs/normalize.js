@@ -57,14 +57,16 @@ export function statusOf(item){
 export function progressOf(item){
   const tasks = (Array.isArray(item?.workTasks) ? item.workTasks : []).filter(task => task && !task.trashed);
   if(tasks.length){
-    const total = tasks.reduce((sum, task) => {
+    const top=tasks.filter(task=>!task.parentTaskId);
+    const total = top.reduce((sum, task) => {
       const weight = Number(task.weight);
       return sum + (Number.isFinite(weight) && weight > 0 ? weight : 1);
     }, 0);
-    const weighted = tasks.reduce((sum, task) => {
+    const weighted = top.reduce((sum, task) => {
       const weight = Number(task.weight);
       const safeWeight = Number.isFinite(weight) && weight > 0 ? weight : 1;
-      const rawProgress = task.completed || task.done ? 100 : Number(task.progress);
+      const children=tasks.filter(child=>child.parentTaskId===task.id);
+      const rawProgress = children.length?progressOf({workTasks:children.map(child=>({...child,parentTaskId:''}))}):task.completed || task.done ? 100 : Number(task.progress);
       const progress = Number.isFinite(rawProgress) ? Math.max(0, Math.min(100, rawProgress)) : 0;
       return sum + progress * safeWeight;
     }, 0);
@@ -110,7 +112,10 @@ export function taskCostOf(task){
 export function lineTotal(item){
   if(!canHoldWorkTasks(item)) return 0;
   const tasks = (Array.isArray(item?.workTasks) ? item.workTasks : []).filter(task => task && !task.trashed);
-  if(tasks.length) return tasks.reduce((sum, task) => sum + taskCostOf(task), 0);
+  if(tasks.length){
+    const parents=new Set(tasks.map(task=>task.parentTaskId).filter(Boolean));
+    return tasks.reduce((sum, task) => sum + (parents.has(task.id)?0:taskCostOf(task)), 0);
+  }
   if((item.subtasks || []).some(child=>child && !child.trashed)) return 0;
   const manualCost = item?.manualCost == null ? NaN : Number(item.manualCost);
   if(Number.isFinite(manualCost)) return Math.max(0, manualCost);

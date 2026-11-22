@@ -19,13 +19,35 @@ export function taskProgressOf(task){
 
 export { taskCostOf };
 
+export function inheritSubworkFields(task, work){
+  if(!task?.isSubwork || !work)return task;
+  const contractorContactId=String(work.contractorContactId || work.counterpartyContactId || '');
+  return {
+    ...task,
+    type:work.type || '',
+    assigneeContactId:String(work.assigneeContactId || ''),
+    contractorContactId,
+    counterpartyContactId:String(work.counterpartyContactId || contractorContactId),
+    activityId:String(work.activityId || work.activityIds?.[0] || work.activities?.[0] || ''),
+    activityIds:work.activityIds || work.activities || [],
+    activities:work.activityIds || work.activities || [],
+    executionApproverContactIds:executionApproverIds(work),
+    approvalContactId:executionApproverIds(work)[0] || '',
+    hasContract:false,
+  };
+}
+
 export function activeWorkTasks(work){
   return (Array.isArray(work?.workTasks) ? work.workTasks : [])
     .filter(task => task && !task.trashed);
 }
 
 export function workTaskProgress(work){
-  const tasks = activeWorkTasks(work);
+  const all = activeWorkTasks(work);
+  const tasks=all.filter(task=>!task.parentTaskId).map(task=>{
+    const children=all.filter(child=>child.parentTaskId===task.id);
+    return children.length?{...task,completed:false,done:false,progress:workTaskProgress({workTasks:children.map(child=>({...child,parentTaskId:''}))})}:task;
+  });
   if(!tasks.length) return null;
   const total = tasks.reduce((sum, task) => sum + taskWeightOf(task), 0);
   const weighted = tasks.reduce((sum, task) => sum + taskProgressOf(task) * taskWeightOf(task), 0);
@@ -61,7 +83,7 @@ export function normalizeWorkTask(task, workId = ''){
     id:String(task.id || ''),
     workId:String(workId || task.workId || ''),
     title:String(task.title || task.text || '').trim(),
-    type:WORK_TYPES.includes(task.type) ? task.type : '',
+    type:task.isSubwork || WORK_TYPES.includes(task.type) ? String(task.type || '') : '',
     scheduleStart:/^\d{4}\/\d{2}\/\d{2}$/.test(String(task.scheduleStart || '')) ? task.scheduleStart : '',
     scheduleEnd:/^\d{4}\/\d{2}\/\d{2}$/.test(String(task.scheduleEnd || '')) ? task.scheduleEnd : '',
     priority:TASK_PRIORITIES.includes(task.priority) ? task.priority : 'normal',

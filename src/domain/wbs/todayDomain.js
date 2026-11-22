@@ -101,11 +101,14 @@ export function collectTodayItems(project, today = tehranTodayJalali(), {include
     if(canHoldWorkTasks(node)){
       const tasks = activeWorkTasks(node);
       if(tasks.length){
+        const parents=new Set(tasks.map(task=>task.parentTaskId).filter(Boolean));
         tasks.forEach(task => {
+          if(parents.has(task.id))return;
+          const parent=tasks.find(row=>row.id===task.parentTaskId);
           if(task.type === 'خرید' || (!includeApproved && executionStatus(task) === 'approved')) return;
           result.push({
             id:task.id, kind:'task', entity:task, work:node, workId:node.id,
-            path:[...ancestors, title].filter(Boolean), mode:timeState(task, today),
+            path:[...ancestors, title, parent?.title].filter(Boolean), mode:timeState(task, today),
           });
         });
       }else if(isWork(node) && node.type !== 'خرید' && (includeApproved || executionStatus(node) !== 'approved')){

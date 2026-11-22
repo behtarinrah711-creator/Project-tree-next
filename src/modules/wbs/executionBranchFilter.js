@@ -37,9 +37,12 @@ export function searchExecutionBranches(node,query){
 }
 
 export function selectableWbsTree(project){
+  const taskTree=(tasks,workId,parentId='')=>tasks.filter(task=>task&&!task.trashed && (task.parentTaskId||'')===parentId).map(task=>({
+    id:'task:'+workId+':'+task.id,title:task.title||'کار',children:taskTree(tasks,workId,task.id),
+  }));
   const walk=nodes=>(nodes||[]).filter(node=>node&&!node.trashed).map(node=>({
     id:'branch:'+node.id,title:node.text||node.title||'بدون عنوان',children:[
-      ...walk(node.subtasks),...(node.workTasks||[]).filter(task=>task&&!task.trashed).map(task=>({id:'task:'+node.id+':'+task.id,title:task.title||'کار',children:[]})),
+      ...walk(node.subtasks),...taskTree(node.workTasks||[],node.id),
     ],
   }));
   return {id:'',title:'انتخاب مرحله یا کار',children:walk(project.tasks)};

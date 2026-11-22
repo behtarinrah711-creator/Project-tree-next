@@ -67,7 +67,8 @@ export function collectPlannedWorks(tasksRoot, { includeUndated = false } = {}){
   walkTree(tasksRoot, item => {
     if(!canHoldWorkTasks(item)) return;
     const tasks = activeWorkTasks(item);
-    const units = tasks.length ? tasks : [item];
+    const parents=new Set(tasks.map(task=>task.parentTaskId).filter(Boolean));
+    const units = tasks.length ? tasks.filter(task=>!parents.has(task.id)) : [item];
     units.forEach(unit => {
       const start = scheduleStartOf(unit);
       const amount = tasks.length ? taskCostOf(unit) : lineTotal(item);

@@ -2,7 +2,7 @@ import {confirmSaosaWorkspaceSave,isSaosaHost,saosaWorkspaceSaveDiagnostic} from
 import {findInTree} from '../../domain/wbs/normalize.js';
 import { wbsApi } from '../../domain/wbs/wbsApi.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
-import { lineTotal, progressWeightOf } from '../../domain/wbs/normalize.js';
+import { isWork, lineTotal, progressWeightOf } from '../../domain/wbs/normalize.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
@@ -33,13 +33,18 @@ function numericRow(root, name, label, value, money=false){
   return control;
 }
 
+function showsManualCost(item){
+  const tasks=activeWorkTasks(item);
+  return !tasks.length || (isWork(item) && tasks.some(task=>task.isSubwork));
+}
+
 export function openStageEditSheet({projectId,stage,onChanged,onDelete,readOnly=false}={}){
   let titleEditor;
   let saving=false;
   const overlay=openWbsSheet({
     title:'مرحله:',presentation:'stage-create',autoFocus:false,readOnly,
     body(root){
-      if(!activeWorkTasks(stage).length) numericRow(root,'manualCost','هزینه',lineTotal(stage),true);
+      if(showsManualCost(stage)) numericRow(root,'manualCost',isWork(stage)?'مبلغ':'هزینه',stage.manualCost ?? (activeWorkTasks(stage).length?0:lineTotal(stage)),true);
       numericRow(root,'progressWeight','وزن مرحله',progressWeightOf(stage));
       const description=document.createElement('textarea');
       description.name='description';
@@ -65,7 +70,7 @@ export function openStageEditSheet({projectId,stage,onChanged,onDelete,readOnly=
       const amount=cost?Number(cost.dataset.value):null;
       if(!title || !Number.isFinite(weight) || weight<=0 || (cost && (!Number.isFinite(amount)||amount<0))) return false;
       const latest=wbsApi.get(projectId,stage.id);
-      const costPatch=cost && !activeWorkTasks(latest).length?{manualCost:amount}:{};
+      const costPatch=cost && showsManualCost(latest)?{manualCost:amount}:{};
       const saved=wbsApi.updateItem(projectId,stage.id,{
         text:title,progressWeight:weight,description:root.querySelector('[name="description"]').value.trim(),...costPatch,
       });
