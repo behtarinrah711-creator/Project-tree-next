@@ -343,7 +343,7 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
   sheet.classList.add('contract-addendum-form');
 }
 
-function statementPreviewContent(project,contract,record){
+function statementPreviewContent(project,contract,record,signature=null){
   const title=statementTitle(record);
     const documentNode=element('section','contract-export-document');
     documentNode.dir='rtl';
@@ -372,8 +372,19 @@ function statementPreviewContent(project,contract,record){
         ['مبلغ درخواستی این نوبت',money(record.statementAmount||0)],['پرداخت‌شده',money(record.paidAmount||0)],
         ['وضعیت تأیید',!hasAdvanceSubmission(record)?'ارسال نشده':record.approvalStatus==='approved'?'تأیید شده':record.approvalStatus==='pending'?'در انتظار تأیید':'ارسال نشده'],
         ['وضعیت مالی',approvedStatement(record)?'تأیید شده':record.accountingStatus==='sent'?'در انتظار تأیید':record.accountingStatus==='rejected'?'برگشت خورده':'ارسال نشده'],
-        ...(record.note?[['توضیحات',record.note]]:[]),
+        ...(record.note||signature?[['توضیحات',record.note||'']]:[]),
       ]);
+      if(signature){
+        const cell=detail.lastElementChild.lastElementChild.lastElementChild;
+        const note=element('div','contract-advance-note');
+        const signer=element('div','contract-advance-note-signature');
+        const image=element('img');
+        image.src=signature.image;
+        image.alt='امضا';
+        signer.append(image,element('div','',signature.name));
+        note.append(element('span','contract-advance-note-text',record.note||''),signer);
+        cell.replaceChildren(note);
+      }
       detail.classList.add('contract-document-quantities');
       summary.append(detail);
       return documentNode;
@@ -614,7 +625,17 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
     onEdit:writable?()=>editable?openStatementForm(project,contract,onChanged,record):toast(title+' در وضعیت فعلی قابل ویرایش نیست'):undefined,
     onExport:trigger=>{
       const documentNode=buildDocument();
-      openContractExport(project,{title,contractNo:contract.contractNo||''},{trigger,markup:documentNode.outerHTML});
+      let inlineSignature=null;
+      if(record.statementType==='advance'){
+        const approver=currentExecutionActor(project);
+        const approvalEvent=record.approvalHistory?.findLast(event=>event.action==='approve' && event.actor?.id===approver.id);
+        const approved=approver.contactId && (record.approvedContactIds||[]).map(String).includes(approver.contactId);
+        const name=approved && approvalEvent ? approver.name || approvalEvent.actor.name : '';
+        inlineSignature={name,build:image=>statementPreviewContent(
+          project,contract,record,image&&name?{image,name}:null
+        ).outerHTML};
+      }
+      openContractExport(project,{title,contractNo:contract.contractNo||''},{trigger,markup:documentNode.outerHTML,inlineSignature});
     },
     onDelete:deletable?()=>{
       if(!canDeleteContractDocument(record)){toast(title+' در وضعیت فعلی قابل حذف نیست');return;}
