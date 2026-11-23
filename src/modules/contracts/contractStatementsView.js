@@ -361,8 +361,8 @@ function contractorPaymentDetails(project,contract,{tabular=false}={}){
     const bankAccounts=Array.isArray(accounts) && accounts.length?accounts:[{
       card:contractor.cards,iban:contractor.ibans,account:contractor.accounts,
     }];
+    const rows=[];
     for(const account of bankAccounts){
-      const rows=[];
       for(const [key,label] of paymentFields){
         const raw=account?.[key];
         const values=(Array.isArray(raw)?raw:[raw]).map(value=>String(value??'').trim()).filter(Boolean);
@@ -375,9 +375,11 @@ function contractorPaymentDetails(project,contract,{tabular=false}={}){
         }));
         rows.push([label,cell]);
       }
-      if(rows.length)details.append(table(rows));
     }
-    return details.childNodes.length?details:null;
+    if(!rows.length)return null;
+    const paymentTable=table(rows);
+    paymentTable.style.borderCollapse='collapse';
+    return paymentTable;
   }
   if(Array.isArray(accounts) && accounts.length){
     for(const account of accounts){
@@ -436,6 +438,7 @@ function statementPreviewContent(project,contract,record,signature=null){
         ...(paymentDetails?[['اطلاعات پرداخت',paymentDetails]]:[]),
         ...(record.note||signature?[['توضیحات',record.note||'']]:[]),
       ]);
+      if(paymentDetails)paymentDetails.parentElement.previousElementSibling.style.verticalAlign='middle';
       if(signature){
         const cell=detail.lastElementChild.lastElementChild.lastElementChild;
         const note=element('div','contract-advance-note');
