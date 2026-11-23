@@ -216,7 +216,7 @@
 .wbs-branch-layout .wbs-work-task.is-complete .wbs-task-title { text-decoration: none; }
 .wbs-branch-layout .wbs-row.is-done .wbs-title { opacity: 1; }
 
-.wbs-view-frame.is-standard-view .wbs-branch-layout .wbs-row.is-stage {
+.wbs-view-frame.is-standard-view .wbs-branch-layout .wbs-row:is(.is-stage,.is-work) {
   background: #fff;
 }
 
