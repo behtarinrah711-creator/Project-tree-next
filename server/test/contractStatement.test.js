@@ -121,7 +121,7 @@ test('interim statements deduct a single percentage of the paid advance from com
   assert.equal(save(20).ok,false);
 });
 
-test('advance numbering starts independently and does not reuse deleted numbers',()=>{
+test('advance numbering reuses only deleted numbers that were never submitted',()=>{
   const parent={id:'c',accountingStatus:'accepted',advanceRows:[
     {id:'row',pricingMode:'agreed',agreedPrice:100},
   ]};
@@ -132,6 +132,11 @@ test('advance numbering starts independently and does not reuse deleted numbers'
   assert.equal(first.sequence,1);
   assert.equal(save(first.id,first).sequence,1);
   project.contractStatusReports.push({...first,trashed:true});
+  assert.equal(save('advance-two').sequence,1);
+  project.contractStatusReports[1].approvalHistory=[{action:'submit'},{action:'withdraw_submission'}];
+  assert.equal(save('advance-two').sequence,2);
+  project.contractStatusReports[1].approvalHistory=[];
+  project.contractStatusReports[1].paidAmount=20;
   assert.equal(save('advance-two').sequence,2);
 });
 
