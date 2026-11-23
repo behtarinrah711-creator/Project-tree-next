@@ -1,3 +1,4 @@
+import {canDeleteContractDocument} from '../../src/domain/contractHandoff.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { saveStatement, recordStatementPayment } from '../src/contractStatement.js';
@@ -132,4 +133,23 @@ test('advance numbering starts independently and does not reuse deleted numbers'
   assert.equal(save(first.id,first).sequence,1);
   project.contractStatusReports.push({...first,trashed:true});
   assert.equal(save('advance-two').sequence,2);
+});
+
+test('legacy unsent advances can be edited and deleted before submission',()=>{
+  const parent={id:'c',accountingStatus:'accepted',advanceRows:[
+    {id:'row',pricingMode:'agreed',agreedPrice:100},
+  ]};
+  const legacy={id:'a',contractId:'c',statementType:'advance',status:'final',approvalStatus:'pending',statementAmount:30};
+  const project={contractStatusReports:[legacy]};
+  const request={statementType:'advance',date:'1405/09/01',advanceRowKey:'row',amount:40};
+  const actor={id:'author'};
+  assert.equal(canDeleteContractDocument(legacy),true);
+  const edited=saveStatement(project,parent,legacy,legacy.id,request,actor,2);
+  assert.equal(edited.ok,true);
+  assert.equal(edited.contract.status,'draft');
+  assert.equal(edited.contract.statementAmount,40);
+  const submitted={...legacy,approvalHistory:[{action:'submit',actor,at:1}]};
+  assert.equal(canDeleteContractDocument(submitted),false);
+  assert.equal(saveStatement(project,parent,submitted,legacy.id,request,actor,2).ok,false);
+  assert.equal(canDeleteContractDocument({...legacy,paidAmount:1}),false);
 });
