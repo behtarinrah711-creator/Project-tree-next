@@ -49,7 +49,7 @@ export function renderContractProgress(documentRef,contract,project,onOpen,openC
     const label=documentRef.createElement('span');label.className='contract-progress-label';label.textContent=step.label;
     const dot=documentRef.createElement('span');dot.className='contract-progress-dot';dot.setAttribute('aria-hidden','true');
     if(partial){
-      dot.style.cssText='background:#a54c00;border-color:#a54c00;color:white;display:grid;place-items:center;font-size:10px;line-height:1';
+      dot.classList.add('contract-progress-dot--partial');
       dot.textContent='✓';
     }
     if(onOpen){
