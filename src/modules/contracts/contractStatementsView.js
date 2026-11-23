@@ -138,7 +138,7 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
   const payableAdvanceRows=advanceRows.filter(row=>row.balance>0);
   let advanceRow=payableAdvanceRows.find(row=>row.key===record?.advanceRow?.key) ||
     (payableAdvanceRows.length===1?payableAdvanceRows[0]:null);
-  let advanceAmount=advanceRow?record?.statementAmount ?? '':'';
+  let advanceAmount=record?.statementAmount ?? '';
   const {paid:paidAdvance,available:availableAdvance}=contractAdvanceDeductionBalance(source,contract.id,record?.id);
   let deductionPercent=record?.advanceDeductionPercent;
   const legacyDeduction=record?.advanceDeduction||0;
@@ -180,8 +180,8 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
             const choices=payableAdvanceRows.map(row=>({value:row.key,label:'پیش‌پرداخت '+format.format(row.number)}));
             ftSelectRow(fields,'ردیف پرداخت',choices.find(choice=>choice.value===advanceRow?.key)?.label||'انتخاب کنید',()=>
               openStaticChoicePicker('ردیف پرداخت','پیش‌پرداخت‌های قرارداد',choices,advanceRow?.key,key=>{
+                if(advanceRow && advanceRow.key!==key)advanceAmount='';
                 advanceRow=payableAdvanceRows.find(row=>row.key===key);
-                advanceAmount='';
                 refresh();
               }));
           }
