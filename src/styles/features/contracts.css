@@ -2101,3 +2101,7 @@ textarea.contract-project-item-input{
 #contractPreviewPage [data-document-kind="advance"] > p{font-size:12px;margin:0 0 8px;}
 #contractPreviewPage .contract-advance-print .contract-financial-table{font-size:12px;line-height:1.65;}
 #contractPreviewPage .contract-advance-print .contract-financial-table :is(th,td){padding:5px 7px;}
+
+.contract-advance-print .contract-document-payment-table{width:100%;border-collapse:collapse;border-spacing:0;margin:0;}
+.contract-advance-print .contract-document-payment-table :is(th,td){border:1px solid var(--divider,#aaa);}
+.contract-advance-print .contract-document-quantities > tbody > tr > .contract-document-payment-heading{vertical-align:middle;}
