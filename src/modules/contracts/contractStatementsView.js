@@ -575,9 +575,8 @@ function openAdvanceStep(project,contract,record,onChanged,{finance=false,approv
           category:'advance-receipts',files,readOnly,singleFile:!readOnly,onError:toast,label:'افزودن فیش پرداخت',buttonLabel:true});
         for(const payment of record.payments||[]){
           const entry=showHistory({payment,showPaymentAmount:false}).querySelector('.contract-history-entry');
-          const details=element('div');
+          const details=element('div','contract-payment-receipt-row');
           details.dir='rtl';
-          details.style.cssText='display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center';
           const receipt=element('section');
           if(payment.receipts?.length)uploaders.push(attach(receipt,payment.receipts,true));
           details.append(receipt,element('strong','',money(payment.amount)));
