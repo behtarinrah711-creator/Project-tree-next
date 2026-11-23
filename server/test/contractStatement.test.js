@@ -121,7 +121,7 @@ test('interim statements deduct a single percentage of the paid advance from com
   assert.equal(save(20).ok,false);
 });
 
-test('advance numbering reuses only deleted numbers that were never submitted',()=>{
+test('advance numbering restarts when all advance requests are deleted',()=>{
   const parent={id:'c',accountingStatus:'accepted',advanceRows:[
     {id:'row',pricingMode:'agreed',agreedPrice:100},
   ]};
@@ -134,10 +134,9 @@ test('advance numbering reuses only deleted numbers that were never submitted',(
   project.contractStatusReports.push({...first,trashed:true});
   assert.equal(save('advance-two').sequence,1);
   project.contractStatusReports[1].approvalHistory=[{action:'submit'},{action:'withdraw_submission'}];
-  assert.equal(save('advance-two').sequence,2);
-  project.contractStatusReports[1].approvalHistory=[];
-  project.contractStatusReports[1].paidAmount=20;
-  assert.equal(save('advance-two').sequence,2);
+  assert.equal(save('advance-two').sequence,1);
+  project.contractStatusReports.push({...first,id:'active',sequence:2});
+  assert.equal(save('advance-three').sequence,3);
 });
 
 test('legacy unsent advances can be edited and deleted before submission',()=>{
