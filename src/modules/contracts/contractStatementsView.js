@@ -357,7 +357,7 @@ function contractorPaymentDetails(project,contract,{tabular=false}={}){
   const details=element('div');
   const accounts=contractor.bankAccounts;
   if(tabular){
-    const paymentFields=[...fields.slice(2),['bankName','نام بانک'],fields[0]];
+    const paymentFields=[...fields.slice(2),['bankName','نام بانک'],['ownerName','صاحب حساب']];
     const bankAccounts=Array.isArray(accounts) && accounts.length?accounts:[{
       card:contractor.cards,iban:contractor.ibans,account:contractor.accounts,
     }];
