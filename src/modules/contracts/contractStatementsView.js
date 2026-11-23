@@ -6,7 +6,7 @@ import {openContractPreview} from './contractPreviewView.js';
 import {statementWorkRows,resolveStatementWork} from '../../domain/statementWork.js';
 import { contactApi } from '../../domain/contactApi.js';
 import { projectRepository } from '../../data/projectRepository.js';
-import { canReviewContract, canEditAdvanceRequest, hasAdvanceSubmission, contractApproverIds } from '../../domain/contractApproval.js';
+import { canReviewContract, canRevokeContractApproval, canWithdrawAdvanceRequest, canEditAdvanceRequest, hasAdvanceSubmission, contractApproverIds } from '../../domain/contractApproval.js';
 import { accountStatements, approvedStatement, statementAccount, statementAddenda, contractStatementTotals, finalStatementSummary, statementAmounts, statementsFor, contractAdvanceDeductionBalance, advanceDeductionFromPercent, contractAdvanceRows } from '../../domain/contractStatements.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
@@ -428,16 +428,33 @@ function statementPreviewContent(project,contract,record,signature=null){
       summary.append(detail);
       return documentNode;
     }
-    documentNode.append(element('h2','',title),element('p','',contract.contractNo||''),element('p','',formatJalaliDisplay(record.date)||''),
-      operationSummary(record.operations||[]),table([['کارکرد این سند',money(record.statementAmount??record.stageAmount??0)],['کارکرد تجمعی',money(record.cumulativeAmount||0)],['حسن انجام کار',money(record.retentionAmount||0)],['کسر پیش‌پرداخت',money(record.advanceDeduction||0)],['خالص قابل پرداخت',money(record.netAmount??record.approvedAmount??record.stageAmount??0)],['پرداخت‌شده',money(record.paidAmount||0)]]));
+    const heading=element('h2','contract-advance-print-heading',title);
+    heading.append(element('br'),element('span','contract-advance-print-subtitle',contractDisplayTitle(project,contract)));
+    const paymentDetails=contractorPaymentDetails(project,contract);
+    const amount=Number(contract.amount);
+    const contractAmount=contract.amount!=null && contract.amount!=='' && Number.isFinite(amount) && !contract.remeasurement
+      ? money(amount):'مبلغ قطعی تعیین نشده';
+    const details=table([
+      ['شماره قرارداد',contract.contractNo||'—'],
+      ['مسیر قرارداد',contractProjectPath(project,contract)||'—'],
+      ['تاریخ صورت‌وضعیت',formatJalaliDisplay(record.date)||'—'],
+      ['مبلغ کل قرارداد',contractAmount],
+      ...(paymentDetails?[['اطلاعات پرداخت',paymentDetails]]:[]),
+      ...(record.note?[['توضیحات',record.note]]:[]),
+    ]);
+    const operations=operationSummary(record.operations||[]);
+    const totals=table([['کارکرد این سند',money(record.statementAmount??record.stageAmount??0)],['کارکرد تجمعی',money(record.cumulativeAmount||0)],['حسن انجام کار',money(record.retentionAmount||0)],['کسر پیش‌پرداخت',money(record.advanceDeduction||0)],['خالص قابل پرداخت',money(record.netAmount??record.approvedAmount??record.stageAmount??0)],['پرداخت‌شده',money(record.paidAmount||0)]]);
+    for(const section of [details,operations,totals])section.classList.add('contract-document-quantities');
+    documentNode.append(heading,details);
+    if(record.operations?.length)documentNode.append(element('h3','','عملیات'),operations);
+    documentNode.append(element('h3','','خلاصه مالی'),totals);
     return documentNode;
   }
 
 function openAdvanceStep(project,contract,record,onChanged,{finance=false,approval,step,openSheet=openWbsSheet}={}){
   const steps=contractProgressSteps(record,project);
   const writable=!finance && !approval && canWriteProjectModule(project.id,'contracts');
-  const canWithdraw=writable && record.approvalStatus==='pending' && hasAdvanceSubmission(record) &&
-    record.submittedBy?.id===currentExecutionActor(project).id;
+  const canWithdraw=writable && canWithdrawAdvanceRequest(record);
   const active=step || (canWithdraw && steps.find(item=>item.id==='advance-submit')) ||
     steps.find(item=>!item.done) || steps.at(-1);
   const financeWritable=finance && canWriteProjectModule(project.id,financeScope(project.id));
@@ -504,9 +521,14 @@ function openAdvanceStep(project,contract,record,onChanged,{finance=false,approv
             showStatus('در انتظار تأیید',name);
           }
           if(approval?.action){
-            root.append(actionButton(approval.action.textContent,()=>approval.action.click()));
-            if(approval.reject)root.append(renderInlineContractReject(approval.reject,onChanged));
+            if(canReviewContract(record,currentExecutionActor(project))){
+              root.append(actionButton(approval.action.textContent,()=>openConfirm('این مورد تأیید شود؟',()=>run('approve_statement'))));
+            }
           }
+        }
+        if(approval?.reject && (canReviewContract(record,currentExecutionActor(project)) ||
+          canRevokeContractApproval(record,currentExecutionActor(project)))){
+          root.append(renderInlineContractReject(approval.reject,onChanged));
         }
       }
       if(active.id==='finance'){
