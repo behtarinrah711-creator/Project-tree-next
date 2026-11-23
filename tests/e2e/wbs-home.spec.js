@@ -231,6 +231,7 @@ test('Work Task create, edit, connector and modes share one persisted model', as
     const taskTitle = await task.locator('.wbs-task-title').boundingBox();
     const taskChip = await task.locator('.wbs-task-main .wbs-type-chip').boundingBox();
     const arrow = await work.locator('.wbs-chev').boundingBox();
+    expect(Math.abs(taskChip.x - (parentGrip.x + 62))).toBeLessThanOrEqual(1);
     expect(taskChip.x + taskChip.width).toBeLessThanOrEqual(taskTitle.x);
     expect(Math.abs(taskChip.y + taskChip.height / 2 - (taskTitle.y + taskTitle.height / 2))).toBeLessThanOrEqual(1);
     expect(Math.abs(connector.x + connector.width - (arrow.x + arrow.width / 2))).toBeLessThanOrEqual(1);

@@ -126,6 +126,8 @@
 .wbs-branch-layout {
   --wbs-tree-step: clamp(28px, 8vw, 40px);
   --wbs-tree-line: #7e8792;
+  --wbs-type-column-start: 70px;
+  --wbs-type-column-width: 64px;
   direction: rtl;
 }
 
@@ -155,7 +157,7 @@
   gap: 8px;
 }
 
-.wbs-branch-layout .wbs-title { padding-inline-start: 0; }
+.wbs-branch-layout .wbs-title { position: static; padding-inline-start: 0; }
 .wbs-branch-layout .wbs-row.is-work:has(.wbs-chev[aria-expanded="true"])::after { content: none; }
 
 .wbs-branch-layout :is(.wbs-chev,.wbs-chev-spacer) {
@@ -165,9 +167,22 @@
   min-height: 32px;
   flex-basis: 32px;
   border: 0;
-  background: linear-gradient(var(--wbs-node-color), var(--wbs-node-color)) center / 12px 12px no-repeat;
+  position: relative;
+  background: transparent;
   color: #fff;
   z-index: 3;
+}
+
+.wbs-branch-layout :is(.wbs-chev,.wbs-chev-spacer)::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 17px;
+  height: 17px;
+  border-radius: 3px;
+  background: var(--wbs-node-color);
+  pointer-events: none;
 }
 
 .wbs-branch-layout .wbs-chev-icon { display: none; }
@@ -175,10 +190,12 @@
 .wbs-branch-layout .wbs-chev { font-size: 0; }
 .wbs-branch-layout .wbs-chev::before {
   content: '';
-  width: 4px;
-  height: 4px;
-  border-right: 1px solid currentColor;
-  border-bottom: 1px solid currentColor;
+  position: relative;
+  z-index: 1;
+  width: 6px;
+  height: 6px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
   transform: translateY(-1px) rotate(45deg);
 }
 .wbs-branch-layout .wbs-chev[aria-expanded="false"]::before {
@@ -198,6 +215,14 @@
 }
 .wbs-branch-layout .wbs-work-task.is-complete .wbs-task-title { text-decoration: none; }
 .wbs-branch-layout .wbs-row.is-done .wbs-title { opacity: 1; }
+
+.wbs-view-frame.is-standard-view .wbs-branch-layout .wbs-row:is(.is-stage,.is-work) {
+  background: #fff;
+}
+
+.wbs-view-frame.is-standard-view .wbs-branch-layout :is(.wbs-add,.wbs-grip) {
+  font-size: 17px;
+}
 
 .wbs-branch-layout .wbs-add {
   box-sizing: border-box;
@@ -220,8 +245,24 @@
   text-overflow: ellipsis;
 }
 .wbs-branch-layout :is(.wbs-task-main,.wbs-title) > .wbs-type-chip {
-  flex-shrink: 0;
+  position: absolute;
+  left: var(--wbs-type-column-start);
+  top: 50%;
+  max-width: var(--wbs-type-column-width);
+  transform: translateY(-50%);
+  border: 0;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.wbs-branch-layout .wbs-title:has(> .wbs-type-chip) {
+  padding-inline-end: var(--wbs-type-column-width);
+}
+.wbs-branch-layout .wbs-task-main:has(> .wbs-type-chip) {
+  padding-left: calc(var(--wbs-type-column-start) + var(--wbs-type-column-width) - 20px);
+}
+.wbs-branch-layout .wbs-task-branch > .wbs-add ~ .wbs-work-task:has(.wbs-type-chip) .wbs-task-content {
+  padding-left: 0;
 }
 .wbs-branch-layout .wbs-task-secondary:empty { display: none; }
 
@@ -244,7 +285,7 @@
   display: block;
   top: 0;
   bottom: 0;
-  right: calc(var(--wbs-node-center) - var(--wbs-tree-step));
+  right: calc(var(--wbs-node-center) - var(--wbs-tree-step) - 1px);
   border-right: 2px solid var(--wbs-tree-line);
 }
 
@@ -265,14 +306,14 @@
   content: '';
   position: absolute;
   top: 0;
-  right: calc(var(--wbs-node-center) - var(--wbs-tree-step));
+  right: calc(var(--wbs-node-center) - var(--wbs-tree-step) - 1px);
   width: var(--wbs-tree-step);
   height: 50%;
   border-right: 2px solid var(--wbs-tree-line);
   border-bottom: 2px solid var(--wbs-tree-line);
 }
 
-.wbs-branch-layout .wbs-task-branch .wbs-work-task > .wbs-task-connector::before { right: 0; }
+.wbs-branch-layout .wbs-task-branch .wbs-work-task > .wbs-task-connector::before { right: -1px; }
 .wbs-branch-layout .wbs-work-task .wbs-task-connector::after { content: none; }
 
 .wbs-branch-layout :is(.wbs-row:has(> [aria-expanded="true"]) > .wbs-tree-link,.wbs-task-branch:has(> .wbs-subwork-list) > .wbs-work-task > .wbs-task-connector)::after {
@@ -280,14 +321,14 @@
   position: absolute;
   top: 50%;
   bottom: 0;
-  right: var(--wbs-node-center);
-  width: 0;
+  right: calc(var(--wbs-node-center) - 1px);
+  width: 2px;
   height: auto;
   border: 0;
-  border-right: 2px solid var(--wbs-tree-line);
+  background: var(--wbs-tree-line);
 }
 
 .wbs-branch-layout .wbs-task-branch:has(> .wbs-subwork-list) > .wbs-work-task > .wbs-task-connector::after {
   right: auto;
-  left: 0;
+  left: -1px;
 }
