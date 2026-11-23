@@ -145,13 +145,14 @@ export function createFileUploadHandler({pool,sessionSecret,storage}){
       || (scope==='execution:today' && canAccessFiles(row,accountId,false,'reports:reports')));
     const receipt=category==='advance-receipts';
     const advance=receipt && (row?.payload?.contractStatusReports||[]).find(item=>!item.trashed && item.statementType==='advance' && String(item.id)===recordId);
+    const advanceScope=Object.hasOwn(row?.permissions?.modules||row?.permissions||{},'accounting-contracts')?'accounting-contracts':'accounting';
     const receiptAttached=advance && (advance.payments||[]).some(payment=>payment.receipts?.some(file=>file.id===id));
     const invoice=category==='oddjob-invoices';
     const invoiceWork=invoice && (row?.payload?.standaloneWorks||[]).find(item=>!item.trashed && String(item.id)===recordId);
     const invoiceAttached=invoiceWork && (invoiceWork.invoices||[]).some(file=>file.id===id);
     const allowed=receipt ? !!advance && (write
-      ? advance.accountingStatus==='accepted' && advance.netAmount>(advance.paidAmount||0) && canAccessFiles(row,accountId,true,statementScope)
-      : canAccessFiles(row,accountId,false,statementScope) || (receiptAttached && canAccessFiles(row,accountId,false,'contracts')))
+      ? advance.accountingStatus==='accepted' && advance.netAmount>(advance.paidAmount||0) && canAccessFiles(row,accountId,true,advanceScope)
+      : canAccessFiles(row,accountId,false,advanceScope) || (receiptAttached && canAccessFiles(row,accountId,false,'contracts')))
       : invoice ? /^oddjob-[a-z0-9]+$/.test(recordId) && canAccessFiles(row,accountId,write,'execution:today')
       && (!write || !invoiceWork) : category==='reports' ? canUploadReport || canReadReport : category==='contacts'
       ? canAccessFiles(row,accountId,write) || (!write && canReadContractDocument(row,accountId,url.searchParams.get('contractId'),recordId,id))
