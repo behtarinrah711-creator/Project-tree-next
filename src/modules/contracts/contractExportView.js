@@ -8,7 +8,7 @@ import {contractDisplayTitle} from './contractTitle.js';
 
 let view=null;
 let exportRequest=0;
-export async function openContractExport(project,contract,{trigger=null,frozen=false,markup=null}={}){
+export async function openContractExport(project,contract,{trigger=null,frozen=false,markup=null,inlineSignature=null}={}){
   const request=++exportRequest;
   if(!view){
     const source=document.getElementById('notebookExportPage');
@@ -21,10 +21,15 @@ export async function openContractExport(project,contract,{trigger=null,frozen=f
       idPrefix:'contractExport',historyKey:'contract-export',
       paginateDocument:html=>paginateContractMarkup(html),
       documentBuilder:list=>list.markup||'<section class="contract-export-document" dir="rtl">'+contractDocumentMarkup(list.contract,list.activityName,{displayTitle:list.displayTitle||list.title})+'</section>',
-      extraStyles:getContractPageStyles(),
+      extraStyles:getContractPageStyles()+`
+        .contract-advance-note{display:flex;gap:8px;align-items:flex-end;justify-content:space-between}
+        .contract-advance-note-text{min-width:0;overflow-wrap:anywhere}
+        .contract-advance-note-signature{flex:0 0 24mm;max-width:40%;text-align:center;font-size:9px}
+        .contract-advance-note-signature img{display:block;max-width:100%;width:auto;height:10mm;object-fit:contain;margin:0 auto}
+      `,
     });
   }
-  if(markup)return view.open({title:contractDisplayTitle(project,contract),markup,items:[]},{trigger});
+  if(markup)return view.open({title:contractDisplayTitle(project,contract),markup,inlineSignature,items:[]},{trigger});
   const current=frozen?{project,draft:makeRealContractDraft(contract)}:resolveCurrentContractDocument(project,contract);
   project=current.project;
   let draft=current.draft;

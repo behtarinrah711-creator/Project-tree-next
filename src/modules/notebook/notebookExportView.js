@@ -62,9 +62,10 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
       return `<tr><td class="title ${row.depth?'child':'parent'}" style="padding-right:${row.depth*18+1}px">${prefix}${esc(row.item.text)}</td>${showCost?`<td class="cost">${money(amount)} <small>تومان</small></td>`:''}</tr>`;
     }).join('');
     const profile=loadProfile(), includeSignature=!!e.signature?.checked;
-    const signature=includeSignature&&profile.name&&profile.signature?`<div class="signature"><img src="${profile.signature}" alt="امضا"><span>${esc(profile.name)}</span></div>`:'';
+    const inlineSignature=list.inlineSignature;
+    const signature=includeSignature&&!inlineSignature&&profile.name&&profile.signature?`<div class="signature"><img src="${profile.signature}" alt="امضا"><span>${esc(profile.name)}</span></div>`:'';
     const note=String(e.note?.value||'').trim();
-    if(documentBuilder){const html=documentBuilder(list)+(note?`<p class="note">${esc(note)}</p>`:'')+signature;return paginateDocument?paginateDocument(html):html;}
+    if(documentBuilder){const html=(inlineSignature ? inlineSignature.build(includeSignature&&inlineSignature.name&&profile.signature?profile.signature:null) : documentBuilder(list))+(note?`<p class="note">${esc(note)}</p>`:'')+signature;return paginateDocument?paginateDocument(html):html;}
     return `<section class="nb-export-document" dir="rtl"><header><h1>${esc(list.title)}</h1><time>${new Intl.DateTimeFormat('fa-IR').format(new Date())}</time></header><table><thead><tr><th>مورد</th>${showCost?'<th class="cost">هزینه</th>':''}</tr></thead><tbody>${body}${showCost?`<tr class="total"><td>جمع کل</td><td class="cost">${money(total)} <small>تومان</small></td></tr>`:''}</tbody></table>${note?`<p class="note">${esc(note)}</p>`:''}${signature}</section>`;
   }
   const fontBase=iranSansFontBase(windowRef);
@@ -139,7 +140,7 @@ export function installNotebookExportView({documentRef=globalThis.document,windo
   function open(nextList,{trigger=null}={}){
     if(!nextList)return false; list=nextList;returnFocus=trigger;selected=new Set(rows().map(row=>row.key));
     const e=els(), profile=loadProfile();e.title.textContent=documentBuilder?list.title:`خروجی: ${list.title}`;
-    e.numbered.closest('label').hidden=!!documentBuilder;e.cost.closest('label').hidden=!!documentBuilder;e.numbered.checked=false;e.cost.checked=false;e.signature.checked=false;e.signature.disabled=!(profile.name&&profile.signature);e.signatureHint.textContent=e.signature.disabled?'برای امضا: منو ← ثبت مشخصات':'';e.note.value=onNoteChange?String(list.exportNote??''):'';
+    e.numbered.closest('label').hidden=!!documentBuilder;e.cost.closest('label').hidden=!!documentBuilder;e.numbered.checked=false;e.cost.checked=false;e.signature.checked=false;e.signature.disabled=!((list.inlineSignature?list.inlineSignature.name:profile.name)&&profile.signature);e.signatureHint.textContent=e.signature.disabled?(list.inlineSignature&&!list.inlineSignature.name?'امضا از حساب مسئول تأیید قابل درج است':'برای امضا: منو ← ثبت مشخصات'):'';e.note.value=onNoteChange?String(list.exportNote??''):'';
     e.numbered.onchange=render;e.cost.onchange=render;page.classList.remove('hidden');windowRef.KarhaChildHistory?.open?.(historyKey);render();return true;
   }
   windowRef.KarhaChildHistory?.register?.(historyKey,{onPop:()=>close(true)});
