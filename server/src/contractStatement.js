@@ -77,6 +77,7 @@ export function saveStatement(project,parent,current,id,body,actor,at){
 }
 
 export function recordStatementPayment(statement,value,actor,at,receipts=[]){
+  if(statement.statementType==='advance' && receipts.length!==1)return fail('برای هر پرداخت یک فیش واریزی بارگذاری کنید');
   if(statement.accountingStatus!=='accepted' || !Number.isSafeInteger(value) || value<=0 || value>statement.netAmount-(statement.paidAmount||0)){
     return fail('مبلغ پرداخت باید در محدوده مانده قابل پرداخت باشد');
   }

@@ -4,7 +4,7 @@ const historyDate=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{timeZone:'Asia/T
 const historyTime=new Intl.DateTimeFormat('fa-IR',{timeZone:'Asia/Tehran',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
 const moment=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{timeZone:'Asia/Tehran',year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
 
-export function renderContractHistory(documentRef,contract,{finance=false,compact=false,actions,payment}={}){
+export function renderContractHistory(documentRef,contract,{finance=false,compact=false,actions,payment,showPaymentAmount=true}={}){
   const details=documentRef.createElement('details');details.className='contract-history';
   const summary=documentRef.createElement('summary');summary.textContent='تاریخچه';details.appendChild(summary);
   details.onclick=event=>event.stopPropagation();
@@ -57,7 +57,7 @@ export function renderContractHistory(documentRef,contract,{finance=false,compac
     row.appendChild(heading);
     if(entry.manualFields?.length){const note=documentRef.createElement('p');const names={contractDate:'تاریخ تنظیم',employerId:'کارفرما',startDate:'تاریخ شروع',endDate:'تاریخ پایان',retentionDuration:'مدت نگهداری'};note.textContent='تکمیل دستی پس از چاپ: '+entry.manualFields.map(key=>names[key]||key).join('، ');row.appendChild(note);}
     if(entry.files?.length){const files=documentRef.createElement('p');files.textContent=entry.files.join('، ');row.appendChild(files);}
-    if(entry.action==='record_payment' && entry.amount>0){
+    if(showPaymentAmount && entry.action==='record_payment' && entry.amount>0){
       const value=documentRef.createElement('p');value.textContent=new Intl.NumberFormat('fa-IR').format(entry.amount)+' تومان';row.appendChild(value);
     }
     if(entry.reason){

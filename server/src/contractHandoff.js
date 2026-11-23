@@ -80,7 +80,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       const deleteAddendum=addendum && body.action==='delete_addendum';
       const deleteStatement=statement && body.action==='delete_statement';
       const statementModule=Object.hasOwn(permissions.modules||permissions,'accounting-statements')?'accounting-statements':'accounting';
-      const allowed=canAccessFiles(row,accountId,true,financeAction?(statement?statementModule:financeModule):'contracts');
+      const allowed=canAccessFiles(row,accountId,true,financeAction?(statement && contract?.statementType!=='advance'?statementModule:financeModule):'contracts');
       if(!allowed){sendJson(response,403,{message:'اجازه تغییر قرارداد را ندارید'});return true;}
       const owner=String(row.owner_account_id)===String(accountId);
       if((deleteAddendum || deleteStatement) && !canDeleteContractAddenda({role:owner?'owner':'member',permissions})){

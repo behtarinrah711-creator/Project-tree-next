@@ -18,21 +18,23 @@ function button(label,classes,action){
 export function renderContractDocuments(project,contract,{onChanged=()=>{},reviewOnly=false,finance=false,approvals=new Map()}={}){
   const row=document.createElement('section');row.className='contract-addenda-row';
   const toolbar=document.createElement('div');toolbar.className='contract-addenda-row-toolbar';
-  const list=document.createElement('div');list.className='contract-addenda-children';list.hidden=!approvals.size && !(project.contractAddenda||[]).some(item=>!item.trashed && String(item.parentContractId)===String(contract.id) && (!finance || isAddendumVisibleInFinance(item))) && (finance || !statementsFor(project,contract.id).length);
+  const visibleStatements=source=>statementsFor(source,contract.id).filter(item=>!finance ||
+    (item.statementType==='advance' && ['sent','accepted','rejected'].includes(item.accountingStatus)));
+  const list=document.createElement('div');list.className='contract-addenda-children';list.hidden=!approvals.size && !(project.contractAddenda||[]).some(item=>!item.trashed && String(item.parentContractId)===String(contract.id) && (!finance || isAddendumVisibleInFinance(item))) && !visibleStatements(project).length;
   const current=()=>projectRepository.find(project.id)||project;
   const toggle=button('','contract-addenda-toggle',()=>{list.hidden=!list.hidden;paint(current());});
   const changed=()=>{if(row.isConnected)paint(current());onChanged();};
   const created=()=>{list.hidden=false;changed();};
   function paint(source){
     const addenda=(source.contractAddenda||[]).filter(item=>!item.trashed && (!finance || isAddendumVisibleInFinance(item)) && String(item.parentContractId)===String(contract.id));
-    const statements=finance?[]:statementsFor(source,contract.id);
+    const statements=visibleStatements(source);
     toggle.textContent='اسناد ('+number.format(addenda.length+statements.length)+')';
     toggle.setAttribute('aria-expanded',String(!list.hidden));
     if(list.hidden)return;
     const groups=[
       ['الحاقیه‌ها',addenda,item=>renderAddendumCard(source,item,changed,finance,reviewOnly?(approvals.get(item.id)||{}):undefined,{nested:true})],
       ['صورت‌وضعیت‌ها',statements.filter(item=>!['retention-release','advance'].includes(item.statementType)),item=>renderStatementCard(source,contract,item,changed,reviewOnly?(approvals.get(item.id)||{}):undefined)],
-      ['پیش‌پرداخت‌ها',statements.filter(item=>item.statementType==='advance'),item=>renderStatementCard(source,contract,item,changed,reviewOnly?(approvals.get(item.id)||{}):undefined)],
+      ['پیش‌پرداخت‌ها',statements.filter(item=>item.statementType==='advance'),item=>renderStatementCard(source,contract,item,changed,reviewOnly?(approvals.get(item.id)||{}):undefined,{finance})],
       ['آزادسازی حسن انجام کار',statements.filter(item=>item.statementType==='retention-release'),item=>renderStatementCard(source,contract,item,changed,reviewOnly?(approvals.get(item.id)||{}):undefined)],
     ];
     list.replaceChildren();
