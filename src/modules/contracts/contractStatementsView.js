@@ -4,6 +4,7 @@ import {canDeleteContractDocument} from '../../domain/contractHandoff.js';
 import {renderInlineContractReject} from './contractReasonSheet.js';
 import {openContractPreview} from './contractPreviewView.js';
 import {statementWorkRows,resolveStatementWork} from '../../domain/statementWork.js';
+import { contactApi } from '../../domain/contactApi.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { canReviewContract, canEditAdvanceRequest, hasAdvanceSubmission, contractApproverIds } from '../../domain/contractApproval.js';
 import { accountStatements, approvedStatement, statementAccount, statementAddenda, contractStatementTotals, finalStatementSummary, statementAmounts, statementsFor, contractAdvanceDeductionBalance, advanceDeductionFromPercent, contractAdvanceRows } from '../../domain/contractStatements.js';
@@ -53,7 +54,10 @@ function table(rows){
   for(const [label,value] of rows){
     const row=element('tr'),heading=element('th','',label);
     heading.scope='row';
-    row.append(heading,element('td','',value));
+    const cell=element('td');
+    if(value && typeof value==='object')cell.append(value);
+    else if(value)cell.textContent=value;
+    row.append(heading,cell);
     body.append(row);
   }
   node.append(body);
@@ -343,6 +347,39 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
   sheet.classList.add('contract-addendum-form');
 }
 
+function contractorPaymentDetails(project,contract){
+  const contractor=contactApi.lookup(project.id,contract.contractorId || contract.contactId);
+  if(!contractor)return null;
+  const fields=[
+    ['ownerName','نام و نام خانوادگی صاحب حساب'],['bankName','بانک'],
+    ['card','شماره کارت'],['iban','شماره شبا'],['account','شماره حساب'],
+  ];
+  const details=element('div');
+  const accounts=contractor.bankAccounts;
+  if(Array.isArray(accounts) && accounts.length){
+    for(const account of accounts){
+      const values=element('div');
+      for(const [key,label] of fields){
+        const value=String(account?.[key]??'').trim();
+        if(!value)continue;
+        if(values.childNodes.length)values.append(' | ');
+        values.append(label+'، ',element('bdi','',value));
+      }
+      if(values.childNodes.length)details.append(values);
+    }
+  }else{
+    for(const [key,label] of [['cards','شماره کارت'],['ibans','شماره شبا'],['accounts','شماره حساب']]){
+      const values=Array.isArray(contractor[key])?contractor[key].map(value=>String(value??'').trim()).filter(Boolean):[];
+      for(const value of values){
+        const line=element('div');
+        line.append(label+'، ',element('bdi','',value));
+        details.append(line);
+      }
+    }
+  }
+  return details.childNodes.length?details:null;
+}
+
 function statementPreviewContent(project,contract,record,signature=null){
   const title=statementTitle(record);
     const documentNode=element('section','contract-export-document');
@@ -361,6 +398,7 @@ function statementPreviewContent(project,contract,record,signature=null){
       const total=Number(contract.amount);
       const contractAmount=contract.amount!=null && contract.amount!=='' && Number.isFinite(total) && !contract.remeasurement
         ? money(total):'مبلغ قطعی تعیین نشده';
+      const paymentDetails=contractorPaymentDetails(project,contract);
       const detail=table([
         ['شماره قرارداد',contract.contractNo||'—'],
         ['تاریخ درخواست',formatJalaliDisplay(record.date)||'—'],
@@ -372,6 +410,7 @@ function statementPreviewContent(project,contract,record,signature=null){
         ['مبلغ درخواستی این نوبت',money(record.statementAmount||0)],['پرداخت‌شده',money(record.paidAmount||0)],
         ['وضعیت تأیید',!hasAdvanceSubmission(record)?'ارسال نشده':record.approvalStatus==='approved'?'تأیید شده':record.approvalStatus==='pending'?'در انتظار تأیید':'ارسال نشده'],
         ['وضعیت مالی',approvedStatement(record)?'تأیید شده':record.accountingStatus==='sent'?'در انتظار تأیید':record.accountingStatus==='rejected'?'برگشت خورده':'ارسال نشده'],
+        ...(paymentDetails?[['اطلاعات پرداخت',paymentDetails]]:[]),
         ...(record.note||signature?[['توضیحات',record.note||'']]:[]),
       ]);
       if(signature){
