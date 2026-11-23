@@ -5,9 +5,9 @@ export function hasActiveFileUploads(requestCount,items=[]){
   return requestCount>0 || items.some(file=>[1,3,7,9].includes(file.status));
 }
 
-export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{},onError=()=>{},label='افزودن عکس یا فایل',category='contacts',readOnly=false,allowReplace=false,buttonLabel=false,confirmRemove=remove=>remove()}={}){
+export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{},onError=()=>{},label='افزودن عکس یا فایل',category='contacts',readOnly=false,allowReplace=false,buttonLabel=false,singleFile=false,confirmRemove=remove=>remove()}={}){
   root.classList.add('saosa-file-uploader');
-  const input=document.createElement('input');input.type='file';input.multiple=true;
+  const input=document.createElement('input');input.type='file';input.multiple=!singleFile;
   const imagesOnly=['reports','oddjob-invoices'].includes(category);
   const pdfOrImage=['contracts','advance-receipts'].includes(category);
   input.accept=imagesOnly?'image/jpeg,image/png,image/heic,image/heif,image/avif,image/webp,.heic,.heif':pdfOrImage?'image/jpeg,image/png,image/heic,image/heif,.heic,.heif,.pdf':'image/jpeg,image/png,image/heic,image/heif,image/avif,image/webp,.heic,.heif,.pdf,.docx,.xlsx,.pptx';
@@ -64,7 +64,7 @@ export function mountFileUploader(root,{projectId,recordId,files,onChange=()=>{}
   if(!readOnly)import('../../../vendor/filepond/filepond.esm.min.js').then(({create})=>{
     if(disposed)return;
     input.disabled=false;
-    pond=create(input,{allowMultiple:true,maxParallelUploads:1,maxFiles:pdfOrImage?30:10,credits:false,
+    pond=create(input,{allowMultiple:!singleFile,maxParallelUploads:1,maxFiles:singleFile?1:pdfOrImage?30:10,credits:false,
       labelIdle:buttonLabel?'<span class="filepond--label-action">'+label+'</span>':label+' <span class="filepond--label-action">انتخاب</span>',labelFileProcessing:'در حال بارگذاری',labelFileProcessingComplete:'بارگذاری شد',labelFileProcessingError:'بارگذاری انجام نشد',
       labelTapToRetry:'برای تلاش مجدد بزنید',labelTapToCancel:'برای لغو بزنید',labelButtonRemoveItem:'حذف',labelButtonAbortItemProcessing:'لغو',
       beforeAddFile:item=>{if(files.length>=30 && replacingFile===null){onError('حداکثر ۳۰ صفحه انتخاب کنید');return false;}if(item.fileSize>FILE_LIMIT){onError(fileError('file_too_large'));return false;}return true;},
