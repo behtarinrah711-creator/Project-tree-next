@@ -351,8 +351,9 @@ function statementPreviewContent(project,contract,record){
       const row=record.advanceRow;
       documentNode.dataset.documentKind='advance';
       const summary=element('div','contract-advance-print');
-      const heading=element('h2');
-      heading.append(element('strong','',title+' — '+contractDisplayTitle(project,contract)));
+      const heading=element('h2','contract-advance-print-heading','درخواست پرداخت');
+      const subtitle=[`پیش‌پرداخت شماره ${format.format(record.sequence||1)}`,contractDisplayTitle(project,contract)].join(' | ');
+      heading.append(element('br'),element('span','contract-advance-print-subtitle',subtitle));
       const path=contractProjectPath(project,contract);
       documentNode.append(heading);
       if(path)documentNode.append(element('p','','مسیر قرارداد · '+path));
@@ -384,8 +385,11 @@ function statementPreviewContent(project,contract,record){
 
 function openAdvanceStep(project,contract,record,onChanged,{finance=false,approval,step,openSheet=openWbsSheet}={}){
   const steps=contractProgressSteps(record,project);
-  const active=step || steps.find(item=>!item.done) || steps.at(-1);
   const writable=!finance && !approval && canWriteProjectModule(project.id,'contracts');
+  const canWithdraw=writable && record.approvalStatus==='pending' && hasAdvanceSubmission(record) &&
+    record.submittedBy?.id===currentExecutionActor(project).id;
+  const active=step || (canWithdraw && steps.find(item=>item.id==='advance-submit')) ||
+    steps.find(item=>!item.done) || steps.at(-1);
   const financeWritable=finance && canWriteProjectModule(project.id,financeScope(project.id));
   const current=steps.find(item=>!item.done)?.id;
   if(active.id!==current && !active.done && !active.rejected)return;
@@ -431,11 +435,13 @@ function openAdvanceStep(project,contract,record,onChanged,{finance=false,approv
       const actionButton=(label,action,variant='')=>button(label,action,'contract-review-action'+(variant?' '+variant:''));
       if(active.id==='created')showHistory({actions:['create']});
       if(active.id==='advance-submit'){
-        showHistory({actions:['submit','withdraw_submission']});
-        if(writable && current===active.id)root.append(actionButton('ارسال جهت تأیید',()=>run('submit_advance')));
-        if(writable && record.approvalStatus==='pending' && hasAdvanceSubmission(record) &&
-          record.submittedBy?.id===currentExecutionActor(project)?.id){
-          root.append(actionButton('پس گرفتن از تأیید',()=>showReason('پس گرفتن از تأیید','withdraw_advance'),'danger'));
+        if(writable && current===active.id){
+          root.append(actionButton('ارسال جهت تأیید',()=>run('submit_advance')));
+        }else{
+          if(canWithdraw){
+            root.append(actionButton('پس گرفتن از تأیید',()=>showReason('پس گرفتن از تأیید','withdraw_advance'),'danger'));
+          }
+          showHistory({actions:['submit','withdraw_submission']});
         }
       }
       if(active.id==='approved'){
