@@ -62,20 +62,10 @@ export function saveStatement(project,parent,current,id,body,actor,at){
   }
   const approvers=contractApproverIds(parent);
   const statementRecords=statementsFor(project,parent.id);
-  let sequence=current?.sequence;
-  if(sequence==null && statementType==='advance'){
-    const records=(project.contractStatusReports||[]).filter(record=>
-      String(record.contractId)===String(parent.id) && record.statementType==='advance' &&
-      (!record.trashed || record.submittedAt || record.approvedContactIds?.length ||
-        record.approvalStatus==='approved' || record.sentToAccountingAt || record.accountingStatus ||
-        record.accountingPackage || Number(record.paidAmount)>0 || record.financeHistory?.length ||
-        record.approvalHistory?.some(event=>['submit','approve','reject','withdraw_submission'].includes(event.action)))
-    );
-    const used=new Set(records.map((record,index)=>Number(record.sequence)||index+1));
-    sequence=1;
-    while(used.has(sequence))sequence++;
-  }
-  sequence ??= Math.max(0,...statementRecords.map(record=>Number(record.sequence)||0),statementRecords.length)+1;
+  const numberedRecords=statementType==='advance'
+    ? statementRecords.filter(record=>record.statementType==='advance')
+    : statementRecords;
+  const sequence=current?.sequence ?? Math.max(0,...numberedRecords.map(record=>Number(record.sequence)||0),numberedRecords.length)+1;
   return {ok:true,contract:{...current,id,contractId:parent.id,addendumId:addendum?.id||null,addendumNo:addendum?.contractNo||null,statementType,sequence,date,note:String(note||'').trim().slice(0,2000),
     ...(statementType==='advance'?{
       creationEvent:current?.creationEvent || {action:'create',at:current?.createdAt??at,actor:current?current.submittedBy:actor},
