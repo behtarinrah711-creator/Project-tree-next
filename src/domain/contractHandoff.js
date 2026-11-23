@@ -1,5 +1,5 @@
 import {hasPaidContractDocument} from './contractRevision.js';
-import {contractRevisionContent} from './contractApproval.js';
+import {canEditAdvanceRequest,contractRevisionContent,hasAdvanceSubmission} from './contractApproval.js';
 
 export const HANDOFF_FIELDS=['signedFiles','signedFilesUpdatedAt','signedAt','signedBy','handoffVersion','accountingStatus','sentToAccountingAt','sentToAccountingBy','accountingPackage','accountingWithdrawal','accountingDecision','financeRejection','financeHistory'];
 export const FINANCE_REASON_MIN_LENGTH=5;
@@ -40,9 +40,11 @@ export function canReuseReturnedSignature(contract){
 }
 
 export function canDeleteContractDocument(document){
+  const unsentAdvance=document?.statementType==='advance' && document.approvalStatus==='pending'
+    && canEditAdvanceRequest(document) && !hasAdvanceSubmission(document);
   return !!document && !document.trashed && !document.signedAt && document.signatureStatus!=='signed'
     && !document.sentToAccountingAt && !['sent','accepted'].includes(document.accountingStatus)
-    && !(Number(document.paidAmount)>0) && !['pending','approved'].includes(document.approvalStatus)
+    && !(Number(document.paidAmount)>0) && (unsentAdvance || !['pending','approved'].includes(document.approvalStatus))
     && (!document.accountingPackage || (document.accountingStatus==='rejected' && document.status==='draft' && document.isDraft));
 }
 
