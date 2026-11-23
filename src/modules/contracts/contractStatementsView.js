@@ -572,7 +572,7 @@ function openAdvanceStep(project,contract,record,onChanged,{finance=false,approv
       if(active.id==='paid'){
         root.append(table([['وضعیت پرداخت',paymentStatus],['پرداخت‌شده',money(paid)],['مانده پرداخت',money(remaining)]]));
         const attach=(root,files,readOnly)=>mountFileUploader(root,{projectId:project.id,recordId:record.id,
-          category:'advance-receipts',files,readOnly,onError:toast,label:'افزودن فیش پرداخت',buttonLabel:true});
+          category:'advance-receipts',files,readOnly,singleFile:!readOnly,onError:toast,label:'افزودن فیش پرداخت',buttonLabel:true});
         for(const payment of record.payments||[]){
           const entry=showHistory({payment}).querySelector('.contract-history-entry');
           if(payment.receipts?.length){
@@ -586,14 +586,14 @@ function openAdvanceStep(project,contract,record,onChanged,{finance=false,approv
           let amountValue='';
           const repaint=()=>{
             form.replaceChildren();
-            ftNumberRow(form,'مبلغ واریز',amountValue,value=>{amountValue=value;},{suffix:'تومان',onCommit:repaint});
+            ftNumberRow(form,'مبلغ این فیش',amountValue,value=>{amountValue=value;},{suffix:'تومان',onCommit:repaint});
           };
           repaint();
           const container=element('section');root.append(container);
           const uploader=attach(container,files,false);uploaders.push(uploader);
           root.append(actionButton('ثبت پرداخت',()=>{
             if(uploader.isBusy()){toast('ابتدا بارگذاری فیش را کامل کنید');return;}
-            if(!files.length){toast('حداقل یک فیش واریزی بارگذاری کنید');return;}
+            if(files.length!==1){toast('برای هر پرداخت یک فیش واریزی بارگذاری کنید');return;}
             run('record_payment',{amount:numericValue(amountValue),receipts:files.map(file=>file.id)});
           }));
         }
