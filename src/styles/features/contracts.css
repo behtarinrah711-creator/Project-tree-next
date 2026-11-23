@@ -2091,6 +2091,8 @@ textarea.contract-project-item-input{
 .contract-workflow-panel .contract-progress--horizontal > .contract-progress-step::after{display:none;}
 .contract-progress--horizontal .contract-stage-button{width:100%;}
 .contract-export-document[data-document-kind="advance"]{background:#fff;padding:16px;}
+.contract-export-document .contract-advance-print-heading{text-align:right;}
+.contract-advance-print-subtitle{font-size:.8em;}
 .contract-advance-print .contract-document-quantities th:first-child{width:30%;white-space:normal;}
 .contract-advance-print .contract-document-quantities td:last-child{text-align:right;direction:rtl;}
 
