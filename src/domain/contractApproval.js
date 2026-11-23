@@ -112,20 +112,24 @@ export function saveContractReviewEdit(contract,actor,changes,at=Date.now()){
 }
 
 function executedContract(contract){return contract.signedAt || contract.sentToAccountingAt || contract.signatureStatus==='signed' || ['sent','accepted'].includes(contract.accountingStatus);}
+export function canWithdrawAdvanceRequest(record){
+  return record.statementType==='advance' && !record.trashed && record.approvalStatus==='pending' &&
+    hasAdvanceSubmission(record) && !executedContract(record) && !(Number(record.paidAmount)>0);
+}
 export function canCancelContractCompletion(contract){
   if(contract.status!=='final' || contract.isDraft || executedContract(contract))return false;
   const status=contractApprovalState(contract);
   const reviewers=Array.isArray(contract.contractApproverContactIds)?contract.contractApproverContactIds:contractApproverIds(contract);
   return ['ready','unapproved'].includes(status) || (status==='approved' && !reviewers.length);
 }
-export function transitionContractApproval(contract,action,actor,{approverId='',approverIds=null,reason='',at=Date.now(),allowRejectApproved=false}={}){
+export function transitionContractApproval(contract,action,actor,{approverId='',approverIds=null,reason='',at=Date.now(),allowRejectApproved=false,allowAdvanceWithdrawal=false}={}){
   const reviewers=[...new Set((approverIds || [approverId]).filter(Boolean).map(String))];
   if(!actor?.id || actor.id==='guest')return {ok:false,message:'ابتدا وارد حساب کاربری شوید'};
   if(['cancel_completion','withdraw_submission'].includes(action)){
     const text=typeof reason==='string'?reason.trim():'';
     if(text.length<REJECTION_MIN_LENGTH)return {ok:false,message:'علت برگشت حداقل '+REJECTION_MIN_LENGTH+' حرف باشد'};
     if(action==='cancel_completion' && !canCancelContractCompletion(contract))return {ok:false,message:'ابتدا تأیید قرارداد را لغو کنید؛ قرارداد امضاشده قابل برگشت نیست'};
-    if(action==='withdraw_submission' && (contractApprovalState(contract)!=='pending' || contract.submittedBy?.id!==actor.id || executedContract(contract)))return {ok:false,message:'فقط ارسال‌کننده می‌تواند درخواست تأیید را پس بگیرد'};
+    if(action==='withdraw_submission' && (contractApprovalState(contract)!=='pending' || (contract.submittedBy?.id!==actor.id && !(allowAdvanceWithdrawal && canWithdrawAdvanceRequest(contract))) || executedContract(contract)))return {ok:false,message:'فقط ارسال‌کننده می‌تواند درخواست تأیید را پس بگیرد'};
     const next={...contract,status:'draft',isDraft:true,updatedAt:at,approvedContactIds:[],completedAt:null,completedBy:null,completionCancellation:{action,reason:text,at,by:actor.id}};
     if(action==='withdraw_submission'){
       next.approvalStatus='unapproved';next.approvalRejectionReason=text;next.revisionBaseline=contractRevisionContent(contract);

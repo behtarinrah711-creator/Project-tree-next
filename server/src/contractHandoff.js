@@ -8,7 +8,7 @@ import {applyExecutionApproval,approveExecutionEntity,executionApprovalItem,reje
 import {tehranTodayJalali} from '../../src/domain/wbs/todayDomain.js';
 import {saveAddendumDraft} from './contractAddendum.js';
 import {canDeleteAddendumRecord,canDeleteContractAddenda,parentContractOf} from '../../src/domain/contractAddenda.js';
-import {canEditAdvanceRequest,contractApproverIds,hasAdvanceSubmission,saveContractReviewEdit,transitionContractApproval} from '../../src/domain/contractApproval.js';
+import {canEditAdvanceRequest,canWithdrawAdvanceRequest,contractApproverIds,hasAdvanceSubmission,saveContractReviewEdit,transitionContractApproval} from '../../src/domain/contractApproval.js';
 import {syncContractPartyData} from '../../src/domain/contractPartyData.js';
 import {authenticate} from './auth.js';
 import {readJson,sendJson} from './http.js';
@@ -133,9 +133,12 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         if(contract.statementType!=='advance' || (body.action==='submit_advance' && (!canSubmit || (contract.advanceRow && (!rowBalance || contract.statementAmount>rowBalance.balance))))){
           sendJson(response,409,{message:'پیش‌پرداخت در وضعیت فعلی قابل ارسال برای تأیید نیست'});return true;
         }
+        if(body.action==='withdraw_advance' && !canWithdrawAdvanceRequest(contract)){
+          sendJson(response,409,{message:'پیش‌پرداخت در وضعیت فعلی قابل پس گرفتن نیست'});return true;
+        }
         transition=body.action==='submit_advance'
           ? transitionContractApproval({...contract,status:'final',isDraft:false,approvalStatus:null},'submit',actor,{approverIds:approvers})
-          : transitionContractApproval(contract,'withdraw_submission',actor,{reason:body.reason});
+          : transitionContractApproval(contract,'withdraw_submission',actor,{reason:body.reason,allowAdvanceWithdrawal:true});
       }
       else if(statement && body.action==='record_payment'){
         if(statementParent.accountingStatus!=='accepted' && statementParent.approvalHistory?.some(event=>event.action==='edit_contract')){
@@ -185,7 +188,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         }
       }
       else if(reviewAction){
-        transition=transitionContractApproval(contract,body.action.split('_')[0],actor,{reason:body.reason,allowRejectApproved:body.action==='reject_contract'});
+        transition=transitionContractApproval(contract,body.action.split('_')[0],actor,{reason:body.reason,allowRejectApproved:body.action==='reject_contract' || (statement && contract.statementType==='advance' && body.action==='reject_statement')});
         if(transition.ok && body.action==='revoke_addendum')Object.assign(transition.contract,{isDraft:true,status:'draft'});
       }else if(addendum && body.action==='submit_addendum'){
         transition=transitionContractApproval(contract,'submit',actor,{approverIds:contract.contractApproverContactIds});

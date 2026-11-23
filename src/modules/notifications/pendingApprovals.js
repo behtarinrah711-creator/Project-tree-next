@@ -111,6 +111,7 @@ function approvalOptions(documentRef,project,group,item,onChanged){
   const shopping=group.id==='shopping';
   const action=item.statementType?'approve_statement':item.parentContractId?'approve_addendum':'approve_contract';
   const approval={};
+  const canRejectAfterApproval=action==='approve_contract' || item.statementType==='advance';
   if(group.writable){
     const currentExecution=()=>{
       const queue=pendingApprovals(projectRepository.find(project.id));
@@ -219,14 +220,15 @@ function approvalOptions(documentRef,project,group,item,onChanged){
       });
       approval.refresh=record=>approvalOptions(documentRef,project,group,record,onChanged);
     }
-    if(!execution && (canReviewContract(item,currentExecutionActor(project)) || (action==='approve_contract' && canRevokeContractApproval(item,currentExecutionActor(project)))))approval.reject=async reason=>{
+    if(!execution && (canReviewContract(item,currentExecutionActor(project)) || (canRejectAfterApproval && canRevokeContractApproval(item,currentExecutionActor(project)))))approval.reject=async reason=>{
       const latest=projectRepository.find(project.id);
       const queue=pendingApprovals(latest);
       const currentGroup=queue.groups.find(candidate=>candidate.id===group.id);
       let current=currentGroup?.items.find(candidate=>String(candidate.id)===String(item.id)
         && Boolean(candidate.parentContractId)===Boolean(item.parentContractId) && candidate.statementType===item.statementType);
-      if(!current && action==='approve_contract'){
-        const approved=latest?.contracts?.find(row=>String(row.id)===String(item.id));
+      if(!current && canRejectAfterApproval){
+        const records=item.statementType==='advance'?latest?.contractStatusReports:latest?.contracts;
+        const approved=records?.find(row=>!row.trashed && row.statementType===item.statementType && String(row.id)===String(item.id));
         if(approved && canRevokeContractApproval(approved,queue.actor))current=approved;
       }
       if(!current || !currentGroup.writable)throw new Error('این مورد دیگر در انتظار تأیید شما نیست.');
