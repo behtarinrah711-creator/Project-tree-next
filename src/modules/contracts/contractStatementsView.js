@@ -347,7 +347,7 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
   sheet.classList.add('contract-addendum-form');
 }
 
-function contractorPaymentDetails(project,contract){
+function contractorPaymentDetails(project,contract,{tabular=false}={}){
   const contractor=contactApi.lookup(project.id,contract.contractorId || contract.contactId);
   if(!contractor)return null;
   const fields=[
@@ -356,6 +356,29 @@ function contractorPaymentDetails(project,contract){
   ];
   const details=element('div');
   const accounts=contractor.bankAccounts;
+  if(tabular){
+    const paymentFields=[...fields.slice(2),['bankName','نام بانک'],fields[0]];
+    const bankAccounts=Array.isArray(accounts) && accounts.length?accounts:[{
+      card:contractor.cards,iban:contractor.ibans,account:contractor.accounts,
+    }];
+    for(const account of bankAccounts){
+      const rows=[];
+      for(const [key,label] of paymentFields){
+        const raw=account?.[key];
+        const values=(Array.isArray(raw)?raw:[raw]).map(value=>String(value??'').trim()).filter(Boolean);
+        if(!values.length)continue;
+        const cell=element('div');
+        cell.replaceChildren(...values.map(value=>{
+          const line=element('div');
+          line.append(element('bdi','',value));
+          return line;
+        }));
+        rows.push([label,cell]);
+      }
+      if(rows.length)details.append(table(rows));
+    }
+    return details.childNodes.length?details:null;
+  }
   if(Array.isArray(accounts) && accounts.length){
     for(const account of accounts){
       const values=element('div');
@@ -398,7 +421,7 @@ function statementPreviewContent(project,contract,record,signature=null){
       const total=Number(contract.amount);
       const contractAmount=contract.amount!=null && contract.amount!=='' && Number.isFinite(total) && !contract.remeasurement
         ? money(total):'مبلغ قطعی تعیین نشده';
-      const paymentDetails=contractorPaymentDetails(project,contract);
+      const paymentDetails=contractorPaymentDetails(project,contract,{tabular:true});
       const detail=table([
         ['شماره قرارداد',contract.contractNo||'—'],
         ['تاریخ درخواست',formatJalaliDisplay(record.date)||'—'],
