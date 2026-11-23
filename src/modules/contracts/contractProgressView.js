@@ -41,14 +41,20 @@ export function renderContractProgress(documentRef,contract,project,onOpen,openC
   steps.forEach((step,index)=>{
     const item=documentRef.createElement('li');
     item.className='contract-progress-step'+(step.rejected?' is-rejected':'')+(step.done?' is-complete':'')+(step.done && steps[index+1]?.done?' has-complete-next':'');
+    const partial=contract.statementType==='advance' && step.id==='paid' && !step.done && Number(contract.paidAmount)>0;
+    const status=partial?'پرداخت جزئی':step.rejected?'رد شده':step.done?'انجام شده':'انجام نشده';
     item.dataset.step=step.id;
-    item.setAttribute('aria-label',step.label+'؛ '+(step.rejected?'رد شده':step.done?'انجام شده':'انجام نشده'));
+    item.setAttribute('aria-label',step.label+'؛ '+status);
     if(index===current)item.setAttribute('aria-current','step');
     const label=documentRef.createElement('span');label.className='contract-progress-label';label.textContent=step.label;
     const dot=documentRef.createElement('span');dot.className='contract-progress-dot';dot.setAttribute('aria-hidden','true');
+    if(partial){
+      dot.style.cssText='background:#a54c00;border-color:#a54c00;color:white;display:grid;place-items:center;font-size:10px;line-height:1';
+      dot.textContent='✓';
+    }
     if(onOpen){
       const button=documentRef.createElement('button');button.type='button';button.className='contract-stage-button';
-      button.setAttribute('aria-label',step.label+'؛ '+(step.rejected?'رد شده':step.done?'انجام شده':'انجام نشده')+(index===current?'؛ انجام اقدام':''));
+      button.setAttribute('aria-label',step.label+'؛ '+status+(index===current?'؛ انجام اقدام':''));
       button.append(label,dot);
       const advance=contract.statementType==='advance';
       button.disabled=index!==current && !((advance || openCompleted) && step.done) && !(advance && step.rejected);
