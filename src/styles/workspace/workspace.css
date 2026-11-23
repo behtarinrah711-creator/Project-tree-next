@@ -8,6 +8,7 @@
   body:has(> .workspace-page--own-section-bar:not(.hidden)) #workspaceProjectContext{visibility:hidden;}
   /* صفحات مستقل و فرم‌های تمام‌صفحه نباید فضای فوتر را رزرو کنند. */
   #projectsPage.workspace-page,
+  #notificationsPage.workspace-page,
   #profilePage.workspace-page{
     bottom:0 !important;
   }
