@@ -378,7 +378,7 @@ function contractorPaymentDetails(project,contract,{tabular=false}={}){
     }
     if(!rows.length)return null;
     const paymentTable=table(rows);
-    paymentTable.style.borderCollapse='collapse';
+    paymentTable.classList.add('contract-document-payment-table');
     return paymentTable;
   }
   if(Array.isArray(accounts) && accounts.length){
@@ -438,7 +438,7 @@ function statementPreviewContent(project,contract,record,signature=null){
         ...(paymentDetails?[['اطلاعات پرداخت',paymentDetails]]:[]),
         ...(record.note||signature?[['توضیحات',record.note||'']]:[]),
       ]);
-      if(paymentDetails)paymentDetails.parentElement.previousElementSibling.style.verticalAlign='middle';
+      if(paymentDetails)paymentDetails.parentElement.previousElementSibling.classList.add('contract-document-payment-heading');
       if(signature){
         const cell=detail.lastElementChild.lastElementChild.lastElementChild;
         const note=element('div','contract-advance-note');
