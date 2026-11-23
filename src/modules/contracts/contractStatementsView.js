@@ -635,7 +635,10 @@ export function renderStatementCard(project,contract,record,onChanged,approval){
           project,contract,record,image&&name?{image,name}:null
         ).outerHTML};
       }
-      openContractExport(project,{title,contractNo:contract.contractNo||''},{trigger,markup:documentNode.outerHTML,inlineSignature});
+      const exportContract=record.statementType==='advance'
+        ? {...contract,title}
+        : {title,contractNo:contract.contractNo||''};
+      openContractExport(project,exportContract,{trigger,markup:documentNode.outerHTML,inlineSignature});
     },
     onDelete:deletable?()=>{
       if(!canDeleteContractDocument(record)){toast(title+' در وضعیت فعلی قابل حذف نیست');return;}
