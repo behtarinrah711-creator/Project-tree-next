@@ -210,7 +210,7 @@ test('Work Task create, edit, connector and modes share one persisted model', as
   await sheet.locator('[name="taskType"] ~ .wbs-task-option-menu .wbs-task-option-item',{hasText:'خرید'}).click();
   await sheet.locator('[name="taskPriority"] + .wbs-task-option-trigger').click();
   await sheet.locator('[name="taskPriority"] ~ .wbs-task-option-menu .wbs-task-option-item',{hasText:'مهم'}).click();
-  await sheet.locator('[name="taskAssignee"]').click();
+  await sheet.getByRole('button',{name:'افزودن مسئول پیگیری کار',exact:true}).click();
   await page.locator('#searchTemplatePage .stpl-row[data-id="c1"]').click();
   await sheet.locator('[name="taskAmount"]').click();
   await page.locator('#numpadBackspace').click();
