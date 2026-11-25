@@ -49,7 +49,7 @@ function expandableLevels(items, {
   const branchHasVisibleRows = (node, depth) => {
     if(!node || node.trashed) return false;
     const tasks = (node.workTasks || []).filter(task => task && !task.trashed);
-    if(nodeVisible(node, depth) || (tasksVisible(node, depth) && tasks.length)) return true;
+    if(nodeVisible(node, depth) || tasks.some(task => tasksVisible(task, depth))) return true;
     return (node.subtasks || []).some(child => branchHasVisibleRows(child, depth + 1));
   };
   const walk = (nodes, depth = 0) => {
@@ -57,7 +57,7 @@ function expandableLevels(items, {
       const children = (node.subtasks || []).filter(child => child && !child.trashed);
       const tasks = (node.workTasks || []).filter(task => task && !task.trashed);
       const visibleChildren = children.filter(child => branchHasVisibleRows(child, depth + 1));
-      const visibleTasks = tasksVisible(node, depth) ? tasks : [];
+      const visibleTasks = tasks.filter(task => tasksVisible(task, depth));
       if(nodeVisible(node, depth) && (visibleChildren.length || visibleTasks.length)){
         if(!levels[depth]) levels[depth] = [];
         levels[depth].push(String(node.id));
@@ -66,8 +66,8 @@ function expandableLevels(items, {
           levels[depth+1]??=[];
           levels[depth+1].push(...taskParents);
         }
-        walk(children, depth + 1);
       }
+      walk(children, depth + 1);
     });
   };
   walk(items);

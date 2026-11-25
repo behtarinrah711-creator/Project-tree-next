@@ -171,7 +171,7 @@ function createExpandButton(documentRef, project){
   const button = documentRef.createElement('button');
   const expansionOptions = {
     nodeVisible:(item, depth) => isGanttLevelVisible({ item, kind:isStage(item) ? 'stage' : 'work', depth }),
-    tasksVisible:(_item, depth) => isGanttLevelVisible({ item:{kind:'workTask'}, kind:'workTask', depth:depth + 1 }),
+    tasksVisible:(item, depth) => isGanttLevelVisible({ item, kind:'workTask', depth:depth + 1 }),
   };
   const expansionProgress = getExpansionProgress(project.id, project.tasks || [], expansionOptions);
   const isTreeOpen = expansionProgress.expandedLevels > 0;
