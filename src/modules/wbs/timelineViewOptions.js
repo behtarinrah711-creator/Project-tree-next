@@ -13,7 +13,7 @@ const levels = new Map();
 let orderMode = 'date';
 
 function levelKey(entry){
-  if(entry.kind === 'workTask') return 'workTask';
+  if(entry.kind === 'workTask') return entry.item?.parentTaskId ? 'subwork' : 'workTask';
   if(entry.kind === 'work' || entry.kind === 'stage'){
     const depth = entry.sourceDepth ?? entry.depth;
     return depth === 0 ? 'package' : `stage:${depth}`;
@@ -38,7 +38,7 @@ export function ganttLevelOptions(items){
   visit(items || [], 0);
   const options = [{ key:'package', label:'مرحله ۱' }];
   for(let depth = 1; depth <= maxStageDepth; depth += 1) options.push({ key:`stage:${depth}`, label:`مرحله ${new Intl.NumberFormat('fa-IR').format(depth + 1)}` });
-  options.push({ key:'workTask', label:'کارها' });
+  options.push({ key:'workTask', label:'کارها' }, { key:'subwork', label:'زیرکارها' });
   options.forEach(option => { if(!levels.has(option.key)) levels.set(option.key, true); });
   return options;
 }

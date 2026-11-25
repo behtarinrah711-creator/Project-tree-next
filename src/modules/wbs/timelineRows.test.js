@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildTimelineRows, sortTimelineRows } from './timelineRows.js';
 import { actualProgress, plannedProgressOf, jalaliDayNumber } from '../../domain/wbs/scheduling.js';
-import { ganttLevelOptions } from './timelineViewOptions.js';
+import { ganttLevelOptions, setGanttLevelVisible } from './timelineViewOptions.js';
 
 const task = (id, progress=0) => ({id, title:id, weight:1, progress, scheduleStart:'1405/06/20', scheduleEnd:'1405/06/25'});
 test('direct tasks under stage and legacy grouping nodes have identical row order and ranges', () => {
@@ -32,7 +32,7 @@ test('hiding grouping levels reveals descendants while preserving source depth',
   assert.deepEqual(rows.map(row=>row.item.id),['leaf']);
   assert.equal(rows[0].depth,0);
   assert.equal(rows[0].sourceDepth,2);
-  assert.deepEqual(ganttLevelOptions(tree).map(option=>option.label),['مرحله ۱','مرحله ۲','کارها']);
+  assert.deepEqual(ganttLevelOptions(tree).map(option=>option.label),['مرحله ۱','مرحله ۲','کارها','زیرکارها']);
 });
 test('collapsed stages suppress active task rows until Expand opens them', () => {
   const tree=[{id:'root',kind:'stage',workTasks:[task('leaf')],subtasks:[]}];
@@ -56,7 +56,7 @@ test('date order is the default timeline row mode', () => {
   assert.deepEqual(buildTimelineRows(tree,'p',{expanded:()=>true}).map(row=>row.item.id),['early','late']);
 });
 
-test('date order keeps every task below its parent stage', () => {
+test('date order places a parent stage first when it shares its tasks’ start date', () => {
   const tree=[{
     id:'parent',kind:'stage',subtasks:[],workTasks:[
       {...task('short'),scheduleStart:'1405/06/01',scheduleEnd:'1405/06/02'},
@@ -66,4 +66,29 @@ test('date order keeps every task below its parent stage', () => {
   const rows=buildTimelineRows(tree,'p',{expanded:()=>true,orderMode:'date'});
   assert.deepEqual(rows.map(row=>row.item.id),['parent','short','long']);
   assert.ok(rows.every(row=>row.rootId==='parent'));
+});
+
+test('chronological order compares visible rows across WBS branches', () => {
+  const rows = [
+    {item:{id:'late'},rootId:'a',range:{start:9}},
+    {item:{id:'unscheduled'},rootId:'a',range:null},
+    {item:{id:'early'},rootId:'b',range:{start:2}},
+  ];
+  assert.deepEqual(sortTimelineRows(rows).map(row=>row.item.id),['early','late','unscheduled']);
+});
+
+test('work and subwork visibility can be selected independently', () => {
+  const tree=[{id:'root',kind:'stage',workTasks:[
+    task('parent'), {...task('subwork'),parentTaskId:'parent'},
+  ]}];
+  try{
+    setGanttLevelVisible('package',false);
+    setGanttLevelVisible('workTask',false);
+    assert.deepEqual(buildTimelineRows(tree,'p',{expanded:()=>false}).map(row=>row.item.id),['subwork']);
+    setGanttLevelVisible('workTask',true);
+    setGanttLevelVisible('subwork',false);
+    assert.deepEqual(buildTimelineRows(tree,'p',{expanded:()=>true}).map(row=>row.item.id),['parent']);
+  }finally{
+    for(const level of ['package','workTask','subwork']) setGanttLevelVisible(level,true);
+  }
 });
