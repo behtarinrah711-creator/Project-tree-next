@@ -10,7 +10,7 @@ const editableFields=[
   'activityId','templateId','items','amountMethod','operationRows','amountRows','agreedRows','amount',
   'agreedAmount','amountDescription','remeasurement','paymentMethod','paymentRows','paymentItems',
   'paymentStageCount','paymentStages','retentionPercent','retentionDuration','retentionBasis',
-  'retentionMethod','retentionAmount','amountAfterRetention','attachments','projectItemId','projectItemPath','projectItemRootTaskId'
+  'retentionMethod','retentionAmount','amountAfterRetention','attachments','projectItemId','projectItemPath','projectItemRootTaskId','financeContactIds','contractReviewerOverride'
 ];
 
 export function reviseContract(project,contract,changes,reason,actor,at=Date.now()){
@@ -19,6 +19,14 @@ export function reviseContract(project,contract,changes,reason,actor,at=Date.now
     return {ok:false,message:'دلیل ویرایش قرارداد را وارد کنید'};
   const next={...contract};
   for(const key of editableFields)if(Object.hasOwn(changes,key))next[key]=changes[key];
+  const contacts=new Set((project.contacts||[]).filter(item=>!item.trashed).map(item=>String(item.id)));
+  for(const key of ['financeContactIds','contractReviewerOverride']){
+    if(!Object.hasOwn(changes,key))continue;
+    if(!Array.isArray(changes[key]) || changes[key].some(id=>!contacts.has(String(id))))
+      return {ok:false,message:'مسئول انتخاب‌شده در مخاطبین پروژه موجود نیست'};
+    next[key]=[...new Set(changes[key].map(String))];
+  }
+  if(Array.isArray(next.contractReviewerOverride))next.contractApproverContactIds=next.contractReviewerOverride;
   if(next.startDate && next.endDate && next.endDate<next.startDate)return {ok:false,message:'تاریخ پایان قبل از شروع است'};
   const event={action:'edit_contract',at,actor:{...actor},reason:reason.trim()};
   if(contract.signedFiles?.length)event.previousSignedFiles=contract.signedFiles;
