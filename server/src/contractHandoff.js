@@ -73,6 +73,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         await client.query('COMMIT');committed=true;sendJson(response,200,{entity});
         return true;
       }
+      const contract=(row.payload[collection]||[]).find(c=>String(c.id)===contractId && (addendum || !c.trashed));
       const financeAction=['approve_finance','reject_finance','revoke_finance','record_payment'].includes(body.action);
       const reviewAction=statement?['approve_statement','reject_statement'].includes(body.action):addendum ? ['approve_addendum','reject_addendum','revoke_addendum'].includes(body.action) : ['approve_contract','reject_contract'].includes(body.action);
       const permissions=row.permissions||{};
@@ -86,7 +87,6 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       if((deleteAddendum || deleteStatement) && !canDeleteContractAddenda({role:owner?'owner':'member',permissions})){
         sendJson(response,403,{message:'برای حذف سند دسترسی کامل قراردادها لازم است'});return true;
       }
-      const contract=(row.payload[collection]||[]).find(c=>String(c.id)===contractId && (addendum || !c.trashed));
       const saveDraft=(addendum && body.action==='save_addendum') || (statement && body.action==='save_statement');
       const statementParent=statement && (row.payload.contracts||[]).find(record=>!record.trashed && String(record.id)===String(contract?.contractId ?? body.contractId));
       if(statement && (!statementParent || (contract && !contract.statementType) || !['save_statement','submit_advance','withdraw_advance','delete_statement','approve_statement','reject_statement','save_signed','send_finance','approve_finance','reject_finance','withdraw_finance','record_payment','reopen_signed_contract'].includes(body.action))){sendJson(response,400,{message:'قرارداد یا عملیات صورت‌وضعیت نامعتبر است'});return true;}
