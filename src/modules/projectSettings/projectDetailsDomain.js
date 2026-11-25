@@ -1,5 +1,19 @@
 import { IRAN_PROVINCES, IRAN_CITIES } from './iranLocations.js';
 
+export const PROJECT_RESPONSIBILITIES = [
+  ['followUp','مسئول پیگیری کار'],
+  ['workApproval','مسئول تأیید کار'],
+  ['contractApproval','مسئول تأیید قرارداد'],
+  ['finance','مسئول مالی'],
+];
+
+export function projectResponsibleIds(project, role){
+  const ids=project?.settings?.projectDetails?.responsibilities?.[role];
+  if(!Array.isArray(ids))return [];
+  const contacts=new Set((project.contacts||[]).filter(item=>!item.trashed).map(item=>String(item.id)));
+  return [...new Set(ids.map(String))].filter(id=>contacts.has(id));
+}
+
 export const PROJECT_TYPES = Object.freeze([
   'ساختمان و ابنیه', 'نفت و گاز', 'آب و فاضلاب', 'راه و ترابری',
   'تاسیسات و تجهیزات', 'نیرو', 'کشاورزی', 'صنعت و معدن', 'ارتباطات', 'سایر',
@@ -13,6 +27,7 @@ export function projectDetailsDraft(project){
   const details = project.settings?.projectDetails || {};
   return {
     name: project.name || '',
+    responsibilities:Object.fromEntries(PROJECT_RESPONSIBILITIES.map(([role])=>[role,projectResponsibleIds(project,role)])),
     provinceId: details.provinceId || '', cityId: details.cityId || '',
     projectType: details.projectType || '', address: details.address || '',
     currency: details.currency || 'تومان', description: details.description || '',
@@ -33,6 +48,12 @@ export function updateProjectDetails(project, draft){
   return {
     ...project, name,
     settings: { ...project.settings, projectDetails: {
+      ...(draft.responsibilities && {responsibilities:Object.fromEntries(PROJECT_RESPONSIBILITIES.flatMap(([role])=>{
+        const ids=draft.responsibilities?.[role];
+        if(!Array.isArray(ids))return [];
+        const valid=new Set((project.contacts||[]).filter(item=>!item.trashed).map(item=>String(item.id)));
+        return [[role,[...new Set(ids.map(String))].filter(id=>valid.has(id))]];
+      }))}),
       provinceId, cityId, projectType: draft.projectType || '',
       address: String(draft.address || '').trim(), currency: draft.currency,
       description: String(draft.description || '').trim(),
