@@ -1,3 +1,4 @@
+import { responsibleContactPicker } from '../../ui/responsibleContactPicker.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { appRouter } from '../../core/router.js';
 import { markDirty, persist } from '../../sync/persistAdapter.js';
@@ -5,7 +6,7 @@ import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 import { openJalaliPicker, formatJalaliDisplay } from '../../ui/jalali.js';
 import { isProjectOwner } from './index.js';
 import {
-  PROJECT_TYPES, PROJECT_CURRENCIES, projectProvinces, projectCities,
+  PROJECT_RESPONSIBILITIES, PROJECT_TYPES, PROJECT_CURRENCIES, projectProvinces, projectCities,
   projectDetailsDraft, updateProjectDetails,
 } from './projectDetailsDomain.js';
 
@@ -112,6 +113,17 @@ export default {
         () => picker('انتخاب کارفرمای پروژه', contacts.map(item => ({ id:String(item.id), name:contactName(item) })).sort((a,b) => a.name.localeCompare(b.name, 'fa')), item => { draft.employerId = item.id; }));
       selectField('تاریخ شروع پروژه', draft.startDate && formatJalaliDisplay(draft.startDate),
         () => openJalaliPicker(draft.startDate, value => { draft.startDate = value; render(); }));
+      const responsibilities=document.createElement('h3');
+      responsibilities.className='wbs-task-form-section';
+      responsibilities.textContent='مسئولان پیش‌فرض';
+      form.append(responsibilities);
+      for(const [role,label] of PROJECT_RESPONSIBILITIES){
+        const row=document.createElement('div');row.className='ft-row';
+        const title=document.createElement('span');title.className='ft-label';title.textContent=label;
+        row.append(title,responsibleContactPicker({contacts,ids:draft.responsibilities[role],label,
+          contextKey:'project-responsibility:'+role,readOnly:!canEdit,onChange:ids=>{draft.responsibilities[role]=ids;}}));
+        form.append(row);
+      }
       form.appendChild(error);
     }
     render();
