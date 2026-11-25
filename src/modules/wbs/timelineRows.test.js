@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildTimelineRows, sortTimelineRows } from './timelineRows.js';
 import { actualProgress, plannedProgressOf, jalaliDayNumber } from '../../domain/wbs/scheduling.js';
-import { ganttLevelOptions } from './timelineViewOptions.js';
+import { ganttLevelOptions, setGanttLevelVisible } from './timelineViewOptions.js';
 
 const task = (id, progress=0) => ({id, title:id, weight:1, progress, scheduleStart:'1405/06/20', scheduleEnd:'1405/06/25'});
 test('direct tasks under stage and legacy grouping nodes have identical row order and ranges', () => {
@@ -32,7 +32,7 @@ test('hiding grouping levels reveals descendants while preserving source depth',
   assert.deepEqual(rows.map(row=>row.item.id),['leaf']);
   assert.equal(rows[0].depth,0);
   assert.equal(rows[0].sourceDepth,2);
-  assert.deepEqual(ganttLevelOptions(tree).map(option=>option.label),['مرحله ۱','مرحله ۲','کارها']);
+  assert.deepEqual(ganttLevelOptions(tree).map(option=>option.label),['مرحله ۱','مرحله ۲','کارها','زیرکارها']);
 });
 test('collapsed stages suppress active task rows until Expand opens them', () => {
   const tree=[{id:'root',kind:'stage',workTasks:[task('leaf')],subtasks:[]}];
@@ -56,14 +56,23 @@ test('date order is the default timeline row mode', () => {
   assert.deepEqual(buildTimelineRows(tree,'p',{expanded:()=>true}).map(row=>row.item.id),['early','late']);
 });
 
-test('date order keeps every task below its parent stage', () => {
-  const tree=[{
-    id:'parent',kind:'stage',subtasks:[],workTasks:[
-      {...task('short'),scheduleStart:'1405/06/01',scheduleEnd:'1405/06/02'},
-      {...task('long'),scheduleStart:'1405/06/01',scheduleEnd:'1405/06/20'},
-    ],
-  }];
-  const rows=buildTimelineRows(tree,'p',{expanded:()=>true,orderMode:'date'});
-  assert.deepEqual(rows.map(row=>row.item.id),['parent','short','long']);
-  assert.ok(rows.every(row=>row.rootId==='parent'));
+test('selected levels are globally date ordered in single- and multi-stage trees', () => {
+  for(const nested of [false,true]){
+    const work={...task('work'),scheduleStart:'1405/07/01',scheduleEnd:'1405/07/02'};
+    const early={...task('subwork'),parentTaskId:'work',scheduleStart:'1405/06/01',scheduleEnd:'1405/06/02'};
+    const leaf={id:'leaf',kind:'stage',workTasks:[{...work,id:'later'},work,{...task('undated'),scheduleStart:null,scheduleEnd:null},early]};
+    const tree=nested?[{id:'root',kind:'stage',subtasks:[leaf]}]:[leaf];
+    const ids=orderMode=>buildTimelineRows(tree,'p',{expanded:()=>true,orderMode}).map(row=>row.item.id);
+    const stages=nested?['root','leaf']:['leaf'];
+    assert.deepEqual(ids('wbs'),[...stages,'later','work','subwork','undated']);
+    const dateIds=ids('date');
+    assert.ok(dateIds.indexOf('subwork')<dateIds.indexOf('later'));
+    assert.equal(dateIds.at(-1),'undated');
+    setGanttLevelVisible('subwork',false);
+    try{assert.deepEqual(ids('date'),dateIds.filter(id=>id!=='subwork'));}
+    finally{setGanttLevelVisible('subwork',true);}
+    setGanttLevelVisible('workTask',false);
+    try{assert.ok(ids('date').includes('subwork'));assert.ok(!ids('date').includes('work'));}
+    finally{setGanttLevelVisible('workTask',true);}
+  }
 });

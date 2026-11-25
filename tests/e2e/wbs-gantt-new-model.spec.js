@@ -61,7 +61,8 @@ for(const [mode,depth] of [['base',1],['none',2],['single',3],['multiple',4]]){
     await page.locator('.wbs-gantt-menu-row',{hasText:'عنوان'}).locator('input').check();
     await expect(target.locator('.wbs-gantt-detail-title')).toBeVisible();
     await page.getByRole('button',{name:'لول‌های WBS'}).click();
-    await expect(page.locator('#wbsGanttLevelMenu .wbs-gantt-menu-row')).toHaveCount(depth+1);
+    await expect(page.locator('#wbsGanttLevelMenu .wbs-gantt-menu-row')).toHaveCount(depth+2);
+    await expect(page.locator('#wbsGanttLevelMenu .wbs-gantt-menu-row',{hasText:'زیرکارها'}).locator('input')).toBeChecked();
     await expect(page.locator('#wbsGanttLevelMenu')).not.toContainText('خرده کار');
     await page.locator('#wbsGanttLevelMenu .wbs-gantt-menu-row',{hasText:'مرحله ۱'}).locator('input').uncheck();
     await expect(target.locator('.wbs-gantt-detail-title')).toBeVisible();

@@ -20,26 +20,7 @@ function compareTimelineDates(a, b){
 export function sortTimelineRows(rows, orderMode = 'date'){
   if(orderMode === 'wbs') return rows;
 
-  // Date ordering applies to root branches, not individual flattened rows.
-  // Keeping each branch intact guarantees that a stage is always rendered
-  // before its descendant stages and tasks.
-  const branches = [];
-  const branchByRoot = new Map();
-  rows.forEach((row, index) => {
-    const rootId = String(row.rootId ?? row.item?.id ?? index);
-    let branch = branchByRoot.get(rootId);
-    if(!branch){
-      branch = { rows:[], index, range:row.range };
-      branchByRoot.set(rootId, branch);
-      branches.push(branch);
-    }
-    branch.rows.push(row);
-    if(!branch.range && row.range) branch.range = row.range;
-  });
-
-  return branches
-    .sort((a, b) => compareTimelineDates(a, b) || a.index - b.index)
-    .flatMap(branch => branch.rows);
+  return [...rows].sort(compareTimelineDates);
 }
 
 // Both the base DOM and its SVG details must consume the same ordered rows.
