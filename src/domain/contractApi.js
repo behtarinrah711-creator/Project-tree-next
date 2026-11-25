@@ -92,7 +92,7 @@ function saveContractRecord(projectId, draft, {status = null,declareCompletion=f
   // Only an existing linked task with an explicitly empty reviewer list bypasses review.
   const linkedTask=record.workTaskId && workTaskRepository.get(projectId,record.projectItemId,record.workTaskId);
   if(linkedTask){
-    record.contractApproverContactIds=[...(linkedTask.contractApproverContactIds || [])];
+    record.contractApproverContactIds=configuredContractReviewers(record,linkedTask);
     if(!declareCompletion && record.status==='final' && !record.isDraft && !record.contractApproverContactIds.length){
       record.approvalStatus='approved';
       record.approvalContactIds=[];
@@ -101,6 +101,13 @@ function saveContractRecord(projectId, draft, {status = null,declareCompletion=f
       record.approvalRejectionReason='';
     }
   }
+  const contacts=new Set((project.contacts||[]).filter(item=>!item.trashed).map(item=>String(item.id)));
+  for(const key of ['financeContactIds','contractReviewerOverride']){
+    if(record[key]===undefined)continue;
+    if(!Array.isArray(record[key]) || record[key].some(id=>!contacts.has(String(id))))return deny('invalid','مسئول انتخاب‌شده در مخاطبین پروژه موجود نیست');
+    record[key]=[...new Set(record[key].map(String))];
+  }
+  if(Array.isArray(record.contractReviewerOverride))record.contractApproverContactIds=configuredContractReviewers(record,linkedTask);
   if(declareCompletion){
     if(!actor?.id || actor.id==='guest')return deny('forbidden','ابتدا وارد حساب کاربری شوید');
     const reviewers=configuredContractReviewers(record,linkedTask);
@@ -132,7 +139,7 @@ export const contractApi = {
     if(!current || current.trashed)return deny('not_found','قرارداد پیدا نشد');
     if(action==='submit'){
       const task=current.workTaskId && workTaskRepository.get(projectId,current.projectItemId,current.workTaskId);
-      const ids=task ? task.contractApproverContactIds || [] : current.contractApproverContactIds || options.approverIds || [options.approverId];
+      const ids=current.contractReviewerOverride ?? (task ? task.contractApproverContactIds || [] : current.contractApproverContactIds || options.approverIds || [options.approverId]);
       const approverIds=[...new Set(ids.filter(Boolean).map(String))];
       if(!approverIds.length || approverIds.some(id=>!(project.contacts||[]).some(c=>!c.trashed && String(c.id)===id)))return deny('invalid','مسئولان تأیید قرارداد را در درخت پروژه مشخص کنید');
       options={...options,approverIds};
