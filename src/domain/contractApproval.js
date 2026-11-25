@@ -42,9 +42,9 @@ export function contractApproverIds(contract){
   return [...new Set((Array.isArray(contract.approvalContactIds) ? contract.approvalContactIds : [contract.approvalContactId]).filter(Boolean).map(String))];
 }
 export function configuredContractReviewers(contract,linkedTask){
-  const ids=linkedTask
+  const ids=contract.contractReviewerOverride ?? (linkedTask
     ? linkedTask.contractApproverContactIds || []
-    : contract.contractApproverContactIds ?? contractApproverIds(contract);
+    : contract.contractApproverContactIds ?? contractApproverIds(contract));
   return [...new Set((Array.isArray(ids)?ids:[]).filter(Boolean).map(String))];
 }
 
