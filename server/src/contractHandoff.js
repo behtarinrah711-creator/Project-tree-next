@@ -92,6 +92,13 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       if(statement && (!statementParent || (contract && !contract.statementType) || !['save_statement','submit_advance','withdraw_advance','delete_statement','approve_statement','reject_statement','save_signed','send_finance','approve_finance','reject_finance','withdraw_finance','record_payment','reopen_signed_contract'].includes(body.action))){sendJson(response,400,{message:'قرارداد یا عملیات صورت‌وضعیت نامعتبر است'});return true;}
       if(!statement && body.action==='record_payment'){sendJson(response,400,{message:'عملیات نامعتبر است'});return true;}
       if(contract?.trashed || (!contract && !saveDraft)){sendJson(response,404,{message:'قرارداد پیدا نشد'});return true;}
+      if(['approve_finance','reject_finance'].includes(body.action)){
+        const financeContacts=contract?.financeContactIds ?? statementParent?.financeContactIds ??
+          (addendum?parentContractOf(row.payload,contract)?.financeContactIds:undefined);
+        if(financeContacts?.length && !financeContacts.map(String).includes(actor.contactId)){
+          sendJson(response,403,{message:'این سند به مسئول مالی دیگری ارجاع شده است'});return true;
+        }
+      }
       if(Number(body.version)!==Number(contract?.handoffVersion||0) || Number(body.updatedAt)!==Number(contract?.updatedAt||0)){
         sendJson(response,409,{message:'قرارداد تغییر کرده است؛ صفحه را به‌روز کنید'});return true;
       }

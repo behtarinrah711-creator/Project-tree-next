@@ -1,3 +1,5 @@
+import { projectResponsibleIds } from '../projectSettings/projectDetailsDomain.js';
+import { responsibleContactPicker } from '../../ui/responsibleContactPicker.js';
 import {flattenDependencyCandidates,jalaliDayNumber,requiredScheduleStart,scheduleDate,scheduleRangeOf} from '../../domain/wbs/scheduling.js';
 import {confirmSaosaWorkspaceSave,isSaosaHost,saosaWorkspaceSaveDiagnostic} from '../../cloud/saosaWorkspaceSync.js';
 import {findInTree} from '../../domain/wbs/normalize.js';
@@ -234,6 +236,8 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       };
       if(!subwork)section('مشخصات کار');
       const contacts = contactRepository.list(projectId).filter(contact => contact && !contact.trashed);
+      const projectDefaults=projectRepository.find(projectId);
+      const defaults=role=>task?[]:projectResponsibleIds(projectDefaults,role);
       const activities=activityRepository.list(projectId).filter(activity=>activity && !activity.trashed);
       let counterpartyContactId = task?.counterpartyContactId ?? contractor?.id ?? '';
       let activityId=task?.activityId || '';
@@ -408,28 +412,21 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       }
       if(!subwork)section('مسئولان');
 
-      const assignee = documentRef.createElement('button');
-      assignee.type = 'button'; assignee.name = 'taskAssignee'; assignee.className = 'wbs-input';
-      assignee.dataset.value = task?.assigneeContactId || '';
-      const assigneeSelection=clearSelection(assignee,'مسئول پیگیری',()=>{assignee.dataset.value='';paintAssignee();},()=>Boolean(assignee.dataset.value));
-      const paintAssignee = () => {
-        const selected = contacts.find(contact => String(contact.id) === String(assignee.dataset.value));
-        assignee.textContent = selected ? contactName(selected) : 'انتخاب کنید';
-        assigneeSelection.paint();
-      };
-      assignee.addEventListener('click', () => openSearchPicker({
-        title:'انتخاب مسئول پیگیری', listTitle:'مخاطبین', selectedTitle:'مسئول پیگیری منتخب',
-        contextKey:`wbs-task-assignee:${work.id}`,
-        items:contacts.map(contact => ({ id:contact.id, name:contactName(contact) })),
-        resourceType:'contact', showStar:false, showAdd:true,
-        onAdd:()=>{ window.KarhaSearchTemplate?.close(false); window.KarhaApp?.modules?.get('people')?.openContactForm?.(null,{pickerMode:true,onCreated:created=>{contacts.push(created);assignee.dataset.value=String(created.id);paintAssignee();}}); },
-        onSelect:selected => { assignee.dataset.value = String(selected.id); paintAssignee(); },
-      }));
-      paintAssignee();
-      if(!subwork)root.appendChild(fieldRow('مسئول پیگیری', assigneeSelection.wrap));
+      let assigneeIds=task?.assigneeContactIds ?? (task?.assigneeContactId?[String(task.assigneeContactId)]:defaults('followUp'));
+      if(!subwork)root.append(fieldRow('مسئول پیگیری کار',responsibleContactPicker({
+        contacts,ids:assigneeIds,label:'مسئول پیگیری کار',contextKey:'wbs-task-assignee:'+work.id,
+        readOnly,onChange:ids=>{assigneeIds=ids;},
+      })));
+      root._assigneeIds=()=>assigneeIds;
+      let financeIds=task?.financeContactIds ?? defaults('finance');
+      if(!subwork)root.append(fieldRow('مسئول مالی',responsibleContactPicker({
+        contacts,ids:financeIds,label:'مسئول مالی',contextKey:'wbs-task-finance:'+work.id,
+        readOnly,onChange:ids=>{financeIds=ids;},
+      })));
+      root._financeIds=()=>financeIds;
 
       const approvers=documentRef.createElement('div');
-      let approverIds=executionApproverIds(task);
+      let approverIds=task?executionApproverIds(task):defaults('workApproval');
       const approversLocked=readOnly || task?.completionState==='pending_approval';
       const paintApprovers=()=>{
         approvers.replaceChildren();
@@ -460,7 +457,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       root._executionApproverIds=()=>approverIds;
 
       const contractApprovers=documentRef.createElement('div');
-      let contractApproverContactIds=[...(task?.contractApproverContactIds || [])];
+      let contractApproverContactIds=[...(task?.contractApproverContactIds ?? defaults('contractApproval'))];
       const reviewersLocked=['pending','approved'].includes(linkedContract?.approvalStatus);
       paintContractApprovers=()=>{
         contractApprovers.replaceChildren();
@@ -530,7 +527,9 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         ...(!saveStandalone?{scheduleMode:root.querySelector('[name="taskScheduleMode"]').value||'manual',
           scheduleDuration:Number(root.querySelector('[name="taskDuration"]').dataset.value)}:{}),
         priority:root.querySelector('[name="taskPriority"]').value||'normal',
-        assigneeContactId:root.querySelector('[name="taskAssignee"]')?.dataset.value || '',
+        assigneeContactIds:root._assigneeIds(),
+        financeContactIds:root._financeIds(),
+        assigneeContactId:root._assigneeIds()[0] || '',
         activityId:root.querySelector('[name="taskActivity"]')?.dataset.value || '',
         contractTemplateId:root.querySelector('[name="taskContractTemplate"]')?.dataset.value || '',
         counterpartyContactId:root.querySelector('[name="taskCounterparty"]')?.dataset.value || '',

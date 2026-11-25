@@ -1,3 +1,5 @@
+import { responsibleContactPicker } from '../../ui/responsibleContactPicker.js';
+import { projectResponsibleIds } from '../projectSettings/projectDetailsDomain.js';
 import {openContractReasonSheet} from './contractReasonSheet.js';
 import {saveContractHandoff} from './contractHandoffApi.js';
 import {hasPaidContractDocument,reviseContract} from '../../domain/contractRevision.js';
@@ -515,6 +517,18 @@ function renderContractForm() {
     : ftSelectRow(form, 'آیتم پروژه', state.projectItemPath || '', () => openContractPicker('projectItem'), { placeholder: 'انتخاب' });
   markMissing(projectItemRow,!state.projectItemId);
 
+  if(!reviewEdit){
+    for(const [key,label,fallback] of [
+      ['contractReviewerOverride','مسئول تأیید قرارداد',state.contractApproverContactIds ?? projectResponsibleIds(project,'contractApproval')],
+      ['financeContactIds','مسئول مالی',projectResponsibleIds(project,'finance')],
+    ]){
+      const row=document.createElement('div');row.className='ft-row';
+      const title=document.createElement('span');title.className='ft-label';title.textContent=label;
+      row.append(title,responsibleContactPicker({contacts,ids:state[key]??fallback,label,
+        contextKey:'contract-responsibility:'+key,onChange:ids=>{state[key]=ids;dirty=true;}}));
+      form.append(row);
+    }
+  }
   const projectPlace = realContractDomain.projectContractPlace(project);
   if (!state.contractPlace) state.contractPlace = projectPlace;
   ftTextRow(form, 'محل انعقاد قرارداد', state.contractPlace || '', value => { state.contractPlace = value; }, { inline: true, placeholder: 'پیش‌فرض: محل پروژه' });
@@ -826,6 +840,10 @@ export const realContractFormModule = {
       project,
       helper('todayJalaliStr')
     );
+    if(!existing){
+      state.contractReviewerOverride=projectResponsibleIds(project,'contractApproval');
+      state.financeContactIds=projectResponsibleIds(project,'finance');
+    }
     dirty = false;
     inlineAddState = null;
 
