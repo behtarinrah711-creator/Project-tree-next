@@ -692,8 +692,9 @@ function openStatementStep(project,contract,record,onChanged,{finance=false,appr
       const showHistory=options=>{
         const details=renderContractHistory(document,record,{compact:true,...options});
         details.open=true;
-        details.querySelector('summary').hidden=true;
-        if(details.querySelector('.contract-history-entry'))root.append(details);
+        const children=Array.from(details.children);
+        if(children[0])children[0].hidden=true;
+        if(children.some(item=>item.className.split(' ').includes('contract-history-entry')))root.append(details);
         return details;
       };
       const showStatus=(status,person)=>{
