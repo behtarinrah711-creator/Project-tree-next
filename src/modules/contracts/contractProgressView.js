@@ -110,3 +110,13 @@ export function mountDocumentStageFooter(root){
   footer.append(...actions);
   root.append(footer);
 }
+
+export function documentStageSelection(record,project,requested,preferred){
+  const steps=contractProgressSteps(record,project);
+  const current=steps.find(step=>!step.done);
+  const selected=requested
+    ? steps.find(step=>step.id===requested.id)
+    : steps.find(step=>preferred && step.id===preferred) || current || steps.at(-1);
+  return selected && (selected.done || selected.rejected || selected.id===current?.id)
+    ? {steps,current,selected} : null;
+}
