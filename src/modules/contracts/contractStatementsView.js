@@ -7,7 +7,7 @@ import {openContractPreview} from './contractPreviewView.js';
 import {statementWorkRows,resolveStatementWork} from '../../domain/statementWork.js';
 import { contactApi } from '../../domain/contactApi.js';
 import { projectRepository } from '../../data/projectRepository.js';
-import { canReviewContract, canRevokeContractApproval, canWithdrawAdvanceRequest, canEditAdvanceRequest, hasAdvanceSubmission, contractApproverIds } from '../../domain/contractApproval.js';
+import { canReviewContract, canRevokeContractApproval, canWithdrawAdvanceRequest, canWithdrawPendingStatement, canEditAdvanceRequest, hasAdvanceSubmission, contractApproverIds } from '../../domain/contractApproval.js';
 import { accountStatements, approvedStatement, statementAccount, statementAddenda, contractStatementTotals, finalStatementSummary, statementAmounts, statementsFor, contractAdvanceDeductionBalance, contractOnAccountBalance, isOnAccountPayment, advanceDeductionFromPercent, contractAdvanceRows } from '../../domain/contractStatements.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
@@ -631,7 +631,7 @@ function openStatementStep(project,contract,record,onChanged,{finance=false,appr
       onChanged();
       const source=currentProject(project);
       openStatementStep(source,contract,updated,onChanged,{finance,approval,openSheet,
-        step:['approve_finance','reject_finance','reopen_signed_contract'].includes(action)?undefined:contractProgressSteps(updated,source).find(item=>item.id===active.id)});
+        step:['approve_finance','reject_finance','reopen_signed_contract','withdraw_statement'].includes(action)?undefined:contractProgressSteps(updated,source).find(item=>item.id===active.id)});
       return true;
     }catch(error){toast(error.message);return false;}
     finally{pending=false;}
@@ -680,7 +680,10 @@ function openStatementStep(project,contract,record,onChanged,{finance=false,appr
         }
       }
       if(active.id==='approved'){
-        showHistory({actions:['approve','reject','revoke']});
+        showHistory({actions:['approve','reject','revoke','withdraw_submission']});
+        if(writable && canWithdrawPendingStatement(record)){
+          root.append(actionButton('پس گرفتن از تأیید برای ویرایش',()=>showReason('پس گرفتن صورت‌وضعیت از تأیید','withdraw_statement'),'danger'));
+        }
         if(record.approvalStatus==='pending' && (!advance || hasAdvanceSubmission(record))){
           const approvedIds=(record.approvedContactIds||[]).map(String);
           for(const id of contractApproverIds(record).filter(id=>!approvedIds.includes(id))){
@@ -840,6 +843,7 @@ export function renderStatementCard(project,contract,record,onChanged,approval,{
   const heading=renderContractCardHeading(project,contract,{
     onEdit:writable?()=>{
       if(editable)return openStatementForm(project,contract,onChanged,record);
+      if(canWithdrawPendingStatement(record))return openStatementStep(project,contract,record,onChanged);
       if(record.accountingStatus==='sent' || (!record.paidAmount && canReopenSignedContract(record))){
         const step=contractProgressSteps(record,project).find(item=>item.id==='finance');
         return openStatementStep(project,contract,record,onChanged,{step});
