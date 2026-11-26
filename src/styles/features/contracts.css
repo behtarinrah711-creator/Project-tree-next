@@ -2119,17 +2119,24 @@ textarea.contract-project-item-input{
 .contract-export-document .contract-document-statement-pairs > tbody > tr > td{direction:rtl;text-align:right}
 .contract-export-document .contract-document-statement-pairs .contract-document-payment-heading{vertical-align:middle}
 .contract-export-document .contract-document-payment-table{width:100%;border-collapse:collapse;border-spacing:0;margin:0}
-.contract-export-document .contract-document-statement .contract-document-quantity{width:100%;table-layout:fixed;border-collapse:collapse}
-.contract-export-document .contract-document-statement .contract-document-quantity :is(th,td){border:1px solid #aaa;padding:4px;white-space:normal;overflow-wrap:anywhere}
-.contract-export-document .contract-document-statement .contract-document-quantity th:first-child{width:8%}
-.contract-export-document .contract-document-statement .contract-document-quantity th:nth-child(2){width:36%}
-.contract-export-document .contract-document-statement .contract-document-quantity th:nth-child(3),.contract-export-document .contract-document-statement .contract-document-quantity th:nth-child(4){width:10%}
-.contract-export-document .contract-document-statement .contract-document-quantity th:nth-child(5),.contract-export-document .contract-document-statement .contract-document-quantity th:nth-child(6){width:18%}
+.contract-document-statement-body{--statement-heading-size:1em}
+.contract-document-statement-body > .contract-document-quantity{width:100%;table-layout:fixed;border-collapse:collapse}
+.contract-document-statement-body > .contract-document-quantity :is(th,td){border:1px solid #aaa;padding:4px;white-space:normal;overflow-wrap:anywhere}
+.contract-document-statement-body > .contract-document-quantity th:first-child{width:8%}
+.contract-document-statement-body > .contract-document-quantity th:nth-child(2){width:36%}
+.contract-document-statement-body > .contract-document-quantity th:nth-child(n+3){width:14%}
+.contract-document-statement-body > .contract-document-statement-progress th:nth-child(2){width:30%}
+.contract-document-statement-body > .contract-document-statement-progress th:nth-child(n+3){width:12.4%}
+.contract-document-statement-body > .contract-document-quantity td:nth-child(n+3),
+.contract-document-statement-body > .contract-document-quantity .doc-operations-total td:not(:first-child){text-align:center}
 
-.contract-document-statement-body > .contract-document-statement-header,
-.contract-export-document .contract-document-statement-body > :is(table,h3){margin:0}
-.contract-export-document .contract-document-statement-body > table > :is(thead,tbody):first-child > tr:first-child > :is(th,td){border-top:0}
-.contract-export-document .contract-document-statement-body > .contract-document-statement-band{padding:5px 8px;border:1px solid #aaa;border-top:0;background:#f3f3f3;font-size:1em;text-align:right;break-after:avoid}
+.contract-document-statement-body > :is(header,table,h3){margin:0}
+.contract-document-statement-body > .contract-document-statement-header{position:relative;border-top:0}
+.contract-document-statement-body > .contract-document-statement-header::before{content:"";position:absolute;inset:0 -1px auto;border-top:1px solid #aaa;z-index:1}
+.contract-document-statement-body > .contract-document-statement-band{padding:5px 8px;border:1px solid #aaa;background:#f3f3f3;font-size:var(--statement-heading-size);text-align:right;break-after:avoid}
+.contract-document-statement-body > * + :is(.contract-document-statement-facts,.contract-document-statement-band),
+.contract-document-statement-body > table:has(caption) > tbody:first-of-type > tr:first-child > :is(th,td),
+.contract-document-statement-body > * + table:not(:has(caption)) > :is(thead,tbody):first-child > tr:first-child > :is(th,td){border-top:0}
 
 .contract-document-statement-header{grid-template-columns:minmax(0,24fr) minmax(0,52fr) minmax(0,24fr);min-height:52px;color:#111}
 .contract-document-statement-header > .contract-document-statement-project{font-size:1.25em}
@@ -2144,10 +2151,11 @@ textarea.contract-project-item-input{
 .contract-document-statement-fact > *{padding:4px;overflow-wrap:anywhere;min-width:0;text-align:start}
 .contract-document-statement-fact > strong{background:#eee}
 .contract-document-statement-body .contract-document-statement-fact > bdi{text-align:center}
-.contract-document-statement-body > .contract-document-statement-facts{margin:0;border-top:0}
+.contract-document-statement-body > .contract-document-statement-facts{margin:0}
 
 .contract-document-statement-body > .contract-document-payment-pairs{width:100%;table-layout:fixed;border-collapse:collapse;margin:0}
-.contract-document-payment-pairs caption{border:1px solid #aaa;background:#f3f3f3;font-weight:700;text-align:right;padding:4px 6px}
+.contract-document-statement-body > .contract-document-payment-pairs caption{border:1px solid #aaa;background:#fff;font-size:var(--statement-heading-size);font-weight:700;text-align:right;padding:4px 6px}
+.contract-document-statement-body > * + .contract-document-payment-pairs caption{border-top:0}
 .contract-document-statement-body > .contract-document-payment-pairs th{width:16%;white-space:normal}
 .contract-document-statement-body > .contract-document-payment-pairs td{width:34%;overflow-wrap:anywhere}
 .contract-document-statement-body > .contract-document-payment-pairs :is(th,td){padding:3px 5px}
