@@ -282,17 +282,14 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
                 reason.className='wbs-input';
                 root.append(fieldRow('عنوان قرارداد',name),fieldRow('دلیل اصلاح',reason));
               },
-              async onSave(){
+              onSave(){
                 if(busy)return false;
                 busy=true;
-                try{
-                  await saveContractHandoff(id,c,'correct_paid_contract',{title:name.value,reason:reason.value});
-                  onChanged();
-                  return true;
-                }catch(error){
-                  window.KarhaLegacy?.showToast?.(error.message);
-                  return false;
-                }finally{busy=false;}
+                saveContractHandoff(id,c,'correct_paid_contract',{title:name.value,reason:reason.value})
+                  .then(()=>{if(name.isConnected)closeWbsSheet();onChanged();})
+                  .catch(error=>window.KarhaLegacy?.showToast?.(error.message))
+                  .finally(()=>{busy=false;});
+                return false;
               },
             });
             return;
