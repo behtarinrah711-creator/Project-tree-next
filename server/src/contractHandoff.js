@@ -89,10 +89,10 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       }
       const saveDraft=(addendum && body.action==='save_addendum') || (statement && body.action==='save_statement');
       const statementParent=statement && (row.payload.contracts||[]).find(record=>!record.trashed && String(record.id)===String(contract?.contractId ?? body.contractId));
-      if(statement && (!statementParent || (contract && !contract.statementType) || !['save_statement','submit_advance','withdraw_advance','withdraw_statement','delete_statement','approve_statement','reject_statement','save_signed','send_finance','approve_finance','reject_finance','withdraw_finance','record_payment','reopen_signed_contract'].includes(body.action))){sendJson(response,400,{message:'قرارداد یا عملیات صورت‌وضعیت نامعتبر است'});return true;}
+      if(statement && (!statementParent || (contract && !contract.statementType) || !['save_statement','submit_advance','withdraw_advance','withdraw_statement','delete_statement','approve_statement','reject_statement','save_signed','send_finance','approve_finance','reject_finance','revoke_finance','withdraw_finance','record_payment','reopen_signed_contract'].includes(body.action))){sendJson(response,400,{message:'قرارداد یا عملیات صورت‌وضعیت نامعتبر است'});return true;}
       if(!statement && body.action==='record_payment'){sendJson(response,400,{message:'عملیات نامعتبر است'});return true;}
       if(contract?.trashed || (!contract && !saveDraft)){sendJson(response,404,{message:'قرارداد پیدا نشد'});return true;}
-      if(['approve_finance','reject_finance'].includes(body.action)){
+      if(['approve_finance','reject_finance','revoke_finance'].includes(body.action)){
         const financeContacts=contract?.financeContactIds ?? statementParent?.financeContactIds ??
           (addendum?parentContractOf(row.payload,contract)?.financeContactIds:undefined);
         if(financeContacts?.length && !financeContacts.map(String).includes(actor.contactId)){
@@ -123,7 +123,10 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       }
       const activity=(row.payload.activityTemplates||[]).find(a=>String(a.id)===String(contract?.activityId));
       let transition;
-      if(statement && body.action==='withdraw_finance' && contract.accountingStatus!=='sent'){sendJson(response,409,{message:'صورت‌وضعیت تأییدشده قابل پس گرفتن نیست'});return true;}
+      if(addendum && ['withdraw_finance','revoke_finance'].includes(body.action) &&
+        (row.payload.contractStatusReports||[]).some(item=>String(item.addendumId||'')===String(contract.id) && Number(item.paidAmount)>0)){
+        sendJson(response,409,{message:'این الحاقیه سند پرداخت‌شده دارد'});return true;
+      }
       if(deleteStatement){
         if(!canDeleteContractDocument(contract)){
           sendJson(response,409,{message:'صورت‌وضعیت در وضعیت فعلی قابل حذف نیست'});return true;
