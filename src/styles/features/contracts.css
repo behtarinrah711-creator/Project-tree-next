@@ -2143,3 +2143,9 @@ textarea.contract-project-item-input{
 .contract-document-statement-fact > *{padding:4px;overflow-wrap:anywhere;min-width:0;text-align:start}
 .contract-document-statement-fact > strong{background:#eee}
 .contract-document-statement-body > .contract-document-statement-facts{margin:0;border-top:0}
+
+.contract-document-statement-body > .contract-document-payment-pairs{width:100%;table-layout:fixed;border-collapse:collapse;margin:0}
+.contract-document-payment-pairs caption{border:1px solid #aaa;background:#f3f3f3;font-weight:700;text-align:right;padding:4px 6px}
+.contract-document-statement-body > .contract-document-payment-pairs th{width:16%;white-space:normal}
+.contract-document-statement-body > .contract-document-payment-pairs td{width:34%;overflow-wrap:anywhere}
+.contract-document-statement-body > .contract-document-payment-pairs :is(th,td){padding:3px 5px}

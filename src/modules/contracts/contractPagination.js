@@ -1,6 +1,7 @@
 /** Measure at print width; keep ordinary blocks together and split oversized text. */
 export function paginateContract(source, documentRef=globalThis.document){
   const advance=source.getAttribute?.('data-document-kind')==='advance';
+  const statement=source.classList?.contains('contract-document-statement-body');
   const meta=source.querySelectorAll('.doc-contract-meta')[0];
   const documentKind=meta?.getAttribute?.('data-document-kind')==='addendum'?'الحاقیه':'قرارداد';
   const contractNumber=meta?.getAttribute?.('data-contract-number') || source.querySelectorAll('.contract-document-attachment')[0]?.getAttribute?.('data-contract-number') || '';
@@ -12,6 +13,7 @@ export function paginateContract(source, documentRef=globalThis.document){
   const next=()=>{
     const sheet=documentRef.createElement('section');sheet.className='contract-sheet';
     content=documentRef.createElement('div');content.className='contract-sheet-content';
+    if(statement)content.classList.add('contract-export-document','contract-document-statement','contract-document-statement-body');
     sheet.appendChild(content);pages.appendChild(sheet);
   };
   const fits=()=>content.scrollHeight<=content.clientHeight;
@@ -24,13 +26,14 @@ export function paginateContract(source, documentRef=globalThis.document){
     if(fits())return;
     block.remove();
     if(content.childNodes.length){next();content.appendChild(block);if(fits())return;block.remove();}
-    const table=block.querySelectorAll('.contract-document-quantities')[0];
+    const findTable=node=>node.classList?.contains('contract-document-quantities')?node:node.querySelectorAll('.contract-document-quantities')[0];
+    const table=findTable(block);
     const tableBody=table?.tBodies?.[0];
     if(tableBody?.rows.length>1){
       const rows=[...tableBody.rows];
       const startTable=()=>{
         const section=block.cloneNode(true);
-        const body=section.querySelectorAll('.contract-document-quantities')[0].tBodies[0];
+        const body=findTable(section).tBodies[0];
         body.replaceChildren();
         content.appendChild(section);
         return {section,body};
@@ -101,6 +104,8 @@ export function paginateContract(source, documentRef=globalThis.document){
 export function paginateContractMarkup(html,documentRef=globalThis.document){
   const source=documentRef.createElement('div');source.innerHTML=html;
   const wrapper=source.querySelector('.contract-export-document');
+  const statement=wrapper?.querySelector('.contract-document-statement-body');
+  if(statement)return paginateContract(statement,documentRef).outerHTML;
   if(wrapper?.getAttribute('data-document-kind')==='advance')source.setAttribute('data-document-kind','advance');
   if(wrapper){while(wrapper.firstChild)source.insertBefore(wrapper.firstChild,wrapper);wrapper.remove();}
   return paginateContract(source,documentRef).outerHTML;
