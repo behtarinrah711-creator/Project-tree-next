@@ -75,9 +75,32 @@ export function renderCostline(project, access = {}){
     chart = nextChart;
     results.replaceChildren();
     if(active)results.append(renderEstimateTable(project, model.buckets, permissions, refresh));
-    stages.textContent = filters.branch ? nodes.get(filters.branch).title : 'همه مراحل';
-    types.textContent = filters.type || 'نوع کار';
-    dates.textContent = filters.dates ? 'بازه: '+rangeText(filters.dates) : 'بازهٔ زمانی';
+    selections.replaceChildren();
+    for(const [key,label,value] of [
+      ['branch','مرحله',filters.branch && nodes.get(filters.branch).title],
+      ['dates','بازه',filters.dates && rangeText(filters.dates)],
+      ['type','نوع کار',filters.type],
+    ]){
+      if(!value)continue;
+      const chip = document.createElement('div');
+      chip.className = 'wbs-costline-filter-chip';
+      const text = document.createElement('span');
+      text.className = 'execution-details-filter-value';
+      text.textContent = label+' '+value;
+      const clear = document.createElement('button');
+      clear.type = 'button';
+      clear.className = 'execution-details-filter-clear';
+      clear.textContent = '×';
+      clear.setAttribute('aria-label','حذف فیلتر '+label);
+      clear.onclick = () => {
+        filters[key] = key === 'dates' ? null : '';
+        paint();
+        ({branch:stages,dates, type:types})[key].focus();
+      };
+      chip.append(text,clear);
+      selections.append(chip);
+    }
+    selections.hidden = !selections.childElementCount;
   };
   const controls = document.createElement('section');
   controls.className = 'wbs-costline-filters';
@@ -111,7 +134,10 @@ export function renderCostline(project, access = {}){
   const buttons = document.createElement('div');
   buttons.className = 'wbs-costline-filter-buttons';
   buttons.append(stages, dates, types);
-  controls.append(search, buttons);
+  const selections = document.createElement('div');
+  selections.className = 'wbs-costline-filter-selections today-task-secondary';
+  selections.setAttribute('aria-label','فیلترهای انتخاب‌شده');
+  controls.append(search, buttons, selections);
   chartFrame.append(toolbar);
   root.append(controls, chartFrame, results, renderFundingPanel(project, refresh, permissions));
   paint();
