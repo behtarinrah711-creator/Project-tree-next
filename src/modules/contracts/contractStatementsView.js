@@ -803,7 +803,7 @@ export function renderStatementCard(project,contract,record,onChanged,approval,{
   }else main.children[1].textContent=[record.addendumNo,Number(record.statementAmount??record.stageAmount)?money(record.statementAmount??record.stageAmount):'',formatJalaliDisplay(record.date)].filter(Boolean).join(' | ');
 
   heading.children[2].hidden=true;
-  row.append(heading,renderContractWorkflowPanel(document,record,project,{onOpen:open,expanded:true,heading}));
+  row.append(heading,renderContractWorkflowPanel(document,record,project,{onOpen:open,expanded:true,heading,openCompleted:true}));
   if(approval?.action && record.approvalStatus==='pending' && (record.statementType!=='advance' || hasAdvanceSubmission(record))){
     const actions=element('div','contract-addendum-toolbar');
     actions.append(button(approval.action.textContent,()=>approval.action.click()));
