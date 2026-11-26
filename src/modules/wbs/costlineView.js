@@ -1,3 +1,5 @@
+import {findInTree} from '../../domain/wbs/normalize.js';
+import {openCreateWorkTaskSheet} from './workTaskView.js';
 import { openCostlineExport } from './costlineExportView.js';
 import { jalaliDayNumber, jalaliFromDay, COSTLINE_RANGES, WEEKDAYS, plannedCostline, scheduledPayments, sliceShare, collectPlannedWorks } from '../../domain/wbs/costline.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
@@ -821,6 +823,19 @@ function openBucketSheet(project, initialBucket, refresh, access){
         paintMode();
         modeRow.append(modeLabel, mode, modeMenu);
         card.append(heading, modeRow, dateRow, totalRow, needRow);
+        const owner=findInTree(current.tasks||[],work.itemId)?.item;
+        const task=owner?.workTasks?.find(item=>!item.trashed && String(item.id)===String(work.id));
+        if(task && access.canWrite){
+          const edit=document.createElement('button');
+          edit.type='button';
+          edit.className='wbs-costline-manual';
+          edit.textContent='ویرایش کار';
+          edit.onclick=()=>{
+            closeWbsSheet();
+            openCreateWorkTaskSheet({projectId:project.id,work:owner,task,onChanged:refresh,canDelete:access.canDelete});
+          };
+          card.append(edit);
+        }
         if(access.canWrite){
           const plan = document.createElement('button');
           plan.type = 'button';
