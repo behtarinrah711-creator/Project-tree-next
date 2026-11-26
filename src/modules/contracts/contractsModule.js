@@ -1,3 +1,4 @@
+import {saveContractHandoff} from './contractHandoffApi.js';
 import {closeWbsSheet} from '../wbs/wbsSheet.js';
 import {renderInlineContractReject} from './contractReasonSheet.js';
 import {hasPaidContractDocument} from '../../domain/contractRevision.js';
@@ -269,7 +270,33 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       };
       const heading=renderContractCardHeading(p,c,{
         onEdit:approval || !writable?undefined:()=>{
-          if(hasPaidContractDocument(p,c))return window.KarhaLegacy?.showToast?.('این قرارداد سند پرداخت‌شده دارد و قابل ویرایش نیست');
+          if(hasPaidContractDocument(p,c)){
+            const access=window.KarhaSaosaWorkspaceAccess?.[id];
+            if(access?.role!=='owner' && access?.isOwner!==true)return window.KarhaLegacy?.showToast?.('اصلاح قرارداد پرداخت‌شده فقط برای مالک پروژه در دسترس است');
+            let name,reason,busy=false;
+            openWbsSheet({title:'اصلاح اطلاعات قرارداد پرداخت‌شده',saveLabel:'ثبت اصلاح',autoFocus:false,
+              body(root){
+                name=document.createElement('input');
+                name.className='wbs-input';name.value=c.title||'';
+                reason=document.createElement('textarea');
+                reason.className='wbs-input';
+                root.append(fieldRow('عنوان قرارداد',name),fieldRow('دلیل اصلاح',reason));
+              },
+              async onSave(){
+                if(busy)return false;
+                busy=true;
+                try{
+                  await saveContractHandoff(id,c,'correct_paid_contract',{title:name.value,reason:reason.value});
+                  onChanged();
+                  return true;
+                }catch(error){
+                  window.KarhaLegacy?.showToast?.(error.message);
+                  return false;
+                }finally{busy=false;}
+              },
+            });
+            return;
+          }
           const edit=()=>legacy('openContractForm',c.id);
           if(contractApprovalState(c)==='incomplete')return edit();
           openConfirm('با ویرایش کردن قرارداد به مرحله نخست باز می‌گردید. ادامه می‌دهید؟',edit,'بله',{cancelLabel:'خیر'});
