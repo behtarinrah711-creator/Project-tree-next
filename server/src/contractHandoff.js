@@ -8,7 +8,7 @@ import {applyExecutionApproval,approveExecutionEntity,executionApprovalItem,reje
 import {tehranTodayJalali} from '../../src/domain/wbs/todayDomain.js';
 import {saveAddendumDraft} from './contractAddendum.js';
 import {canDeleteAddendumRecord,canDeleteContractAddenda,parentContractOf} from '../../src/domain/contractAddenda.js';
-import {canEditAdvanceRequest,canWithdrawAdvanceRequest,contractApproverIds,hasAdvanceSubmission,saveContractReviewEdit,transitionContractApproval} from '../../src/domain/contractApproval.js';
+import {canEditAdvanceRequest,canWithdrawAdvanceRequest,contractApproverIds,hasAdvanceSubmission,saveContractReviewEdit,restoreRejectedStatement,transitionContractApproval} from '../../src/domain/contractApproval.js';
 import {syncContractPartyData} from '../../src/domain/contractPartyData.js';
 import {authenticate} from './auth.js';
 import {readJson,sendJson} from './http.js';
@@ -73,7 +73,8 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         await client.query('COMMIT');committed=true;sendJson(response,200,{entity});
         return true;
       }
-      const contract=(row.payload[collection]||[]).find(c=>String(c.id)===contractId && (addendum || !c.trashed));
+      const stored=(row.payload[collection]||[]).find(c=>String(c.id)===contractId && (addendum || !c.trashed));
+      const contract=statement?restoreRejectedStatement(stored):stored;
       const financeAction=['approve_finance','reject_finance','revoke_finance','record_payment'].includes(body.action);
       const reviewAction=statement?['approve_statement','reject_statement'].includes(body.action):addendum ? ['approve_addendum','reject_addendum','revoke_addendum'].includes(body.action) : ['approve_contract','reject_contract'].includes(body.action);
       const permissions=row.permissions||{};
