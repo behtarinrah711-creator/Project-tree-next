@@ -238,6 +238,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
         event?.stopPropagation();
         const selection=documentStageSelection(statusRecord,p,step);
         if(!selection)return;
+        if(!step && !selection.current && !finance)return;
         const {selected}=selection;
         if(selected.id==='signed')return openSignedSheet(p,statusRecord,{onChanged,finance:finance||!!approval});
         openStatusSheet({title:selected.label,showSave:false,reuseHistoryOnReplace:true,historyKey:'contract-status:'+c.id,
@@ -264,7 +265,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
               const history=statusRecord.approvalHistory||[];
               for(const entry of history.slice(history.findLastIndex(e=>e.action==='submit')+1).filter(e=>e.action==='edit_review' && e.reason))note([entry.actor?.name,'دلیل ویرایش',entry.reason].filter(Boolean).join(' · '));
             }
-            if(!selected.done || (selected.id==='finance' && !finance && !approval))statusSheetBody(root,selected);
+            if(!selected.done || (selected.id==='finance' && !finance && !approval) || (selected.id==='finance-approved' && finance))statusSheetBody(root,selected);
             mountDocumentStageFooter(root);
           }});
       };
