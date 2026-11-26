@@ -19,11 +19,12 @@ export function contractProgressSteps(contract,project){
     const reviewers=parent?contractApproverIds(parent):contractApproverIds(contract);
     const sent=!!contract.sentToAccountingAt || ['sent','accepted'].includes(contract.accountingStatus);
     const approved=contract.accountingStatus==='accepted';
-    const steps=[{id:'created',label:'ثبت درخواست پیش‌پرداخت',done:!!contract.id}];
+    const label=contract.paymentPurpose==='on-account'?'علی‌الحساب':'پیش‌پرداخت';
+    const steps=[{id:'created',label:'ثبت درخواست '+label,done:!!contract.id}];
     if(reviewers.length){
       const submitted=hasAdvanceSubmission(contract);
       steps.push({id:'advance-submit',label:'ارسال جهت تأیید',done:submitted},
-        {id:'approved',label:'تأیید پیش‌پرداخت',done:submitted && contract.approvalStatus==='approved'});
+        {id:'approved',label:'تأیید '+label,done:submitted && contract.approvalStatus==='approved'});
     }
     steps.push({id:'finance',label:'ارسال به مالی',done:sent},
       {id:'finance-approved',label:'تأیید مالی',done:approved,rejected:contract.accountingStatus==='rejected'},
