@@ -1,3 +1,4 @@
+import {hasWorkTaskContract} from '../deleteGuard.js';
 import {currentExecutionActor} from '../../modules/wbs/executionActor.js';
 import {canWriteProjectModule,projectPermissionState} from '../../modules/roleManagement/permissionState.js';
 import { uid } from '../../data/projectFactories.js';
@@ -232,6 +233,7 @@ export const workTaskApi = {
   remove(projectId, workId, taskId, clock = Date.now){
     const current = workTaskRepository.get(projectId, workId, taskId);
     if(!current) return { ok:false, code:'not_found' };
+    if(hasWorkTaskContract(projectRepository.find(projectId),workId,taskId))return {ok:false,code:'in_use',message:'این کار قرارداد ثبت‌شده دارد و قابل حذف نیست'};
     if(activeWorkTasks(workTaskRepository.work(projectId,workId)).some(task=>task.parentTaskId===current.id))return {ok:false,code:'has_subworks'};
     const remaining = workTaskRepository.list(projectId, workId).filter(task => String(task.id) !== String(taskId));
     const saved = workTaskRepository.mutate(projectId, workId, work => ({
@@ -244,19 +246,7 @@ export const workTaskApi = {
       updatedAt:clock(),
     }));
     if(!saved) return { ok:false, code:'persist' };
-    projectRepository.updateProject(projectId, row => {
-      const contract=linkedWorkTaskContract(projectId,workId,taskId);
-      const canDeleteContract=projectPermissionState(projectId,['contracts']).levels.contracts==='full';
-      if(canDeleteContract && contract?.systemGenerated && contract.status==='draft' && contract.isDraft
-        && !contract.signedAt && !contract.sentToAccountingAt && !contract.accountingPackage
-        && !['pending','approved','unapproved'].includes(contract.approvalStatus)){
-        const at=clock();
-        row.contracts=row.contracts.map(item=>item.id===contract.id
-          ? {...item,trashed:true,deletedAt:at,updatedAt:at}
-          : item);
-      }
-      return placeCardFunding(row, taskId);
-    });
+    projectRepository.updateProject(projectId, row => placeCardFunding(row,taskId));
     if(remaining.length) syncWorkCompletion(projectId, workId);
     publish(projectId);
     return { ok:true };
