@@ -35,6 +35,14 @@ export function projectDetailsDraft(project){
   };
 }
 
+export function normalizeProjectResponsibilities(project,responsibilities){
+  const valid=new Set((project.contacts||[]).filter(item=>!item.trashed).map(item=>String(item.id)));
+  return Object.fromEntries(PROJECT_RESPONSIBILITIES.flatMap(([role])=>{
+    const ids=responsibilities?.[role];
+    return Array.isArray(ids)?[[role,[...new Set(ids.map(String))].filter(id=>valid.has(id))]]:[];
+  }));
+}
+
 export function updateProjectDetails(project, draft){
   const name = String(draft.name || '').trim();
   if(!name) throw new Error('نام پروژه را وارد کنید.');
@@ -48,12 +56,7 @@ export function updateProjectDetails(project, draft){
   return {
     ...project, name,
     settings: { ...project.settings, projectDetails: {
-      ...(draft.responsibilities && {responsibilities:Object.fromEntries(PROJECT_RESPONSIBILITIES.flatMap(([role])=>{
-        const ids=draft.responsibilities?.[role];
-        if(!Array.isArray(ids))return [];
-        const valid=new Set((project.contacts||[]).filter(item=>!item.trashed).map(item=>String(item.id)));
-        return [[role,[...new Set(ids.map(String))].filter(id=>valid.has(id))]];
-      }))}),
+      ...(draft.responsibilities && {responsibilities:normalizeProjectResponsibilities(project,draft.responsibilities)}),
       provinceId, cityId, projectType: draft.projectType || '',
       address: String(draft.address || '').trim(), currency: draft.currency,
       description: String(draft.description || '').trim(),

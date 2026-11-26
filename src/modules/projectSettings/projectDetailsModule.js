@@ -7,7 +7,7 @@ import { openJalaliPicker, formatJalaliDisplay } from '../../ui/jalali.js';
 import { isProjectOwner } from './index.js';
 import {
   PROJECT_RESPONSIBILITIES, PROJECT_TYPES, PROJECT_CURRENCIES, projectProvinces, projectCities,
-  projectDetailsDraft, updateProjectDetails,
+  projectDetailsDraft, updateProjectDetails, normalizeProjectResponsibilities,
 } from './projectDetailsDomain.js';
 
 function contactName(contact){
@@ -21,6 +21,8 @@ export default {
     const project = projectRepository.find(projectId);
     if(!body || !project) return { projectId, moduleId:this.id };
     const canEdit = isProjectOwner(projectId);
+    const ownsResponsibilities = () => isProjectOwner(projectId) ||
+      window.KarhaSaosaWorkspaceAccess?.[projectId]?.isOwner === true;
     const draft = projectDetailsDraft(project);
     const form = document.createElement('form');
     form.className = 'form-template';
@@ -31,12 +33,17 @@ export default {
     const back = document.getElementById('closeProjectDetailsPage');
     back.onclick = () => appRouter.navigate(projectId, 'people');
     const save = document.getElementById('saveProjectDetails');
-    save.hidden = !canEdit;
+    save.hidden = !ownsResponsibilities();
     const saveDetails = event => {
       event?.preventDefault();
-      if(!isProjectOwner(projectId)) return;
+      if(!ownsResponsibilities()) return;
       try {
-        projectRepository.updateProject(projectId, current => updateProjectDetails(current, draft));
+        projectRepository.updateProject(projectId, current => {
+          if(isProjectOwner(projectId))return updateProjectDetails(current,draft);
+          return {...current,settings:{...current.settings,projectDetails:{
+            ...current.settings?.projectDetails,responsibilities:normalizeProjectResponsibilities(current,draft.responsibilities),
+          }}};
+        });
         markDirty(projectId);
         persist();
         appRouter.navigate(projectId, 'people');
@@ -121,7 +128,7 @@ export default {
         const row=document.createElement('div');row.className='ft-row';
         const title=document.createElement('span');title.className='ft-label';title.textContent=label;
         row.append(title,responsibleContactPicker({contacts,ids:draft.responsibilities[role],label,
-          contextKey:'project-responsibility:'+role,readOnly:!canEdit,onChange:ids=>{draft.responsibilities[role]=ids;}}));
+          contextKey:'project-responsibility:'+role,readOnly:!ownsResponsibilities(),onChange:ids=>{draft.responsibilities[role]=ids;}}));
         form.append(row);
       }
       form.appendChild(error);

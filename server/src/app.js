@@ -1,3 +1,4 @@
+import {isDeepStrictEqual} from 'node:util';
 import {executionApproverIds,pendingExecutionApproverIds} from '../../src/domain/wbs/workTaskModel.js';
 import {acceptedMembership} from './acceptedMembership.js';
 import {findInTree} from '../../src/domain/wbs/normalize.js';
@@ -637,12 +638,18 @@ export function stampContractCreation(project,previous,accountId,phone='',now=Da
   return project;
 }
 
+function withProjectResponsibilities(project,responsibilities){
+  return {...project,settings:{...project.settings,projectDetails:{
+    ...project.settings?.projectDetails,responsibilities,
+  }}};
+}
+
 async function saveWorkspace(pool, accountId, snapshot){
   const client = await pool.connect();
   let committed = false;
   try{
     await client.query('BEGIN');
-    for(const project of [...snapshot.projects].sort((a,b)=>String(a.id).localeCompare(String(b.id)))){
+    for(let project of [...snapshot.projects].sort((a,b)=>String(a.id).localeCompare(String(b.id)))){
       const projectId = String(project.id);
       const existing = await client.query('SELECT id,owner_account_id,payload FROM projects WHERE id = $1 FOR UPDATE', [projectId]);
       if(!existing.rowCount){
@@ -688,17 +695,44 @@ async function saveWorkspace(pool, accountId, snapshot){
           throw error;
         }
         const currentPayload=existing.rows[0]?.payload||{};
+        const permissions=membership.rows[0].permissions||{};
+        const incomingResponsibilities=project.settings?.projectDetails?.responsibilities;
+        const previousResponsibilities=currentPayload.settings?.projectDetails?.responsibilities;
+        const ownerResponsibilities=permissions.adminAccess===true &&
+          String(existing.rows[0].owner_account_id)===String(accountId) &&
+          incomingResponsibilities && typeof incomingResponsibilities==='object' && !Array.isArray(incomingResponsibilities) &&
+          JSON.stringify(incomingResponsibilities)!==JSON.stringify(previousResponsibilities)
+          ? Object.fromEntries(['followUp','workApproval','contractApproval','finance'].map(role=>[
+            role,[...new Set((Array.isArray(incomingResponsibilities[role])?incomingResponsibilities[role]:[]).map(String))]
+              .filter(id=>(currentPayload.contacts||[]).some(contact=>!contact.trashed && String(contact.id)===id)),
+          ])) : null;
+        if(ownerResponsibilities){
+          const {responsibilities,...details}=project.settings.projectDetails;
+          const settings={...project.settings};
+          if(Object.keys(details).length || currentPayload.settings?.projectDetails){
+            settings.projectDetails=previousResponsibilities===undefined ? details : {...details,responsibilities:previousResponsibilities};
+          }else delete settings.projectDetails;
+          project={...project,settings};
+        }
         // The browser persists one account-wide snapshot. Projects that were
         // only read must not require write permission or roll back a write to
         // another project in the same transaction.
-        if(!projectPayloadChanged(currentPayload,{...project,contractStatusReports:currentPayload.contractStatusReports})){
-          if((currentPayload.contracts||[]).some(c=>!c.contractUid)){
-            await assignContractNumbers(client,currentPayload,existing.rows[0].owner_account_id);
-            await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[projectId,JSON.stringify(currentPayload)]);
+        const comparable={...project,contractStatusReports:currentPayload.contractStatusReports};
+        if(ownerResponsibilities && currentPayload.standaloneWorks && !Object.hasOwn(comparable,'standaloneWorks')){
+          comparable.standaloneWorks=currentPayload.standaloneWorks;
+        }
+        if(!projectPayloadChanged(currentPayload,comparable) ||
+          ownerResponsibilities && isDeepStrictEqual(
+            {...currentPayload,contractStatusReports:currentPayload.contractStatusReports,settings:currentPayload.settings||{}},
+            comparable,
+          )){
+          if(ownerResponsibilities || (currentPayload.contracts||[]).some(c=>!c.contractUid)){
+            const updated=ownerResponsibilities?withProjectResponsibilities(currentPayload,ownerResponsibilities):currentPayload;
+            await assignContractNumbers(client,updated,existing.rows[0].owner_account_id);
+            await client.query('UPDATE projects SET payload=$2::jsonb,revision=revision+1,updated_at=now() WHERE id=$1',[projectId,JSON.stringify(updated)]);
           }
           continue;
         }
-        const permissions=membership.rows[0].permissions||{};
         if(hasDeniedExecutionChanges(currentPayload,project,permissions,membership.rows[0].phone,accountId)){
           const error=new Error('forbidden_execution_write');error.statusCode=403;throw error;
         }
@@ -717,7 +751,8 @@ async function saveWorkspace(pool, accountId, snapshot){
         if(projectFundingChanged(currentPayload,project) && !canWriteProjectCostline(permissions)){
           const error=new Error('forbidden_costline_write');error.statusCode=403;throw error;
         }
-        const savedProject=onlyStandalone?{...currentPayload,standaloneWorks}:assignedExecution?.ok?{...assignedExecution.project,...(standaloneChanged?{standaloneWorks}:{})}:mergeSharedProjectPayload(currentPayload,project,permissions,{id:String(accountId),name:membership.rows[0].phone});
+        let savedProject=onlyStandalone?{...currentPayload,standaloneWorks}:assignedExecution?.ok?{...assignedExecution.project,...(standaloneChanged?{standaloneWorks}:{})}:mergeSharedProjectPayload(currentPayload,project,permissions,{id:String(accountId),name:membership.rows[0].phone});
+        if(ownerResponsibilities)savedProject=withProjectResponsibilities(savedProject,ownerResponsibilities);
         stampContractCreation(savedProject,currentPayload,accountId,membership.rows[0].phone);
         await assignContractNumbers(client,savedProject,existing.rows[0].owner_account_id);
         await client.query(
