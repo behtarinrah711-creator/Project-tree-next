@@ -1,5 +1,5 @@
 import { openCostlineExport } from './costlineExportView.js';
-import { jalaliFromDay, COSTLINE_RANGES, WEEKDAYS, plannedCostline } from '../../domain/wbs/costline.js';
+import { jalaliDayNumber, jalaliFromDay, COSTLINE_RANGES, WEEKDAYS, plannedCostline, scheduledPayments, sliceShare, collectPlannedWorks } from '../../domain/wbs/costline.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
@@ -11,6 +11,8 @@ import { firstFundingShortage, fundingCoverage, allocatedForBucket, allocatedFor
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import { contactRepository } from '../../data/contactRepository.js';
 import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
+import { WORK_TYPES } from '../../domain/wbs/normalize.js';
+import { openExecutionBranchFilter, selectableWbsTree } from './executionBranchFilter.js';
 
 const RECEIPT_BLOCKED = 'ابتدا مبلغ تأمین‌شده کارت‌ها را کاهش دهید. در حال حاضر این بودجه به کارها تخصیص داده شده است.';
 const money = value => new Intl.NumberFormat('fa-IR').format(Math.round(Number(value) || 0));
@@ -23,6 +25,7 @@ const ORIGIN_ICON = 'M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 
 
 let rangeIndex = 1;
 let originWeekday = 4;
+const estimateFilters = new Map();
 
 export function renderCostline(project, access = {}){
   project = projectRepository.getActiveProject(project.id) || project;
@@ -30,21 +33,269 @@ export function renderCostline(project, access = {}){
   const root = document.createElement('section');
   root.className = 'wbs-costline';
   const range = COSTLINE_RANGES[rangeIndex] || COSTLINE_RANGES[1];
-  const model = plannedCostline(project.tasks || [], { rangeId: range.id, originWeekday });
+  const filters = estimateFilters.get(project.id) || { query:'', branch:'', type:'', dates:null };
+  estimateFilters.set(project.id, filters);
+  const tree = selectableWbsTree(project);
+  const nodes = new Map();
+  const visit = node => {
+    nodes.set(node.id, node);
+    node.children.forEach(visit);
+  };
+  visit(tree);
+  if(!nodes.has(filters.branch))filters.branch = '';
   const chartFrame = document.createElement('section');
   chartFrame.className = 'wbs-costline-frame wbs-view-frame is-costline-frame';
-  const toolbar = renderToolbar(() => {
-    root.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project, permissions));
-  });
+  const refresh = () => root.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project, permissions));
+  const toolbar = renderToolbar(refresh);
   const exportButton = toolbar.querySelector('.wbs-export-tool');
   exportButton.onclick = () => openCostlineExport(projectRepository.getActiveProject(project.id) || project, {
     rangeId:range.id, originWeekday, trigger:exportButton,
   });
-  chartFrame.append(toolbar, renderChart(project, model, permissions));
-  root.append(chartFrame, renderFundingPanel(project, () => {
-    root.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project, permissions));
-  }, permissions));
+  const results = document.createElement('div');
+  let chart;
+  const paint = () => {
+    const query = filters.query.trim().toLocaleLowerCase('fa');
+    const matchingNodes = new Set();
+    const include = node => { matchingNodes.add(node.id); node.children.forEach(include); };
+    if(filters.branch)include(nodes.get(filters.branch));
+    const active = !!(query || filters.branch || filters.type || filters.dates);
+    const model = plannedCostline(project.tasks || [], {
+      rangeId:range.id, originWeekday, bounds:filters.dates,
+      filter:active ? work => (!query || `${work.text} ${work.path}`.toLocaleLowerCase('fa').includes(query)) &&
+        (!filters.type || work.type === filters.type) && (!filters.branch ||
+          matchingNodes.has('branch:'+work.itemId) || matchingNodes.has('task:'+work.itemId+':'+work.id)) : undefined,
+    });
+    const nextChart = renderChart(project, model, bucket => {
+      filters.dates = { startDay:bucket.startDay, endDay:bucket.endDay };
+      paint();
+      results.scrollIntoView?.({block:'nearest'});
+    });
+    if(chart)chart.replaceWith(nextChart);
+    else chartFrame.append(nextChart);
+    chart = nextChart;
+    results.replaceChildren();
+    if(active)results.append(renderEstimateTable(project, model.buckets, permissions, refresh));
+    stages.textContent = filters.branch ? nodes.get(filters.branch).title : 'همه مراحل';
+    types.textContent = filters.type || 'نوع کار';
+    dates.textContent = filters.dates ? 'بازه: '+rangeText(filters.dates) : 'بازهٔ زمانی';
+  };
+  const controls = document.createElement('section');
+  controls.className = 'wbs-costline-filters';
+  const search = document.createElement('input');
+  search.type = 'search';
+  search.className = 'execution-branch-search';
+  search.placeholder = 'جست‌وجو در نام کار یا مسیر…';
+  search.setAttribute('aria-label', 'جست‌وجو در نام کار یا مسیر');
+  search.value = filters.query;
+  search.oninput = () => { filters.query = search.value; paint(); };
+  const stages = cycleButton({ label:'همه مراحل', ariaLabel:'انتخاب مرحله', shade:0, icon:TIMESCALE_ICON,
+    onClick:() => openExecutionBranchFilter(project, tree, value => { filters.branch = value; paint(); }, nodes.get(filters.branch || null)) });
+  const dates = cycleButton({ label:'بازهٔ زمانی', ariaLabel:'انتخاب بازهٔ زمانی', shade:0, icon:ORIGIN_ICON,
+    onClick:() => openEstimateDates(filters.dates, value => { filters.dates = value; paint(); }) });
+  const types = cycleButton({ label:'نوع کار', ariaLabel:'انتخاب نوع کار', shade:0, icon:TIMESCALE_ICON,
+    onClick:() => openWbsSheet({
+      title:'نوع کار', showSave:false, autoFocus:false,
+      body(host, close){
+        host.classList.add('execution-branch-filter');
+        for(const value of ['', ...WORK_TYPES]){
+          const choice = document.createElement('button');
+          choice.type = 'button';
+          choice.className = 'execution-branch-filter-choice';
+          choice.textContent = value || 'همه نوع کارها';
+          choice.setAttribute('aria-pressed', String(filters.type === value));
+          choice.onclick = () => { filters.type = value; close(); paint(); };
+          host.append(choice);
+        }
+      },
+    }) });
+  const buttons = document.createElement('div');
+  buttons.className = 'wbs-costline-filter-buttons';
+  buttons.append(stages, dates, types);
+  controls.append(search, buttons);
+  chartFrame.append(toolbar);
+  root.append(controls, chartFrame, results, renderFundingPanel(project, refresh, permissions));
+  paint();
   return root;
+}
+
+function rangeText({startDay,endDay}){
+  const start = formatJalaliDisplay(jalaliFromDay(startDay));
+  return startDay === endDay ? start : start+' تا '+formatJalaliDisplay(jalaliFromDay(endDay));
+}
+
+function openEstimateDates(selected, onSelect){
+  openWbsSheet({
+    title:'بازهٔ زمانی برآورد', saveLabel:'اعمال', autoFocus:false,
+    body(host, close){
+      const start = dateButton('estimateStart', selected ? jalaliFromDay(selected.startDay) : '');
+      const end = dateButton('estimateEnd', selected ? jalaliFromDay(selected.endDay) : '');
+      const clear = document.createElement('button');
+      clear.type = 'button';
+      clear.className = 'execution-branch-filter-choice';
+      clear.textContent = 'کل بازهٔ پروژه';
+      clear.onclick = () => { close(); onSelect(null); };
+      host.append(fieldRow('از تاریخ', start), fieldRow('تا تاریخ', end), clear);
+    },
+    onSave(host){
+      const startDay = jalaliDayNumber(host.querySelector('[name="estimateStart"]').dataset.value);
+      const endDay = jalaliDayNumber(host.querySelector('[name="estimateEnd"]').dataset.value);
+      if(startDay == null || endDay == null || startDay > endDay){
+        window.KarhaUI?.showToast?.('تاریخ شروع و پایان معتبر وارد کنید');
+        return false;
+      }
+      onSelect({startDay,endDay});
+      return true;
+    },
+  });
+}
+
+function openCostPaymentPlan(project, work, refresh){
+  const rows = (work.paymentPlan || []).map(payment => ({...payment}));
+  openWbsSheet({
+    title:'برنامهٔ پرداخت '+(work.text || work.path), saveLabel:'ذخیره', autoFocus:false,
+    keepParent:true,
+    body(host){
+      const container = document.createElement('div');
+      const add = document.createElement('button');
+      add.type = 'button';
+      add.className = 'execution-branch-filter-choice';
+      add.textContent = 'افزودن پرداخت';
+      const paint = () => {
+        container.replaceChildren();
+        rows.forEach((payment,index) => {
+          const group = document.createElement('section');
+          group.className = 'wbs-costline-work';
+          const date = dateButton('paymentDate', payment.date);
+          const amount = document.createElement('button');
+          amount.type = 'button';
+          amount.className = 'wbs-input';
+          amount.textContent = payment.amount ? money(payment.amount)+' تومان' : 'وارد کردن مبلغ';
+          amount.onclick = () => openNumpadGeneric(payment.amount || '', value => {
+            payment.amount = Number(value) || 0;
+            amount.textContent = money(payment.amount)+' تومان';
+            return true;
+          });
+          const choice = (key,options) => {
+            const select = document.createElement('select');
+            select.className = 'wbs-input';
+            for(const [value,label] of options)select.add(new Option(label,value));
+            select.value = payment[key] || '';
+            select.onchange = () => { payment[key] = select.value; };
+            return select;
+          };
+          const remove = document.createElement('button');
+          remove.type = 'button';
+          remove.className = 'execution-branch-filter-choice';
+          remove.textContent = 'حذف این پرداخت';
+          remove.onclick = () => { captureDates(); rows.splice(index,1); paint(); };
+          group.append(fieldRow('موعد پرداخت',date),fieldRow('مبلغ',amount),
+            fieldRow('مسیر تأمین',choice('route',[['','مشخص نشده'],['owner','مستقیم کارفرما'],['petty','شارژ تنخواه']])),
+            fieldRow('روش پرداخت',choice('method',[['','مشخص نشده'],['transfer','واریز'],['cash','نقدی'],['check','چک']])),remove);
+          container.append(group);
+        });
+      };
+      const captureDates = () => container.querySelectorAll('[name="paymentDate"]').forEach((date,index) => {
+        rows[index].date = date.dataset.value;
+      });
+      add.onclick = () => { captureDates(); rows.push({date:'',amount:0}); paint(); };
+      host.append(container,add);
+      paint();
+    },
+    onSave(host){
+      host.querySelectorAll('[name="paymentDate"]').forEach((date,index) => { rows[index].date = date.dataset.value; });
+      let saved = false;
+      projectRepository.updateProject(project.id, current => {
+        const live = collectPlannedWorks(current.tasks || [], {includeUndated:true}).find(item => String(item.id) === String(work.id));
+        if(!live || rows.some(row => jalaliDayNumber(row.date) == null || !Number.isSafeInteger(row.amount) || row.amount <= 0) ||
+          rows.reduce((sum,row) => sum+row.amount,0) > live.amount)return current;
+        const update = task => String(task.id) === String(work.id) ? {...task,costPaymentPlan:rows.map(row => ({...row}))} : task;
+        const walk = nodes => (nodes || []).map(node => {
+          if(!node)return node;
+          const next = {...update(node),subtasks:walk(node.subtasks)};
+          if(Array.isArray(node.workTasks))next.workTasks=node.workTasks.map(task => task ? update(task) : task);
+          return next;
+        });
+        saved = true;
+        return {...current,tasks:walk(current.tasks)};
+      });
+      if(!saved){
+        window.KarhaUI?.showToast?.('موعد و مبلغ معتبر وارد کنید. جمع پرداخت‌ها نباید از برآورد کار بیشتر باشد.');
+        return false;
+      }
+      markDirty(project.id);
+      persist({local:false});
+      refresh();
+      return true;
+    },
+  });
+}
+
+function renderEstimateTable(project, buckets, access, refresh){
+  const frame = document.createElement('section');
+  frame.className = 'wbs-costline-frame wbs-costline-results';
+  const visible = buckets.filter(bucket => bucket.works.length);
+  const coverage = fundingCoverage(project);
+  const table = document.createElement('table');
+  const head = table.createTHead().insertRow();
+  for(const title of ['کار و مسیر','نوع کار','برآورد (تومان)','تأمین‌شده (تومان)']){
+    const cell = document.createElement('th');
+    cell.scope = 'col';
+    cell.textContent = title;
+    head.append(cell);
+  }
+  const body = table.createTBody();
+  if(!visible.length){
+    const empty = body.insertRow().insertCell();
+    empty.colSpan = 4;
+    empty.textContent = 'کاری با این فیلترها پیدا نشد.';
+  }
+  for(const bucket of visible){
+    const group = body.insertRow();
+    group.className = 'wbs-costline-result-period';
+    const heading = document.createElement('th');
+    heading.colSpan = 4;
+    heading.textContent = rangeText(bucket)+' · جمع '+money(bucket.total)+' تومان';
+    group.append(heading);
+    const works = [...bucket.works].sort((a,b) => a.path.localeCompare(b.path,'fa'));
+    for(const work of works){
+      const row = body.insertRow();
+      const title = document.createElement('button');
+      title.type = 'button';
+      title.className = 'wbs-costline-mode';
+      title.textContent = work.text || work.path || '—';
+      title.onclick = () => openBucketSheet(project, {...bucket, works:[work], total:work.sliceAmount}, refresh, access);
+      const name = row.insertCell();
+      name.append(title);
+      if(work.path && work.path !== work.text){
+        const path = document.createElement('small');
+        path.textContent = work.path;
+        name.append(path);
+      }
+      row.insertCell().textContent = work.type || '—';
+      row.insertCell().textContent = money(work.sliceAmount);
+      row.insertCell().textContent = money(Math.min(work.sliceAmount, coverage(work.id,bucket)));
+    }
+  }
+  const totals = {estimate:0,owner:0,petty:0,check:0};
+  for(const bucket of visible){
+    totals.estimate += bucket.total;
+    for(const work of bucket.works){
+      for(const payment of scheduledPayments(work)){
+        if(payment.day < bucket.startDay || payment.day > bucket.endDay)continue;
+        if(payment.route === 'owner' || payment.route === 'petty')totals[payment.route] += payment.amount;
+        if(payment.method === 'check')totals.check += payment.amount;
+      }
+    }
+  }
+  const summary = document.createElement('div');
+  summary.className = 'wbs-costline-results-summary';
+  for(const [label,value] of [
+    ['جمع برآورد',totals.estimate],['مستقیم کارفرما',totals.owner],
+    ['شارژ تنخواه',totals.petty],['مسیر تأمین مشخص نشده',totals.estimate-totals.owner-totals.petty],
+    ['از جمع برآورد، چک',totals.check],
+  ])summary.append(costlineDetailRow(label,money(value)+' تومان'));
+  frame.append(summary,table);
+  return frame;
 }
 
 function materialIcon(path){
@@ -380,7 +631,7 @@ function bucketFundingBreakdown(project, bucket){
   };
 }
 
-function renderChart(project, model, access){
+function renderChart(project, model, onSelect){
   const wrap = document.createElement('div');
   wrap.className = 'wbs-costline-chart wbs-view-body';
   const scroll = document.createElement('div');
@@ -410,9 +661,7 @@ function renderChart(project, model, access){
     label.className = 'wbs-costline-label';
     label.textContent = bucket.label;
     col.append(values, renderBar(bucket, max, allocated), label);
-    col.addEventListener('click', () => openBucketSheet(project, bucket, () => {
-      wrap.closest('.wbs-costline')?.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project, access));
-    }, access));
+    col.addEventListener('click', () => onSelect(bucket));
     axis.appendChild(col);
   });
   scroll.appendChild(axis);
@@ -521,7 +770,10 @@ function openBucketSheet(project, initialBucket, refresh, access){
               const updated = projectRepository.getActiveProject(project.id) || project;
               const range = COSTLINE_RANGES[rangeIndex] || COSTLINE_RANGES[1];
               const model = plannedCostline(updated.tasks || [], { rangeId:range.id, originWeekday });
-              bucket = model.buckets.find(row => row.id === initialBucket.id) || { ...initialBucket, works:[] };
+              const ids = new Set(initialBucket.works.map(item => String(item.id)));
+              const works = model.works.filter(item => ids.has(String(item.id)))
+                .map(item => ({...item,sliceAmount:sliceShare(item,initialBucket)})).filter(item => item.sliceAmount > 0);
+              bucket = {...initialBucket,works,total:works.reduce((sum,item) => sum+item.sliceAmount,0)};
               refresh();
               paint();
             };
@@ -542,9 +794,17 @@ function openBucketSheet(project, initialBucket, refresh, access){
         paintMode();
         modeRow.append(modeLabel, mode, modeMenu);
         card.append(heading, modeRow, dateRow, totalRow, needRow);
+        if(access.canWrite){
+          const plan = document.createElement('button');
+          plan.type = 'button';
+          plan.className = 'wbs-costline-manual';
+          plan.textContent = 'برنامهٔ پرداخت';
+          plan.onclick = () => openCostPaymentPlan(current,work,refresh);
+          card.append(plan);
+        }
         const assignLabel = document.createElement('span');
         assignLabel.className = 'wbs-costline-fund-slice';
-        const spread = work.accrual !== 'start' && work.accrual !== 'end';
+        const spread = !!work.paymentPlan?.length || work.accrual !== 'start' && work.accrual !== 'end';
         const fundingBucket = spread ? null : bucket;
         const editableAmount = spread ? allocatedForTask(projectRepository.getActiveProject(project.id) || project, work.id) : allocated;
         if(spread){
@@ -655,5 +915,6 @@ function setAccrual(project, taskId, accrual){
 export function resetCostlineState(){
   rangeIndex = 1;
   originWeekday = 4;
+  estimateFilters.clear();
   closeWbsSheet();
 }
