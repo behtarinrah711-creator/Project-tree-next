@@ -18,8 +18,11 @@ test('statement stage sheets contain only the matching action and reject other s
    assert.deepEqual(opened.root.children.map(n=>n.textContent),['ویرایش و تکمیل صورت‌وضعیت']);
    assert.ok(!nodes(opened.root).some(n=>['contract-progress','contract-history','contract-financial-table'].includes(n.className)));
    opened=null;
-   for(const id of ['created','signed','finance'])openStatementAction(project,contract,draft,()=>{},{step:{id},openSheet});
+   for(const id of ['signed','finance'])openStatementAction(project,contract,draft,()=>{},{step:{id},openSheet});
    assert.equal(opened,null);
+   openStatementAction(project,contract,{...draft,creationEvent:{action:'create',at:100}},()=>{},{step:{id:'created'},openSheet});
+   assert.ok(nodes(opened.root).some(n=>n.className==='contract-history-entry'));
+   assert.equal(nodes(opened.root).filter(n=>n.tag==='button').length,0);
    window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'view',accounting:'full'}}}};
    openStatementAction(project,contract,draft,()=>{},{openSheet});
    assert.equal(nodes(opened.root).filter(n=>n.tag==='button').length,0);
