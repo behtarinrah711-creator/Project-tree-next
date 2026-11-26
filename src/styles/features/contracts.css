@@ -2129,3 +2129,17 @@ textarea.contract-project-item-input{
 .contract-export-document .contract-document-statement-body > :is(header,table,h3){margin:0}
 .contract-export-document .contract-document-statement-body > table > :is(thead,tbody):first-child > tr:first-child > :is(th,td){border-top:0}
 .contract-export-document .contract-document-statement-body > .contract-document-statement-band{padding:5px 8px;border:1px solid #aaa;border-top:0;background:#f3f3f3;font-size:1em;text-align:right;break-after:avoid}
+
+.contract-document-statement-header{grid-template-columns:minmax(0,24fr) minmax(0,52fr) minmax(0,24fr);min-height:52px;color:#111}
+.contract-document-statement-header > .contract-document-statement-project{font-size:1.25em}
+.contract-document-statement-header > h2{font-size:1.38em;line-height:1.3;font-weight:700}
+.contract-document-statement-header > .contract-document-statement-date{grid-template-rows:1fr 1fr;align-content:stretch;gap:0;padding:0}
+.contract-document-statement-date > *{display:grid;place-items:center;padding:4px;min-width:0}
+.contract-document-statement-date > strong{background:#eee;border-bottom:1px solid #aaa}
+.contract-document-statement-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));border:1px solid #aaa;margin-block:8px;break-inside:avoid}
+.contract-document-statement-route{grid-column:1/-1;text-align:center;padding:5px;overflow-wrap:anywhere}
+.contract-document-statement-fact{display:grid;grid-template-columns:minmax(0,42%) minmax(0,1fr);border-top:1px solid #aaa}
+.contract-document-statement-fact:nth-child(odd){border-inline-start:1px solid #aaa}
+.contract-document-statement-fact > *{padding:4px;overflow-wrap:anywhere;min-width:0;text-align:start}
+.contract-document-statement-fact > strong{background:#eee}
+.contract-document-statement-body > .contract-document-statement-facts{margin:0;border-top:0}
