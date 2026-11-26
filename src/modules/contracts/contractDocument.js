@@ -11,7 +11,7 @@ const formatCost=value=>new Intl.NumberFormat('fa-IR').format(Number(value)||0);
 const blank=value=>esc(value).trim()||'................................................';
 
 const totalRow=(columns,amount,label='جمع کل عملیات‌ها')=>'<tr class="doc-operations-total"><td colspan="'+columns+'"><b>'+label+'</b></td><td><b>'+formatCost(amount)+'</b></td></tr>';
-function quantityTable(rows=[],showTotal=false,state={}){
+export function quantityTable(rows=[],showTotal=false,state={}){
   const columns=['ردیف','شرح عملیات','واحد','مقدار','بهای واحد (تومان)','بهای کل (تومان)'];
   const body=(rows||[]).map((row,index)=>{
     const agreed=row.pricingMode==='agreed';

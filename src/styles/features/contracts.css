@@ -2107,3 +2107,21 @@ textarea.contract-project-item-input{
 .contract-advance-print .contract-document-payment-table{width:100%;border-collapse:collapse;border-spacing:0;margin:0;}
 .contract-advance-print .contract-document-payment-table :is(th,td){border:1px solid var(--divider,#aaa);}
 .contract-advance-print .contract-document-quantities > tbody > tr > .contract-document-payment-heading{vertical-align:middle;}
+
+.contract-document-statement-header{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr) minmax(0,1fr);border:1px solid #aaa;text-align:center;margin-bottom:8px;break-inside:avoid}
+.contract-document-statement-header > *{display:grid;align-content:center;gap:3px;margin:0;padding:6px;min-width:0;overflow-wrap:anywhere}
+.contract-document-statement-header > * + *{border-inline-start:1px solid #aaa}
+.contract-document-statement-header h2{font-size:1.15em}
+.contract-document-statement-header small{display:block;font-size:.85em}
+.contract-export-document .contract-document-statement-pairs{width:100%;table-layout:fixed;border-collapse:collapse}
+.contract-export-document .contract-document-statement-pairs > tbody > tr > th:first-child{width:32%;white-space:normal}
+.contract-export-document .contract-document-statement-pairs :is(th,td){overflow-wrap:anywhere;white-space:normal}
+.contract-export-document .contract-document-statement-pairs > tbody > tr > td{direction:rtl;text-align:right}
+.contract-export-document .contract-document-statement-pairs .contract-document-payment-heading{vertical-align:middle}
+.contract-export-document .contract-document-payment-table{width:100%;border-collapse:collapse;border-spacing:0;margin:0}
+.contract-export-document .contract-document-statement .contract-document-quantity{width:100%;table-layout:fixed;border-collapse:collapse}
+.contract-export-document .contract-document-statement .contract-document-quantity :is(th,td){border:1px solid #aaa;padding:4px;white-space:normal;overflow-wrap:anywhere}
+.contract-export-document .contract-document-statement .contract-document-quantity th:first-child{width:8%}
+.contract-export-document .contract-document-statement .contract-document-quantity th:nth-child(2){width:36%}
+.contract-export-document .contract-document-statement .contract-document-quantity th:nth-child(3),.contract-export-document .contract-document-statement .contract-document-quantity th:nth-child(4){width:10%}
+.contract-export-document .contract-document-statement .contract-document-quantity th:nth-child(5),.contract-export-document .contract-document-statement .contract-document-quantity th:nth-child(6){width:18%}

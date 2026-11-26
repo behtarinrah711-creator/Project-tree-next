@@ -1,3 +1,4 @@
+import { quantityTable } from './contractDocument.js';
 import {mountFileUploader} from '../files/fileUploader.js';
 import {openContractReasonSheet} from './contractReasonSheet.js';
 import {canDeleteContractDocument} from '../../domain/contractHandoff.js';
@@ -347,89 +348,70 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
   sheet.classList.add('contract-addendum-form');
 }
 
-function contractorPaymentDetails(project,contract,{tabular=false}={}){
+function contractorPaymentDetails(project,contract){
   const contractor=contactApi.lookup(project.id,contract.contractorId || contract.contactId);
   if(!contractor)return null;
-  const fields=[
-    ['ownerName','نام و نام خانوادگی صاحب حساب'],['bankName','بانک'],
-    ['card','شماره کارت'],['iban','شماره شبا'],['account','شماره حساب'],
-  ];
-  const details=element('div');
+  const paymentFields=[['card','شماره کارت'],['iban','شماره شبا'],['account','شماره حساب'],['bankName','نام بانک'],['ownerName','صاحب حساب']];
   const accounts=contractor.bankAccounts;
-  if(tabular){
-    const paymentFields=[...fields.slice(2),['bankName','نام بانک'],['ownerName','صاحب حساب']];
-    const bankAccounts=Array.isArray(accounts) && accounts.length?accounts:[{
-      card:contractor.cards,iban:contractor.ibans,account:contractor.accounts,
-    }];
-    const rows=[];
-    for(const account of bankAccounts){
-      for(const [key,label] of paymentFields){
-        const raw=account?.[key];
-        const values=(Array.isArray(raw)?raw:[raw]).map(value=>String(value??'').trim()).filter(Boolean);
-        if(!values.length)continue;
-        const cell=element('div');
-        cell.replaceChildren(...values.map(value=>{
-          const line=element('div');
-          line.append(element('bdi','',value));
-          return line;
-        }));
-        rows.push([label,cell]);
-      }
-    }
-    if(!rows.length)return null;
-    const paymentTable=table(rows);
-    paymentTable.classList.add('contract-document-payment-table');
-    return paymentTable;
-  }
-  if(Array.isArray(accounts) && accounts.length){
-    for(const account of accounts){
-      const values=element('div');
-      for(const [key,label] of fields){
-        const value=String(account?.[key]??'').trim();
-        if(!value)continue;
-        if(values.childNodes.length)values.append(' | ');
-        values.append(label+'، ',element('bdi','',value));
-      }
-      if(values.childNodes.length)details.append(values);
-    }
-  }else{
-    for(const [key,label] of [['cards','شماره کارت'],['ibans','شماره شبا'],['accounts','شماره حساب']]){
-      const values=Array.isArray(contractor[key])?contractor[key].map(value=>String(value??'').trim()).filter(Boolean):[];
-      for(const value of values){
+  const bankAccounts=Array.isArray(accounts) && accounts.length?accounts:[{
+    card:contractor.cards,iban:contractor.ibans,account:contractor.accounts,
+  }];
+  const rows=[];
+  for(const account of bankAccounts){
+    for(const [key,label] of paymentFields){
+      const raw=account?.[key];
+      const values=(Array.isArray(raw)?raw:[raw]).map(value=>String(value??'').trim()).filter(Boolean);
+      if(!values.length)continue;
+      const cell=element('div');
+      cell.replaceChildren(...values.map(value=>{
         const line=element('div');
-        line.append(label+'، ',element('bdi','',value));
-        details.append(line);
-      }
+        line.append(element('bdi','',value));
+        return line;
+      }));
+      rows.push([label,cell]);
     }
   }
-  return details.childNodes.length?details:null;
+  if(!rows.length)return null;
+  const paymentTable=table(rows);
+  paymentTable.classList.add('contract-document-payment-table');
+  return paymentTable;
+}
+
+function statementDocumentHeader(project,contract,record){
+  const advance=record.statementType==='advance';
+  const header=element('header','contract-document-statement-header');
+  const projectName=element('strong','',project.name||'—');
+  const title=element('h2','',advance?'درخواست پرداخت':statementTitle(record));
+  if(advance)title.append(element('small','',statementTitle(record).replace(/^درخواست پرداخت\s*/,'')));
+  const date=element('div');
+  date.append(element('strong','',advance?'تاریخ درخواست':'تاریخ صورت‌وضعیت'),
+    element('span','',formatJalaliDisplay(record.date)||'—'));
+  header.append(projectName,title,date);
+  const amount=Number(contract.amount);
+  const facts=table([
+    ['عنوان قرارداد',contractDisplayTitle(project,contract)],
+    ['مسیر قرارداد',contractProjectPath(project,contract)||'—'],
+    ['شماره قرارداد',contract.contractNo||'—'],
+    ['مبلغ کل قرارداد',contract.amount!=null && contract.amount!=='' && Number.isFinite(amount) && !contract.remeasurement
+      ? money(amount):'مبلغ قطعی تعیین نشده'],
+  ]);
+  facts.classList.add('contract-document-quantities','contract-document-statement-pairs');
+  return [header,facts];
 }
 
 function statementPreviewContent(project,contract,record,signature=null){
-  const title=statementTitle(record);
     const documentNode=element('section','contract-export-document');
     documentNode.dir='rtl';
+    documentNode.append(...statementDocumentHeader(project,contract,record));
     if(record.statementType==='advance'){
       const row=record.advanceRow;
       documentNode.dataset.documentKind='advance';
       const summary=element('div','contract-advance-print');
-      const heading=element('h2','contract-advance-print-heading','درخواست پرداخت');
-      const subtitle=[`پیش‌پرداخت شماره ${format.format(record.sequence||1)}`,contractDisplayTitle(project,contract)].join(' | ');
-      heading.append(element('br'),element('span','contract-advance-print-subtitle',subtitle));
-      const path=contractProjectPath(project,contract);
-      documentNode.append(heading);
-      if(path)documentNode.append(element('p','','مسیر قرارداد · '+path));
       documentNode.append(summary);
-      const total=Number(contract.amount);
-      const contractAmount=contract.amount!=null && contract.amount!=='' && Number.isFinite(total) && !contract.remeasurement
-        ? money(total):'مبلغ قطعی تعیین نشده';
-      const paymentDetails=contractorPaymentDetails(project,contract,{tabular:true});
+      const paymentDetails=contractorPaymentDetails(project,contract);
       const detail=table([
-        ['شماره قرارداد',contract.contractNo||'—'],
-        ['تاریخ درخواست',formatJalaliDisplay(record.date)||'—'],
-        ['مبلغ کل قرارداد',contractAmount],
         ...(row?[
-          ['ردیف قرارداد',format.format(row.number)],['شرح پیش‌پرداخت',row.description||'—'],
+          ['ردیف پیش‌پرداخت در قرارداد',format.format(row.number)],['شرح پیش‌پرداخت',row.description||'—'],
           ['موعد یا شرط پرداخت',row.dueText||'—'],['مبلغ پیش‌پرداخت طبق قرارداد',money(row.total)],
         ]:[]),
         ['مبلغ درخواستی این نوبت',money(record.statementAmount||0)],['پرداخت‌شده',money(record.paidAmount||0)],
@@ -454,25 +436,24 @@ function statementPreviewContent(project,contract,record,signature=null){
       summary.append(detail);
       return documentNode;
     }
-    const heading=element('h2','contract-advance-print-heading',title);
-    heading.append(element('br'),element('span','contract-advance-print-subtitle',contractDisplayTitle(project,contract)));
+    documentNode.classList.add('contract-document-statement');
     const paymentDetails=contractorPaymentDetails(project,contract);
-    const amount=Number(contract.amount);
-    const contractAmount=contract.amount!=null && contract.amount!=='' && Number.isFinite(amount) && !contract.remeasurement
-      ? money(amount):'مبلغ قطعی تعیین نشده';
     const details=table([
-      ['شماره قرارداد',contract.contractNo||'—'],
-      ['مسیر قرارداد',contractProjectPath(project,contract)||'—'],
-      ['تاریخ صورت‌وضعیت',formatJalaliDisplay(record.date)||'—'],
-      ['مبلغ کل قرارداد',contractAmount],
       ...(paymentDetails?[['اطلاعات پرداخت',paymentDetails]]:[]),
       ...(record.note?[['توضیحات',record.note]]:[]),
     ]);
-    const operations=operationSummary(record.operations||[]);
+    if(paymentDetails)paymentDetails.parentElement.previousElementSibling.classList.add('contract-document-payment-heading');
     const totals=table([['کارکرد این سند',money(record.statementAmount??record.stageAmount??0)],['کارکرد تجمعی',money(record.cumulativeAmount||0)],['حسن انجام کار',money(record.retentionAmount||0)],['کسر پیش‌پرداخت',money(record.advanceDeduction||0)],['خالص قابل پرداخت',money(record.netAmount??record.approvedAmount??record.stageAmount??0)],['پرداخت‌شده',money(record.paidAmount||0)]]);
-    for(const section of [details,operations,totals])section.classList.add('contract-document-quantities');
-    documentNode.append(heading,details);
-    if(record.operations?.length)documentNode.append(element('h3','','عملیات'),operations);
+    for(const section of [details,totals])section.classList.add('contract-document-quantities','contract-document-statement-pairs');
+    if(details.tBodies[0].rows.length)documentNode.append(details);
+    if(record.operations?.length){
+      const template=element('template');
+      template.innerHTML=quantityTable(record.operations.map(row=>{
+        const source=row.sourceSequence?'موقت '+format.format(row.sourceSequence):formatJalaliDisplay(row.sourceDate);
+        return {...row,description:[source,row.description].filter(Boolean).join(' · ')};
+      }),true);
+      documentNode.append(element('h3','','عملیات'),template.content);
+    }
     documentNode.append(element('h3','','خلاصه مالی'),totals);
     return documentNode;
   }
