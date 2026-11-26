@@ -1,3 +1,4 @@
+import {isOnAccountPayment} from '../../domain/contractStatements.js';
 import {openWbsSheet} from '../wbs/wbsSheet.js';
 const labels={edit_advance:'پیش‌پرداخت ویرایش شد',record_payment:'پرداخت ثبت شد',complete_submit:'اعلام تکمیل شد و برای تأیید ارسال شد',edit_contract:'قرارداد ویرایش شد',edit_review:'مسئول تأیید قرارداد را ویرایش کرد',reopen_signed_contract:'قرارداد برای ویرایش به پیش‌نویس برگشت',confirm_signed:'نسخه امضاشده تأیید شد',approve_finance:'توسط بخش مالی تأیید شد',reject_finance:'توسط بخش مالی رد شد',revoke_finance:'تأیید مالی پس گرفته شد',add_signed:'نسخه امضاشده افزوده شد',remove_signed:'پیوست امضاشده حذف شد',replace_signed:'پیوست امضاشده جایگزین شد',send_finance:'به واحد مالی ارسال شد',withdraw_finance:'از واحد مالی پس گرفته شد',complete:'تکمیل قرارداد اعلام شد',cancel_completion:'اعلام تکمیل لغو شد',withdraw_submission:'از تأیید پس گرفته شد',create:'ایجاد شد',submit:'برای تأیید ارسال شد',approve:'تأیید شد',reject:'برای اصلاح برگشت داده شد',revoke:'تأیید لغو شد'};
 const historyDate=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{timeZone:'Asia/Tehran',year:'numeric',month:'long',day:'numeric'});
@@ -12,7 +13,7 @@ export function renderContractHistory(documentRef,contract,{finance=false,compac
   const history=contract.approvalHistory||[];
   const isAddendum=!!contract.parentContractId;
   const isAdvance=contract.statementType==='advance';
-  const creation=contract.creationEvent || ((isAddendum || isAdvance) && contract.createdAt
+  const creation=contract.creationEvent || (!history.some(entry=>entry.action==='create') && contract.createdAt
     ? {action:'create',at:contract.createdAt,actor:contract.createdBy || (isAdvance?contract.submittedBy:undefined)} : null);
   const completion=isAddendum && contract.completedAt && !history.some(e=>e.action==='complete' && e.at===contract.completedAt)
     ? {action:'complete',at:contract.completedAt,actor:contract.completedBy} : null;
@@ -37,24 +38,24 @@ export function renderContractHistory(documentRef,contract,{finance=false,compac
   entries.forEach(entry=>{
     const row=documentRef.createElement('div');row.className='contract-history-entry';
     if(['reject','reject_finance','revoke_finance'].includes(entry.action))row.className+=' is-rejected';
-    const heading=documentRef.createElement('div');
     const date=new Date(entry.at);
-    const label=entry.action==='correct_paid_contract'?'عنوان قرارداد پرداخت‌شده اصلاح شد':isAdvance && entry.action==='create' ? 'درخواست پیش‌پرداخت ثبت شد' : isAddendum && entry.action==='complete' ? 'تکمیل الحاقیه اعلام شد' : labels[entry.action];
+    const creationLabel=isAdvance ? (isOnAccountPayment(contract)?'درخواست علی‌الحساب ثبت شد':'درخواست پیش‌پرداخت ثبت شد') : contract.statementType?'صورت‌وضعیت ایجاد شد':isAddendum?'الحاقیه ایجاد شد':'قرارداد ایجاد شد';
+    const label=entry.action==='correct_paid_contract'?'عنوان قرارداد پرداخت‌شده اصلاح شد':entry.action==='create' ? creationLabel : isAddendum && entry.action==='complete' ? 'تکمیل الحاقیه اعلام شد' : labels[entry.action];
     const actor=entry.actor?.name || (isAddendum?'نام ثبت نشده':'کاربر');
     const validTime=entry.at && Number.isFinite(date.getTime());
     if(compact){
-      heading.className='contract-history-entry-heading';
-      const title=documentRef.createElement('div');title.className='contract-history-event';title.textContent=label || 'تغییر وضعیت';
-      const person=documentRef.createElement('div');person.className='contract-history-actor';person.textContent=actor;
+      const heading=stageHeading(documentRef,label || 'تغییر وضعیت',actor);
       const stamp=documentRef.createElement('div');stamp.className='contract-history-stamp';
       const day=documentRef.createElement('span');day.textContent=validTime?historyDate.format(date):'زمان نامشخص';
       const time=documentRef.createElement('bdi');time.dir='ltr';time.textContent=validTime?historyTime.format(date):'';
       stamp.appendChild(day);stamp.appendChild(time);
-      heading.appendChild(title);heading.appendChild(person);heading.appendChild(stamp);
+      heading.appendChild(stamp);
+      row.appendChild(heading);
     }else{
+      const heading=documentRef.createElement('div');
       heading.textContent=[label || 'تغییر وضعیت',actor,validTime?moment.format(date):'زمان نامشخص'].join(' · ');
+      row.appendChild(heading);
     }
-    row.appendChild(heading);
     if(entry.manualFields?.length){const note=documentRef.createElement('p');const names={contractDate:'تاریخ تنظیم',employerId:'کارفرما',startDate:'تاریخ شروع',endDate:'تاریخ پایان',retentionDuration:'مدت نگهداری'};note.textContent='تکمیل دستی پس از چاپ: '+entry.manualFields.map(key=>names[key]||key).join('، ');row.appendChild(note);}
     if(entry.files?.length){const files=documentRef.createElement('p');files.textContent=entry.files.join('، ');row.appendChild(files);}
     if(showPaymentAmount && entry.action==='record_payment' && entry.amount>0){
@@ -69,6 +70,32 @@ export function renderContractHistory(documentRef,contract,{finance=false,compac
     details.appendChild(row);
   });
   return details;
+}
+
+function stageHeading(documentRef,status,person){
+  const heading=documentRef.createElement('div');heading.className='contract-history-entry-heading';
+  const title=documentRef.createElement('div');title.className='contract-history-event';title.textContent=status;
+  heading.appendChild(title);
+  if(person){
+    const actor=documentRef.createElement('div');actor.className='contract-history-actor';actor.textContent=person;
+    heading.appendChild(actor);
+  }
+  return heading;
+}
+
+export function appendDocumentStageStatus(root,status,person){
+  const row=root.ownerDocument.createElement('div');row.className='contract-history-entry';
+  row.appendChild(stageHeading(root.ownerDocument,status,person));
+  root.appendChild(row);
+}
+
+export function appendDocumentStageHistory(root,record,options){
+  const details=renderContractHistory(root.ownerDocument,record,{compact:true,...options});
+  details.open=true;
+  details.firstElementChild.hidden=true;
+  const entry=details.querySelector('.contract-history-entry');
+  if(entry)root.appendChild(details);
+  return entry;
 }
 
 export function openContractHistory(record,{finance=false,documentRef=globalThis.document,openSheet=openWbsSheet}={}){
