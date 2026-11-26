@@ -100,7 +100,7 @@ export function paginateContract(source, documentRef=globalThis.document){
     const summaryIndex=statement?blocks.findIndex(block=>block.classList?.contains('contract-document-statement-summary')):-1;
     if(summaryIndex<0){
       blocks.forEach(append);
-      if(statement)append(createSignatures());
+      if(statement && !advance)append(createSignatures());
     }else{
       blocks.slice(0,summaryIndex).forEach(append);
       const summary=[...blocks.slice(summaryIndex),createSignatures()];
@@ -131,7 +131,10 @@ export function paginateContractMarkup(html,documentRef=globalThis.document){
   const source=documentRef.createElement('div');source.innerHTML=html;
   const wrapper=source.querySelector('.contract-export-document');
   const statement=wrapper?.querySelector('.contract-document-statement-body');
-  if(statement)return paginateContract(statement,documentRef).outerHTML;
+  if(statement){
+    if(wrapper.getAttribute('data-document-kind')==='advance')statement.setAttribute('data-document-kind','advance');
+    return paginateContract(statement,documentRef).outerHTML;
+  }
   if(wrapper?.getAttribute('data-document-kind')==='advance')source.setAttribute('data-document-kind','advance');
   if(wrapper){while(wrapper.firstChild)source.insertBefore(wrapper.firstChild,wrapper);wrapper.remove();}
   return paginateContract(source,documentRef).outerHTML;

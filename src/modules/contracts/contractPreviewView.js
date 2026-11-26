@@ -1,3 +1,4 @@
+import {paginateContract} from './contractPagination.js';
 import {mountContractDocumentPreview} from './contractDocumentAttachments.js';
 import {mountFileUploader} from '../files/fileUploader.js';
 import { addendumDocumentMarkup, contractDocumentMarkup } from './contractDocument.js';
@@ -7,16 +8,16 @@ import {contractDisplayTitle} from './contractTitle.js';
 
 let view=null;
 export function createContractPreviewView({documentRef=globalThis.document,windowRef=globalThis.window,mountPrintPage=mountContractPrintPage}={}){
-  let page=null,body=null,title=null,returnFocus=null,disposeDocuments=null,disposeSigned=null;
+  let page=null,body=null,title=null,returnFocus=null,disposeDocuments=null,disposeSigned=null,previewResize=null;
   const close=(fromPopState=false)=>{
-    disposeDocuments?.();disposeSigned?.();
+    disposeDocuments?.();disposeSigned?.();previewResize?.disconnect();previewResize=null;
     page?.classList.add('hidden');
     windowRef.KarhaChildHistory?.consume?.('contract-preview',{fromPopState});
     returnFocus?.focus?.();
   };
   function open(project,contract,{trigger=null,frozen=false,signedFiles=null,addendum=null,documentPreview=null}={}){
     if(!project||!contract)return false;
-    disposeDocuments?.();disposeSigned?.();
+    disposeDocuments?.();disposeSigned?.();previewResize?.disconnect();previewResize=null;
     if(!page){
       page=documentRef.createElement('div');
       page.id='contractPreviewPage';page.className='page-overlay workspace-page workspace-page--own-section-bar hidden';
@@ -35,7 +36,22 @@ export function createContractPreviewView({documentRef=globalThis.document,windo
     returnFocus=trigger;
     if(documentPreview){
       title.textContent=documentPreview.title;
-      body.replaceChildren(documentPreview.content);
+      const source=documentPreview.content.querySelector?.('.contract-document-statement-body');
+      if(source){
+        if(documentPreview.content.dataset.documentKind==='advance')source.dataset.documentKind='advance';
+        const pages=paginateContract(source,documentRef);
+        const viewport=documentRef.createElement('div');
+        viewport.className='contract-statement-preview-viewport';
+        viewport.append(pages);
+        body.replaceChildren(viewport);
+        const fit=()=>{if(viewport.clientWidth)pages.style.zoom=String(Math.min(1,viewport.clientWidth/794));};
+        if(windowRef.ResizeObserver){
+          previewResize=new windowRef.ResizeObserver(fit);
+          previewResize.observe(viewport);
+        }
+        page.classList.remove('hidden');
+        fit();
+      }else body.replaceChildren(documentPreview.content);
       page.classList.remove('hidden');
       windowRef.KarhaChildHistory?.open?.('contract-preview');
       return true;
