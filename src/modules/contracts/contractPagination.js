@@ -86,17 +86,39 @@ export function paginateContract(source, documentRef=globalThis.document){
     blocks.push(node.cloneNode(true));
   };
   [...source.children].forEach(flatten);
+  const createSignatures=()=>{
+    const signatures=documentRef.createElement('div');signatures.className='contract-sheet-signatures';
+    for(const party of ['کارفرما','پیمانکار']){
+      const box=documentRef.createElement('div');box.className='contract-sheet-signature';
+      box.textContent='نام، نام خانوادگی، امضا و اثر انگشت '+party+':';
+      signatures.appendChild(box);
+    }
+    return signatures;
+  };
   try{
-    next();blocks.forEach(append);
+    next();
+    const summaryIndex=statement?blocks.findIndex(block=>block.classList?.contains('contract-document-statement-summary')):-1;
+    if(summaryIndex<0){
+      blocks.forEach(append);
+      if(statement)append(createSignatures());
+    }else{
+      blocks.slice(0,summaryIndex).forEach(append);
+      const summary=[...blocks.slice(summaryIndex),createSignatures()];
+      const hadContent=content.hasChildNodes();
+      content.append(...summary);
+      if(!fits()){
+        summary.forEach(block=>block.remove());
+        if(hadContent)next();
+        content.append(...summary);
+        if(!fits()){
+          summary.forEach(block=>block.remove());
+          summary.forEach(append);
+        }
+      }
+    }
     const sheets=pages.querySelectorAll('.contract-sheet');
     sheets.forEach((sheet,i)=>{
-      const signatures=documentRef.createElement('div');signatures.className='contract-sheet-signatures';
-      for(const party of ['کارفرما','پیمانکار']){
-        const box=documentRef.createElement('div');box.className='contract-sheet-signature';
-        box.textContent='نام، نام خانوادگی، امضا و اثر انگشت '+party+':';
-        signatures.appendChild(box);
-      }
-      if(!advance)sheet.appendChild(signatures);
+      if(!advance && !statement)sheet.appendChild(createSignatures());
       const label=documentRef.createElement('div');label.className='contract-sheet-number';
       label.textContent=(contractNumber?'شماره '+documentKind+': '+contractNumber+' — ':'')+`صفحه ${new Intl.NumberFormat('fa-IR').format(i+1)} از ${new Intl.NumberFormat('fa-IR').format(sheets.length)}`;
       sheet.appendChild(label);
