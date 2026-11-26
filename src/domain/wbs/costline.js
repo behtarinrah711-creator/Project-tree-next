@@ -72,12 +72,14 @@ export function collectPlannedWorks(tasksRoot, { includeUndated = false } = {}){
     units.forEach(unit => {
       const start = scheduleStartOf(unit);
       const amount = tasks.length ? taskCostOf(unit) : lineTotal(item);
-      if(!amount || (!start && !includeUndated)) return;
+      if(!amount || (!start && !includeUndated && !unit.costPaymentPlan?.length)) return;
       works.push({
         id:unit.id,
+        itemId:item.id,
         text:unit.title || unit.text || '',
         type:unit.type || '',
         amount,
+        paymentPlan:Array.isArray(unit.costPaymentPlan) ? unit.costPaymentPlan : [],
         accrual:unit.fundingAccrual || "spread",
         start,
         end:scheduleEndOf(unit),
@@ -140,9 +142,10 @@ function quarterBucket(jy, quarterIndex){
 
 export function buildBuckets({ rangeId = 'week', originWeekday = 4, works = [] } = {}){
   const range = COSTLINE_RANGES.find(item => item.id === rangeId) || COSTLINE_RANGES[1];
-  const dated = works.filter(work => jalaliDayNumber(work.start) != null);
-  if(!dated.length) return [];
-  const days = dated.flatMap(work => [jalaliDayNumber(work.start), jalaliDayNumber(work.end)].filter(day => day != null));
+  const days = works.flatMap(work => [
+    work.start, work.end, ...(work.paymentPlan || []).map(payment => payment.date),
+  ].map(jalaliDayNumber).filter(Number.isFinite));
+  if(!days.length) return [];
   const minDay = Math.min(...days);
   const maxDay = Math.max(...days);
   const buckets = [];
@@ -205,10 +208,35 @@ export function buildBuckets({ rangeId = 'week', originWeekday = 4, works = [] }
   return buckets;
 }
 
+export function scheduledPayments(work){
+  let remaining = work.amount;
+  const payments = [];
+  for(const payment of work.paymentPlan || []){
+    const day = jalaliDayNumber(payment.date);
+    const value = Number(payment.amount);
+    if(day == null || !Number.isSafeInteger(value) || value <= 0 || remaining <= 0)continue;
+    const amount = Math.min(remaining,value);
+    remaining -= amount;
+    payments.push({...payment,day,amount});
+  }
+  return payments;
+}
+
 export function sliceShare(work, bucket){
   const amount = Number(work.amount) || 0;
   const start = jalaliDayNumber(work.start);
   const end = jalaliDayNumber(work.end) ?? start;
+  if(!amount) return 0;
+  let remaining = amount;
+  let scheduled = 0;
+  for(const payment of scheduledPayments(work)){
+    remaining -= payment.amount;
+    if(payment.day >= bucket.startDay && payment.day <= bucket.endDay)scheduled += payment.amount;
+  }
+  return scheduled + scheduledWorkShare(work,bucket,remaining,start,end);
+}
+
+function scheduledWorkShare(work,bucket,amount,start,end){
   if(start == null || end == null || !amount) return 0;
   const accrual = work.accrual || 'spread';
   if(accrual === 'start') return start >= bucket.startDay && start <= bucket.endDay ? amount : 0;
@@ -239,11 +267,20 @@ export function assignWorksToBuckets(buckets, works){
 }
 
 export function plannedCostline(tasks, options = {}){
-  const works = collectPlannedWorks(tasks);
-  const buckets = assignWorksToBuckets(buildBuckets({
+  const allWorks = collectPlannedWorks(tasks);
+  const works = options.filter ? allWorks.filter(options.filter) : allWorks;
+  const buckets = buildBuckets({
     rangeId: options.rangeId,
     originWeekday: options.originWeekday ?? 4,
-    works,
-  }), works);
+    works: allWorks,
+  }).filter(bucket => !options.bounds ||
+    bucket.endDay >= options.bounds.startDay && bucket.startDay <= options.bounds.endDay);
+  if(options.bounds){
+    for(const bucket of buckets){
+      bucket.startDay = Math.max(bucket.startDay, options.bounds.startDay);
+      bucket.endDay = Math.min(bucket.endDay, options.bounds.endDay);
+    }
+  }
+  assignWorksToBuckets(buckets, works);
   return { series: 'planned', works, buckets };
 }
