@@ -177,6 +177,7 @@ function openEstimateDates(selected, onSelect){
 
 function openCostPaymentPlan(project, work, refresh){
   const rows = (work.paymentPlan || []).map(payment => ({...payment}));
+  if(!rows.length)rows.push({date:'',amount:0});
   openWbsSheet({
     title:'برنامهٔ پرداخت '+(work.text || work.path), saveLabel:'ذخیره', autoFocus:false,
     keepParent:true,
