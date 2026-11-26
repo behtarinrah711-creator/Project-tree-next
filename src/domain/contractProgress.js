@@ -45,6 +45,8 @@ export function contractProgressSteps(contract,project){
   steps.push({id:'signed',label:'بارگذاری '+label,done:complete && contract.approvalStatus==='approved' && (isContractSigned(contract) || canReuseReturnedSignature(contract))},{id:'finance',label:'ارسال به مالی',done:isContractInFinance(contract)});
   const rejected=!!(contract.parentContractId || contract.statementType) && contract.accountingStatus==='rejected';
   steps.push({id:'finance-approved',label:rejected?'توسط مالی رد شد':'تأیید بخش مالی',rejected,done:isContractInFinance(contract) && contract.accountingStatus==='accepted'});
+  if(contract.statementType)steps.push({id:'paid',label:'پرداخت',done:contract.accountingStatus==='accepted' &&
+    Number(contract.paidAmount||0)>=Number(contract.netAmount??contract.approvedAmount??contract.stageAmount??0)});
   return steps;
 }
 
