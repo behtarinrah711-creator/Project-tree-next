@@ -48,6 +48,11 @@ export function canDeleteContractDocument(document){
     && (!document.accountingPackage || (document.accountingStatus==='rejected' && document.status==='draft' && document.isDraft));
 }
 
+export function canReturnFromFinance(record){
+  return ['sent','accepted'].includes(record?.accountingStatus) &&
+    !(Number(record.paidAmount)>0) && !record.payments?.some(payment=>Number(payment.amount)>0);
+}
+
 export function canReopenSignedContract(contract){
   return !(Number(contract?.paidAmount)>0) && canAttachSignedContract(contract)
     && !isContractInFinance(contract) && (isContractSigned(contract) || canReuseReturnedSignature(contract));
@@ -68,7 +73,7 @@ export function transitionContractHandoff(contract,action,actor,{files=[],reason
   }else if(['approve_finance','reject_finance','revoke_finance'].includes(action)){
     if(!isContractInFinance(contract))return fail('قرارداد در واحد مالی نیست');
     if(action==='revoke_finance'){
-      if(contract.accountingStatus!=='accepted' || contract.accountingDecision?.actor?.id!==actor.id)return fail('فقط می‌توانید تأیید مالی خودتان را پس بگیرید');
+      if(contract.accountingStatus!=='accepted' || !canReturnFromFinance(contract))return fail('سند پرداخت‌شده قابل برگشت از مالی نیست');
       if(String(reason).trim().length<FINANCE_REASON_MIN_LENGTH)return fail('توضیح پس‌گرفتن تأیید مالی حداقل ۵ حرف باشد');
       next.accountingStatus='rejected';next.accountingDecision=null;
     }else{
@@ -85,7 +90,7 @@ export function transitionContractHandoff(contract,action,actor,{files=[],reason
     }
     events.push({action,...(['reject_finance','revoke_finance'].includes(action)?{reason:String(reason).trim()}:{})});
   }else if(action==='withdraw_finance'){
-    if(!isContractInFinance(contract))return fail('قرارداد در واحد مالی نیست');
+    if(!canReturnFromFinance(contract))return fail('سند در مالی نیست یا پرداخت آن ثبت شده است');
     const text=typeof reason==='string'?reason.trim():'';
     if(text.length<FINANCE_REASON_MIN_LENGTH)return fail('دلیل پس‌گرفتن حداقل ۵ حرف باشد');
     next.accountingDecision=null;next.accountingStatus='withdrawn';next.sentToAccountingAt=null;next.sentToAccountingBy=null;
