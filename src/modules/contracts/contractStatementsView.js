@@ -451,11 +451,20 @@ function statementPreviewContent(project,contract,record,signature=null){
     documentNode.append(body);
     body.append(...header);
     const paymentDetails=contractorPaymentDetails(project,contract);
-    const details=table([
-      ...(paymentDetails?[['اطلاعات پرداخت',paymentDetails]]:[]),
-      ...(record.note?[['توضیحات',record.note]]:[]),
-    ]);
-    if(paymentDetails)paymentDetails.parentElement.previousElementSibling.classList.add('contract-document-payment-heading');
+    if(paymentDetails){
+      const rows=[...paymentDetails.tBodies[0].rows];
+      const heading=paymentDetails.createCaption();
+      heading.textContent='اطلاعات پرداخت';
+      for(let index=0;index<rows.length;index+=2){
+        if(rows[index+1]){
+          rows[index].append(...rows[index+1].cells);
+          rows[index+1].remove();
+        }else rows[index].cells[1].colSpan=3;
+      }
+      paymentDetails.classList.add('contract-document-quantities','contract-document-payment-pairs');
+      body.append(paymentDetails);
+    }
+    const details=table(record.note?[['توضیحات',record.note]]:[]);
     const totals=table([['کارکرد این سند',money(record.statementAmount??record.stageAmount??0)],['کارکرد تجمعی',money(record.cumulativeAmount||0)],['حسن انجام کار',money(record.retentionAmount||0)],['کسر پیش‌پرداخت',money(record.advanceDeduction||0)],['خالص قابل پرداخت',money(record.netAmount??record.approvedAmount??record.stageAmount??0)],['پرداخت‌شده',money(record.paidAmount||0)]]);
     for(const section of [details,totals])section.classList.add('contract-document-quantities','contract-document-statement-pairs');
     if(details.tBodies[0].rows.length)body.append(details);
