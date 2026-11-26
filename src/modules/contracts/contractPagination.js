@@ -13,7 +13,11 @@ export function paginateContract(source, documentRef=globalThis.document){
   const next=()=>{
     const sheet=documentRef.createElement('section');sheet.className='contract-sheet';
     content=documentRef.createElement('div');content.className='contract-sheet-content';
-    if(statement)content.classList.add('contract-export-document','contract-document-statement','contract-document-statement-body');
+    if(statement){
+      sheet.classList.add('contract-sheet--statement');
+      content.classList.add('contract-export-document','contract-document-statement','contract-document-statement-body');
+      content.dir='rtl';
+    }
     sheet.appendChild(content);pages.appendChild(sheet);
   };
   const fits=()=>content.scrollHeight<=content.clientHeight;
