@@ -89,7 +89,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       }
       const saveDraft=(addendum && body.action==='save_addendum') || (statement && body.action==='save_statement');
       const statementParent=statement && (row.payload.contracts||[]).find(record=>!record.trashed && String(record.id)===String(contract?.contractId ?? body.contractId));
-      if(statement && (!statementParent || (contract && !contract.statementType) || !['save_statement','submit_advance','withdraw_advance','delete_statement','approve_statement','reject_statement','save_signed','send_finance','approve_finance','reject_finance','withdraw_finance','record_payment','reopen_signed_contract'].includes(body.action))){sendJson(response,400,{message:'قرارداد یا عملیات صورت‌وضعیت نامعتبر است'});return true;}
+      if(statement && (!statementParent || (contract && !contract.statementType) || !['save_statement','submit_advance','withdraw_advance','withdraw_statement','delete_statement','approve_statement','reject_statement','save_signed','send_finance','approve_finance','reject_finance','withdraw_finance','record_payment','reopen_signed_contract'].includes(body.action))){sendJson(response,400,{message:'قرارداد یا عملیات صورت‌وضعیت نامعتبر است'});return true;}
       if(!statement && body.action==='record_payment'){sendJson(response,400,{message:'عملیات نامعتبر است'});return true;}
       if(contract?.trashed || (!contract && !saveDraft)){sendJson(response,404,{message:'قرارداد پیدا نشد'});return true;}
       if(['approve_finance','reject_finance'].includes(body.action)){
@@ -150,6 +150,12 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         transition=body.action==='submit_advance'
           ? transitionContractApproval({...contract,status:'final',isDraft:false,approvalStatus:null},'submit',actor,{approverIds:approvers})
           : transitionContractApproval(contract,'withdraw_submission',actor,{reason:body.reason,allowAdvanceWithdrawal:true});
+      }
+      else if(statement && body.action==='withdraw_statement'){
+        if(contract.statementType==='advance' || Number(contract.paidAmount)>0){
+          sendJson(response,409,{message:'صورت‌وضعیت در این مرحله قابل پس گرفتن نیست'});return true;
+        }
+        transition=transitionContractApproval(contract,'withdraw_submission',actor,{reason:body.reason,allowStatementWithdrawal:true});
       }
       else if(statement && body.action==='record_payment'){
         if(statementParent.accountingStatus!=='accepted' && statementParent.approvalHistory?.some(event=>event.action==='edit_contract')){
