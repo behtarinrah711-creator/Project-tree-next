@@ -402,12 +402,12 @@ function statementDocumentHeader(project,contract,record){
 function statementPreviewContent(project,contract,record,signature=null){
     const documentNode=element('section','contract-export-document');
     documentNode.dir='rtl';
-    documentNode.append(...statementDocumentHeader(project,contract,record));
+    const header=statementDocumentHeader(project,contract,record);
     if(record.statementType==='advance'){
       const row=record.advanceRow;
       documentNode.dataset.documentKind='advance';
       const summary=element('div','contract-advance-print');
-      documentNode.append(summary);
+      documentNode.append(...header,summary);
       const paymentDetails=contractorPaymentDetails(project,contract);
       const detail=table([
         ...(row?[
@@ -437,6 +437,9 @@ function statementPreviewContent(project,contract,record,signature=null){
       return documentNode;
     }
     documentNode.classList.add('contract-document-statement');
+    const body=element('div','contract-document-statement-body');
+    documentNode.append(body);
+    body.append(...header);
     const paymentDetails=contractorPaymentDetails(project,contract);
     const details=table([
       ...(paymentDetails?[['اطلاعات پرداخت',paymentDetails]]:[]),
@@ -445,16 +448,16 @@ function statementPreviewContent(project,contract,record,signature=null){
     if(paymentDetails)paymentDetails.parentElement.previousElementSibling.classList.add('contract-document-payment-heading');
     const totals=table([['کارکرد این سند',money(record.statementAmount??record.stageAmount??0)],['کارکرد تجمعی',money(record.cumulativeAmount||0)],['حسن انجام کار',money(record.retentionAmount||0)],['کسر پیش‌پرداخت',money(record.advanceDeduction||0)],['خالص قابل پرداخت',money(record.netAmount??record.approvedAmount??record.stageAmount??0)],['پرداخت‌شده',money(record.paidAmount||0)]]);
     for(const section of [details,totals])section.classList.add('contract-document-quantities','contract-document-statement-pairs');
-    if(details.tBodies[0].rows.length)documentNode.append(details);
+    if(details.tBodies[0].rows.length)body.append(details);
     if(record.operations?.length){
       const template=element('template');
       template.innerHTML=quantityTable(record.operations.map(row=>{
         const source=row.sourceSequence?'موقت '+format.format(row.sourceSequence):formatJalaliDisplay(row.sourceDate);
         return {...row,description:[source,row.description].filter(Boolean).join(' · ')};
       }),true);
-      documentNode.append(element('h3','','عملیات'),template.content);
+      body.append(element('h3','contract-document-statement-band','شرح عملیات انجام‌شده'),template.content);
     }
-    documentNode.append(element('h3','','خلاصه مالی'),totals);
+    body.append(element('h3','contract-document-statement-band','خلاصه مالی'),totals);
     return documentNode;
   }
 
