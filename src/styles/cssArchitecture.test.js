@@ -103,6 +103,7 @@ test('remaining direct style mutations are intentional runtime geometry or gener
     'src/ui/numpad.js',
     'src/modules/tasks/taskView.js',
     'src/modules/contracts/contractTemplateFormModule.js',
+    'src/modules/contracts/contractPreviewView.js', // Fit the fixed-width printable sheet to its preview viewport.
     'src/modules/contracts/realContractFormModule.js', // Resize contract textareas from their measured content height.
     'src/modules/export/exportView.js',
     'src/modules/wbs/homeView.js',
