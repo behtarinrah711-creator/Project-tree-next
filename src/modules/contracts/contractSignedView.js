@@ -1,6 +1,6 @@
 import {hasPaidContractDocument} from '../../domain/contractRevision.js';
 import {canWriteProjectModule} from '../roleManagement/permissionState.js';
-import {canReopenSignedContract,canAttachSignedContract,canReuseReturnedSignature,canReviseReturnedSignedContract,signedContractFiles,isContractInFinance,isContractSigned} from '../../domain/contractHandoff.js';
+import {canReturnFromFinance,canReopenSignedContract,canAttachSignedContract,canReuseReturnedSignature,canReviseReturnedSignedContract,signedContractFiles,isContractInFinance,isContractSigned} from '../../domain/contractHandoff.js';
 import {mountFileUploader} from '../files/fileUploader.js';
 import {openWbsSheet,closeWbsSheet} from '../wbs/wbsSheet.js';
 import {openContractReasonSheet} from './contractReasonSheet.js';
@@ -32,7 +32,7 @@ export function renderContractSignedSection(project,contract,{onChanged=()=>{},f
   }
   if(sent && (!stage || stage==='finance' || (contract.parentContractId && stage==='finance-approved'))){
     section.className+=' contract-signed-section--sent';
-    if(writable && !finance && !hasPaidContractDocument(project,contract)){
+    if(writable && !finance && canReturnFromFinance(contract) && !hasPaidContractDocument(project,contract)){
       const withdraw=button(attachmentActions?'× پس گرفتن از مالی':'پس‌گرفتن از مالی',()=>openContractReasonSheet({
         title:'پس گرفتن '+label+' از مالی',
         historyKey:'withdraw-finance:'+contract.id,
