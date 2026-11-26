@@ -56,7 +56,7 @@ export function renderContractProgress(documentRef,contract,project,onOpen,openC
       const button=documentRef.createElement('button');button.type='button';button.className='contract-stage-button';
       button.setAttribute('aria-label',step.label+'؛ '+status+(index===current?'؛ انجام اقدام':''));
       button.append(label,dot);
-      const advance=contract.statementType;
+      const advance=contract.statementType==='advance';
       button.disabled=index!==current && !((advance || openCompleted) && step.done) && !(advance && step.rejected);
       if(!button.disabled)button.onclick=event=>{event.stopPropagation();onOpen(event,step);};
       item.append(button);
@@ -79,9 +79,9 @@ export function renderContractWorkflowPanel(documentRef,record,project,{onOpen,e
   const paint=()=>{
     body.hidden=!expanded;
     heading?.children[0]?.setAttribute('aria-expanded',String(expanded));
-    if(expanded && record.statementType){
+    if(expanded && record.statementType && list.scrollWidth>list.clientWidth){
       const active=list.querySelector('[aria-current="step"]')||list.lastElementChild;
-      if(active && list.scrollWidth>list.clientWidth){
+      if(active){
         list.scrollLeft+=active.getBoundingClientRect().left-list.getBoundingClientRect().left-(list.clientWidth-active.offsetWidth)/2;
       }
     }
@@ -98,6 +98,6 @@ export function renderContractWorkflowPanel(documentRef,record,project,{onOpen,e
     ? (record.accountingStatus==='rejected'?'رد شده توسط مالی':'برگشت از تأیید')+' · '+reason
     : 'دلیل برگشت: '+reason;body.append(message);}
   panel.append(body);paint();
-  if(expanded && record.statementType)requestAnimationFrame(paint);
+  if(expanded && record.statementType)documentRef.defaultView?.requestAnimationFrame(paint);
   return panel;
 }
