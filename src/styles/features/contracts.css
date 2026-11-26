@@ -1890,7 +1890,7 @@ textarea.contract-project-item-input{
 #reportsPageBody .contract-addenda-list .contract-history summary,
 :is(#contractsPageBody,#accountingPageBody,.contract-status-sheet) .contract-history summary{min-height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#000;font:inherit;font-weight:600}
 #reportsPageBody .contract-addenda-list .contract-history-entry,
-:is(#contractsPageBody,#accountingPageBody,.contract-status-sheet) .contract-history-entry{padding:8px 0;line-height:1.9;overflow-wrap:anywhere}
+:is(#contractsPageBody,#accountingPageBody,.contract-status-sheet) .contract-history-entry{padding-block:8px;line-height:1.9;overflow-wrap:anywhere}
 #reportsPageBody .contract-addenda-list .contract-history-entry p,
 :is(#contractsPageBody,#accountingPageBody,.contract-status-sheet) .contract-history-entry p{margin:4px 0 0;white-space:pre-wrap;overflow-wrap:anywhere}
 #reportsPageBody .contract-addenda-list .contract-history-empty,
@@ -2193,7 +2193,7 @@ textarea.contract-project-item-input{
 
 .contract-document-statement-body > .contract-document-statement-note > tbody > tr > th[scope="row"]:first-child{width:11%}
 
-.contract-status-sheet .contract-history-entry{padding-inline:12px}
+.contract-status-sheet.contract-history-sheet .contract-history-entry{padding-inline:12px}
 .contract-document-stage-footer{display:grid;gap:8px;margin-top:12px;padding:10px 0 4px;border-top:1px solid var(--divider,#ddd);background:var(--surface,#fff)}
 .contract-workflow-panel .contract-rejection-reason,.contract-history-entry.is-rejected{background:#fff0f0;color:var(--danger,#b23b3b)}
 .contract-workflow-panel .contract-rejection-reason{padding:8px 10px;border-radius:6px}
