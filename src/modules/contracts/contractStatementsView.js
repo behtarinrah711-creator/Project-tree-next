@@ -556,26 +556,52 @@ function statementPreviewContent(project,contract,record,signature=null){
       const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
       svg.setAttribute('viewBox','0 0 100 100');
       svg.setAttribute('aria-hidden','true');
-      const track=document.createElementNS(svg.namespaceURI,'circle');
-      for(const [key,value] of Object.entries({cx:50,cy:50,r:42,pathLength:100,fill:'none','stroke-width':8,stroke:'#ddd'})){
-        track.setAttribute(key,String(value));
+      const current=record.statementType==='final' ? 0 :
+        Math.min(Math.max(0,cumulative),Math.max(0,Number(record.stageAmount??record.statementAmount) || 0));
+      const previous=Math.max(0,cumulative-current);
+      const parts=[
+        {label:'دوره‌های قبل',amount:previous,color:'#326854',ink:'#fff'},
+        {label:'این صورت‌وضعیت',amount:current,color:'#9fceae',ink:'#143b2a'},
+        {label:'ماندهٔ کار',amount:Math.max(0,basis-cumulative),color:'#e0e0e0',ink:'#222'},
+      ].filter(part=>part.amount>0);
+      const total=parts.reduce((sum,part)=>sum+part.amount,0);
+      const point=(fraction,radius)=>[
+        50+radius*Math.cos(fraction*2*Math.PI-Math.PI/2),
+        50+radius*Math.sin(fraction*2*Math.PI-Math.PI/2),
+      ];
+      const legend=element('div','contract-document-statement-pie-legend');
+      let offset=0;
+      for(const part of parts){
+        const fraction=part.amount/total;
+        const slice=document.createElementNS(svg.namespaceURI,fraction===1?'circle':'path');
+        slice.setAttribute('fill',part.color);
+        if(fraction===1){
+          for(const [key,value] of Object.entries({cx:50,cy:50,r:48}))slice.setAttribute(key,String(value));
+        }else{
+          slice.setAttribute('d',`M 50 50 L ${point(offset,48).join(' ')} A 48 48 0 ${fraction>.5?1:0} 1 ${point(offset+fraction,48).join(' ')} Z`);
+        }
+        svg.append(slice);
+        if(fraction>=.12){
+          const label=document.createElementNS(svg.namespaceURI,'text');
+          const [x,y]=point(offset+fraction/2,fraction===1?0:31);
+          label.setAttribute('x',String(x));
+          label.setAttribute('y',String(y));
+          label.setAttribute('fill',part.ink);
+          label.setAttribute('dominant-baseline','central');
+          label.setAttribute('text-anchor','middle');
+          label.textContent=progress(part.amount);
+          svg.append(label);
+        }
+        offset+=fraction;
+        legend.append(element('span','',part.label+' · '+progress(part.amount)));
       }
-      svg.append(track);
-      if(cumulative>0){
-        const arc=track.cloneNode(false);
-        arc.setAttribute('stroke','#326854');
-        arc.setAttribute('stroke-dasharray',Math.min(100,cumulative/basis*100)+' 100');
-        arc.setAttribute('transform','rotate(-90 50 50)');
-        svg.append(arc);
-      }
-      graphic.append(svg,element('strong','',progress(cumulative)));
+      graphic.append(svg);
       const inMillions=[cumulative,basis].every(value=>value%1000000===0);
       const divisor=inMillions?1000000:1;
       const comparison=format.format(cumulative/divisor)+' از '+format.format(basis/divisor)+
         (inMillions?' میلیون تومان':' تومان');
-      const caption=element('figcaption');
-      caption.append(element('strong','','پیشرفت تجمیعی تا این صورت‌وضعیت'),element('span','',comparison));
-      figure.append(graphic,caption);
+      const caption=element('figcaption','',comparison);
+      figure.append(element('strong','','پیشرفت تجمیعی '+progress(cumulative)),graphic,legend,caption);
       financial.classList.add('contract-document-statement-financial--with-ring');
       financial.append(figure);
     }
