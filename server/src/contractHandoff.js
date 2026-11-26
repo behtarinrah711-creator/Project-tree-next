@@ -255,7 +255,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
             source={...contract,parentDocument:{...frozen,documentActivityName:frozen.documentActivityName || parentActivity?.name || ''}};
           }else if(!statement) source=syncContractPartyData({...contract},row.payload);
         }
-        transition=transitionContractHandoff(source,body.action,actor,{files,reason:body.reason,projectName:row.payload.name||row.payload.title||'',activityName:activity?.name||activity?.title||''});
+        transition=transitionContractHandoff(source,body.action,actor,{files,reason:body.reason,allowFinanceReviewerReturn:body.action==='revoke_finance',projectName:row.payload.name||row.payload.title||'',activityName:activity?.name||activity?.title||''});
       }
       if(!transition.ok){sendJson(response,400,{message:transition.message});return true;}
       if(addendum || statement || reviewAction) transition.contract.handoffVersion=Number(contract?.handoffVersion||0)+1;
