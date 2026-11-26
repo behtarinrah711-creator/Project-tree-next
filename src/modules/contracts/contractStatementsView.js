@@ -501,7 +501,16 @@ function statementPreviewContent(project,contract,record,signature=null){
     const basis=record.addendumId && !account.statementAddendumId ? null : contractStatementTotals(project,account).total;
     const progressFormat=new Intl.NumberFormat('fa-IR',{style:'percent',maximumFractionDigits:1});
     const progress=amount=>basis>0 && Number.isFinite(Number(amount)) ? progressFormat.format(Number(amount)/basis) : '—';
-    const summaryMoney=value=>value!==null && Number(value)===0 ? format.format(0) : money(value);
+    const summaryMoney=value=>{
+      if(value===null)return money(value);
+      if(Number(value)===0)return format.format(0);
+      const amount=element('bdi');
+      amount.dir='rtl';
+      const digits=element('bdi','',format.format(value));
+      digits.dir='ltr';
+      amount.append(digits,'\u00a0تومان');
+      return amount;
+    };
     const progressStatement=record.statementType!=='retention-release';
     const note=String(record.note??'').trim();
     const details=table(note?[['توضیحات',note]]:[]);
