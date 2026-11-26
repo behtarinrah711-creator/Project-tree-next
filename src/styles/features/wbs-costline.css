@@ -72,8 +72,11 @@
 .wbs-costline-empty{margin:16px 0 20px;color:#c62828;font-size:13px;font-weight:600;text-align:center;}
 
 .wbs-costline-filters{display:grid;gap:8px;margin:0 2px 8px}
-.wbs-costline-filter-buttons{display:flex;flex-wrap:wrap;gap:6px}
-.wbs-costline-filter-buttons .wbs-costline-cycle{flex:0 1 auto;width:auto;max-width:100%;padding-inline:10px}
+.wbs-costline-filter-buttons,
+.wbs-costline-filter-selections{display:flex;flex-wrap:nowrap;gap:6px;min-width:0;overflow-x:auto;overscroll-behavior-inline:contain;scrollbar-width:none}
+.wbs-costline-filter-selections[hidden]{display:none}
+.wbs-costline-filter-chip{display:flex;flex:0 0 auto;align-items:stretch;white-space:nowrap;font-size:11px}
+.wbs-costline-filter-buttons .wbs-costline-cycle{flex:0 0 auto;width:auto;padding-inline:10px}
 .wbs-costline-results{margin:10px 2px 0;overflow:auto;background:#fff}
 .wbs-costline-results table{width:100%;min-width:320px;border-collapse:collapse;direction:rtl;font-size:11px}
 .wbs-costline-results :is(th,td){padding:8px 6px;border-bottom:1px solid var(--divider);border-inline-end:1px solid var(--divider);vertical-align:middle;text-align:center}
