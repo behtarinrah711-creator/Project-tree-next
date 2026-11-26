@@ -18,7 +18,7 @@ import { ftAmountSummary, ftNumberRow, ftSelectRow } from './realContractFormMod
 import { openStaticChoicePicker } from './contractPickers.js';
 import { saveContractHandoff } from './contractHandoffApi.js';
 import { contractProjectPath, contractRowData, renderContractCardHeading } from './contractsModule.js';
-import { contractProgressSteps, mountDocumentStageFooter, renderContractWorkflowPanel, renderContractProgressCircle } from './contractProgressView.js';
+import { contractProgressSteps, documentStageSelection, mountDocumentStageFooter, renderContractWorkflowPanel, renderContractProgressCircle } from './contractProgressView.js';
 import { openContractHistory, renderContractHistory } from './contractHistoryView.js';
 import { contractDisplayTitle } from './contractTitle.js';
 import { openContractExport } from './contractExportView.js';
@@ -656,15 +656,14 @@ function statementPreviewContent(project,contract,record,signature=null){
   }
 
 function openStatementStep(project,contract,record,onChanged,{finance=false,approval,step,openSheet=openWbsSheet}={}){
-  const steps=contractProgressSteps(record,project);
   const writable=!finance && !approval && canWriteProjectModule(project.id,'contracts');
   const advance=record.statementType==='advance';
   const canWithdraw=writable && advance && canWithdrawAdvanceRequest(record);
-  const active=step || (canWithdraw && steps.find(item=>item.id==='advance-submit')) ||
-    steps.find(item=>!item.done) || steps.at(-1);
+  const selection=documentStageSelection(record,project,step,canWithdraw?'advance-submit':'');
+  if(!selection)return;
+  const {selected:active}=selection;
+  const current=selection.current?.id;
   const financeWritable=finance && canWriteProjectModule(project.id,financeScope(project.id,advance?'accounting-contracts':'accounting-statements'));
-  const current=steps.find(item=>!item.done)?.id;
-  if(active.id!==current && !active.done && !active.rejected)return;
   const paid=Number(record.paidAmount||0);
   const remaining=Math.max(0,Number(record.netAmount)-paid);
   const paymentStatus=paid===0?'پرداخت‌نشده':remaining?'پرداخت جزئی':'پرداخت کامل';
