@@ -58,7 +58,7 @@ export function canReopenSignedContract(contract){
     && !isContractInFinance(contract) && (isContractSigned(contract) || canReuseReturnedSignature(contract));
 }
 
-export function transitionContractHandoff(contract,action,actor,{files=[],reason='',at=Date.now(),projectName,activityName}={}){
+export function transitionContractHandoff(contract,action,actor,{files=[],reason='',at=Date.now(),projectName,activityName,allowFinanceReviewerReturn=false}={}){
   const fail=message=>({ok:false,message});
   if(!actor?.id || actor.id==='guest')return fail('ابتدا وارد حساب کاربری شوید');
   if(!canAttachSignedContract(contract) && !(action==='save_signed' && canReviseReturnedSignedContract(contract)))return fail('ابتدا قرارداد باید تکمیل و تأیید شود');
@@ -74,6 +74,7 @@ export function transitionContractHandoff(contract,action,actor,{files=[],reason
     if(!isContractInFinance(contract))return fail('قرارداد در واحد مالی نیست');
     if(action==='revoke_finance'){
       if(contract.accountingStatus!=='accepted' || !canReturnFromFinance(contract))return fail('سند پرداخت‌شده قابل برگشت از مالی نیست');
+      if(!allowFinanceReviewerReturn && contract.accountingDecision?.actor?.id!==actor.id)return fail('فقط می‌توانید تأیید مالی خودتان را پس بگیرید');
       if(String(reason).trim().length<FINANCE_REASON_MIN_LENGTH)return fail('توضیح پس‌گرفتن تأیید مالی حداقل ۵ حرف باشد');
       next.accountingStatus='rejected';next.accountingDecision=null;
     }else{
