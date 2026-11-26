@@ -418,8 +418,10 @@ function statementDocumentHeader(project,contract,record){
     ['پیمانکار',contractorName],
     ['موضوع قرارداد',path?.split('←').at(-1)?.trim() || contract.title || '—'],
     ['شماره قرارداد',contract.contractNo||'—'],
-    ['مبلغ کل قرارداد',contract.amount!=null && contract.amount!=='' && Number.isFinite(amount) && !contract.remeasurement
-      ? money(amount):'مبلغ قطعی تعیین نشده'],
+    advance
+      ? ['مبلغ کل قرارداد',contract.amount!=null && contract.amount!=='' && Number.isFinite(amount) && !contract.remeasurement
+        ? money(amount):'مبلغ قطعی تعیین نشده']
+      : ['تاریخ قرارداد',formatJalaliDisplay(contract.contractDate)||'—'],
   ]){
     const pair=element('div','contract-document-statement-fact');
     pair.append(element('strong','',label),element('bdi','',value));
@@ -499,11 +501,12 @@ function statementPreviewContent(project,contract,record,signature=null){
     const basis=record.addendumId && !account.statementAddendumId ? null : contractStatementTotals(project,account).total;
     const progressFormat=new Intl.NumberFormat('fa-IR',{style:'percent',maximumFractionDigits:1});
     const progress=amount=>basis>0 && Number.isFinite(Number(amount)) ? progressFormat.format(Number(amount)/basis) : '—';
-    const summaryMoney=value=>Number(value)===0 ? format.format(0) : money(value);
+    const summaryMoney=value=>value!==null && Number(value)===0 ? format.format(0) : money(value);
     const progressStatement=record.statementType!=='retention-release';
     const note=String(record.note??'').trim();
     const details=table(note?[['توضیحات',note]]:[]);
     const totals=table([
+      [record.addendumId?'مبلغ کل الحاقیه':'مبلغ کل قرارداد',summaryMoney(basis)],
       ['کارکرد این سند',summaryMoney(record.statementAmount??record.stageAmount??0)],
       ['کارکرد تجمیعی',summaryMoney(record.cumulativeAmount||0)],
       ...(progressStatement?[['پیشرفت تجمیعی تا این صورت‌وضعیت',progress(record.cumulativeAmount??record.stageAmount??0)]]:[]),
@@ -539,7 +542,7 @@ function statementPreviewContent(project,contract,record,signature=null){
       }
       body.append(element('h3','contract-document-statement-band','شرح عملیات انجام‌شده'),template.content);
     }
-    body.append(element('h3','contract-document-statement-band','خلاصه مالی'),totals);
+    body.append(element('h3','contract-document-statement-band contract-document-statement-summary','خلاصه مالی'),totals);
     return documentNode;
   }
 
