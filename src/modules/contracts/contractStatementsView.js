@@ -562,7 +562,7 @@ function statementPreviewContent(project,contract,record,signature=null){
       const parts=[
         {label:'دوره‌های قبل',amount:previous,color:'#326854',ink:'#fff'},
         {label:'این صورت‌وضعیت',amount:current,color:'#9fceae',ink:'#143b2a'},
-        {label:'ماندهٔ کار',amount:Math.max(0,basis-cumulative),color:'#e0e0e0',ink:'#222'},
+        {label:'ماندهٔ کار',amount:Math.max(0,basis-cumulative),color:'none',ink:'#222'},
       ].filter(part=>part.amount>0);
       const total=parts.reduce((sum,part)=>sum+part.amount,0);
       const point=(fraction,radius)=>[
@@ -570,6 +570,8 @@ function statementPreviewContent(project,contract,record,signature=null){
         50+radius*Math.sin(fraction*2*Math.PI-Math.PI/2),
       ];
       const legend=element('div','contract-document-statement-pie-legend');
+      const cuts=[];
+      const labels=[];
       let offset=0;
       for(const part of parts){
         const fraction=part.amount/total;
@@ -581,6 +583,7 @@ function statementPreviewContent(project,contract,record,signature=null){
           slice.setAttribute('d',`M 50 50 L ${point(offset,48).join(' ')} A 48 48 0 ${fraction>.5?1:0} 1 ${point(offset+fraction,48).join(' ')} Z`);
         }
         svg.append(slice);
+        if(parts.length>1)cuts.push(offset);
         if(fraction>=.12){
           const label=document.createElementNS(svg.namespaceURI,'text');
           const [x,y]=point(offset+fraction/2,fraction===1?0:31);
@@ -590,11 +593,23 @@ function statementPreviewContent(project,contract,record,signature=null){
           label.setAttribute('dominant-baseline','central');
           label.setAttribute('text-anchor','middle');
           label.textContent=progress(part.amount);
-          svg.append(label);
+          labels.push(label);
         }
         offset+=fraction;
         legend.append(element('span','',part.label+' · '+progress(part.amount)));
       }
+      for(const cut of cuts){
+        const line=document.createElementNS(svg.namespaceURI,'path');
+        line.setAttribute('d',`M 50 50 L ${point(cut,48).join(' ')}`);
+        line.setAttribute('stroke','#333');
+        line.setAttribute('stroke-width','1.6');
+        svg.append(line);
+      }
+      const outline=document.createElementNS(svg.namespaceURI,'circle');
+      for(const [key,value] of Object.entries({cx:50,cy:50,r:48,fill:'none',stroke:'#333','stroke-width':2.6})){
+        outline.setAttribute(key,String(value));
+      }
+      svg.append(outline,...labels);
       graphic.append(svg);
       const inMillions=[cumulative,basis].every(value=>value%1000000===0);
       const divisor=inMillions?1000000:1;
