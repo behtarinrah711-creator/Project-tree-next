@@ -31,6 +31,11 @@ function splitExact(total, count){
 function fundingSpan(work){
   const start = jalaliDayNumber(work?.start);
   const end = jalaliDayNumber(work?.end) ?? start;
+  const paymentDays = (work?.paymentPlan || []).map(payment => jalaliDayNumber(payment.date)).filter(Number.isFinite);
+  if(paymentDays.length){
+    const days = [start,end,...paymentDays].filter(Number.isFinite);
+    return {start:Math.min(...days),end:Math.max(...days)};
+  }
   if(start == null || end == null || end < start) return null;
   if(work.accrual === 'start') return { start, end:start };
   if(work.accrual === 'end') return { start:end, end };
@@ -208,8 +213,8 @@ export function fundingCoverage(project){
     if(!bucket || !Number.isFinite(Number(bucket.startDay)) || !Number.isFinite(Number(bucket.endDay))) return 0;
     const key = String(taskId);
     const work = works.get(key);
-    if(work && work.accrual !== 'start' && work.accrual !== 'end'){
-      const start = jalaliDayNumber(work.start);
+    if(work && (work.paymentPlan?.length || work.accrual !== 'start' && work.accrual !== 'end')){
+      const start = fundingSpan(work)?.start;
       const budget = sumTask(map, key);
       const before = sliceShare(work, { startDay:start, endDay:Number(bucket.startDay)-1 });
       return Math.min(sliceShare(work, bucket), Math.max(0, budget-before));
@@ -232,9 +237,9 @@ export function allocatedForBucket(project, taskId, bucket){
 }
 
 export function firstFundingShortage(work, bucket, covered){
-  if(work.accrual === 'start' || work.accrual === 'end' || covered >= sliceShare(work,bucket)) return null;
-  let first = Math.max(bucket.startDay, jalaliDayNumber(work.start));
-  let last = Math.min(bucket.endDay, jalaliDayNumber(work.end) ?? first);
+  if((!work.paymentPlan?.length && (work.accrual === 'start' || work.accrual === 'end')) || covered >= sliceShare(work,bucket)) return null;
+  let first = Math.max(bucket.startDay, fundingSpan(work)?.start ?? bucket.startDay);
+  let last = Math.min(bucket.endDay, fundingSpan(work)?.end ?? first);
   while(first < last){
     const middle = Math.floor((first+last)/2);
     if(sliceShare(work,{ startDay:bucket.startDay, endDay:middle }) > covered) last = middle;
