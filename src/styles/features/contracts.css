@@ -2192,3 +2192,6 @@ textarea.contract-project-item-input{
 #contractPreviewPage .contract-statement-preview-viewport > .contract-pages{width:794px;margin-inline:auto}
 
 .contract-document-statement-body > .contract-document-statement-note > tbody > tr > th[scope="row"]:first-child{width:11%}
+
+.contract-status-sheet .contract-history-entry{padding-inline:12px}
+.contract-document-stage-footer{display:grid;gap:8px;margin-top:12px;padding:10px 0 4px;border-top:1px solid var(--divider,#ddd);background:var(--surface,#fff)}
