@@ -1,3 +1,5 @@
+import {projectRepository} from '../../data/projectRepository.js';
+import {hasWorkTaskContract} from '../../domain/deleteGuard.js';
 /** Project-scoped trash presentation. Mutations are supplied by canonical owners. */
 export function createProjectTrashView(deps){
   const { document, getActiveProjectId, findProject, walkItems, getContacts,
@@ -15,6 +17,19 @@ export function createProjectTrashView(deps){
   }
   function collect(projectId){
     const out=[]; const project=findProject(projectId); if(!project) return out;
+    const collectWorkCards=nodes=>{
+      for(const node of nodes||[]){
+        if(!node)continue;
+        for(const record of node.workTasks||[]){
+          if(record?.trashed)out.push({type:'work-task',id:record.id,record,projectId,workId:node.id,deletedAt:record.deletedAt||0});
+        }
+        collectWorkCards(node.subtasks);
+      }
+    };
+    collectWorkCards(project.tasks);
+    for(const record of project.standaloneWorks||[]){
+      if(record?.trashed)out.push({type:'standalone-work',id:record.id,record,projectId,deletedAt:record.deletedAt||0});
+    }
     (project.tasks||[]).forEach(task=>{
       if(task?.trashed) out.push({type:'task',id:task.id,record:task,projectId:project.id,projectName:project.name,deletedAt:task.deletedAt||0});
       walkItems(task.subtasks,(item,parent)=>{
@@ -25,12 +40,37 @@ export function createProjectTrashView(deps){
     getActivityTemplates(project).forEach(record=>{ if(record?.trashed) out.push({type:'activity',id:record.id,record,projectId,projectName:project.name,deletedAt:record.deletedAt||0}); });
     return out.sort((a,b)=>(b.deletedAt||0)-(a.deletedAt||0));
   }
+  function changeWorkCard(entry,permanent){
+    let changed=false;
+    projectRepository.updateProject(entry.projectId,project=>{
+      if(permanent && entry.type==='work-task' && hasWorkTaskContract(project,entry.workId,entry.id)){
+        showToast('این کار قرارداد ثبت‌شده دارد و قابل حذف همیشگی نیست');
+        return project;
+      }
+      const update=items=>(items||[]).flatMap(record=>{
+        if(!record?.trashed || String(record.id)!==String(entry.id))return [record];
+        changed=true;
+        return permanent?[]:[{...record,trashed:false,deletedAt:null,updatedAt:Date.now()}];
+      });
+      if(entry.type==='standalone-work')return {...project,standaloneWorks:update(project.standaloneWorks)};
+      const walk=items=>(items||[]).map(node=>{
+        if(!node)return node;
+        if(String(node.id)===String(entry.workId))return {...node,workTasks:update(node.workTasks)};
+        return {...node,subtasks:walk(node.subtasks)};
+      });
+      return {...project,tasks:walk(project.tasks)};
+    });
+    return changed;
+  }
+  const isWorkCard=entry=>entry.type==='work-task'||entry.type==='standalone-work';
+  const restoreEntry=entry=>isWorkCard(entry)?changeWorkCard(entry,false):restoreRecord(entry);
+  const removeEntry=entry=>isWorkCard(entry)?changeWorkCard(entry,true):permanentlyDeleteRecord(entry);
   function appendActions(actions,entry){
     const restore=document.createElement('button'); restore.type='button'; restore.className='restore-btn'; restore.textContent='بازگردانی';
-    restore.onclick=()=>{ if(restoreRecord(entry)){ persist(); render(); refreshWorkspace(); refreshContacts(); refreshActivities(); showToast('بازگردانده شد'); } };
+    restore.onclick=()=>{ if(restoreEntry(entry)){ persist(); render(); refreshWorkspace(); refreshContacts(); refreshActivities(); showToast('بازگردانده شد'); } };
     const remove=document.createElement('button'); remove.type='button'; remove.className='perm-del-btn'; remove.textContent='حذف همیشگی';
     remove.onclick=()=>deps.openConfirm('این مورد برای همیشه حذف شود؟ این عملیات قابل بازگردانی نیست.',async()=>{
-      if(await permanentlyDeleteRecord(entry)){ persist(); render(); refreshWorkspace(); refreshContacts(); refreshActivities(); showToast('برای همیشه حذف شد'); }
+      if(await removeEntry(entry)){ persist(); render(); refreshWorkspace(); refreshContacts(); refreshActivities(); showToast('برای همیشه حذف شد'); }
     },'حذف همیشگی');
     actions.append(restore,remove);
   }
@@ -44,6 +84,14 @@ export function createProjectTrashView(deps){
       const line=document.createElement('div'); line.className='contact-activities'; line.textContent=(record.activities||[]).map(id=>{const a=findActivityTemplate(id);return a&&!a.trashed?a.name:'';}).filter(Boolean).join('، ')||'بدون فعالیت';
       const actions=document.createElement('div'); actions.className='contact-actions project-trash-inline-actions'; appendActions(actions,entry);
       main.append(name,line); row.append(main,actions); wrap.appendChild(row); list.appendChild(wrap); return;
+    }
+    if(isWorkCard(entry)){
+      const row=document.createElement('div');row.className='activity-row trash-native-row';
+      const name=document.createElement('div');name.className='activity-name';name.textContent=record.title||record.text||'کار';
+      wrap.dataset.searchText=name.textContent;
+      const actions=document.createElement('div');actions.className='activity-actions project-trash-inline-actions';
+      appendActions(actions,entry);
+      row.append(name,actions);wrap.appendChild(row);list.appendChild(wrap);return;
     }
     if(entry.type==='activity'){
       const row=document.createElement('div'); row.className='activity-row trash-native-row';
@@ -59,7 +107,7 @@ export function createProjectTrashView(deps){
     const clear=document.createElement('button'); clear.type='button'; clear.className='perm-del-btn project-trash-clear'; clear.textContent='حذف همه';
     clear.onclick=async()=>{
       if(clear.dataset.confirmed!=='1'){ clear.dataset.confirmed='1'; clear.textContent='برای حذف همه دوباره بزنید'; deps.setTimeout(()=>{if(clear.isConnected&&clear.dataset.confirmed==='1'){clear.dataset.confirmed='0';clear.textContent='حذف همه';}},3000); return; }
-      clear.dataset.confirmed='0'; for(const entry of items.slice()) await permanentlyDeleteRecord(entry);
+      clear.dataset.confirmed='0'; for(const entry of items.slice()) await removeEntry(entry);
       persist(); render(); refreshWorkspace(); showToast('همه موارد این پروژه برای همیشه حذف شدند');
     };
     clearWrap.appendChild(clear); body.appendChild(clearWrap);
