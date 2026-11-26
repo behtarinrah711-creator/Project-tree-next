@@ -2136,8 +2136,11 @@ textarea.contract-project-item-input{
 .contract-document-statement-body > .contract-document-quantity th:first-child{width:8%}
 .contract-document-statement-body > .contract-document-quantity th:nth-child(2){width:36%}
 .contract-document-statement-body > .contract-document-quantity th:nth-child(n+3){width:14%}
-.contract-document-statement-body > .contract-document-statement-progress th:nth-child(2){width:30%}
-.contract-document-statement-body > .contract-document-statement-progress th:nth-child(n+3){width:12.4%}
+.contract-document-statement-body > .contract-document-statement-progress th:nth-child(2){width:23%}
+.contract-document-statement-body > .contract-document-statement-progress th:nth-child(3){width:7%}
+.contract-document-statement-body > .contract-document-statement-progress th:nth-child(4){width:11%}
+.contract-document-statement-body > .contract-document-statement-progress th:nth-child(5){width:15%}
+.contract-document-statement-body > .contract-document-statement-progress th:nth-child(n+6){width:12%}
 .contract-document-statement-body > .contract-document-quantity td:nth-child(n+3):not([colspan]),
 .contract-document-statement-body > .contract-document-quantity .doc-operations-total td:not(:first-child){text-align:center}
 

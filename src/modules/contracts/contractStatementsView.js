@@ -125,7 +125,7 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
     account=statementAccount(contract,addenda.find(item=>item.id===addendumId));
     totals=contractStatementTotals(source,account);
     final=finalStatementSummary(source,account);
-    workRows=statementWorkRows(account,accountStatements(source,account).filter(approvedStatement));
+    workRows=statementWorkRows(account,accountStatements(source,account).filter(item=>item.id!==record?.id && approvedStatement(item)));
     entries=workRows.map(row=>({...record?.workEntries?.find(item=>item.key===row.key),key:row.key}));
   }
   selectAccount();
@@ -269,14 +269,17 @@ export function openStatementForm(project,contract,onChanged,record=null,type='i
             const card=element('div','contract-quantity-row contract-statement-operation form-template');
             card.append(element('h3','contract-statement-operation-title',row.description||'عملیات '+format.format(index+1)));
             const display=value=>row.measured?format.format(value)+' '+(row.unit||''):money(value);
-            card.append(table([
-              [row.measured?'بهای واحد قرارداد':'مبلغ توافقی قرارداد',money(numericValue(row.measured?row.unitPrice:row.agreedPrice))],
-              ['کارکرد قبلی',display(row.previous)],
-              ['مانده ردیف',row.limit===null?'تعیین نشده':display(Math.max(0,row.limit-row.previous))],
-            ]));
-            const equivalent=element('div','contract-statement-operation-result');
             const item=workEntries().find(item=>item.key===row.key);
             const operation=item && resolveStatementWork([row],[item])?.[0];
+            const cumulative=operation?.statementProgress.cumulative ?? row.previous;
+            card.append(table([
+              [row.measured?'مقدار قرارداد':'مبلغ توافقی قرارداد',row.limit===null?'تعیین نشده':display(row.limit)],
+              ...(row.measured?[['بهای واحد قرارداد',money(numericValue(row.unitPrice))]]:[]),
+              ['کارکرد قبلی',display(row.previous)],
+              ['کارکرد تجمیعی با این دوره',display(cumulative)],
+              ['مانده پس از این دوره',row.limit===null?'تعیین نشده':display(Math.max(0,row.limit-cumulative))],
+            ]));
+            const equivalent=element('div','contract-statement-operation-result');
             if(operation && row.measured)equivalent.append(element('span','',display(operation.quantity)+' | '));
             equivalent.append(element('strong','',money(operation?rowAmount(operation):0)));
             if(row.measured && row.limit!==null){
@@ -532,13 +535,34 @@ function statementPreviewContent(project,contract,record,signature=null){
       if(progressStatement){
         const operations=template.content.querySelector('table');
         operations.classList.add('contract-document-statement-progress');
-        operations.tHead.rows[0].cells[4].before(element('th','','سهم از پیشرفت قرارداد'));
+        const headerRow=operations.tHead.rows[0];
+        headerRow.cells[3].textContent=record.statementType==='final'?'مقدار یا مبلغ ردیف':'مقدار یا مبلغ این دوره';
+        headerRow.cells[4].before(
+          element('th','','کارکرد تجمیعی از کل ردیف'),
+          element('th','','سهم از پیشرفت قرارداد'),
+        );
+        const prior=accountStatements(project,account).filter(item=>item.id!==record.id && approvedStatement(item) &&
+          item.statementType==='interim' && Number(item.sequence)>0 && Number(item.sequence)<Number(record.sequence));
+        const contractualRows=statementWorkRows(account,prior);
         const rows=operations.tBodies[0].rows;
         for(const [index,operation] of record.operations.entries()){
-          rows[index].cells[4].before(element('td','',progress(rowAmount(operation))));
+          const row=rows[index];
+          const measured=operation.pricingMode==='quantity';
+          const current=numericValue(measured?operation.quantity:operation.agreedPrice);
+          if(!measured)row.cells[3].textContent=money(current);
+          const linked=contractualRows.find(item=>item.key===operation.contractRowId && item.measured===measured);
+          const snapshot=operation.statementProgress ||
+            (linked && record.statementType==='interim' && Number(record.sequence)>0
+              ? {limit:linked.limit,cumulative:linked.previous+current} : null);
+          const display=number=>format.format(number);
+          const comparison=snapshot
+            ? snapshot.limit===null ? display(snapshot.cumulative)+(measured?'':' تومان')
+              : display(snapshot.cumulative)+' از '+display(snapshot.limit)+(measured?'':' تومان')
+            : '—';
+          row.cells[4].before(element('td','',comparison),element('td','',progress(rowAmount(operation))));
         }
         const total=rows[rows.length-1];
-        total.cells[0].colSpan=4;
+        total.cells[0].colSpan=5;
         const heading=record.statementType==='final'?'پیشرفت تجمیعی':'پیشرفت این دوره';
         const gross=record.operations.reduce((sum,operation)=>sum+rowAmount(operation),0);
         const cell=element('td','',heading+' '+progress(gross));

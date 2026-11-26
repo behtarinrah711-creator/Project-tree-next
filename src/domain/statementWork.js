@@ -25,7 +25,9 @@ export function resolveStatementWork(rows,entries){
     const operation={contractRowId:row.key,description:row.description,pricingMode:row.measured?'quantity':'agreed',
       ...(row.measured?{unit:row.unit,quantity:performed,unitPrice:numericValue(row.unitPrice)}:{agreedPrice:performed})};
     if(!Number.isSafeInteger(rowAmount(operation)) || rowAmount(operation)<=0)return null;
-    operations.push(operation);
+    operations.push({...operation,statementProgress:{
+      limit:row.limit, cumulative:row.previous+performed,
+    }});
   }
   return operations;
 }
