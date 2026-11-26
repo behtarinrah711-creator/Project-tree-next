@@ -7,7 +7,7 @@ import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { renderContractAddendaRow } from './contractAddendaView.js';
 import {renderContractFinanceReview} from './contractFinanceReviewView.js';
 import {openContractSignedUpload,renderContractSignedSection} from './contractSignedView.js';
-import { contractProgressSteps, renderContractWorkflowPanel, renderContractProgressCircle } from './contractProgressView.js';
+import { contractProgressSteps, mountDocumentStageFooter, renderContractWorkflowPanel, renderContractProgressCircle } from './contractProgressView.js';
 import { openContractHistory } from './contractHistoryView.js';
 import { approvedContractContactIds,contractApproverIds,approvalLabels, contractApprovalState } from '../../domain/contractApproval.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
@@ -264,6 +264,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
               for(const entry of history.slice(history.findLastIndex(e=>e.action==='submit')+1).filter(e=>e.action==='edit_review' && e.reason))note([entry.actor?.name,'دلیل ویرایش',entry.reason].filter(Boolean).join(' · '));
             }
             if(!selected.done || (selected.id==='finance' && !finance && !approval))statusSheetBody(root,selected);
+            mountDocumentStageFooter(root);
           }});
       };
       const heading=renderContractCardHeading(p,c,{
