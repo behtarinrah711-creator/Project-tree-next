@@ -2126,7 +2126,8 @@ textarea.contract-project-item-input{
 .contract-export-document .contract-document-statement-pairs .contract-document-payment-heading{vertical-align:middle}
 .contract-export-document .contract-document-payment-table{width:100%;border-collapse:collapse;border-spacing:0;margin:0}
 .contract-document-statement-body{--statement-heading-size:1em;--statement-border:1px solid #aaa}
-.contract-document-statement-body > .contract-document-statement-header{border:var(--statement-border)}
+.contract-document-statement-body > .contract-document-statement-header{border:var(--statement-border);border-left:0}
+.contract-document-statement-body .contract-document-statement-date{border-left:var(--statement-border)}
 .contract-document-statement-body > table :is(th,td){border:var(--statement-border)}
 .contract-document-statement-body > .contract-document-statement-note :is(th,td){vertical-align:middle}
 .contract-document-statement-body > .contract-document-statement-note th[scope="row"]{text-align:center}
@@ -2173,12 +2174,13 @@ textarea.contract-project-item-input{
 .contract-document-statement-body > .contract-document-payment-pairs :is(th,td){padding:3px 5px}
 
 .contract-document-statement-financial{direction:rtl}
-.contract-document-statement-financial--with-ring{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);align-items:start}
+.contract-document-statement-financial--with-ring{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);align-items:stretch}
 .contract-document-statement-body .contract-document-statement-financial > .contract-document-statement-pairs{margin:0}
 .contract-document-statement-body .contract-document-statement-financial th[scope="row"]{width:54%;text-align:right}
 .contract-document-statement-body .contract-document-statement-financial td:last-child{direction:rtl;text-align:center}
 .contract-document-statement-summary + .contract-document-statement-financial tr:first-child > :is(th,td){border-top:0}
-.contract-document-statement-ring{margin:0;padding:10px 6px;align-self:center;text-align:center;font-size:11px;color:#222}
+.contract-document-statement-ring{display:flex;flex-direction:column;justify-content:center;margin:0;padding:10px 6px;border:var(--statement-border);border-right:0;text-align:center;font-size:11px;color:#222}
+.contract-document-statement-summary + .contract-document-statement-financial > .contract-document-statement-ring{border-top:0}
 .contract-document-statement-ring-graphic{position:relative;width:100%;max-width:100px;margin:0 auto 5px}
 .contract-document-statement-ring-graphic svg{display:block;width:100%;height:auto}
 .contract-document-statement-ring-graphic > strong{position:absolute;inset:0;display:grid;place-items:center;font-size:18px}
