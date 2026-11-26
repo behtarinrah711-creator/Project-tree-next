@@ -21,7 +21,7 @@ import { openContractExport } from './contractExportView.js';
 import { renderContractFinanceReview } from './contractFinanceReviewView.js';
 import { canCreateAddendumFromContract } from '../../domain/contractAddenda.js';
 import { openContractHistory, renderContractHistory } from './contractHistoryView.js';
-import { contractProgressSteps, renderContractWorkflowPanel, renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
+import { contractProgressSteps, mountDocumentStageFooter, renderContractWorkflowPanel, renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
 import { openContractSignedUpload, renderContractSignedSection } from './contractSignedView.js';
 import { openContractReasonSheet } from './contractReasonSheet.js';
 import { saveContractHandoff } from './contractHandoffApi.js';
@@ -231,6 +231,7 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
     openWbsSheet({title:step.label,showSave:false,reuseHistoryOnReplace:true,historyKey:'addendum-status:'+addendum.id,
       body(root){
         root.classList.add('contract-status-sheet');
+        try{
         if(step.id==='completed'){
           if(!approval && !finance && parent && writable(project) && canEditAddendumRecord(record))root.append(button('ویرایش و تکمیل الحاقیه',()=>openAddendumForm(project,parent,record,onChanged)));
           return;
@@ -248,6 +249,7 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
           const signed=renderContractSignedSection(project,record,{stage:step.id,finance,onChanged,onReturn:()=>openProgress()});
           if(signed)root.append(signed);
         }
+        }finally{mountDocumentStageFooter(root);}
       },
     });
   };
