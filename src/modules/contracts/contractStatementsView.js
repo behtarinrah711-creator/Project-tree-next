@@ -755,7 +755,7 @@ function openStatementStep(project,contract,record,onChanged,{finance=false,appr
           else root.append(actionButton('ارسال به مالی',()=>openConfirm('صورت‌وضعیت به همراه نسخه امضاشده به مالی ارسال شود؟',()=>run('send_finance')),'success'));
         }
         if(writable && !advance && canReopenSignedContract(record)){
-          root.append(actionButton('بازگشت برای ویرایش',()=>showReason('بازگشت صورت‌وضعیت برای ویرایش','reopen_signed_contract'),'danger'));
+          root.append(actionButton('بازگشت برای ویرایش',()=>openConfirm('برای ویرایش، سند به مرحلهٔ اول برمی‌گردد و باید دوباره تأیید شود. ادامه می‌دهید؟',()=>showReason('بازگشت صورت‌وضعیت برای ویرایش','reopen_signed_contract')),'danger'));
         }
         if(writable && canReturnFromFinance(record)){
           root.append(actionButton('پس گرفتن از مالی',()=>showReason('پس گرفتن از مالی','withdraw_finance'),'danger'));
