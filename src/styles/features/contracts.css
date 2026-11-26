@@ -2169,8 +2169,6 @@ textarea.contract-project-item-input{
 .contract-document-statement-body > .contract-document-statement-facts{margin:0}
 
 .contract-document-statement-body > .contract-document-payment-pairs{width:100%;table-layout:fixed;border-collapse:collapse;margin:0}
-.contract-document-statement-body > .contract-document-payment-pairs caption{border:var(--statement-border);background:#fff;font-size:var(--statement-heading-size);font-weight:700;text-align:right;padding:4px 6px}
-.contract-document-statement-body > * + .contract-document-payment-pairs caption{border-top:0}
 .contract-document-payment-pairs .contract-document-payment-label{width:11%}
 .contract-document-statement-body > .contract-document-payment-pairs th{width:auto;white-space:normal}
 .contract-document-statement-body > .contract-document-payment-pairs td{text-align:center;overflow-wrap:anywhere}
@@ -2179,7 +2177,7 @@ textarea.contract-project-item-input{
 .contract-document-statement-financial{direction:rtl}
 .contract-document-statement-financial--with-ring{display:grid;grid-template-columns:minmax(0,2fr) minmax(0,1fr);align-items:stretch;border-left:1px solid #aaa;border-bottom:1px solid #aaa}
 .contract-document-statement-body .contract-document-statement-financial > .contract-document-statement-pairs{margin:0}
-.contract-document-statement-body .contract-document-statement-financial th[scope="row"]{width:54%;text-align:right}
+.contract-document-statement-body .contract-document-statement-financial th[scope="row"]{width:60%;text-align:right;white-space:nowrap}
 .contract-document-statement-body .contract-document-statement-financial td:last-child{direction:rtl;text-align:center}
 .contract-document-statement-summary + .contract-document-statement-financial tr:first-child > :is(th,td){border-top:0}
 .contract-document-statement-ring{display:flex;flex-direction:column;justify-content:center;margin:0;padding:10px 6px;text-align:center;font-size:11px;color:#222}
@@ -2192,3 +2190,5 @@ textarea.contract-project-item-input{
 
 #contractPreviewPage .contract-statement-preview-viewport{margin:8px 12px 16px;min-width:0;overflow:auto}
 #contractPreviewPage .contract-statement-preview-viewport > .contract-pages{width:794px;margin-inline:auto}
+
+.contract-document-statement-body > .contract-document-statement-note > tbody > tr > th[scope="row"]:first-child{width:11%}
