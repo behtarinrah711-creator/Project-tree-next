@@ -701,7 +701,10 @@ function openStatementStep(project,contract,record,onChanged,{finance=false,appr
       const actionButton=(label,action,variant='')=>button(label,action,'contract-review-action'+(variant?' '+variant:''));
       if(active.id==='created')showHistory({actions:['create']});
       if(active.id==='completed'){
-        showHistory({actions:['reject','reject_finance','withdraw_submission','reopen_signed_contract']});
+        const revisionActions=['reject','reject_finance','withdraw_submission','reopen_signed_contract'];
+        if(record.approvalHistory?.some(event=>revisionActions.includes(event.action))){
+          showHistory({actions:revisionActions});
+        }
         if(writable && record.status==='draft'){
           root.append(actionButton('ویرایش و تکمیل صورت‌وضعیت',()=>openStatementForm(project,contract,onChanged,record)));
         }
