@@ -2183,3 +2183,6 @@ textarea.contract-project-item-input{
 .contract-document-statement-ring-graphic svg{display:block;width:100%;height:auto}
 .contract-document-statement-ring-graphic > strong{position:absolute;inset:0;display:grid;place-items:center;font-size:18px}
 .contract-document-statement-ring figcaption > *{display:block;margin-top:2px}
+
+#contractPreviewPage .contract-statement-preview-viewport{margin:8px 12px 16px;min-width:0;overflow:auto}
+#contractPreviewPage .contract-statement-preview-viewport > .contract-pages{width:794px;margin-inline:auto}
