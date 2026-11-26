@@ -2161,6 +2161,7 @@ textarea.contract-project-item-input{
 .contract-document-statement-body > .contract-document-payment-pairs{width:100%;table-layout:fixed;border-collapse:collapse;margin:0}
 .contract-document-statement-body > .contract-document-payment-pairs caption{border:1px solid #aaa;background:#fff;font-size:var(--statement-heading-size);font-weight:700;text-align:right;padding:4px 6px}
 .contract-document-statement-body > * + .contract-document-payment-pairs caption{border-top:0}
-.contract-document-statement-body > .contract-document-payment-pairs th{width:16%;white-space:normal}
-.contract-document-statement-body > .contract-document-payment-pairs td{width:34%;overflow-wrap:anywhere}
+.contract-document-payment-pairs .contract-document-payment-label{width:11%}
+.contract-document-statement-body > .contract-document-payment-pairs th{width:auto;white-space:normal}
+.contract-document-statement-body > .contract-document-payment-pairs td{text-align:center;overflow-wrap:anywhere}
 .contract-document-statement-body > .contract-document-payment-pairs :is(th,td){padding:3px 5px}
