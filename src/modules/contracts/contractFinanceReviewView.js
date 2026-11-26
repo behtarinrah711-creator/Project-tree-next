@@ -1,7 +1,8 @@
 import {canWriteProjectModule} from '../roleManagement/permissionState.js';
 import {openConfirm} from '../../ui/confirm.js';
 import {openContractReasonSheet} from './contractReasonSheet.js';
-import {currentExecutionActor} from '../wbs/executionActor.js';
+import {canReturnFromFinance} from '../../domain/contractHandoff.js';
+import {hasPaidContractDocument} from '../../domain/contractRevision.js';
 import {saveContractHandoff} from './contractHandoffApi.js';
 export function renderContractFinanceReview(project,contract,{onChanged=()=>{}}={}){
   const label=contract.parentContractId?'الحاقیه':'قرارداد';
@@ -51,7 +52,8 @@ export function renderContractFinanceReview(project,contract,{onChanged=()=>{}}=
     });
   };
   if(contract.accountingStatus==='accepted'){
-    if(contract.accountingDecision?.actor?.id===currentExecutionActor(project).id){
+    if(canReturnFromFinance(contract) && !hasPaidContractDocument(project,contract) &&
+      !(project.contractStatusReports||[]).some(item=>String(item.addendumId||'')===String(contract.id) && Number(item.paidAmount)>0)){
       button(contract.parentContractId?'رد کردن الحاقیه':'پس‌گرفتن تأیید مالی',()=>openRejection('revoke_finance'),!!contract.parentContractId);
     }
   }else if(contract.accountingStatus==='sent'){
