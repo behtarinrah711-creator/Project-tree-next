@@ -8,7 +8,7 @@ import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { renderContractAddendaRow } from './contractAddendaView.js';
 import {renderContractFinanceReview} from './contractFinanceReviewView.js';
 import {openContractSignedUpload,renderContractSignedSection} from './contractSignedView.js';
-import { contractProgressSteps, mountDocumentStageFooter, renderContractWorkflowPanel, renderContractProgressCircle } from './contractProgressView.js';
+import { contractProgressSteps, documentStageSelection, mountDocumentStageFooter, renderContractWorkflowPanel, renderContractProgressCircle } from './contractProgressView.js';
 import { openContractHistory } from './contractHistoryView.js';
 import { approvedContractContactIds,contractApproverIds,approvalLabels, contractApprovalState } from '../../domain/contractApproval.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
@@ -236,9 +236,9 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       let statusRecord=c;
       const openStatus=(event,step)=>{
         event?.stopPropagation();
-        const active=contractProgressSteps(statusRecord,p).find(item=>!item.done);
-        const selected=step || active;
-        if(!selected || (!selected.done && selected.id!==active?.id))return;
+        const selection=documentStageSelection(statusRecord,p,step);
+        if(!selection)return;
+        const {selected}=selection;
         if(selected.id==='signed')return openSignedSheet(p,statusRecord,{onChanged,finance:finance||!!approval});
         openStatusSheet({title:selected.label,showSave:false,reuseHistoryOnReplace:true,historyKey:'contract-status:'+c.id,
           body(root){
