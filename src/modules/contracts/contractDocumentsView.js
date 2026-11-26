@@ -1,7 +1,7 @@
 import { isAddendumVisibleInFinance } from '../../domain/contractHandoff.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { canCreateAddendumFromContract } from '../../domain/contractAddenda.js';
-import { statementsFor } from '../../domain/contractStatements.js';
+import { statementsFor, isOnAccountPayment } from '../../domain/contractStatements.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { openWbsSheet } from '../wbs/wbsSheet.js';
 import { openAddendumForContract, renderAddendumCard } from './contractAddendaView.js';
@@ -34,7 +34,8 @@ export function renderContractDocuments(project,contract,{onChanged=()=>{},revie
     const groups=[
       ['الحاقیه‌ها',addenda,item=>renderAddendumCard(source,item,changed,finance,reviewOnly?(approvals.get(item.id)||{}):undefined,{nested:true})],
       ['صورت‌وضعیت‌ها',statements.filter(item=>!['retention-release','advance'].includes(item.statementType)),item=>renderStatementCard(source,contract,item,changed,reviewOnly?(approvals.get(item.id)||{}):undefined)],
-      ['پیش‌پرداخت‌ها',statements.filter(item=>item.statementType==='advance'),item=>renderStatementCard(source,contract,item,changed,reviewOnly?(approvals.get(item.id)||{}):undefined,{finance})],
+      ['پیش‌پرداخت‌ها',statements.filter(item=>item.statementType==='advance' && !isOnAccountPayment(item)),item=>renderStatementCard(source,contract,item,changed,reviewOnly?(approvals.get(item.id)||{}):undefined,{finance})],
+      ['علی‌الحساب‌ها',statements.filter(isOnAccountPayment),item=>renderStatementCard(source,contract,item,changed,reviewOnly?(approvals.get(item.id)||{}):undefined,{finance})],
       ['آزادسازی حسن انجام کار',statements.filter(item=>item.statementType==='retention-release'),item=>renderStatementCard(source,contract,item,changed,reviewOnly?(approvals.get(item.id)||{}):undefined)],
     ];
     list.replaceChildren();
@@ -58,7 +59,7 @@ export function renderContractDocuments(project,contract,{onChanged=()=>{},revie
     const options=[];
     if(canCreateAddendumFromContract(latest,source))options.push(['الحاقیه',()=>openAddendumForContract(project.id,contract.id,created)]);
     if(latest.accountingStatus==='accepted')for(const [type,label] of statementTypes){
-      options.push([['retention-release','advance'].includes(type)?label:'صورت‌وضعیت '+label,()=>openStatementForm(source,latest,created,null,type)]);
+      options.push([['retention-release','advance','on-account'].includes(type)?label:'صورت‌وضعیت '+label,()=>openStatementForm(source,latest,created,null,type)]);
     }
     openWbsSheet({title:'انتخاب نوع سند',showSave:false,reuseHistoryOnReplace:true,historyKey:'contract-document-type:'+contract.id,
       body(root){
