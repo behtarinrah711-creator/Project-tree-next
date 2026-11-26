@@ -542,7 +542,39 @@ function statementPreviewContent(project,contract,record,signature=null){
       }
       body.append(element('h3','contract-document-statement-band','شرح عملیات انجام‌شده'),template.content);
     }
-    body.append(element('h3','contract-document-statement-band contract-document-statement-summary','خلاصه مالی'),totals);
+    const cumulative=Number(record.cumulativeAmount??record.stageAmount??0);
+    const financial=element('div','contract-document-statement-financial');
+    financial.append(totals);
+    if(progressStatement && basis>0 && Number.isFinite(cumulative)){
+      const figure=element('figure','contract-document-statement-ring');
+      const graphic=element('div','contract-document-statement-ring-graphic');
+      const svg=document.createElementNS('http://www.w3.org/2000/svg','svg');
+      svg.setAttribute('viewBox','0 0 100 100');
+      svg.setAttribute('aria-hidden','true');
+      const track=document.createElementNS(svg.namespaceURI,'circle');
+      for(const [key,value] of Object.entries({cx:50,cy:50,r:42,pathLength:100,fill:'none','stroke-width':8,stroke:'#ddd'})){
+        track.setAttribute(key,String(value));
+      }
+      svg.append(track);
+      if(cumulative>0){
+        const arc=track.cloneNode(false);
+        arc.setAttribute('stroke','#326854');
+        arc.setAttribute('stroke-dasharray',Math.min(100,cumulative/basis*100)+' 100');
+        arc.setAttribute('transform','rotate(-90 50 50)');
+        svg.append(arc);
+      }
+      graphic.append(svg,element('strong','',progress(cumulative)));
+      const inMillions=[cumulative,basis].every(value=>value%1000000===0);
+      const divisor=inMillions?1000000:1;
+      const comparison=format.format(cumulative/divisor)+' از '+format.format(basis/divisor)+
+        (inMillions?' میلیون تومان':' تومان');
+      const caption=element('figcaption');
+      caption.append(element('strong','','پیشرفت تجمیعی تا این صورت‌وضعیت'),element('span','',comparison));
+      figure.append(graphic,caption);
+      financial.classList.add('contract-document-statement-financial--with-ring');
+      financial.append(figure);
+    }
+    body.append(element('h3','contract-document-statement-band contract-document-statement-summary','خلاصه مالی'),financial);
     return documentNode;
   }
 
