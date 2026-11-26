@@ -2,7 +2,7 @@ import {pendingExecutionApproverIds} from '../../src/domain/wbs/workTaskModel.js
 import {hasPaidContractDocument,reviseContract} from '../../src/domain/contractRevision.js';
 import {canDeleteContractDocument} from '../../src/domain/contractHandoff.js';
 import {acceptedMembership} from './acceptedMembership.js';
-import {availableContractAdvance,contractStatementTotals,contractAdvanceRows} from '../../src/domain/contractStatements.js';
+import {availableContractAdvance,contractStatementTotals,contractAdvanceRows,contractOnAccountBalance} from '../../src/domain/contractStatements.js';
 import {saveStatement,recordStatementPayment} from './contractStatement.js';
 import {applyExecutionApproval,approveExecutionEntity,executionApprovalItem,rejectExecutionEntity} from '../../src/domain/wbs/executionApproval.js';
 import {tehranTodayJalali} from '../../src/domain/wbs/todayDomain.js';
@@ -101,6 +101,10 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       }
       if(Number(body.version)!==Number(contract?.handoffVersion||0) || Number(body.updatedAt)!==Number(contract?.updatedAt||0)){
         sendJson(response,409,{message:'قرارداد تغییر کرده است؛ صفحه را به‌روز کنید'});return true;
+      }
+      if(statement && ['send_finance','approve_finance'].includes(body.action) &&
+        Number(contract.onAccountDeduction||0)>contractOnAccountBalance(row.payload,statementParent.id,contract.id).available){
+        sendJson(response,409,{message:'مانده علی‌الحساب برای کسر این صورت‌وضعیت کافی نیست'});return true;
       }
       let files=[];
       if(!statement && !addendum && ['save_signed','withdraw_finance','reopen_signed_contract','revoke_finance'].includes(body.action) && hasPaidContractDocument(row.payload,contract)){

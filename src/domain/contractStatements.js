@@ -1,6 +1,7 @@
 import {hasPaymentRowData,rowAmount} from '../modules/contracts/contractPricing.js';
 
 export const statementsFor=(project,id)=>(project.contractStatusReports||[]).filter(record=>!record.trashed && String(record.contractId)===String(id));
+export const isOnAccountPayment=record=>record?.statementType==='advance' && record.paymentPurpose==='on-account';
 export const approvedStatement=record=>record.accountingStatus==='accepted' || (!record.statementType && record.approvalStatus==='approved');
 const amount=value=>Number.isFinite(Number(value))?Number(value):0;
 
@@ -21,7 +22,7 @@ export const accountStatements=(project,contract)=>statementsFor(project,contrac
   .filter(record=>(record.addendumId||null)===(contract.statementAddendumId||null));
 
 export function contractAdvanceRows(project,contract,excludeId){
-  const requests=statementsFor(project,contract.id).filter(record=>record.statementType==='advance' && record.id!==excludeId);
+  const requests=statementsFor(project,contract.id).filter(record=>record.statementType==='advance' && !isOnAccountPayment(record) && record.id!==excludeId);
   const reserved=record=>record.status!=='draft' && record.approvalStatus!=='rejected' &&
     record.accountingStatus!=='rejected' ? amount(record.statementAmount) : amount(record.paidAmount);
   const rows=(contract.advanceRows||[]).filter(hasPaymentRowData).map((row,index)=>{
@@ -42,15 +43,18 @@ export function contractAdvanceRows(project,contract,excludeId){
   return rows;
 }
 
-export function contractAdvanceDeductionBalance(project,contractId,excludeId){
+function paymentDeductionBalance(project,contractId,excludeId,onAccount){
   const records=statementsFor(project,contractId).filter(record=>record.id!==excludeId);
-  const paid=records.filter(record=>record.statementType==='advance' && approvedStatement(record))
+  const paid=records.filter(record=>record.statementType==='advance' && isOnAccountPayment(record)===onAccount && approvedStatement(record))
     .reduce((sum,record)=>sum+amount(record.paidAmount),0);
   const committed=records.filter(record=>record.status!=='draft' &&
     record.approvalStatus!=='rejected' && !['rejected','withdrawn'].includes(record.accountingStatus))
-    .reduce((sum,record)=>sum+amount(record.advanceDeduction),0);
+    .reduce((sum,record)=>sum+amount(onAccount?record.onAccountDeduction:record.advanceDeduction),0);
   return {paid,available:Math.max(0,paid-committed)};
 }
+
+export const contractAdvanceDeductionBalance=(project,id,excludeId)=>paymentDeductionBalance(project,id,excludeId,false);
+export const contractOnAccountBalance=(project,id,excludeId)=>paymentDeductionBalance(project,id,excludeId,true);
 
 export function availableContractAdvance(project,contractId,excludeId){
   return contractAdvanceDeductionBalance(project,contractId,excludeId).available;
