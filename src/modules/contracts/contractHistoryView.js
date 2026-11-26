@@ -39,7 +39,7 @@ export function renderContractHistory(documentRef,contract,{finance=false,compac
     if(isAdvance && ['reject','reject_finance','revoke_finance'].includes(entry.action))row.className+=' is-rejected';
     const heading=documentRef.createElement('div');
     const date=new Date(entry.at);
-    const label=isAdvance && entry.action==='create' ? 'درخواست پیش‌پرداخت ثبت شد' : isAddendum && entry.action==='complete' ? 'تکمیل الحاقیه اعلام شد' : labels[entry.action];
+    const label=entry.action==='correct_paid_contract'?'عنوان قرارداد پرداخت‌شده اصلاح شد':isAdvance && entry.action==='create' ? 'درخواست پیش‌پرداخت ثبت شد' : isAddendum && entry.action==='complete' ? 'تکمیل الحاقیه اعلام شد' : labels[entry.action];
     const actor=entry.actor?.name || (isAddendum?'نام ثبت نشده':'کاربر');
     const validTime=entry.at && Number.isFinite(date.getTime());
     if(compact){
@@ -59,6 +59,9 @@ export function renderContractHistory(documentRef,contract,{finance=false,compac
     if(entry.files?.length){const files=documentRef.createElement('p');files.textContent=entry.files.join('، ');row.appendChild(files);}
     if(showPaymentAmount && entry.action==='record_payment' && entry.amount>0){
       const value=documentRef.createElement('p');value.textContent=new Intl.NumberFormat('fa-IR').format(entry.amount)+' تومان';row.appendChild(value);
+    }
+    if(entry.action==='correct_paid_contract'){
+      const change=documentRef.createElement('p');change.textContent=[entry.previousTitle,entry.title].filter(Boolean).join(' ← ');row.appendChild(change);
     }
     if(entry.reason){
       const reason=documentRef.createElement('p');reason.textContent=entry.reason;row.appendChild(reason);
