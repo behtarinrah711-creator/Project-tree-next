@@ -101,3 +101,22 @@ export function renderContractWorkflowPanel(documentRef,record,project,{onOpen,e
   if(expanded && record.statementType)documentRef.defaultView?.requestAnimationFrame(paint);
   return panel;
 }
+
+export function mountDocumentStageFooter(root){
+  const actions=[...(root.querySelectorAll?.(':scope > .contract-review-action, :scope > .contract-finance-actions') || [])];
+  if(!actions.length)return;
+  const footer=root.ownerDocument.createElement('div');
+  footer.className='contract-document-stage-footer';
+  footer.append(...actions);
+  root.append(footer);
+}
+
+export function documentStageSelection(record,project,requested,preferred){
+  const steps=contractProgressSteps(record,project);
+  const current=steps.find(step=>!step.done);
+  const selected=requested
+    ? steps.find(step=>step.id===requested.id)
+    : steps.find(step=>preferred && step.id===preferred) || current || steps.at(-1);
+  return selected && (selected.done || selected.rejected || selected.id===current?.id)
+    ? {steps,current,selected} : null;
+}

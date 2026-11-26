@@ -1,3 +1,4 @@
+import {saveContractHandoff} from './contractHandoffApi.js';
 import {closeWbsSheet} from '../wbs/wbsSheet.js';
 import {renderInlineContractReject} from './contractReasonSheet.js';
 import {hasPaidContractDocument} from '../../domain/contractRevision.js';
@@ -7,7 +8,7 @@ import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { renderContractAddendaRow } from './contractAddendaView.js';
 import {renderContractFinanceReview} from './contractFinanceReviewView.js';
 import {openContractSignedUpload,renderContractSignedSection} from './contractSignedView.js';
-import { contractProgressSteps, renderContractWorkflowPanel, renderContractProgressCircle } from './contractProgressView.js';
+import { contractProgressSteps, documentStageSelection, mountDocumentStageFooter, renderContractWorkflowPanel, renderContractProgressCircle } from './contractProgressView.js';
 import { openContractHistory } from './contractHistoryView.js';
 import { approvedContractContactIds,contractApproverIds,approvalLabels, contractApprovalState } from '../../domain/contractApproval.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
@@ -235,9 +236,10 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
       let statusRecord=c;
       const openStatus=(event,step)=>{
         event?.stopPropagation();
-        const active=contractProgressSteps(statusRecord,p).find(item=>!item.done);
-        const selected=step || active;
-        if(!selected || (!selected.done && selected.id!==active?.id))return;
+        const selection=documentStageSelection(statusRecord,p,step);
+        if(!selection)return;
+        if(!step && !selection.current && !finance)return;
+        const {selected}=selection;
         if(selected.id==='signed')return openSignedSheet(p,statusRecord,{onChanged,finance:finance||!!approval});
         openStatusSheet({title:selected.label,showSave:false,reuseHistoryOnReplace:true,historyKey:'contract-status:'+c.id,
           body(root){
@@ -263,12 +265,36 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
               const history=statusRecord.approvalHistory||[];
               for(const entry of history.slice(history.findLastIndex(e=>e.action==='submit')+1).filter(e=>e.action==='edit_review' && e.reason))note([entry.actor?.name,'دلیل ویرایش',entry.reason].filter(Boolean).join(' · '));
             }
-            if(!selected.done || (selected.id==='finance' && !finance && !approval))statusSheetBody(root,selected);
+            if(!selected.done || (selected.id==='finance' && !finance && !approval) || (selected.id==='finance-approved' && finance))statusSheetBody(root,selected);
+            mountDocumentStageFooter(root);
           }});
       };
       const heading=renderContractCardHeading(p,c,{
         onEdit:approval || !writable?undefined:()=>{
-          if(hasPaidContractDocument(p,c))return window.KarhaLegacy?.showToast?.('این قرارداد سند پرداخت‌شده دارد و قابل ویرایش نیست');
+          if(hasPaidContractDocument(p,c)){
+            const access=window.KarhaSaosaWorkspaceAccess?.[id];
+            if(access?.role!=='owner' && access?.isOwner!==true)return window.KarhaLegacy?.showToast?.('اصلاح قرارداد پرداخت‌شده فقط برای مالک پروژه در دسترس است');
+            let name,reason,busy=false;
+            openWbsSheet({title:'اصلاح اطلاعات قرارداد پرداخت‌شده',saveLabel:'ثبت اصلاح',autoFocus:false,
+              body(root){
+                name=document.createElement('input');
+                name.className='wbs-input';name.value=c.title||'';
+                reason=document.createElement('textarea');
+                reason.className='wbs-input';
+                root.append(fieldRow('عنوان قرارداد',name),fieldRow('دلیل اصلاح',reason));
+              },
+              onSave(){
+                if(busy)return false;
+                busy=true;
+                saveContractHandoff(id,c,'correct_paid_contract',{title:name.value,reason:reason.value})
+                  .then(()=>{if(name.isConnected)closeWbsSheet();onChanged();})
+                  .catch(error=>window.KarhaLegacy?.showToast?.(error.message))
+                  .finally(()=>{busy=false;});
+                return false;
+              },
+            });
+            return;
+          }
           const edit=()=>legacy('openContractForm',c.id);
           if(contractApprovalState(c)==='incomplete')return edit();
           openConfirm('با ویرایش کردن قرارداد به مرحله نخست باز می‌گردید. ادامه می‌دهید؟',edit,'بله',{cancelLabel:'خیر'});

@@ -90,10 +90,10 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       }
       const saveDraft=(addendum && body.action==='save_addendum') || (statement && body.action==='save_statement');
       const statementParent=statement && (row.payload.contracts||[]).find(record=>!record.trashed && String(record.id)===String(contract?.contractId ?? body.contractId));
-      if(statement && (!statementParent || (contract && !contract.statementType) || !['save_statement','submit_advance','withdraw_advance','withdraw_statement','delete_statement','approve_statement','reject_statement','save_signed','send_finance','approve_finance','reject_finance','withdraw_finance','record_payment','reopen_signed_contract'].includes(body.action))){sendJson(response,400,{message:'قرارداد یا عملیات صورت‌وضعیت نامعتبر است'});return true;}
+      if(statement && (!statementParent || (contract && !contract.statementType) || !['save_statement','submit_advance','withdraw_advance','withdraw_statement','delete_statement','approve_statement','reject_statement','save_signed','send_finance','approve_finance','reject_finance','revoke_finance','withdraw_finance','record_payment','reopen_signed_contract'].includes(body.action))){sendJson(response,400,{message:'قرارداد یا عملیات صورت‌وضعیت نامعتبر است'});return true;}
       if(!statement && body.action==='record_payment'){sendJson(response,400,{message:'عملیات نامعتبر است'});return true;}
       if(contract?.trashed || (!contract && !saveDraft)){sendJson(response,404,{message:'قرارداد پیدا نشد'});return true;}
-      if(['approve_finance','reject_finance'].includes(body.action)){
+      if(['approve_finance','reject_finance','revoke_finance'].includes(body.action)){
         const financeContacts=contract?.financeContactIds ?? statementParent?.financeContactIds ??
           (addendum?parentContractOf(row.payload,contract)?.financeContactIds:undefined);
         if(financeContacts?.length && !financeContacts.map(String).includes(actor.contactId)){
@@ -124,7 +124,10 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
       }
       const activity=(row.payload.activityTemplates||[]).find(a=>String(a.id)===String(contract?.activityId));
       let transition;
-      if(statement && body.action==='withdraw_finance' && contract.accountingStatus!=='sent'){sendJson(response,409,{message:'صورت‌وضعیت تأییدشده قابل پس گرفتن نیست'});return true;}
+      if(addendum && ['withdraw_finance','revoke_finance'].includes(body.action) &&
+        (row.payload.contractStatusReports||[]).some(item=>String(item.addendumId||'')===String(contract.id) && Number(item.paidAmount)>0)){
+        sendJson(response,409,{message:'این الحاقیه سند پرداخت‌شده دارد'});return true;
+      }
       if(deleteStatement){
         if(!canDeleteContractDocument(contract)){
           sendJson(response,409,{message:'صورت‌وضعیت در وضعیت فعلی قابل حذف نیست'});return true;
@@ -187,6 +190,20 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         transition=recordStatementPayment(contract,body.amount,actor,Date.now(),receipts);
       }
       else if(saveDraft) transition=saveAddendumDraft(row.payload,contract,body,actor,contractId,Date.now());
+      else if(!addendum && !statement && body.action==='correct_paid_contract'){
+        if(!owner || !hasPaidContractDocument(row.payload,contract)){
+          sendJson(response,403,{message:'اصلاح این قرارداد تنها برای مالک و پس از ثبت پرداخت فعال است'});return true;
+        }
+        const title=typeof body.title==='string'?body.title.trim():'';
+        const reason=typeof body.reason==='string'?body.reason.trim():'';
+        if(!title || title.length>250 || reason.length<5 || reason.length>2000){
+          sendJson(response,400,{message:'عنوان معتبر و دلیل اصلاح را وارد کنید'});return true;
+        }
+        const at=Date.now();
+        const event={action:'correct_paid_contract',at,actor,reason,previousTitle:contract.title,title};
+        transition={ok:true,contract:{...contract,title,updatedAt:at,
+          handoffVersion:Number(contract.handoffVersion||0)+1,approvalHistory:[...(contract.approvalHistory||[]),event]}};
+      }
       else if(!addendum && !statement && ['edit_contract_review','edit_contract'].includes(body.action)){
         if(hasPaidContractDocument(row.payload,contract)){sendJson(response,409,{message:'این قرارداد سند پرداخت‌شده دارد و قابل ویرایش نیست'});return true;}
         transition=body.action==='edit_contract'
@@ -239,7 +256,7 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
             source={...contract,parentDocument:{...frozen,documentActivityName:frozen.documentActivityName || parentActivity?.name || ''}};
           }else if(!statement) source=syncContractPartyData({...contract},row.payload);
         }
-        transition=transitionContractHandoff(source,body.action,actor,{files,reason:body.reason,projectName:row.payload.name||row.payload.title||'',activityName:activity?.name||activity?.title||''});
+        transition=transitionContractHandoff(source,body.action,actor,{files,reason:body.reason,allowFinanceReviewerReturn:body.action==='revoke_finance',projectName:row.payload.name||row.payload.title||'',activityName:activity?.name||activity?.title||''});
       }
       if(!transition.ok){sendJson(response,400,{message:transition.message});return true;}
       if(addendum || statement || reviewAction) transition.contract.handoffVersion=Number(contract?.handoffVersion||0)+1;

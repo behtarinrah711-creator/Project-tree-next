@@ -84,7 +84,7 @@ export function saveStatement(project,parent,current,id,body,actor,at){
     ...(onAccount?{paymentPurpose:'on-account'}:{}),
     onAccountDeduction,
     operations,advanceRow:advanceRow?{key:advanceRow.key,number:advanceRow.number,description:advanceRow.description,dueText:advanceRow.dueText,total:advanceRow.total}:undefined,advanceDeduction,advanceDeductionPercent,workEntries:linked?body.workEntries:undefined,statementAmount:entered,...(final?{stageAmount:0,cumulativeAmount:final.gross,retentionAmount:0,netAmount:0,finalTotals:{gross:final.gross,retention:final.retention,net:final.net}}:{...amounts,netAmount:amounts.netAmount-advanceDeduction-onAccountDeduction}),status:statementType==='advance'?'draft':'final',isDraft:statementType==='advance',approvalStatus:statementType==='advance'?null:approvers.length?'pending':'approved',
-    approvalContactIds:approvers,approvedContactIds:[],submittedAt:statementType==='advance'?null:at,submittedBy:statementType==='advance'?null:actor,
+    approvalContactIds:approvers,approvedContactIds:[],approvalRejectionReason:'',submittedAt:statementType==='advance'?null:at,submittedBy:statementType==='advance'?null:actor,
     accountingStatus:null,signedAt:null,signedBy:null,signedFiles:[],signedFilesUpdatedAt:at,createdAt:current?.createdAt ?? at,updatedAt:at}};
 }
 

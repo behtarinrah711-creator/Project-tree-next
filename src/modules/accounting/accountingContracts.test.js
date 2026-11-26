@@ -59,7 +59,8 @@ test('finance contracts use the report card header with only financial decision 
     const acceptedReport=statusSheet(accepted);
     assert.equal(acceptedReport.children.length,0);
     const acceptedFinance=statusSheet(accepted,true);
-    assert.equal(acceptedFinance.children.length,0);
+    const acceptedActions=acceptedFinance.children.find(n=>n.className.includes('contract-finance-actions'));
+    assert.deepEqual(acceptedActions.children.map(n=>n.textContent),['پس‌گرفتن تأیید مالی']);
     const rejected=statusSheet({...c,status:'draft',isDraft:true,approvalStatus:null,accountingStatus:'rejected',signedAt:null,signedFiles:[],financeRejection:{reason:'صفحه ناقص است'}});
     assert.deepEqual(rejected.children.map(n=>n.textContent),['ویرایش و تکمیل قرارداد']);
     const css=readFileSync(new URL('../../styles/features/contracts.css',import.meta.url),'utf8');

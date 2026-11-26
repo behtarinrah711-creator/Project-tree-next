@@ -1,7 +1,7 @@
 import { quantityTable } from './contractDocument.js';
 import {mountFileUploader} from '../files/fileUploader.js';
 import {openContractReasonSheet} from './contractReasonSheet.js';
-import {canDeleteContractDocument,canReopenSignedContract} from '../../domain/contractHandoff.js';
+import {canDeleteContractDocument,canReopenSignedContract,canReturnFromFinance} from '../../domain/contractHandoff.js';
 import {renderInlineContractReject} from './contractReasonSheet.js';
 import {openContractPreview} from './contractPreviewView.js';
 import {statementWorkRows,resolveStatementWork} from '../../domain/statementWork.js';
@@ -18,7 +18,7 @@ import { ftAmountSummary, ftNumberRow, ftSelectRow } from './realContractFormMod
 import { openStaticChoicePicker } from './contractPickers.js';
 import { saveContractHandoff } from './contractHandoffApi.js';
 import { contractProjectPath, contractRowData, renderContractCardHeading } from './contractsModule.js';
-import { contractProgressSteps, renderContractWorkflowPanel, renderContractProgressCircle } from './contractProgressView.js';
+import { contractProgressSteps, documentStageSelection, mountDocumentStageFooter, renderContractWorkflowPanel, renderContractProgressCircle } from './contractProgressView.js';
 import { openContractHistory, renderContractHistory } from './contractHistoryView.js';
 import { contractDisplayTitle } from './contractTitle.js';
 import { openContractExport } from './contractExportView.js';
@@ -657,15 +657,14 @@ function statementPreviewContent(project,contract,record,signature=null){
 
 function openStatementStep(project,contract,record,onChanged,{finance=false,approval,step,openSheet=openWbsSheet}={}){
   record=restoreRejectedStatement(record);
-  const steps=contractProgressSteps(record,project);
   const writable=!finance && !approval && canWriteProjectModule(project.id,'contracts');
   const advance=record.statementType==='advance';
   const canWithdraw=writable && advance && canWithdrawAdvanceRequest(record);
-  const active=step || (canWithdraw && steps.find(item=>item.id==='advance-submit')) ||
-    steps.find(item=>!item.done) || steps.at(-1);
+  const selection=documentStageSelection(record,project,step,canWithdraw?'advance-submit':'');
+  if(!selection)return;
+  const {selected:active}=selection;
+  const current=selection.current?.id;
   const financeWritable=finance && canWriteProjectModule(project.id,financeScope(project.id,advance?'accounting-contracts':'accounting-statements'));
-  const current=steps.find(item=>!item.done)?.id;
-  if(active.id!==current && !active.done && !active.rejected)return;
   const paid=Number(record.paidAmount||0);
   const remaining=Math.max(0,Number(record.netAmount)-paid);
   const paymentStatus=paid===0?'پرداخت‌نشده':remaining?'پرداخت جزئی':'پرداخت کامل';
@@ -678,7 +677,7 @@ function openStatementStep(project,contract,record,onChanged,{finance=false,appr
       onChanged();
       const source=currentProject(project);
       openStatementStep(source,contract,updated,onChanged,{finance,approval,openSheet,
-        step:['approve_finance','reject_finance','reopen_signed_contract','withdraw_statement'].includes(action)?undefined:contractProgressSteps(updated,source).find(item=>item.id===active.id)});
+        step:['approve_finance','reject_finance','revoke_finance','reopen_signed_contract','withdraw_statement'].includes(action)?undefined:contractProgressSteps(updated,source).find(item=>item.id===active.id)});
       return true;
     }catch(error){toast(error.message);return false;}
     finally{pending=false;}
@@ -694,8 +693,9 @@ function openStatementStep(project,contract,record,onChanged,{finance=false,appr
       const showHistory=options=>{
         const details=renderContractHistory(document,record,{compact:true,...options});
         details.open=true;
-        details.querySelector('summary').hidden=true;
-        if(details.querySelector('.contract-history-entry'))root.append(details);
+        const children=Array.from(details.children);
+        if(children[0])children[0].hidden=true;
+        if(children.some(item=>item.className.split(' ').includes('contract-history-entry')))root.append(details);
         return details;
       };
       const showStatus=(status,person)=>{
@@ -760,14 +760,17 @@ function openStatementStep(project,contract,record,onChanged,{finance=false,appr
           else root.append(actionButton('ارسال به مالی',()=>openConfirm('صورت‌وضعیت به همراه نسخه امضاشده به مالی ارسال شود؟',()=>run('send_finance')),'success'));
         }
         if(writable && !advance && canReopenSignedContract(record)){
-          root.append(actionButton('بازگشت برای ویرایش',()=>showReason('بازگشت صورت‌وضعیت برای ویرایش','reopen_signed_contract'),'danger'));
+          root.append(actionButton('بازگشت برای ویرایش',()=>openConfirm('برای ویرایش، سند به مرحلهٔ اول برمی‌گردد و باید دوباره تأیید شود. ادامه می‌دهید؟',()=>showReason('بازگشت صورت‌وضعیت برای ویرایش','reopen_signed_contract')),'danger'));
         }
-        if(writable && record.accountingStatus==='sent'){
+        if(writable && canReturnFromFinance(record)){
           root.append(actionButton('پس گرفتن از مالی',()=>showReason('پس گرفتن از مالی','withdraw_finance'),'danger'));
         }
       }
       if(active.id==='finance-approved'){
         showHistory({actions:['approve_finance','reject_finance','revoke_finance']});
+        if(financeWritable && record.accountingStatus==='accepted' && canReturnFromFinance(record)){
+          root.append(actionButton('رد پس از تأیید مالی',()=>showReason('برگشت برای اصلاح پس از تأیید مالی','revoke_finance'),'danger'));
+        }
         if(record.accountingStatus==='sent'){
           showStatus('در انتظار تأیید مالی');
           if(financeWritable)root.append(actionButton('تأیید مالی',()=>run('approve_finance')),
@@ -805,6 +808,7 @@ function openStatementStep(project,contract,record,onChanged,{finance=false,appr
           }));
         }
       }
+      mountDocumentStageFooter(root);
     },
   });
 }
@@ -866,6 +870,12 @@ function openStatement(project,contract,record,onChanged,{finance=false,approval
           root.append(button('تأیید مالی',()=>run('approve_finance')),reason.row,
             button('برگشت برای اصلاح',()=>run('reject_finance',{reason:reason.node.value})));
         }
+        if(record.accountingStatus==='accepted' && canReturnFromFinance(record)){
+          root.append(button('رد پس از تأیید مالی',()=>openContractReasonSheet({
+            title:'برگشت برای اصلاح پس از تأیید مالی',historyKey:'revoke-finance:'+record.id,
+            fieldLabel:'دلیل برگشت (الزامی)',submit:reason=>run('revoke_finance',{reason}),
+          }),'contract-review-action danger'));
+        }
         if(approvedStatement(record) && record.netAmount>(record.paidAmount||0)){
           const payment=input('پرداخت جدید (تومان)','text');
           payment.node.inputMode='numeric';
@@ -896,7 +906,7 @@ export function renderStatementCard(project,contract,record,onChanged,approval,{
     onEdit:writable?()=>{
       if(editable)return openStatementForm(project,contract,onChanged,record);
       if(canWithdrawPendingStatement(record))return openStatementStep(project,contract,record,onChanged);
-      if(record.accountingStatus==='sent' || (!record.paidAmount && canReopenSignedContract(record))){
+      if(canReturnFromFinance(record) || (!record.paidAmount && canReopenSignedContract(record))){
         const step=contractProgressSteps(record,project).find(item=>item.id==='finance');
         return openStatementStep(project,contract,record,onChanged,{step});
       }
