@@ -116,6 +116,15 @@ export function canWithdrawAdvanceRequest(record){
   return record.statementType==='advance' && !record.trashed && record.approvalStatus==='pending' &&
     hasAdvanceSubmission(record) && !executedContract(record) && !(Number(record.paidAmount)>0);
 }
+export function restoreRejectedStatement(record){
+  if(!record?.statementType || record.statementType==='advance' || record.status==='draft' ||
+    executedContract(record) || Number(record.paidAmount)>0)return record;
+  const decision=(record.approvalHistory||[]).findLast(event=>['reject','submit','approve','revoke','withdraw_submission'].includes(event.action));
+  if(decision?.action!=='reject' || !Number(decision.at) || Number(record.submittedAt)>Number(decision.at))return record;
+  return {...record,status:'draft',isDraft:true,approvalStatus:'unapproved',approvedContactIds:[],
+    completedAt:null,completedBy:null,approvalRejectionReason:decision.reason || record.approvalRejectionReason};
+}
+
 export function canWithdrawPendingStatement(record){
   return !!record.statementType && record.statementType!=='advance' && !record.trashed &&
     contractApprovalState(record)==='pending' && !executedContract(record) && !(Number(record.paidAmount)>0);

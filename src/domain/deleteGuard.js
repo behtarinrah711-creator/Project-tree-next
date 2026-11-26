@@ -164,7 +164,7 @@ export function findTaskReferences(projects, itemId, { includeDescendants = true
     if(!project || project.trashed) return;
     const ids = new Set([target]);
     if(includeDescendants){
-      live(project.tasks).forEach(task => {
+      walkTasks(project.tasks, task => {
         if(String(task.id) === target) collectDescendantIds(task, ids);
       });
     }
@@ -179,6 +179,43 @@ export function findTaskReferences(projects, itemId, { includeDescendants = true
 }
 
 export function canDeleteTask(projects, itemId, subtaskId = null){
-  const refs = findTaskReferences(projects, subtaskId || itemId, { includeDescendants: !subtaskId });
+  const refs = findTaskReferences(projects, subtaskId || itemId, { includeDescendants: true });
   return refs.length ? { ok:false, refs } : { ok:true, refs:[] };
+}
+
+export function hasWorkTaskContract(project,workId,taskId){
+  return live(project?.contracts).some(contract=>String(contract.projectItemId)===String(workId) &&
+    String(contract.workTaskId || '')===String(taskId));
+}
+
+export function breaksActiveWorkContract(previous,next){
+  const active=project=>{
+    const nodes=new Map();
+    const walk=items=>{
+      for(const node of live(items)){
+        const tasks=live(node.workTasks);
+        const reachable=new Set();
+        for(const task of tasks){
+          let current=task;
+          const visited=new Set();
+          while(current?.parentTaskId && !visited.has(String(current.id))){
+            visited.add(String(current.id));
+            current=tasks.find(parent=>String(parent.id)===String(current.parentTaskId));
+          }
+          if(current && !current.parentTaskId)reachable.add(String(task.id));
+        }
+        nodes.set(String(node.id),reachable);
+        walk(node.subtasks);
+      }
+    };
+    walk(project?.tasks);
+    return nodes;
+  };
+  const before=active(previous),after=active(next);
+  return live(previous?.contracts).some(contract=>{
+    const work=String(contract.projectItemId || '');
+    const task=String(contract.workTaskId || '');
+    if(!work || !before.has(work) || (task && !before.get(work).has(task)))return false;
+    return !after.has(work) || (task && !after.get(work).has(task));
+  });
 }

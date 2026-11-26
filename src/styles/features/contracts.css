@@ -2195,3 +2195,5 @@ textarea.contract-project-item-input{
 
 .contract-status-sheet .contract-history-entry{padding-inline:12px}
 .contract-document-stage-footer{display:grid;gap:8px;margin-top:12px;padding:10px 0 4px;border-top:1px solid var(--divider,#ddd);background:var(--surface,#fff)}
+.contract-workflow-panel .contract-rejection-reason,.contract-history-entry.is-rejected{background:#fff0f0;color:var(--danger,#b23b3b)}
+.contract-workflow-panel .contract-rejection-reason{padding:8px 10px;border-radius:6px}

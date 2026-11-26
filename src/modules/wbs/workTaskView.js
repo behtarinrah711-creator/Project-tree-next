@@ -704,7 +704,7 @@ export function requestPlanningTaskDelete({documentRef,projectId,workId,taskId,o
     const result = workTaskApi.remove(projectId, workId, taskId);
     const showToast = documentRef.defaultView?.KarhaUI?.showToast;
     if(!result.ok){
-      showToast?.(result.code === 'not_found' ? 'این کار در درخت پروژه پیدا نشد' : 'حذف کار انجام نشد');
+      showToast?.(result.message || (result.code === 'not_found' ? 'این کار در درخت پروژه پیدا نشد' : 'حذف کار انجام نشد'));
       return;
     }
     onChanged?.();
