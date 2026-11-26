@@ -189,6 +189,20 @@ export function createContractHandoffHandler({pool,sessionSecret,storage}){
         transition=recordStatementPayment(contract,body.amount,actor,Date.now(),receipts);
       }
       else if(saveDraft) transition=saveAddendumDraft(row.payload,contract,body,actor,contractId,Date.now());
+      else if(!addendum && !statement && body.action==='correct_paid_contract'){
+        if(!owner || !hasPaidContractDocument(row.payload,contract)){
+          sendJson(response,403,{message:'اصلاح این قرارداد تنها برای مالک و پس از ثبت پرداخت فعال است'});return true;
+        }
+        const title=typeof body.title==='string'?body.title.trim():'';
+        const reason=typeof body.reason==='string'?body.reason.trim():'';
+        if(!title || title.length>250 || reason.length<5 || reason.length>2000){
+          sendJson(response,400,{message:'عنوان معتبر و دلیل اصلاح را وارد کنید'});return true;
+        }
+        const at=Date.now();
+        const event={action:'correct_paid_contract',at,actor,reason,previousTitle:contract.title,title};
+        transition={ok:true,contract:{...contract,title,updatedAt:at,
+          handoffVersion:Number(contract.handoffVersion||0)+1,approvalHistory:[...(contract.approvalHistory||[]),event]}};
+      }
       else if(!addendum && !statement && ['edit_contract_review','edit_contract'].includes(body.action)){
         if(hasPaidContractDocument(row.payload,contract)){sendJson(response,409,{message:'این قرارداد سند پرداخت‌شده دارد و قابل ویرایش نیست'});return true;}
         transition=body.action==='edit_contract'
