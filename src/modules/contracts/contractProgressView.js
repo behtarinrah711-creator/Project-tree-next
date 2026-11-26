@@ -101,3 +101,12 @@ export function renderContractWorkflowPanel(documentRef,record,project,{onOpen,e
   if(expanded && record.statementType)documentRef.defaultView?.requestAnimationFrame(paint);
   return panel;
 }
+
+export function mountDocumentStageFooter(root){
+  const actions=[...(root.querySelectorAll?.(':scope > .contract-review-action, :scope > .contract-finance-actions') || [])];
+  if(!actions.length)return;
+  const footer=root.ownerDocument.createElement('div');
+  footer.className='contract-document-stage-footer';
+  footer.append(...actions);
+  root.append(footer);
+}
