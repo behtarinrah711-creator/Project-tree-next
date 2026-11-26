@@ -526,7 +526,10 @@ function statementPreviewContent(project,contract,record,signature=null){
       ['پرداخت‌شده',summaryMoney(record.paidAmount||0)],
     ]);
     for(const section of [details,totals])section.classList.add('contract-document-quantities','contract-document-statement-pairs');
-    if(details.tBodies[0].rows.length)body.append(details);
+    if(details.tBodies[0].rows.length){
+      details.classList.add('contract-document-statement-note');
+      body.append(details);
+    }
     if(record.operations?.length){
       const template=element('template');
       template.innerHTML=quantityTable(record.operations.map(row=>{
