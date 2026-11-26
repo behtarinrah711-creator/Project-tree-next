@@ -406,7 +406,6 @@ function statementDocumentHeader(project,contract,record){
   date.append(element('strong','',advance?'تاریخ درخواست':'تاریخ صورت‌وضعیت'),
     element('span','',formatJalaliDisplay(record.date)||'—'));
   header.append(projectName,title,date);
-  const amount=Number(contract.amount);
   const path=contractProjectPath(project,contract);
   const contractor=contactApi.lookup(project.id,contract.contractorId || contract.contactId);
   const contractorName=[contractor?.firstName,contractor?.lastName].filter(Boolean).join(' ') ||
@@ -418,10 +417,7 @@ function statementDocumentHeader(project,contract,record){
     ['پیمانکار',contractorName],
     ['موضوع قرارداد',path?.split('←').at(-1)?.trim() || contract.title || '—'],
     ['شماره قرارداد',contract.contractNo||'—'],
-    advance
-      ? ['مبلغ کل قرارداد',contract.amount!=null && contract.amount!=='' && Number.isFinite(amount) && !contract.remeasurement
-        ? money(amount):'مبلغ قطعی تعیین نشده']
-      : ['تاریخ قرارداد',formatJalaliDisplay(contract.contractDate)||'—'],
+    ['تاریخ قرارداد',formatJalaliDisplay(contract.contractDate)||'—'],
   ]){
     const pair=element('div','contract-document-statement-fact');
     pair.append(element('strong','',label),element('bdi','',value));
@@ -434,39 +430,6 @@ function statementPreviewContent(project,contract,record,signature=null){
     const documentNode=element('section','contract-export-document');
     documentNode.dir='rtl';
     const header=statementDocumentHeader(project,contract,record);
-    if(record.statementType==='advance'){
-      const row=record.advanceRow;
-      documentNode.dataset.documentKind='advance';
-      const summary=element('div','contract-advance-print');
-      documentNode.append(...header,summary);
-      const paymentDetails=contractorPaymentDetails(project,contract);
-      const detail=table([
-        ...(row?[
-          ['ردیف پیش‌پرداخت در قرارداد',format.format(row.number)],['شرح پیش‌پرداخت',row.description||'—'],
-          ['موعد یا شرط پرداخت',row.dueText||'—'],['مبلغ پیش‌پرداخت طبق قرارداد',money(row.total)],
-        ]:[]),
-        ['مبلغ درخواستی این نوبت',money(record.statementAmount||0)],['پرداخت‌شده',money(record.paidAmount||0)],
-        ['وضعیت تأیید',!hasAdvanceSubmission(record)?'ارسال نشده':record.approvalStatus==='approved'?'تأیید شده':record.approvalStatus==='pending'?'در انتظار تأیید':'ارسال نشده'],
-        ['وضعیت مالی',approvedStatement(record)?'تأیید شده':record.accountingStatus==='sent'?'در انتظار تأیید':record.accountingStatus==='rejected'?'برگشت خورده':'ارسال نشده'],
-        ...(paymentDetails?[['اطلاعات پرداخت',paymentDetails]]:[]),
-        ...(record.note||signature?[['توضیحات',record.note||'']]:[]),
-      ]);
-      if(paymentDetails)paymentDetails.parentElement.previousElementSibling.classList.add('contract-document-payment-heading');
-      if(signature){
-        const cell=detail.lastElementChild.lastElementChild.lastElementChild;
-        const note=element('div','contract-advance-note');
-        const signer=element('div','contract-advance-note-signature');
-        const image=element('img');
-        image.src=signature.image;
-        image.alt='امضا';
-        signer.append(image,element('div','',signature.name));
-        note.append(element('span','contract-advance-note-text',record.note||''),signer);
-        cell.replaceChildren(note);
-      }
-      detail.classList.add('contract-document-quantities');
-      summary.append(detail);
-      return documentNode;
-    }
     documentNode.classList.add('contract-document-statement');
     const body=element('div','contract-document-statement-body');
     documentNode.append(body);
@@ -494,6 +457,36 @@ function statementPreviewContent(project,contract,record,signature=null){
       }
       paymentDetails.classList.add('contract-document-quantities','contract-document-payment-pairs');
       body.append(paymentDetails);
+    }
+    if(record.statementType==='advance'){
+      const row=record.advanceRow;
+      documentNode.dataset.documentKind='advance';
+
+      const detail=table([
+        ['مبلغ کل قرارداد',money(contract.remeasurement || contract.amount==null || contract.amount==='' ? null : Number(contract.amount))],
+        ...(row?[
+          ['ردیف پیش‌پرداخت در قرارداد',format.format(row.number)],['شرح پیش‌پرداخت',row.description||'—'],
+          ['موعد یا شرط پرداخت',row.dueText||'—'],['مبلغ پیش‌پرداخت طبق قرارداد',money(row.total)],
+        ]:[]),
+        ['مبلغ درخواستی این نوبت',money(record.statementAmount||0)],['پرداخت‌شده',money(record.paidAmount||0)],
+        ['وضعیت تأیید',!hasAdvanceSubmission(record)?'ارسال نشده':record.approvalStatus==='approved'?'تأیید شده':record.approvalStatus==='pending'?'در انتظار تأیید':'ارسال نشده'],
+        ['وضعیت مالی',approvedStatement(record)?'تأیید شده':record.accountingStatus==='sent'?'در انتظار تأیید':record.accountingStatus==='rejected'?'برگشت خورده':'ارسال نشده'],
+        ...(record.note?.trim()||signature?[['توضیحات',record.note||'']]:[]),
+      ]);
+      if(signature){
+        const cell=detail.lastElementChild.lastElementChild.lastElementChild;
+        const note=element('div','contract-advance-note');
+        const signer=element('div','contract-advance-note-signature');
+        const image=element('img');
+        image.src=signature.image;
+        image.alt='امضا';
+        signer.append(image,element('div','',signature.name));
+        note.append(element('span','contract-advance-note-text',record.note||''),signer);
+        cell.replaceChildren(note);
+      }
+      detail.classList.add('contract-document-quantities','contract-document-statement-pairs');
+      body.append(element('h3','contract-document-statement-band','خلاصه مالی'),detail);
+      return documentNode;
     }
     const account=record.addendumId
       ? statementAccount(contract,statementAddenda(project,contract).find(item=>item.id===record.addendumId))
