@@ -440,14 +440,12 @@ function statementPreviewContent(project,contract,record,signature=null){
     const paymentDetails=contractorPaymentDetails(project,contract);
     if(paymentDetails){
       const rows=[...paymentDetails.tBodies[0].rows];
-      const heading=paymentDetails.createCaption();
-      heading.textContent='اطلاعات پرداخت';
       const itemsPerRow=3;
       const columns=element('colgroup');
       for(let index=0;index<itemsPerRow;index++){
         columns.append(element('col','contract-document-payment-label'),element('col'));
       }
-      heading.after(columns);
+      paymentDetails.prepend(columns);
       for(let index=0;index<rows.length;index+=itemsPerRow){
         const row=rows[index];
         const items=rows.slice(index+1,index+itemsPerRow);
@@ -459,9 +457,12 @@ function statementPreviewContent(project,contract,record,signature=null){
         if(missing)row.lastElementChild.colSpan=1+missing*2;
       }
       paymentDetails.classList.add('contract-document-quantities','contract-document-payment-pairs');
-      body.append(paymentDetails);
     }
+    const appendPaymentDetails=()=>{
+      if(paymentDetails)body.append(element('h3','contract-document-statement-band','اطلاعات پرداخت'),paymentDetails);
+    };
     if(record.statementType==='advance'){
+      appendPaymentDetails();
       const row=record.advanceRow;
       documentNode.dataset.documentKind='advance';
 
@@ -524,7 +525,6 @@ function statementPreviewContent(project,contract,record,signature=null){
     for(const section of [details,totals])section.classList.add('contract-document-quantities','contract-document-statement-pairs');
     if(details.tBodies[0].rows.length){
       details.classList.add('contract-document-statement-note');
-      body.append(details);
     }
     if(record.operations?.length){
       const template=element('template');
@@ -559,7 +559,11 @@ function statementPreviewContent(project,contract,record,signature=null){
             ? snapshot.limit===null ? display(snapshot.cumulative)+(measured?'':' تومان')
               : display(snapshot.cumulative)+' از '+display(snapshot.limit)+(measured?'':' تومان')
             : '—';
-          row.cells[4].before(element('td','',comparison),element('td','',progress(rowAmount(operation))));
+          const comparisonCell=element('td');
+          const comparisonText=element('bdi','',comparison);
+          comparisonText.dir='rtl';
+          comparisonCell.append(comparisonText);
+          row.cells[4].before(comparisonCell,element('td','',progress(rowAmount(operation))));
         }
         const total=rows[rows.length-1];
         total.cells[0].colSpan=5;
@@ -640,11 +644,14 @@ function statementPreviewContent(project,contract,record,signature=null){
       const comparison=format.format(cumulative/divisor)+' از '+format.format(basis/divisor)+
         (inMillions?' میلیون تومان':' تومان');
       const caption=element('figcaption','',comparison);
+      caption.dir='rtl';
       figure.append(element('strong','','پیشرفت تجمیعی '+progress(cumulative)),graphic,legend,caption);
       financial.classList.add('contract-document-statement-financial--with-ring');
       financial.append(figure);
     }
     body.append(element('h3','contract-document-statement-band contract-document-statement-summary','خلاصه مالی'),financial);
+    appendPaymentDetails();
+    if(details.tBodies[0].rows.length)body.append(details);
     return documentNode;
   }
 
