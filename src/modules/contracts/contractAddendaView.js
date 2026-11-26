@@ -21,7 +21,7 @@ import { openContractExport } from './contractExportView.js';
 import { renderContractFinanceReview } from './contractFinanceReviewView.js';
 import { canCreateAddendumFromContract } from '../../domain/contractAddenda.js';
 import { openContractHistory, renderContractHistory } from './contractHistoryView.js';
-import { contractProgressSteps, mountDocumentStageFooter, renderContractWorkflowPanel, renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
+import { contractProgressSteps, documentStageSelection, mountDocumentStageFooter, renderContractWorkflowPanel, renderContractProgress, renderContractProgressCircle } from './contractProgressView.js';
 import { openContractSignedUpload, renderContractSignedSection } from './contractSignedView.js';
 import { openContractReasonSheet } from './contractReasonSheet.js';
 import { saveContractHandoff } from './contractHandoffApi.js';
@@ -225,8 +225,9 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
   const openProgress=(event,selected)=>{
     event?.stopPropagation();
     const record=latestAddendum();
-    const step=contractProgressSteps(record,project).find(item=>!item.done);
-    if(!step || (selected && selected.id!==step.id))return;
+    const selection=documentStageSelection(record,project,selected);
+    if(!selection)return;
+    const {selected:step}=selection;
     if(step.id==='signed')return openContractSignedUpload(project,record,{onChanged,finance:finance||!!approval,label:'الحاقیه'});
     openWbsSheet({title:step.label,showSave:false,reuseHistoryOnReplace:true,historyKey:'addendum-status:'+addendum.id,
       body(root){
@@ -293,7 +294,7 @@ export function renderAddendumCard(project,addendum,onChanged,finance=false,appr
     heading.children[2].hidden=true;
   }
   row.append(heading);
-  if(nested)row.append(renderContractWorkflowPanel(document,addendum,project,{onOpen:openProgress,expanded:!!approval,heading}));
+  if(nested)row.append(renderContractWorkflowPanel(document,addendum,project,{onOpen:openProgress,expanded:!!approval,heading,openCompleted:true}));
   if(approval){
     const action=approval.action && button(approval.action.textContent,()=>approval.action.click());
     row.append(renderContractReviewRow(addendum,{...approval,action}));
