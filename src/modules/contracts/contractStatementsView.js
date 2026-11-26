@@ -7,7 +7,7 @@ import {openContractPreview} from './contractPreviewView.js';
 import {statementWorkRows,resolveStatementWork} from '../../domain/statementWork.js';
 import { contactApi } from '../../domain/contactApi.js';
 import { projectRepository } from '../../data/projectRepository.js';
-import { canReviewContract, canRevokeContractApproval, canWithdrawAdvanceRequest, canWithdrawPendingStatement, canEditAdvanceRequest, hasAdvanceSubmission, contractApproverIds } from '../../domain/contractApproval.js';
+import { canReviewContract, canRevokeContractApproval, canWithdrawAdvanceRequest, canWithdrawPendingStatement, restoreRejectedStatement, canEditAdvanceRequest, hasAdvanceSubmission, contractApproverIds } from '../../domain/contractApproval.js';
 import { accountStatements, approvedStatement, statementAccount, statementAddenda, contractStatementTotals, finalStatementSummary, statementAmounts, statementsFor, contractAdvanceDeductionBalance, contractOnAccountBalance, isOnAccountPayment, advanceDeductionFromPercent, contractAdvanceRows } from '../../domain/contractStatements.js';
 import { canWriteProjectModule } from '../roleManagement/permissionState.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
@@ -656,6 +656,7 @@ function statementPreviewContent(project,contract,record,signature=null){
   }
 
 function openStatementStep(project,contract,record,onChanged,{finance=false,approval,step,openSheet=openWbsSheet}={}){
+  record=restoreRejectedStatement(record);
   const steps=contractProgressSteps(record,project);
   const writable=!finance && !approval && canWriteProjectModule(project.id,'contracts');
   const advance=record.statementType==='advance';
@@ -707,6 +708,10 @@ function openStatementStep(project,contract,record,onChanged,{finance=false,appr
       const actionButton=(label,action,variant='')=>button(label,action,'contract-review-action'+(variant?' '+variant:''));
       if(active.id==='created')showHistory({actions:['create']});
       if(active.id==='completed'){
+        const revisionActions=['reject','reject_finance','withdraw_submission','reopen_signed_contract'];
+        if(record.approvalHistory?.some(event=>revisionActions.includes(event.action))){
+          showHistory({actions:revisionActions});
+        }
         if(writable && record.status==='draft'){
           root.append(actionButton('ویرایش و تکمیل صورت‌وضعیت',()=>openStatementForm(project,contract,onChanged,record)));
         }
@@ -876,6 +881,7 @@ export function openStatementAction(project,contract,record,onChanged,{approval,
 }
 
 export function renderStatementCard(project,contract,record,onChanged,approval,{finance=false}={}){
+  record=restoreRejectedStatement(record);
   const row=element('article','contract-row');
   const title=statementTitle(record);
   const open=(event,step)=>finance

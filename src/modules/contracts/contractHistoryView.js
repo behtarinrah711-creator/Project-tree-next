@@ -36,7 +36,7 @@ export function renderContractHistory(documentRef,contract,{finance=false,compac
   }
   entries.forEach(entry=>{
     const row=documentRef.createElement('div');row.className='contract-history-entry';
-    if(isAdvance && ['reject','reject_finance','revoke_finance'].includes(entry.action))row.className+=' is-rejected';
+    if(['reject','reject_finance','revoke_finance'].includes(entry.action))row.className+=' is-rejected';
     const heading=documentRef.createElement('div');
     const date=new Date(entry.at);
     const label=isAdvance && entry.action==='create' ? 'درخواست پیش‌پرداخت ثبت شد' : isAddendum && entry.action==='complete' ? 'تکمیل الحاقیه اعلام شد' : labels[entry.action];

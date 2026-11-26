@@ -2192,3 +2192,6 @@ textarea.contract-project-item-input{
 #contractPreviewPage .contract-statement-preview-viewport > .contract-pages{width:794px;margin-inline:auto}
 
 .contract-document-statement-body > .contract-document-statement-note > tbody > tr > th[scope="row"]:first-child{width:11%}
+
+.contract-workflow-panel .contract-rejection-reason,.contract-history-entry.is-rejected{background:#fff0f0;color:var(--danger,#b23b3b)}
+.contract-workflow-panel .contract-rejection-reason{padding:8px 10px;border-radius:6px}
