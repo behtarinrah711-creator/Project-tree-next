@@ -2125,3 +2125,7 @@ textarea.contract-project-item-input{
 .contract-export-document .contract-document-statement .contract-document-quantity th:nth-child(2){width:36%}
 .contract-export-document .contract-document-statement .contract-document-quantity th:nth-child(3),.contract-export-document .contract-document-statement .contract-document-quantity th:nth-child(4){width:10%}
 .contract-export-document .contract-document-statement .contract-document-quantity th:nth-child(5),.contract-export-document .contract-document-statement .contract-document-quantity th:nth-child(6){width:18%}
+
+.contract-export-document .contract-document-statement-body > :is(header,table,h3){margin:0}
+.contract-export-document .contract-document-statement-body > table > :is(thead,tbody):first-child > tr:first-child > :is(th,td){border-top:0}
+.contract-export-document .contract-document-statement-body > .contract-document-statement-band{padding:5px 8px;border:1px solid #aaa;border-top:0;background:#f3f3f3;font-size:1em;text-align:right;break-after:avoid}
