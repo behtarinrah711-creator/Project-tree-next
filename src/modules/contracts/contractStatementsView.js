@@ -483,8 +483,25 @@ function statementPreviewContent(project,contract,record,signature=null){
       paymentDetails.classList.add('contract-document-quantities','contract-document-payment-pairs');
       body.append(paymentDetails);
     }
+    const account=record.addendumId
+      ? statementAccount(contract,statementAddenda(project,contract).find(item=>item.id===record.addendumId))
+      : contract;
+    const basis=record.addendumId && !account.statementAddendumId ? null : contractStatementTotals(project,account).total;
+    const progressFormat=new Intl.NumberFormat('fa-IR',{style:'percent',maximumFractionDigits:1});
+    const progress=amount=>basis>0 && Number.isFinite(Number(amount)) ? progressFormat.format(Number(amount)/basis) : '—';
+    const summaryMoney=value=>Number(value)===0 ? format.format(0) : money(value);
+    const progressStatement=record.statementType!=='retention-release';
     const details=table(record.note?[['توضیحات',record.note]]:[]);
-    const totals=table([['کارکرد این سند',money(record.statementAmount??record.stageAmount??0)],['کارکرد تجمعی',money(record.cumulativeAmount||0)],['حسن انجام کار',money(record.retentionAmount||0)],['کسر پیش‌پرداخت',money(record.advanceDeduction||0)],...(record.onAccountDeduction?[['کسر علی‌الحساب',money(record.onAccountDeduction)]]:[]),['خالص قابل پرداخت',money(record.netAmount??record.approvedAmount??record.stageAmount??0)],['پرداخت‌شده',money(record.paidAmount||0)]]);
+    const totals=table([
+      ['کارکرد این سند',summaryMoney(record.statementAmount??record.stageAmount??0)],
+      ['کارکرد تجمعی',summaryMoney(record.cumulativeAmount||0)],
+      ...(progressStatement?[['پیشرفت تجمیعی تا این صورت‌وضعیت',progress(record.cumulativeAmount??record.stageAmount??0)]]:[]),
+      ['حسن انجام کار',summaryMoney(record.retentionAmount||0)],
+      ...(Number(record.advanceDeduction)?[['کسر پیش‌پرداخت',summaryMoney(record.advanceDeduction)]]:[]),
+      ...(Number(record.onAccountDeduction)?[['کسر علی‌الحساب',summaryMoney(record.onAccountDeduction)]]:[]),
+      ['خالص قابل پرداخت',summaryMoney(record.netAmount??record.approvedAmount??record.stageAmount??0)],
+      ['پرداخت‌شده',summaryMoney(record.paidAmount||0)],
+    ]);
     for(const section of [details,totals])section.classList.add('contract-document-quantities','contract-document-statement-pairs');
     if(details.tBodies[0].rows.length)body.append(details);
     if(record.operations?.length){
@@ -493,6 +510,22 @@ function statementPreviewContent(project,contract,record,signature=null){
         const source=row.sourceSequence?'موقت '+format.format(row.sourceSequence):formatJalaliDisplay(row.sourceDate);
         return {...row,description:[source,row.description].filter(Boolean).join(' · ')};
       }),true);
+      if(progressStatement){
+        const operations=template.content.querySelector('table');
+        operations.classList.add('contract-document-statement-progress');
+        operations.tHead.rows[0].cells[4].before(element('th','','سهم از پیشرفت قرارداد'));
+        const rows=operations.tBodies[0].rows;
+        for(const [index,operation] of record.operations.entries()){
+          rows[index].cells[4].before(element('td','',progress(rowAmount(operation))));
+        }
+        const total=rows[rows.length-1];
+        total.cells[0].colSpan=4;
+        const heading=record.statementType==='final'?'پیشرفت تجمیعی':'پیشرفت این دوره';
+        const gross=record.operations.reduce((sum,operation)=>sum+rowAmount(operation),0);
+        const cell=element('td','',heading+' '+progress(gross));
+        cell.colSpan=2;
+        total.cells[1].before(cell);
+      }
       body.append(element('h3','contract-document-statement-band','شرح عملیات انجام‌شده'),template.content);
     }
     body.append(element('h3','contract-document-statement-band','خلاصه مالی'),totals);
