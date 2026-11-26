@@ -1,3 +1,4 @@
+import {breaksActiveWorkContract} from '../../src/domain/deleteGuard.js';
 import {isDeepStrictEqual} from 'node:util';
 import {executionApproverIds,pendingExecutionApproverIds} from '../../src/domain/wbs/workTaskModel.js';
 import {acceptedMembership} from './acceptedMembership.js';
@@ -753,6 +754,11 @@ async function saveWorkspace(pool, accountId, snapshot){
         }
         let savedProject=onlyStandalone?{...currentPayload,standaloneWorks}:assignedExecution?.ok?{...assignedExecution.project,...(standaloneChanged?{standaloneWorks}:{})}:mergeSharedProjectPayload(currentPayload,project,permissions,{id:String(accountId),name:membership.rows[0].phone});
         if(ownerResponsibilities)savedProject=withProjectResponsibilities(savedProject,ownerResponsibilities);
+        if(breaksActiveWorkContract(currentPayload,savedProject)){
+          const error=new Error('این کار یا یکی از زیرمجموعه‌های آن قرارداد ثبت‌شده دارد');
+          error.statusCode=409;
+          throw error;
+        }
         stampContractCreation(savedProject,currentPayload,accountId,membership.rows[0].phone);
         await assignContractNumbers(client,savedProject,existing.rows[0].owner_account_id);
         await client.query(
