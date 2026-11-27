@@ -246,7 +246,7 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
             root.classList.add('contract-status-sheet','contract-history-sheet','contract-advance-stage-sheet');
             const note=(status,person)=>appendDocumentStageStatus(root,status,person);
             const actions={created:['create'],completed:['complete','submit','reject','reject_finance'],approved:['approve','revoke','edit_review'],finance:['send_finance','withdraw_finance'],'finance-approved':['approve_finance','reject_finance','revoke_finance']};
-            const history=appendDocumentStageHistory(root,statusRecord,{actions:actions[selected.id]||[]});
+            const history=selected.done && appendDocumentStageHistory(root,statusRecord,{actions:actions[selected.id]||[]});
             if(selected.done && !history){
               note(({created:'قرارداد ایجاد شد',completed:'تکمیل قرارداد اعلام شد',approved:'تأییدها تکمیل شد',finance:'قرارداد به بخش مالی ارسال شد','finance-approved':'بخش مالی قرارداد را تأیید کرد'})[selected.id]);
             }
