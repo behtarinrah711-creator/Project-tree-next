@@ -34,26 +34,32 @@ function table(headers, rows, total, routeSummary){
     : '';
   return `<table><thead><tr>${headers.map(value=>`<th scope="col">${esc(value)}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(value=>`<td>${esc(value)}</td>`).join('')}</tr>`).join('')}${totals}${funding}</tbody></table>`;
 }
-const costs = (need, allocated) => [money(need),money(allocated),money(Math.max(0,need-allocated))];
+const costs = (need, allocated, showAllocation) => showAllocation
+  ? [money(need),money(allocated),money(Math.max(0,need-allocated))]
+  : [money(need)];
 const columns = ['موردنیاز (تومان)','تخصیص‌یافته (تومان)','کسری (تومان)'];
 const detailColumns = ['موردنیاز در این دوره (تومان)','تخصیص‌یافته در این دوره (تومان)','کسری این دوره (تومان)'];
 const reportRoutes = [['owner','کارفرما'],['petty','تنخواه'],['','نامشخص']];
 const routeLabel = key => reportRoutes.find(([route])=>route===key)?.[1] || 'نامشخص';
 const routeText = (routes,value) => routes.map(([key,label])=>`${label} ${money(value(key))}`).join(' · ');
+const shareColumns = ['سهم کارفرما (تومان)','سهم تنخواه (تومان)'];
+const shareCells = works => ['owner','petty'].map(key=>money(works.reduce((sum,work)=>sum+work.routeNeeds[key],0)));
 const workFunding = work => Math.min(work.sliceAmount,work.allocated);
 
-const detailRows = works => works.map(work=>[work.path,work.shortageDay==null?work.text:`${work.text} · شروع کسری این دوره ${reportDateRange(work.shortageDay,null)}`,reportDateRange(jalaliDayNumber(work.start),jalaliDayNumber(work.end)),...costs(work.sliceAmount,workFunding(work)),work.routes.length===1?work.routes[0][1]:routeText(work.routes,key=>work.routeNeeds[key])]);
+const detailRows = (works,showAllocation) => works.map(work=>[work.path,!showAllocation || work.shortageDay==null?work.text:`${work.text} · شروع کسری این دوره ${reportDateRange(work.shortageDay,null)}`,reportDateRange(jalaliDayNumber(work.start),jalaliDayNumber(work.end)),...costs(work.sliceAmount,workFunding(work),showAllocation),work.routes.length===1?work.routes[0][1]:routeText(work.routes,key=>work.routeNeeds[key])]);
 
-function packageRows(works){
+function packageRows(works,showAllocation,showShares=false){
   const packages=new Map();
   for(const work of works){
     const name=work.path.split(' ← ')[0] || 'بدون بستهٔ کاری';
-    const totals=packages.get(name) || {need:0,allocated:0};
-    totals.need+=work.sliceAmount;
-    totals.allocated+=workFunding(work);
-    packages.set(name,totals);
+    if(!packages.has(name))packages.set(name,[]);
+    packages.get(name).push(work);
   }
-  return Array.from(packages,([name,totals])=>[name,...costs(totals.need,totals.allocated)]);
+  return Array.from(packages,([name,items])=>{
+    const need=items.reduce((sum,work)=>sum+work.sliceAmount,0);
+    const allocated=items.reduce((sum,work)=>sum+workFunding(work),0);
+    return [name,...costs(need,allocated,showAllocation),...(showShares?shareCells(items):[])];
+  });
 }
 
 const styles = `html,body{margin:0;padding:0}
@@ -100,7 +106,7 @@ function routeAllocation(work,bucket,covered,route){
   return 0;
 }
 
-export function costlineDocument(project,{rangeId,originWeekday,start,end,overview=true,packages=true,details,receipts,branchId,route=null}){
+export function costlineDocument(project,{rangeId,originWeekday,start,end,overview=true,packages=true,showAllocation=false,details,receipts,branchId,route=null}){
   const branch=reportBranch(selectableWbsTree(project),branchId);
   const works=worksInBranch(collectPlannedWorks(project.tasks,{includeUndated:true}),branch);
   const dated=works.filter(work=>jalaliDayNumber(work.start)!=null || scheduledPayments(work).length);
@@ -128,30 +134,41 @@ export function costlineDocument(project,{rangeId,originWeekday,start,end,overvi
 ${Number.isFinite(start)&&Number.isFinite(end)?`<p class="cost-report-range">بازهٔ گزارش ${reportDateRange(start,end)}</p>`:''}</div>
 ${scope.length?`<p>${esc(scope.join(' · '))}</p>`:''}`;
   let html=`<article class="nb-export-document cost-report">`;
+  const costColumns=showAllocation?columns:columns.slice(0,1);
+  const workColumns=showAllocation?detailColumns:detailColumns.slice(0,1);
+  const costCells=(need,allocated)=>costs(need,allocated,showAllocation);
   const totalShortage=key=>buckets.reduce((sum,bucket)=>sum+bucket.routeShortage(key),0);
   const summaryRoutes=reportRoutes.filter(([key])=>key!=='' || totalShortage(key)>0);
   const shortageCells=getAmount=>summaryRoutes.map(([key])=>money(getAmount(key)));
   if(overview && buckets.length){
+    const periodFundingHeaders=showAllocation
+      ? [...summaryRoutes.map(([,label])=>'کسری '+label+' (تومان)'),'تخصیص تجمعی (تومان)']
+      : [];
+    const periodFundingCells=(getShortage,cumulative)=>showAllocation
+      ? [...shortageCells(getShortage),money(cumulative)]
+      : [];
+    const selectedWorks=buckets.flatMap(bucket=>bucket.works);
+    const rangeTotal=['جمع کل بازه',...costCells(need,allocated),...shareCells(selectedWorks)];
     let cumulative=0;
     const rows=buckets.map(bucket=>{
       cumulative+=bucket.allocated;
-      return [bucket.label,...costs(bucket.total,bucket.allocated),...shortageCells(bucket.routeShortage),money(cumulative)];
+      return [bucket.label,...costCells(bucket.total,bucket.allocated),...shareCells(bucket.works),...periodFundingCells(bucket.routeShortage,cumulative)];
     });
     html+=`<section class="cost-summary">${title}
 <h2>جمع بازهٔ انتخاب‌شده</h2>
-${table(['بستهٔ کاری',...columns],packageRows(buckets.flatMap(bucket=>bucket.works)),['جمع کل بازه',...costs(need,allocated)])}
-<h2>بودجه‌بندی دوره‌ای · کسری به تفکیک مسیر</h2>
-${table(['دوره',...columns,...summaryRoutes.map(([,label])=>label+' (تومان)'),'تخصیص تجمعی (تومان)'],rows,['جمع کل بازه',...costs(need,allocated),...shortageCells(totalShortage),money(allocated)])}</section>`;
+${table(['بستهٔ کاری',...costColumns,...shareColumns],packageRows(selectedWorks,showAllocation,true),rangeTotal)}
+<h2>بودجه‌بندی دوره‌ای${showAllocation?' · کسری به تفکیک مسیر':''}</h2>
+${table(['دوره',...costColumns,...shareColumns,...periodFundingHeaders],rows,[...rangeTotal,...periodFundingCells(totalShortage,allocated)])}</section>`;
   }
   if(!overview || !buckets.length) html+=title;
   if((overview || details) && !buckets.length) html+='<p>در این بازه برآورد دوره‌ای وجود ندارد.</p>';
   if(packages && buckets.length && (!overview || buckets.length>1)) html+=`<section class="cost-packages">
-${buckets.map(bucket=>`<h2>${bucket.label} | تفکیک بسته های کاری</h2>${table(['بستهٔ کاری',...columns],packageRows(bucket.works),['جمع این بازه',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
+${buckets.map(bucket=>`<h2>${bucket.label} | تفکیک بسته های کاری</h2>${table(['بستهٔ کاری',...costColumns],packageRows(bucket.works,showAllocation),['جمع این بازه',...costCells(bucket.total,bucket.allocated)])}`).join('')}</section>`;
   const undated=works.filter(work=>jalaliDayNumber(work.start)==null && (route===null || (work.fundingRoute||'')===route))
     .map(work=>({...work,amount:work.amount-scheduledPayments(work).reduce((sum,payment)=>sum+payment.amount,0)}))
     .filter(work=>work.amount>0);
   if((overview || details) && undated.length) html+=`<section><h2>برآوردهای بدون تاریخ شروع</h2>${table(['مسیر کار','نام کار','برآورد کل (تومان)','مسیر پرداخت'],undated.map(work=>[work.path,work.text,money(work.amount),routeLabel(work.fundingRoute)]))}</section>`;
-  if(details && buckets.some(bucket=>bucket.works.length)) html+=`<section class="cost-appendix cost-details">${buckets.filter(bucket=>bucket.works.length).map(bucket=>`<h2>${bucket.label} | لیست کارها</h2>${table(['مسیر درخت','نام کار','زمان کار',...detailColumns,'مسیر پرداخت'],detailRows(bucket.works),['جمع این دوره',...costs(bucket.total,bucket.allocated),''],routeText(summaryRoutes,bucket.routeShortage))}`).join('')}</section>`;
+  if(details && buckets.some(bucket=>bucket.works.length)) html+=`<section class="cost-appendix cost-details">${buckets.filter(bucket=>bucket.works.length).map(bucket=>`<h2>${bucket.label} | لیست کارها</h2>${table(['مسیر درخت','نام کار','زمان کار',...workColumns,'مسیر پرداخت'],detailRows(bucket.works,showAllocation),['جمع این دوره',...costCells(bucket.total,bucket.allocated),''],showAllocation?routeText(summaryRoutes,bucket.routeShortage):'')}`).join('')}</section>`;
   if(receipts && !branch && route===null) html+=`<section class="cost-appendix"><h2>دریافتی‌های کل پروژه</h2>${table(['شماره','تاریخ','مبلغ (تومان)'],fundingReceiptsOf(project).map((receipt,index)=>[money(index+1),reportDateRange(jalaliDayNumber(receipt.depositDate),null),money(receipt.amount)]))}
 ${table(['مجموع دریافتی (تومان)','ماندهٔ تخصیص‌نیافته (تومان)'],[[money(poolReceived(project)),money(poolRemaining(project))]])}</section>`;
   return html+'</article>';
@@ -175,6 +192,7 @@ export async function openCostlineExport(project,{rangeId,originWeekday,trigger,
     const sections=document.createElement('template');
     sections.innerHTML=`<label><input type="checkbox" data-overview> خلاصه و جدول بودجه‌بندی</label>
 <label><input type="checkbox" data-packages> تفکیک بسته های کاری <small data-package-hint>اطلاعات این دوره در جدول جمع بازه آمده است.</small></label>
+<label><input type="checkbox" data-allocation> نمایش تخصیص‌یافته و کسری</label>
 <label><input type="checkbox" data-details> لیست کارها</label>
 <label><input type="checkbox" data-receipts> دریافتی ها</label>`;
     options.prepend(sections.content);
@@ -213,6 +231,8 @@ export async function openCostlineExport(project,{rangeId,originWeekday,trigger,
   const options=controls.previousElementSibling;
   const overview=options.querySelector('[data-overview]');
   const packages=options.querySelector('[data-packages]');
+  const allocation=options.querySelector('[data-allocation]');
+  allocation.checked=false;
   const details=options.querySelector('[data-details]'), receipts=options.querySelector('[data-receipts]');
   const packageHint=options.querySelector('[data-package-hint]');
   let packagePreference=true;
@@ -243,6 +263,6 @@ export async function openCostlineExport(project,{rangeId,originWeekday,trigger,
   range.value=rangeId;origin.value=String(originWeekday);
   range.onchange=paint;origin.onchange=paint;overview.onchange=paint;overview.checked=true;details.checked=false;receipts.checked=false;paint();
   return view.open({title:'خروجی برآورد هزینه | '+project.name,project,
-    settings:()=>({...selection(),packages:!packages.disabled && packages.checked,details:details.checked,receipts:receipts.checked}),
+    settings:()=>({...selection(),packages:!packages.disabled && packages.checked,showAllocation:allocation.checked,details:details.checked,receipts:receipts.checked}),
   },{trigger});
 }
