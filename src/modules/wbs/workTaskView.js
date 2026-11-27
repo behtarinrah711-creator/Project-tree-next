@@ -1,3 +1,4 @@
+import { renderWorkFormHistory } from './workFormHistory.js';
 import { projectResponsibleIds } from '../projectSettings/projectDetailsDomain.js';
 import { responsibleContactPicker } from '../../ui/responsibleContactPicker.js';
 import {flattenDependencyCandidates,jalaliDayNumber,projectWithPlannedSchedule,requiredScheduleStart,scheduleDate,scheduleRangeOf} from '../../domain/wbs/scheduling.js';
@@ -525,6 +526,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
           root.appendChild(remove);
         }
       }
+      if(editing)root.append(renderWorkFormHistory(documentRef,task));
     },
     onSave(root){
       if(saving)return false;
@@ -567,7 +569,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         return false;
       }
       const result = saveStandalone ? saveStandalone(draft) : editing
-        ? workTaskApi.update(projectId, work.id, task.id, draft)
+        ? workTaskApi.update(projectId, work.id, task.id, draft, Date.now, {fromForm:true})
         : workTaskApi.create(projectId, work.id, draft);
       if(!result.ok){
         documentRef.defaultView?.KarhaUI?.showToast?.(result.code === 'dates'

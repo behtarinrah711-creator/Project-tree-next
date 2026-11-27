@@ -1,3 +1,5 @@
+import {renderWorkFormHistory} from '../wbs/workFormHistory.js';
+import {isWork} from '../../domain/wbs/normalize.js';
 import {projectRepository} from '../../data/projectRepository.js';
 import {hasWorkTaskContract} from '../../domain/deleteGuard.js';
 /** Project-scoped trash presentation. Mutations are supplied by canonical owners. */
@@ -75,7 +77,11 @@ export function createProjectTrashView(deps){
     actions.append(restore,remove);
   }
   function renderItem(entry,list){
-    if(entry.type==='task'||entry.type==='subtask'){ taskView.renderTrashItem(entry,list); return; }
+    if(entry.type==='task'||entry.type==='subtask'){
+      taskView.renderTrashItem(entry,list);
+      if(isWork(entry.record))list.lastElementChild?.append(renderWorkFormHistory(document,entry.record));
+      return;
+    }
     const record=entry.record; const wrap=document.createElement('div'); wrap.className='trash-task-wrap project-trash-record'; addSourceBadge(wrap,entry.type);
     if(entry.type==='contact'){
       const row=document.createElement('div'); row.className='contact-row trash-native-row';
@@ -91,7 +97,9 @@ export function createProjectTrashView(deps){
       wrap.dataset.searchText=name.textContent;
       const actions=document.createElement('div');actions.className='activity-actions project-trash-inline-actions';
       appendActions(actions,entry);
-      row.append(name,actions);wrap.appendChild(row);list.appendChild(wrap);return;
+      row.append(name,actions);wrap.appendChild(row);
+      if(entry.type==='work-task')wrap.append(renderWorkFormHistory(document,record));
+      list.appendChild(wrap);return;
     }
     if(entry.type==='activity'){
       const row=document.createElement('div'); row.className='activity-row trash-native-row';
