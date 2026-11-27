@@ -54,6 +54,12 @@ function paintRowDetails(documentRef, line, entry, domain, today){
   }
 
   const dateWidth = 46; const dateY = Math.min(rowHeight - 11, barY + BAR_HEIGHT + 1);
+  if(entry.item.kind==='milestone'){
+    const dateX=clamp(barX+(barWidth-dateWidth)/2,0,Math.max(0,canvasWidth-dateWidth));
+    canvas.appendChild(detailForeignObject(documentRef,{className:'wbs-gantt-detail-date is-finish',
+      x:dateX,y:dateY,width:dateWidth,height:10,text:formatTimelineDate(entry.range.endDate),dir:'ltr'}));
+    return;
+  }
   const startX = clamp(barX - dateWidth + 4, 0, Math.max(0, canvasWidth - dateWidth));
   const finishX = clamp(barX + barWidth - 4, 0, Math.max(0, canvasWidth - dateWidth));
   canvas.appendChild(detailForeignObject(documentRef, { className:'wbs-gantt-detail-date is-start', x:startX, y:dateY, width:dateWidth, height:10, text:formatTimelineDate(entry.range.startDate), dir:'ltr' }));

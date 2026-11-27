@@ -117,7 +117,7 @@ export function setTimelineDependenciesVisible(value){
   dependenciesVisible = Boolean(value);
 }
 
-export function applyTimelineDependencies(gantt, entries, projectOrItems, documentRef = document){
+export function applyTimelineDependencies(gantt, entries, projectOrItems, documentRef = document, schedule){
   const timeline = gantt?.querySelector('.wbs-gantt-timeline');
   if(!timeline || !gantt.classList.contains('is-scale-enhanced')) return;
   gantt.classList.toggle('show-dependencies', dependenciesVisible);
@@ -144,10 +144,13 @@ export function applyTimelineDependencies(gantt, entries, projectOrItems, docume
   if(top <= 0) return;
 
   const project = Array.isArray(projectOrItems) ? { tasks:projectOrItems } : projectOrItems;
-  const finishLinks = projectScheduleAnalysis(project).milestone?.predecessorIds.map(sourceId => ({
+  const analysis=schedule || projectScheduleAnalysis(project);
+  const finishLinks = analysis.milestone?.predecessorIds.map(sourceId => ({
     sourceId, targetId:PROJECT_FINISH_MILESTONE_ID, predecessorId:sourceId, type:'FS', lagDays:0,
   })) || [];
-  const links = [...effectiveDependencyLinks(project?.tasks || []), ...finishLinks]
+  const milestoneLinks=(analysis.stageMilestones||[]).filter(point=>point.ready).flatMap(point=>
+    point.predecessorIds.map(sourceId=>({sourceId,targetId:point.id,type:'FS',lagDays:0})));
+  const links = [...effectiveDependencyLinks(project?.tasks || []), ...finishLinks, ...milestoneLinks]
     .filter(link => byId.has(link.sourceId) && byId.has(link.targetId));
   if(!links.length) return;
   const layer = svgElement(documentRef, 'svg', {

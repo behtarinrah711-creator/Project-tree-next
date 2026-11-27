@@ -1,3 +1,4 @@
+import {stageMilestones} from './stageMilestones.js';
 import { gregorianToJalali, jalaliToGregorian } from '../../ui/jalali.js';
 import { isStage, isWork, canHoldWorkTasks, progressOf, progressWeightOf, scheduleEndOf, scheduleStartOf } from './normalize.js';
 import { activeWorkTasks, taskProgressOf, taskWeightOf } from './workTaskModel.js';
@@ -206,7 +207,7 @@ export function buildEffectiveNetwork(items){
       scheduled:Boolean(range), range,
     };
   });
-  return { activities, unresolved };
+  return { activities, unresolved, effectiveIdsFor:id=>effectiveIds(byId.get(String(id))) };
 }
 
 /** Resolve each persisted dependency to the visible scheduling units that own it.
@@ -342,7 +343,20 @@ export const PROJECT_FINISH_MILESTONE_ID = '__project_finish__';
 export function projectScheduleAnalysis(project){
   const network = buildEffectiveNetwork(project?.tasks || []);
   const scheduled = network.activities.filter(row => row.scheduled);
-  if(!scheduled.length) return { ok:true, rows:new Map(), network, projectFinish:null, calculatedFinish:null, milestone:null };
+  const stagePoints=(project?.tasks||[]).filter(stage=>stage && !stage.trashed && isStage(stage)).flatMap(stage=>{
+    const candidates=new Set(flattenDependencyCandidates([stage]).filter(row=>row.kind!=='stage').map(row=>row.id));
+    return stageMilestones(stage).flatMap(point=>{
+      const due=jalaliDayNumber(point.dueDate);
+      if(due===null)return [];
+      const requested=point.predecessorIds||[];
+      const predecessorIds=[...new Set(requested.filter(id=>candidates.has(String(id))).flatMap(network.effectiveIdsFor))];
+      const ready=requested.length>0 && requested.every(id=>candidates.has(String(id)))
+        && predecessorIds.length>0 && predecessorIds.every(id=>scheduled.some(row=>row.id===id));
+      return [{...point,stageId:stage.id,due,predecessorIds,ready}];
+    });
+  });
+  if(!scheduled.length)return {ok:true,rows:new Map(),network,projectFinish:null,calculatedFinish:null,milestone:null,
+    stageMilestones:stagePoints.map(point=>({...point,forecast:null,day:point.due}))};
   const successorCount = new Map(scheduled.map(row => [row.id, 0]));
   scheduled.forEach(row => row.predecessorIds.forEach(id => {
     if(successorCount.has(id)) successorCount.set(id, successorCount.get(id) + 1);
@@ -363,8 +377,16 @@ export function projectScheduleAnalysis(project){
     scheduled:true,
     deadline,
   };
-  const cpm = calculateCpm([...normalized, milestone]);
-  return { ...cpm, network, projectFinish:boundaryDay, calculatedFinish, milestone };
+  const constraints=stagePoints.filter(point=>point.ready).map(point=>({
+    id:point.id,predecessorIds:point.predecessorIds,duration:0,milestone:true,deadline:point.due-minStart+1,
+  }));
+  const cpm = calculateCpm([...normalized, milestone, ...constraints]);
+  const points=stagePoints.map(point=>{
+    const result=cpm.rows.get(String(point.id));
+    const forecast=point.ready && result ? minStart+result.earlyStart-1 : null;
+    return {...point,forecast,day:forecast??point.due};
+  });
+  return {...cpm,network,projectFinish:boundaryDay,calculatedFinish,milestone,stageMilestones:points};
 }
 
 function dependencyOffset(link,sourceDuration,targetDuration){

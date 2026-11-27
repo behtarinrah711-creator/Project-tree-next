@@ -1,3 +1,5 @@
+import { openStageMilestoneSheet, stageMilestoneDiamond } from './stageMilestoneSheet.js';
+import { stageMilestones } from '../../domain/wbs/stageMilestones.js';
 import { captureGanttScroll, restoreGanttScroll } from './timelineStickyHeader.js';
 import {createExportButton} from './viewHeader.js';
 import {openProjectTreeExport} from './projectTreeExportView.js';
@@ -48,7 +50,7 @@ import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { stopIntervalForItem } from '../../domain/wbs/fundingReceipts.js';
 import { activeWbsScope, WBS_VIEW_SCOPES } from './viewScopes.js';
 import { openCreateWorkTaskSheet, renderWorkTasks, treeWorkTypeChip } from './workTaskView.js';
-import { PROJECT_FINISH_MILESTONE_ID, interruptionScheduleLookup, plannedPauseSegments, projectScheduleAnalysis, projectWithPlannedSchedule, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
+import { PROJECT_FINISH_MILESTONE_ID, interruptionScheduleLookup, plannedPauseSegments, projectScheduleAnalysis, projectWithPlannedSchedule, scheduleDate, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
 import { canDeletePlanning, canViewPlanning, canWritePlanning, planningAccessLevel } from '../roleManagement/planningAccess.js';
 import {
   advanceExpansionLevel,
@@ -424,8 +426,20 @@ function renderTimeline(project,items,branchKeys){
   const rows = buildTimelineRows(items,project.id,{branchKeys});
   const lookup=interruptionScheduleLookup(project.tasks);
   for(const entry of rows)entry.segments=plannedPauseSegments(entry.item,entry.range,lookup);
-  const analysis = branchKeys ? null : projectScheduleAnalysis(project);
-  if(Number.isFinite(analysis?.projectFinish)) rows.push({
+  const analysis = projectScheduleAnalysis(project);
+  const stageIds=new Set(items.map(item=>String(item.id)));
+  for(const point of analysis.stageMilestones){
+    if(!stageIds.has(String(point.stageId)) || branchKeys &&
+      ![...branchKeys].some(key=>key==='branch:'+point.stageId ||
+        point.predecessorIds.some(id=>key==='branch:'+id || key.startsWith('task:') && key.endsWith(':'+id))))continue;
+    const date=scheduleDate(point.day);
+    rows.push({
+      item:{...point,kind:'milestone',text:point.title},
+      kind:'milestone',depth:1,sourceDepth:1,shadeLevel:0,
+      range:{start:point.day,end:point.day,startDate:date,endDate:date},
+    });
+  }
+  if(!branchKeys && Number.isFinite(analysis.projectFinish)) rows.push({
     item:{ id:PROJECT_FINISH_MILESTONE_ID, kind:'milestone', text:'پایان پروژه', systemMilestone:true },
     kind:'milestone', depth:0, sourceDepth:0, shadeLevel:0,
     range:{ start:analysis.projectFinish, end:analysis.projectFinish },
@@ -438,7 +452,7 @@ function renderTimeline(project,items,branchKeys){
   const width = days * dayWidth;
   const shell = document.createElement('section');
   shell.className = 'wbs-gantt';
-  timelineByElement.set(shell,{project,entries:rows});
+  timelineByElement.set(shell,{project,entries:rows,analysis});
   const names = document.createElement('div');
   names.className = 'wbs-gantt-names';
   names.innerHTML = '<div class="wbs-gantt-corner">کارها</div>';
@@ -500,6 +514,13 @@ function tBarRow(entry, min, dayWidth){
         bar.style.backgroundImage = `linear-gradient(90deg, ${timelineColor(entry.item)} ${from}%, rgba(255,255,255,.72) ${from}%, rgba(255,255,255,.72) ${to}%, ${timelineColor(entry.item)} ${to}%)`;
         bar.title = `توقف مالی ${stop.duration} روز`;
       } else bar.title = `${entry.range.startDate || ''} تا ${entry.range.endDate || ''}`;
+      if(entry.item.kind==='milestone' && !entry.item.systemMilestone){
+        const point=entry.item;
+        bar.title=point.title+' · موعد '+point.dueDate+(point.forecast===null?'':' · پیش‌بینی '+scheduleDate(point.forecast));
+        bar.setAttribute('aria-label',bar.title);
+        bar.addEventListener('click',()=>openStageMilestoneSheet({projectId:projectIdOf(),stageId:point.stageId,
+          milestoneId:point.id,onChanged:render,readOnly:!canWritePlanning(activePlanningLevel)}));
+      }
       if(entry.item.kind !== 'milestone') bar.addEventListener('click', () => task
         ? openCreateWorkTaskSheet({ projectId:projectIdOf(), work:entry.item.parentWork, task:entry.item, onChanged:render, readOnly:!canWritePlanning(activePlanningLevel) || entry.item.completionState === 'approved' || entry.item.completed, canDelete:canDeletePlanning(activePlanningLevel) })
         : openItemDetails(entry.item));
@@ -640,6 +661,19 @@ function renderRow(item, codes, view, depth, treeLayout){
     <span class="wbs-meta${view === 'estimate' ? ' is-estimate' : ''}${view === 'progress' ? ' is-progress' : ''}">${escapeHtml(meta.join(' · '))}</span>
     ${!readOnlyView && mayAdd ? `<button type="button" class="wbs-add" aria-label="${mayAddSubwork ? 'افزودن زیرکار' : stage ? 'افزودن' : 'ساخت کار'}">+</button>` : ''}
   `;
+  if(depth===0 && stage && view!=='estimate'){
+    const points=stageMilestones(item);
+    if(points.length){
+      const diamonds=document.createElement('span');
+      diamonds.className='wbs-stage-milestone-diamonds';
+      for(const point of points){
+        diamonds.append(stageMilestoneDiamond(item,point,(owner,milestone)=>openStageMilestoneSheet({
+          projectId:projectIdOf(),stageId:owner.id,milestoneId:milestone.id,onChanged:render,readOnly:readOnlyView,
+        })));
+      }
+      row.querySelector('.wbs-title').after(diamonds);
+    }
+  }
   row.querySelector('.wbs-chev')?.addEventListener('click', ev => {
     ev.stopPropagation();
     toggleExpanded(projectIdOf(), String(item.id));
