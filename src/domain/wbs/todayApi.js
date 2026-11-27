@@ -97,9 +97,17 @@ export const todayApi = {
         const needsStart=type==='SS' && previous.resumeLagDays>=0;
         const complete=predecessor?.completed || predecessor?.done || predecessor?.completionState==='approved';
         const started=predecessor?.actualStart || Number(predecessor?.progress)>0 || complete;
-        if(!predecessor || earliest===null || jalaliDayNumber(day)<earliest ||
-          (needsCompletion&&!complete) || (needsStart&&!started))
-          return {ok:false,code:'resume_predecessor_pending'};
+        const reason=!predecessor?'missing'
+          :earliest===null?'date_missing'
+          :jalaliDayNumber(day)<earliest?'date_pending'
+          :needsCompletion&&!complete?'completion_pending'
+          :needsStart&&!started?'start_pending':'';
+        if(reason)return {ok:false,code:'resume_predecessor_pending',reason,
+          resumeOn:earliest===null?'':scheduleDate(earliest)};
+      }
+      if(previous.type==='planned_pause' && previous.resumeRequiresConfirmation &&
+        !previous.resumePredecessorId && previous.resumeOn>day){
+        return {ok:false,code:'resume_predecessor_pending',reason:'date_pending',resumeOn:previous.resumeOn};
       }
       return mutate(projectId,ref,current=>({...current,returnedToTodayOn:day,updatedAt:at,
         executionHistory:current.executionHistory.map(entry=>entry.id===previous.id?{...entry,resumedOn:day,resumedBy:by}:entry)}));
@@ -141,7 +149,9 @@ export const todayApi = {
     }
     if(resumeMode==='auto' && !resumePredecessorId)return {ok:false,code:'invalid_resume_predecessor'};
     if(resumeMode==='auto' && !lookup(resumePredecessorId))return {ok:false,code:'unscheduled_resume_predecessor'};
-    if(planned && draft.multiday && (range || draft.resumeDurationDays!=null || resumeMode==='auto')){
+    const stopDay=jalaliDayNumber(start);
+    const historicalStop=previous && resumeMode==='manual' && (!range || stopDay<range.start || stopDay>range.end);
+    if(planned && draft.multiday && !historicalStop && (range || draft.resumeDurationDays!=null || resumeMode==='auto')){
       const preview=previewPlannedPause(entity,range,{
         id:previous?.id,type:'planned_pause',multiday:true,day:start,resumeOn,
         resumeMode,resumePredecessorId,resumeLagDays,resumeRelationType,resumeDurationDays,
@@ -171,9 +181,9 @@ export const todayApi = {
     const contacts=(projectRepository.find(projectId)?.contacts||[]).filter(person=>person && !person.trashed);
     const contactIds=[...new Set(draft.contactIds||[])];
     if(draft.isDailyReport && contactIds.some(id=>!contacts.some(person=>String(person.id)===id)))return {ok:false,code:'contact_required'};
-    if(draft.isDailyReport && (!Object.hasOwn(INACTIVE_REASONS,draft.reasonId) || INACTIVE_REASONS[draft.reasonId]!==reason))
+    if(draft.isDailyReport && !(previous?.reason===reason && previous.reasonId===draft.reasonId) && (!Object.hasOwn(INACTIVE_REASONS,draft.reasonId) || INACTIVE_REASONS[draft.reasonId]!==reason))
       return {ok:false,code:'reason_required'};
-    if(draft.isDailyReport && (!planned || !range) && (executionInterruption(entity,day) || interruptionReportOf(entity,start)
+    if(!previous && draft.isDailyReport && (!planned || !range) && (executionInterruption(entity,day) || interruptionReportOf(entity,start)
       || entries.some(entry=>entry.isDailyReport && !entry.resumedOn && entry.day>=start && (!planned || entry.day<resumeOn))))
       return {ok:false,code:'interruption_exists'};
     const attributedContacts=planned?[]:contactIds.map(id=>{
@@ -185,7 +195,12 @@ export const todayApi = {
       role:planned?'':draft.role,contactId:planned?'':String(contact?.id||''),
       contactName:planned?'':String(contact?.name||contact?.title||''),
       durationHours:draft.durationHours ?? null,photos:draft.photos||[],baselineResume:previous?.baselineResume||resumeOn,baselineEnd:previous?.baselineEnd||entity.scheduleEnd||''};
-    const entry=previous?{...previous,...details,updatedAt:at,updatedBy:by}:event(planned?'planned_pause':'execution_obstacle',by,at,details);
+    if(historicalStop && entries.some(entry=>entry!==previous && entry?.multiday &&
+      ['planned_pause','execution_obstacle'].includes(entry.type) && entry.day<resumeOn &&
+      (!(entry.resumedOn || entry.resumeOn) || (entry.resumedOn || entry.resumeOn)>start))){
+      return {ok:false,code:'interruption_exists'};
+    }
+    const entry=previous?{...previous,...details,...(planned?{resumeRequiresConfirmation:true}:{}),updatedAt:at,updatedBy:by}:event(planned?'planned_pause':'execution_obstacle',by,at,details);
     return mutate(projectId,ref,current=>({...current,updatedAt:at,
       executionHistory:previous?(current.executionHistory||[]).map(value=>value.id===previous.id?entry:value):[...(current.executionHistory||[]),entry]}));
   },
@@ -232,7 +247,8 @@ export const todayApi = {
         return {ok:false,code:'locked'};
       }
     }
-    if(interruptionReportOf(entity,reportDay) || executionInterruption(entity||{},reportDay))return {ok:false,code:'interruption_exists'};
+    const stopReport=interruptionReportOf(entity,reportDay);
+    if((stopReport && stopReport.resumedOn!==reportDay) || executionInterruption(entity||{},reportDay))return {ok:false,code:'interruption_exists'};
     const change=dailyStatus?dailyStatusChange(entity,dailyStatus.status,dailyStatus.reasonId,text,by,at,reportDay):{ok:true};
     if(!change.ok)return change;
     const attachments = Array.isArray(files) ? { photos:[...files] } : {};
