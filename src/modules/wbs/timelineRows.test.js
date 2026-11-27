@@ -65,7 +65,7 @@ test('selected levels are globally date ordered in single- and multi-stage trees
     const tree=nested?[{id:'root',kind:'stage',subtasks:[leaf]}]:[leaf];
     const ids=orderMode=>buildTimelineRows(tree,'p',{expanded:()=>true,orderMode}).map(row=>row.item.id);
     const stages=nested?['root','leaf']:['leaf'];
-    assert.deepEqual(ids('wbs'),[...stages,'later','work','subwork','undated']);
+    assert.deepEqual(ids('wbs'),[...stages,'later','subwork','undated']);
     const dateIds=ids('date');
     assert.ok(dateIds.indexOf('subwork')<dateIds.indexOf('later'));
     assert.equal(dateIds.at(-1),'undated');
@@ -87,8 +87,8 @@ test('WBS filters reach selected descendants even if unrelated ancestors are col
   const options={orderMode:'wbs',visible:()=>true,expanded:id=>id!=='parent'};
   const ids=branchKeys=>buildTimelineRows(tree,'p',{...options,branchKeys}).map(row=>row.item.id);
   assert.deepEqual(ids(new Set(['branch:selected','task:selected:task','task:selected:child','task:selected:other-task'])),
-    ['selected','task','child','other-task']);
-  assert.deepEqual(ids(new Set(['task:selected:task','task:selected:child'])),['task','child']);
+    ['selected','child','other-task']);
+  assert.deepEqual(ids(new Set(['task:selected:task','task:selected:child'])),['child']);
   assert.deepEqual(ids(),['parent']);
 });
 
@@ -110,4 +110,20 @@ test('Gantt uses the same automatic dates as the form even with stale saved date
   assert.equal(row.item.actualStart,'1405/09/13');
   assert.equal(row.item.updatedAt,100);
   assert.equal(flashing.scheduleStart,'1405/09/13');
+});
+
+
+test('only work with active subwork is replaced by its subwork rows',()=>{
+  const tree=[
+    {id:'direct',kind:'work',workTasks:[{...task('direct-child'),isSubwork:true}]},
+    {id:'plain',kind:'work',workTasks:[{...task('removed-direct'),isSubwork:true,trashed:true}]},
+    {id:'stage',kind:'stage',workTasks:[
+      task('parent'),{...task('nested-child'),isSubwork:true,parentTaskId:'parent'},
+      task('ordinary'),{...task('removed-nested'),isSubwork:true,parentTaskId:'ordinary',trashed:true},
+    ]},
+  ];
+  const rows=buildTimelineRows(tree,'p',{orderMode:'wbs',expanded:id=>id==='stage'});
+  assert.deepEqual(rows.map(row=>row.item.id),['direct-child','plain','stage','nested-child','ordinary']);
+  assert.equal(rows[0].depth,0);
+  assert.equal(rows[3].depth,1);
 });
