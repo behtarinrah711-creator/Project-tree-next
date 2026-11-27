@@ -20,7 +20,7 @@ test('the report clips work and funding to the date range and includes selected 
     fundingReceipts:[{id:'r1',amount:400,depositDate:'1405/01/01'}],
     fundingAllocations:[{taskId:'w1',day:start,amount:200}],
   };
-  const options={rangeId:'month2',originWeekday:4,start,end:start+1,details:true,receipts:true};
+  const options={rangeId:'month2',originWeekday:4,start,end:start+1,showAllocation:true,details:true,receipts:true};
   const report=costlineDocument(project,options);
   assert.match(costlineDocument(project,{...options,start:start-2,end:start-2}),/<td>۲۵۰<\/td><td>۲۰۰<\/td><td>۵۰<\/td>/);
   assert.doesNotMatch(report,/<svg/);
@@ -64,7 +64,7 @@ test('export intersects a WBS branch with individual funding route shares',()=>{
   ],fundingReceipts:[{id:'r1',amount:200,depositDate:day}],
     fundingAllocations:[{taskId:'work',day:jalaliDayNumber(day),amount:200}]};
   const options={rangeId:'month',start:jalaliDayNumber(day),end:jalaliDayNumber(day),
-    details:true,receipts:true,branchId:'branch:suite'};
+    showAllocation:true,details:true,receipts:true,branchId:'branch:suite'};
   const owner=costlineDocument(project,{...options,route:'owner'});
   const petty=costlineDocument(project,{...options,route:'petty'});
   assert.match(owner,/سوئیت نگهبانی · کارفرما/);
@@ -76,8 +76,29 @@ test('export intersects a WBS branch with individual funding route shares',()=>{
   }
   const combined=costlineDocument(project,options);
   assert.match(combined,/<td>کارفرما ۳۰۰ · تنخواه ۷۰۰<\/td>/);
-  assert.match(combined,/<td>۱٬۰۰۰<\/td><td>۲۰۰<\/td><td>۸۰۰<\/td><td>۲۴۰<\/td><td>۵۶۰<\/td>/);
+  assert.match(combined,/<td>۱٬۰۰۰<\/td><td>۲۰۰<\/td><td>۸۰۰<\/td><td>۳۰۰<\/td><td>۷۰۰<\/td><td>۲۴۰<\/td><td>۵۶۰<\/td>/);
   assert.match(combined,/کسری به تفکیک مسیر \(تومان\)<\/th><td colspan="4">کارفرما ۲۴۰ · تنخواه ۵۶۰/);
   assert.match(owner,/کارفرما ۲۴۰ · تنخواه ۰/);
   assert.match(costlineDocument(project,{...options,branchId:''}),/کار شاخهٔ دیگر/);
+});
+
+test('allocation columns are opt-in while funding shares remain visible and add up across periods',()=>{
+  const start=jalaliDayNumber('1405/01/03');
+  const project={name:'آزمایش',tasks:[
+    {id:'suite',kind:'stage',text:'سوئیت',subtasks:[{
+      id:'work',kind:'work',text:'کار',quantity:1,unitCost:1000,
+      scheduleStart:'1405/01/03',scheduleEnd:'1405/01/04',costFundingRoute:'petty',
+      costPaymentPlan:[{date:'1405/01/03',amount:300,route:'owner',method:'check'}],
+    }]},
+  ]};
+  const options={rangeId:'day',start,end:start+1,details:true};
+  const report=costlineDocument(project,options);
+  assert.doesNotMatch(report,/تخصیص‌یافته|کسری|تخصیص تجمعی/);
+  assert.equal([...report.matchAll(/سهم کارفرما.*?سهم تنخواه/g)].length,2);
+  assert.match(report,/<td>سوئیت<\/td><td>۱٬۰۰۰<\/td><td>۳۰۰<\/td><td>۷۰۰<\/td>/);
+  assert.equal([...report.matchAll(/جمع کل بازه<\/th><td>۱٬۰۰۰<\/td><td>۳۰۰<\/td><td>۷۰۰<\/td>/g)].length,2);
+  const withAllocation=costlineDocument(project,{...options,showAllocation:true});
+  assert.equal([...withAllocation.matchAll(/scope="col">تخصیص‌یافته/g)].length,6);
+  assert.equal([...withAllocation.matchAll(/scope="col">تخصیص تجمعی/g)].length,1);
+  assert.match(withAllocation,/<td>سوئیت<\/td><td>۱٬۰۰۰<\/td><td>۰<\/td><td>۱٬۰۰۰<\/td><td>۳۰۰<\/td><td>۷۰۰<\/td>/);
 });
