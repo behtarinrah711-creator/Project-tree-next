@@ -1,7 +1,7 @@
 import {findInTree} from '../../domain/wbs/normalize.js';
 import {openCreateWorkTaskSheet} from './workTaskView.js';
 import { openCostlineExport } from './costlineExportView.js';
-import { jalaliDayNumber, jalaliFromDay, COSTLINE_RANGES, WEEKDAYS, plannedCostline, scheduledPayments, sliceShare, collectPlannedWorks } from '../../domain/wbs/costline.js';
+import { jalaliDayNumber, jalaliFromDay, COSTLINE_RANGES, WEEKDAYS, plannedCostline, scheduledPayments, sliceShare, collectPlannedWorks, FUNDING_ROUTES, PAYMENT_METHODS, FUNDING_ACCRUAL } from '../../domain/wbs/costline.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
@@ -47,11 +47,17 @@ export function renderCostline(project, access = {}){
   if(!nodes.has(filters.branch))filters.branch = '';
   const chartFrame = document.createElement('section');
   chartFrame.className = 'wbs-costline-frame wbs-view-frame is-costline-frame';
-  const refresh = () => root.replaceWith(renderCostline(projectRepository.getActiveProject(project.id) || project, permissions));
+  const refresh = () => {
+    const scroll = root.querySelector('.wbs-costline-results')?.scrollLeft || 0;
+    const next = renderCostline(projectRepository.getActiveProject(project.id) || project, permissions);
+    root.replaceWith(next);
+    const results = next.querySelector('.wbs-costline-results');
+    if(results)results.scrollLeft=scroll;
+  };
   const toolbar = renderToolbar(refresh);
   const exportButton = toolbar.querySelector('.wbs-export-tool');
   exportButton.onclick = () => openCostlineExport(projectRepository.getActiveProject(project.id) || project, {
-    rangeId:range.id, originWeekday, trigger:exportButton,
+    rangeId:range.id, originWeekday, trigger:exportButton, branch:filters.branch,
   });
   const results = document.createElement('div');
   let chart;
@@ -218,8 +224,8 @@ function openCostPaymentPlan(project, work, refresh){
           remove.textContent = 'حذف این پرداخت';
           remove.onclick = () => { captureDates(); rows.splice(index,1); paint(); };
           group.append(fieldRow('موعد پرداخت',date),fieldRow('مبلغ',amount),
-            fieldRow('مسیر تأمین',choice('route',[['','مشخص نشده'],['owner','مستقیم کارفرما'],['petty','شارژ تنخواه']])),
-            fieldRow('روش پرداخت',choice('method',[['','مشخص نشده'],['transfer','واریز'],['cash','نقدی'],['check','چک']])),remove);
+            fieldRow('مسیر تأمین',choice('route',FUNDING_ROUTES)),
+            fieldRow('روش پرداخت',choice('method',PAYMENT_METHODS)),remove);
           container.append(group);
         });
       };
@@ -259,6 +265,75 @@ function openCostPaymentPlan(project, work, refresh){
   });
 }
 
+function estimateSelect(options,value,label,canWrite,onChange){
+  const select=document.createElement('select');
+  select.className='wbs-input';
+  select.setAttribute('aria-label',label);
+  for(const [key,text] of options)select.add(new Option(text,key));
+  select.value=options.some(([key])=>key===value)?value:'';
+  select.disabled=!canWrite;
+  select.onchange=()=>{const next=select.value;select.value=value || '';onChange(next);};
+  return select;
+}
+
+function savePaymentClassification(project,work,index,field,value,refresh){
+  let saved=false;
+  const patch=task=>{
+    if(index==null){
+      const key=field==='route'?'costFundingRoute':'costPaymentMethod';
+      return {...task,[key]:value,updatedAt:Date.now()};
+    }
+    const live=task.costPaymentPlan?.[index];
+    const previous=work.paymentPlan?.[index];
+    if(!live || !previous || live.date!==previous.date || live.amount!==previous.amount || live[field]!==previous[field])return task;
+    const costPaymentPlan=task.costPaymentPlan.map((payment,i)=>i===index?{...payment,[field]:value}:payment);
+    return {...task,costPaymentPlan,updatedAt:Date.now()};
+  };
+  projectRepository.updateProject(project.id,current=>{
+    function update(nodes){
+      return (nodes||[]).map(node=>{
+        if(!node || node.trashed)return node;
+        if(String(node.id)!==String(work.itemId)){
+          return Array.isArray(node.subtasks)?{...node,subtasks:update(node.subtasks)}:node;
+        }
+        const apply=task=>{
+          if(!task || task.trashed || String(task.id)!==String(work.id))return task;
+          const next=patch(task);
+          saved=next!==task;
+          return next;
+        };
+        const next=apply(node);
+        return Array.isArray(next.workTasks)?{...next,workTasks:next.workTasks.map(apply)}:next;
+      });
+    }
+    const tasks=update(current.tasks);
+    return saved?{...current,tasks}:current;
+  });
+  if(saved){markDirty(project.id);persist({local:false});}
+  else window.KarhaUI?.showToast?.('برنامهٔ پرداخت تغییر کرده است. مقدار را دوباره انتخاب کنید.');
+  refresh();
+}
+
+function addEstimatePaymentCells(row,project,work,bucket,access,refresh){
+  const payments=scheduledPayments(work,{withIndex:true}).filter(payment=>payment.day>=bucket.startDay && payment.day<=bucket.endDay);
+  const remainder=work.sliceAmount-payments.reduce((sum,payment)=>sum+payment.amount,0);
+  if(remainder>0)payments.push({amount:remainder,route:work.fundingRoute,method:work.paymentMethod});
+  for(const [field,options,label] of [['route',FUNDING_ROUTES,'مسیر تأمین'],['method',PAYMENT_METHODS,'روش پرداخت']]){
+    const cell=row.insertCell();
+    for(const payment of payments){
+      const title=payment.index==null?'بخش زمان‌بندی‌شدهٔ کار':slashDate(jalaliFromDay(payment.day));
+      const control=estimateSelect(options,payment[field]||'',label+' '+work.text+' '+title,access.canWrite,
+        value=>savePaymentClassification(project,work,payment.index,field,value,refresh));
+      cell.append(control);
+      if(payments.length>1){
+        const note=document.createElement('small');
+        note.textContent=title+' · '+money(payment.amount);
+        cell.append(note);
+      }
+    }
+  }
+}
+
 function renderEstimateTable(project, buckets, access, refresh){
   const frame = document.createElement('section');
   frame.className = 'wbs-costline-frame wbs-costline-results';
@@ -266,7 +341,8 @@ function renderEstimateTable(project, buckets, access, refresh){
   const coverage = fundingCoverage(project);
   const table = document.createElement('table');
   const head = table.createTHead().insertRow();
-  for(const title of ['کار و مسیر','نوع کار','برآورد (تومان)','تأمین‌شده (تومان)']){
+  const headers=['کار و مسیر','نوع کار','برآورد (تومان)','تأمین‌شده (تومان)','مسیر تأمین','روش پرداخت','زمان تأمین','مبلغ تخصیص (تومان)'];
+  for(const title of headers){
     const cell = document.createElement('th');
     cell.scope = 'col';
     cell.textContent = title;
@@ -275,14 +351,14 @@ function renderEstimateTable(project, buckets, access, refresh){
   const body = table.createTBody();
   if(!visible.length){
     const empty = body.insertRow().insertCell();
-    empty.colSpan = 4;
+    empty.colSpan = headers.length;
     empty.textContent = 'کاری با این فیلترها پیدا نشد.';
   }
   for(const bucket of visible){
     const group = body.insertRow();
     group.className = 'wbs-costline-result-period';
     const heading = document.createElement('th');
-    heading.colSpan = 4;
+    heading.colSpan = headers.length;
     heading.textContent = rangeText(bucket)+' · جمع '+money(bucket.total)+' تومان';
     group.append(heading);
     const works = [...bucket.works].sort((a,b) => a.path.localeCompare(b.path,'fa'));
@@ -303,17 +379,34 @@ function renderEstimateTable(project, buckets, access, refresh){
       row.insertCell().textContent = work.type || '—';
       row.insertCell().textContent = money(work.sliceAmount);
       row.insertCell().textContent = money(Math.min(work.sliceAmount, coverage(work.id,bucket)));
+      addEstimatePaymentCells(row,project,work,bucket,access,refresh);
+      row.insertCell().append(estimateSelect(FUNDING_ACCRUAL,work.accrual,'زمان تأمین '+work.text,access.canWrite,
+        value=>changeAccrual(project,work,value,refresh)));
+      const fundingBucket=work.paymentPlan.length || work.accrual==='spread'?null:bucket;
+      const allocation=document.createElement('button');
+      allocation.type='button';
+      allocation.className='wbs-input';
+      allocation.disabled=!access.canWrite;
+      const amount=fundingBucket?allocatedForBucket(project,work.id,bucket):allocatedForTask(project,work.id);
+      allocation.textContent=amount?money(amount):'وارد کردن مبلغ';
+      allocation.setAttribute('aria-label','مبلغ تخصیص '+work.text+(fundingBucket?' در این دوره':' برای کل کار'));
+      allocation.onclick=()=>openEstimateAllocation(project,work,fundingBucket,refresh);
+      row.insertCell().append(allocation);
     }
   }
   const totals = {estimate:0,owner:0,petty:0,check:0};
   for(const bucket of visible){
     totals.estimate += bucket.total;
     for(const work of bucket.works){
+      totals.owner+=sliceShare(work,bucket,'owner');
+      totals.petty+=sliceShare(work,bucket,'petty');
+      let installments=0;
       for(const payment of scheduledPayments(work)){
         if(payment.day < bucket.startDay || payment.day > bucket.endDay)continue;
-        if(payment.route === 'owner' || payment.route === 'petty')totals[payment.route] += payment.amount;
+        installments+=payment.amount;
         if(payment.method === 'check')totals.check += payment.amount;
       }
+      if(work.paymentMethod==='check')totals.check+=work.sliceAmount-installments;
     }
   }
   const summary = document.createElement('div');
@@ -763,11 +856,7 @@ function openBucketSheet(project, initialBucket, refresh, access){
         const dateRow = costlineDetailRow('تاریخ', `${slashDate(work.start)} تا ${slashDate(work.end)}`);
         const totalRow = costlineDetailRow('برآورد کل', `${money(work.amount)} تومان`);
         const needRow = costlineDetailRow(sliceNeedLabel(), `${money(slice)} تومان`);
-        const accrualOptions = [
-          { id:'spread', name:'پخش روی مدت' },
-          { id:'start', name:'ابتدای کار' },
-          { id:'end', name:'انتهای کار' },
-        ];
+        const accrualOptions = FUNDING_ACCRUAL.map(([id,name])=>({id,name}));
         const modeRow = document.createElement('div');
         modeRow.className = 'wbs-costline-control-row';
         const modeLabel = document.createElement('span');
@@ -789,13 +878,7 @@ function openBucketSheet(project, initialBucket, refresh, access){
           item.textContent = option.name;
           item.addEventListener('click', () => {
             modeMenu.hidden = true;
-            if(option.id === mode.dataset.value) return;
-            const live = projectRepository.getActiveProject(project.id) || project;
-            const funded = allocatedForTask(live, work.id);
-            const apply = () => {
-              projectRepository.updateProject(project.id, row => setAccrual(row, work.id, option.id));
-              markDirty(project.id);
-              persist({ local:false });
+            changeAccrual(project,work,option.id,()=>{
               const updated = projectRepository.getActiveProject(project.id) || project;
               const range = COSTLINE_RANGES[rangeIndex] || COSTLINE_RANGES[1];
               const model = plannedCostline(updated.tasks || [], { rangeId:range.id, originWeekday });
@@ -805,13 +888,7 @@ function openBucketSheet(project, initialBucket, refresh, access){
               bucket = {...initialBucket,works,total:works.reduce((sum,item) => sum+item.sliceAmount,0)};
               refresh();
               paint();
-            };
-            if(funded > 0 && typeof window.KarhaUI?.openConfirm === 'function'){
-              const [message, label] = accrualChangeCopy(mode.dataset.value, option.id, funded, work);
-              window.KarhaUI.openConfirm(message, apply, label);
-              return;
-            }
-            apply();
+            });
           });
           modeMenu.appendChild(item);
         });
@@ -860,28 +937,7 @@ function openBucketSheet(project, initialBucket, refresh, access){
         manual.className = 'wbs-costline-manual';
         manual.disabled = !access.canWrite;
         manual.textContent = editableAmount > 0 ? `${money(editableAmount)} تومان` : 'وارد کردن مبلغ';
-        manual.addEventListener('click', () => {
-          const live = projectRepository.getActiveProject(project.id) || project;
-          const visibleAmount = spread ? allocatedForTask(live, work.id) : allocatedForBucket(live, work.id, bucket);
-          openNumpadGeneric(visibleAmount || '', value => {
-            const next = Number(value) || 0;
-            const latest = projectRepository.getActiveProject(project.id) || project;
-            const allowed = bucketFundingLimit(latest, work, fundingBucket);
-            if(next > allowed){
-              window.KarhaUI?.showToast?.(`مبلغ نمی‌تواند بیشتر از ${money(allowed)} تومان باشد`);
-              return false;
-            }
-            if(!saveBucketFunding(project.id, work.id, fundingBucket, next)) return false;
-            refresh();
-            paint();
-            return true;
-          }, { suffix:' تومان', validate:value => {
-            const latest = projectRepository.getActiveProject(project.id) || project;
-            const allowed = bucketFundingLimit(latest, work, fundingBucket);
-            const next = Number(value || 0);
-            return next <= allowed ? '' : `حداکثر مبلغ مجاز ${money(allowed)} تومان است`;
-          }});
-        });
+        manual.addEventListener('click',()=>openEstimateAllocation(project,work,fundingBucket,()=>{refresh();paint();}));
         const allocationRow = document.createElement('div');
         allocationRow.className = 'wbs-costline-allocation-row';
         allocationRow.append(assignLabel, manual);
@@ -924,6 +980,42 @@ function accrualChangeCopy(from, to, amount, work){
   return copy[`${from}->${to}`] || [`زمان تأمین عوض می‌شود. ${share}`, 'تأیید'];
 }
 
+function openEstimateAllocation(project,work,bucket,refresh){
+  const live=()=>projectRepository.getActiveProject(project.id) || project;
+  const limit=()=>bucketFundingLimit(live(),work,bucket);
+  const visible=bucket?allocatedForBucket(live(),work.id,bucket):allocatedForTask(live(),work.id);
+  openNumpadGeneric(visible || '',value=>{
+    const next=Number(value)||0;
+    const allowed=limit();
+    if(next>allowed){
+      window.KarhaUI?.showToast?.('حداکثر مبلغ مجاز '+money(allowed)+' تومان است');
+      return false;
+    }
+    if(!saveBucketFunding(project.id,work.id,bucket,next))return false;
+    refresh();
+    return true;
+  },{suffix:' تومان',validate:value=>{
+    const allowed=limit();
+    return Number(value||0)<=allowed?'':'حداکثر مبلغ مجاز '+money(allowed)+' تومان است';
+  }});
+}
+
+function changeAccrual(project,work,value,onChanged){
+  if(value===work.accrual)return;
+  const live=projectRepository.getActiveProject(project.id) || project;
+  const funded=allocatedForTask(live,work.id);
+  const apply=()=>{
+    projectRepository.updateProject(project.id,row=>setAccrual(row,work.id,value));
+    markDirty(project.id);
+    persist({local:false});
+    onChanged();
+  };
+  if(funded && typeof window.KarhaUI?.openConfirm==='function'){
+    const [message,label]=accrualChangeCopy(work.accrual,value,funded,work);
+    window.KarhaUI.openConfirm(message,apply,label);
+  }else apply();
+}
+
 function saveBucketFunding(projectId, taskId, bucket, amount){
   const result = { ok:true };
   projectRepository.updateProject(projectId, row => {
@@ -947,8 +1039,8 @@ function saveBucketFunding(projectId, taskId, bucket, amount){
 function setAccrual(project, taskId, accrual){
   const walk = nodes => (nodes || []).map(node => {
     if(!node) return node;
-    const workTasks = (node.workTasks || []).map(task => String(task.id) === String(taskId) ? { ...task, fundingAccrual: accrual } : task);
-    const self = String(node.id) === String(taskId) ? { ...node, fundingAccrual: accrual } : node;
+    const workTasks = (node.workTasks || []).map(task => String(task.id) === String(taskId) ? { ...task, fundingAccrual: accrual, updatedAt:Date.now() } : task);
+    const self = String(node.id) === String(taskId) ? { ...node, fundingAccrual: accrual, updatedAt:Date.now() } : node;
     return { ...self, workTasks, subtasks: walk(node.subtasks) };
   });
   return placeCardFunding({ ...project, tasks: walk(project.tasks) }, taskId);
