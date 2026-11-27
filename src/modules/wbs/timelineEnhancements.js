@@ -1,4 +1,4 @@
-import { buildTimelineRows } from './timelineRows.js';
+import { timelineRowsByElement } from './timelineRows.js';
 import { projectContext } from '../../core/projectContext.js';
 import { projectRepository } from '../../data/projectRepository.js';
 import { isStage, isWork, progressOf, scheduleEndOf, scheduleStartOf } from '../../domain/wbs/normalize.js';
@@ -9,7 +9,7 @@ import { applyTimelineDependencies } from './timelineDependencies.js';
 import { applyTimelineStickyHeader } from './timelineStickyHeader.js';
 import { ensureViewToolbar } from './viewToolbar.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
-import { PROJECT_FINISH_MILESTONE_ID, actualProgress, baselineFinishDay, plannedProgressOf, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
+import { actualProgress, baselineFinishDay, plannedProgressOf, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
 import { ganttConfig } from './timelineViewOptions.js';
 import { applyTimelineCpm } from './timelineCpm.js';
 
@@ -404,13 +404,8 @@ function enhance(windowRef, documentRef){
   gantt.classList.toggle('hide-gantt-baseline', !config.baseline);
   const project = activeProject();
   if(!project) return;
-  const entries = buildTimelineRows(project.tasks || [], project.id);
-  const schedule = projectScheduleAnalysis(project);
-  if(Number.isFinite(schedule.projectFinish)) entries.push({
-    item:{ id:PROJECT_FINISH_MILESTONE_ID, kind:'milestone', text:'پایان پروژه', systemMilestone:true },
-    kind:'milestone', depth:0, sourceDepth:0, shadeLevel:0,
-    range:{ start:schedule.projectFinish, end:schedule.projectFinish },
-  });
+  const entries = timelineRowsByElement.get(gantt);
+  if(!entries) return;
 
   paintCorner(gantt, project, windowRef, documentRef);
   const root = gantt.closest('.wbs-home-root');

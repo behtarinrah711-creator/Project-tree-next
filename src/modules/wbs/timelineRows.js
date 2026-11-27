@@ -4,6 +4,8 @@ import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { isExpanded } from './wbsExpandState.js';
 import { ganttOrderMode, isGanttLevelVisible } from './timelineViewOptions.js';
 
+export const timelineRowsByElement = new WeakMap();
+
 function compareTimelineDates(a, b){
   const aStart = a.range?.start;
   const bStart = b.range?.start;
@@ -27,6 +29,7 @@ export function sortTimelineRows(rows, orderMode = 'date'){
 // Legacy work nodes remain grouping stages without rewriting stored data.
 export function buildTimelineRows(items, projectId, {
   visible = isGanttLevelVisible,
+  branchKeys,
   expanded = itemId => isExpanded(projectId, itemId),
   orderMode = ganttOrderMode(),
 } = {}){
@@ -40,7 +43,7 @@ export function buildTimelineRows(items, projectId, {
   const visit = (nodes, depth = 0, visibleDepth = 0, rootId = null) => (nodes || []).filter(node => node && !node.trashed).forEach(item => {
     const branchRootId = rootId || item.id;
     const kind = isStage(item) ? 'stage' : 'work';
-    const shown = visible({item, kind, depth});
+    const shown = (!branchKeys || branchKeys.has('branch:'+item.id)) && visible({item, kind, depth});
     if(shown) rows.push({item, kind, grouping:true, depth:visibleDepth, sourceDepth:depth,
       range:scheduleRangeOf(item), shadeLevel:Math.max(1, maxDepth - depth + 1), rootId:branchRootId});
     const childDepth = visibleDepth + (shown ? 1 : 0);
@@ -50,7 +53,8 @@ export function buildTimelineRows(items, projectId, {
     const addTask=(task,sourceDepth,rowDepth)=>{
       const children=tasks.filter(child=>child.parentTaskId===task.id);
       const taskItem={...task,kind:'workTask',text:task.title,parentWork:item,...(children.length?{subworkChildren:children}:{})};
-      const taskShown=visible({item:taskItem,kind:'workTask',depth:sourceDepth});
+      const taskShown=(!branchKeys || branchKeys.has('task:'+item.id+':'+task.id))
+        && visible({item:taskItem,kind:'workTask',depth:sourceDepth});
       if(taskShown)rows.push({item:taskItem,kind:'workTask',...(children.length?{grouping:true}:{}),
         depth:rowDepth,sourceDepth,range:scheduleRangeOf(taskItem),shadeLevel:0,rootId:branchRootId});
       if(!taskShown || expanded(task.id)){
