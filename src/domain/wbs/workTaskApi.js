@@ -1,3 +1,4 @@
+import { workFormHistoryEntry } from './workFormHistory.js';
 import {hasWorkTaskContract} from '../deleteGuard.js';
 import {currentExecutionActor} from '../../modules/wbs/executionActor.js';
 import {canWriteProjectModule,projectPermissionState} from '../../modules/roleManagement/permissionState.js';
@@ -188,7 +189,7 @@ export const workTaskApi = {
     syncWorkCompletion(projectId, workId); publish(projectId);
     return { ok:true, task:saved };
   },
-  update(projectId, workId, taskId, patch, clock = Date.now){
+  update(projectId, workId, taskId, patch, clock = Date.now, {fromForm=false}={}){
     const current = workTaskRepository.get(projectId, workId, taskId);
     if(!current) return { ok:false, code:'not_found' };
     if(current.completionState==='pending_approval' && Array.isArray(patch.executionApproverContactIds)
@@ -210,11 +211,16 @@ export const workTaskApi = {
     const checked = validate(projectId, workId, next);
     if(!checked.ok) return checked;
     const beforeKey = cardFundingKey(projectRepository.find(projectId), taskId);
+    const at=clock();
+    const project=projectRepository.find(projectId);
+    const event=fromForm && workFormHistoryEntry(project,current,checked.value,
+      typeof window==='undefined'?null:currentExecutionActor(project),at);
     const saved = workTaskRepository.update(projectId, workId, taskId, {
       ...checked.value,
       id:current.id, workId, completed:Boolean(next.completed),
       completedAt:next.completed ? (current.completedAt || clock()) : null,
-      createdAt:current.createdAt, updatedAt:clock(),
+      createdAt:current.createdAt, updatedAt:at,
+      ...(event?{formHistory:[...(current.formHistory||[]),event]}:{}),
     });
     if(!saved) return { ok:false, code:'persist' };
     syncContractFromWorkTask(projectId,workId,saved,clock);
@@ -235,13 +241,16 @@ export const workTaskApi = {
     if(!current) return { ok:false, code:'not_found' };
     if(hasWorkTaskContract(projectRepository.find(projectId),workId,taskId))return {ok:false,code:'in_use',message:'این کار قرارداد ثبت‌شده دارد و قابل حذف نیست'};
     if(activeWorkTasks(workTaskRepository.work(projectId,workId)).some(task=>task.parentTaskId===current.id))return {ok:false,code:'has_subworks'};
+    const at=clock();
+    const actor=typeof window==='undefined'?null:currentExecutionActor(projectRepository.find(projectId));
+    const deletion={id:uid(),action:'work_form_deleted',at,actor};
     const remaining = workTaskRepository.list(projectId, workId).filter(task => String(task.id) !== String(taskId));
     const saved = workTaskRepository.mutate(projectId, workId, work => ({
       ...work,
       predecessorIds:remaining.length || current.isSubwork ? work.predecessorIds : predecessorIds(current.predecessorIds),
       dependencies:remaining.length || current.isSubwork ? (work.dependencies || []) : (current.dependencies || []),
       workTasks:(work.workTasks || []).map(task => String(task?.id) === String(taskId)
-        ? { ...task, trashed:true, deletedAt:clock(), updatedAt:clock() }
+        ? { ...task, trashed:true, deletedAt:at, updatedAt:at, formHistory:[...(task.formHistory||[]),deletion] }
         : task),
       updatedAt:clock(),
     }));
