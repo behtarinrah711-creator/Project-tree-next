@@ -76,3 +76,17 @@ test('selected levels are globally date ordered in single- and multi-stage trees
     finally{setGanttLevelVisible('workTask',true);}
   }
 });
+
+test('WBS filters reach selected descendants even if unrelated ancestors are collapsed',()=>{
+  const tree=[{id:'parent',subtasks:[{id:'selected',workTasks:[
+    {id:'task',title:'Selected task'},
+    {id:'child',parentTaskId:'task',title:'Selected subtask'},
+    {id:'other-task',title:'Other task'},
+  ]},{id:'other'}]}];
+  const options={orderMode:'wbs',visible:()=>true,expanded:id=>id!=='parent'};
+  const ids=branchKeys=>buildTimelineRows(tree,'p',{...options,branchKeys}).map(row=>row.item.id);
+  assert.deepEqual(ids(new Set(['branch:selected','task:selected:task','task:selected:child','task:selected:other-task'])),
+    ['selected','task','child','other-task']);
+  assert.deepEqual(ids(new Set(['task:selected:task','task:selected:child'])),['task','child']);
+  assert.deepEqual(ids(),['parent']);
+});
