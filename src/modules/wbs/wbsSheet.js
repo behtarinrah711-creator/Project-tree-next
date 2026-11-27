@@ -141,6 +141,20 @@ export function fieldRow(label, control){
   return wrap;
 }
 
+export function workPathRow(path){
+  const row = document.createElement('div');
+  row.className = 'wbs-field';
+  const label = document.createElement('span');
+  label.className = 'wbs-field-label';
+  label.textContent = 'مسیر کار';
+  const value = document.createElement('span');
+  value.dir = 'rtl';
+  value.style.overflowWrap = 'anywhere';
+  value.textContent = path;
+  row.append(label, value);
+  return row;
+}
+
 export function textInput(value = '', attrs = {}){
   const input = document.createElement('input');
   input.type = attrs.type || 'text';

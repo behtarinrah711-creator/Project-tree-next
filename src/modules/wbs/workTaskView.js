@@ -2,6 +2,7 @@ import { projectResponsibleIds } from '../projectSettings/projectDetailsDomain.j
 import { responsibleContactPicker } from '../../ui/responsibleContactPicker.js';
 import {flattenDependencyCandidates,jalaliDayNumber,requiredScheduleStart,scheduleDate,scheduleRangeOf} from '../../domain/wbs/scheduling.js';
 import {confirmSaosaWorkspaceSave,isSaosaHost,saosaWorkspaceSaveDiagnostic} from '../../cloud/saosaWorkspaceSync.js';
+import {workPath} from '../../domain/wbs/costline.js';
 import {findInTree} from '../../domain/wbs/normalize.js';
 import {mountFileUploader} from '../files/fileUploader.js';
 import {uid} from '../../data/projectFactories.js';
@@ -19,7 +20,7 @@ import { openSearchPicker } from '../../ui/searchPickerAdapter.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
 import {selectableWbsTree,openExecutionBranchFilter} from './executionBranchFilter.js';
 import { isExpanded, toggleExpanded } from './wbsExpandState.js';
-import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
+import { closeWbsSheet, fieldRow, openWbsSheet, workPathRow } from './wbsSheet.js';
 import { openWorkCreationSheet } from './workCreationSheet.js';
 import { predecessorField } from './predecessorField.js';
 
@@ -216,6 +217,19 @@ function renderActivity(container,{activities,value,onSelect,workId,documentRef}
 }
 
 function taskForm({ projectId, work, task = null, onChanged, readOnly=false, canDelete=true, saveStandalone }){
+  const projectDefaults = projectRepository.find(projectId);
+  const parentTitles = [];
+  if(task?.parentTaskId){
+    const tasks = new Map(activeWorkTasks(work).map(item => [String(item.id), item]));
+    const visited = new Set([String(task.id)]);
+    let parent = tasks.get(String(task.parentTaskId));
+    while(parent && !visited.has(String(parent.id))){
+      visited.add(String(parent.id));
+      if(parent.title)parentTitles.unshift(parent.title);
+      parent = tasks.get(String(parent.parentTaskId || ''));
+    }
+  }
+  const path = [workPath(projectDefaults?.tasks, work.id), ...parentTitles].filter(Boolean).join(' ← ');
   const editing = Boolean(task);
   const subwork=task?.isSubwork===true;
   const documentRef = document;
@@ -229,6 +243,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
     saveLabel:'ذخیره',readOnly,
     body(root){
       root.classList.add('wbs-compact-task-form');
+      if(path)root.append(workPathRow(path));
       const section=text=>{
         const heading=documentRef.createElement('h3');
         heading.className='wbs-task-form-section';heading.textContent=text;
@@ -236,7 +251,6 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       };
       if(!subwork)section('مشخصات کار');
       const contacts = contactRepository.list(projectId).filter(contact => contact && !contact.trashed);
-      const projectDefaults=projectRepository.find(projectId);
       const defaults=role=>task?[]:projectResponsibleIds(projectDefaults,role);
       const activities=activityRepository.list(projectId).filter(activity=>activity && !activity.trashed);
       let counterpartyContactId = task?.counterpartyContactId ?? contractor?.id ?? '';
