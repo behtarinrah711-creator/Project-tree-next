@@ -19,7 +19,7 @@ import { openStaticChoicePicker } from './contractPickers.js';
 import { saveContractHandoff } from './contractHandoffApi.js';
 import { contractProjectPath, contractRowData, renderContractCardHeading } from './contractsModule.js';
 import { contractProgressSteps, documentStageSelection, mountDocumentStageFooter, renderContractWorkflowPanel, renderContractProgressCircle } from './contractProgressView.js';
-import { openContractHistory, renderContractHistory } from './contractHistoryView.js';
+import { openContractHistory, appendDocumentStageHistory, appendDocumentStageStatus } from './contractHistoryView.js';
 import { contractDisplayTitle } from './contractTitle.js';
 import { openContractExport } from './contractExportView.js';
 import { openConfirm } from '../../ui/confirm.js';
@@ -690,28 +690,16 @@ function openStatementStep(project,contract,record,onChanged,{finance=false,appr
     onClose:()=>uploaders.forEach(uploader=>uploader.destroy()),
     body(root){
       root.classList.add('contract-status-sheet','contract-history-sheet','contract-advance-stage-sheet');
-      const showHistory=options=>{
-        const details=renderContractHistory(document,record,{compact:true,...options});
-        details.open=true;
-        const children=Array.from(details.children);
-        if(children[0])children[0].hidden=true;
-        if(children.some(item=>item.className.split(' ').includes('contract-history-entry')))root.append(details);
-        return details;
-      };
-      const showStatus=(status,person)=>{
-        const card=element('div','contract-history-entry');
-        const heading=element('div','contract-history-entry-heading');
-        heading.append(element('div','contract-history-event',status));
-        if(person)heading.append(element('div','contract-history-actor',person));
-        card.append(heading);root.append(card);
-      };
+      const showHistory=options=>appendDocumentStageHistory(root,record,options);
+      const showStatus=(status,person)=>appendDocumentStageStatus(root,status,person);
       const actionButton=(label,action,variant='')=>button(label,action,'contract-review-action'+(variant?' '+variant:''));
-      if(active.id==='created')showHistory({actions:['create']});
+      if(active.id==='created' && !showHistory({actions:['create']})){
+        showStatus(advance?'درخواست پرداخت ثبت شد':'صورت‌وضعیت ایجاد شد');
+      }
       if(active.id==='completed'){
         const revisionActions=['reject','reject_finance','withdraw_submission','reopen_signed_contract'];
-        if(record.approvalHistory?.some(event=>revisionActions.includes(event.action))){
-          showHistory({actions:revisionActions});
-        }
+        const history=showHistory({actions:['complete','submit',...revisionActions]});
+        if(active.done && !history)showStatus('تکمیل صورت‌وضعیت اعلام شد');
         if(writable && record.status==='draft'){
           root.append(actionButton('ویرایش و تکمیل صورت‌وضعیت',()=>openStatementForm(project,contract,onChanged,record)));
         }
@@ -782,7 +770,7 @@ function openStatementStep(project,contract,record,onChanged,{finance=false,appr
         const attach=(root,files,readOnly)=>mountFileUploader(root,{projectId:project.id,recordId:record.id,
           category:'advance-receipts',files,readOnly,singleFile:!readOnly,onError:toast,label:'افزودن فیش پرداخت',buttonLabel:true});
         for(const payment of record.payments||[]){
-          const entry=showHistory({payment,showPaymentAmount:false}).querySelector('.contract-history-entry');
+          const entry=showHistory({payment,showPaymentAmount:false});
           const details=element('div','contract-payment-receipt-row');
           details.dir='rtl';
           const receipt=element('section');
@@ -809,6 +797,7 @@ function openStatementStep(project,contract,record,onChanged,{finance=false,appr
         }
       }
       mountDocumentStageFooter(root);
+      if(!root.children.length)showStatus('برای این مرحله رویدادی ثبت نشده است.');
     },
   });
 }

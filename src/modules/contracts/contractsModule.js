@@ -9,7 +9,7 @@ import { renderContractAddendaRow } from './contractAddendaView.js';
 import {renderContractFinanceReview} from './contractFinanceReviewView.js';
 import {openContractSignedUpload,renderContractSignedSection} from './contractSignedView.js';
 import { contractProgressSteps, documentStageSelection, mountDocumentStageFooter, renderContractWorkflowPanel, renderContractProgressCircle } from './contractProgressView.js';
-import { openContractHistory } from './contractHistoryView.js';
+import { appendDocumentStageHistory, appendDocumentStageStatus, openContractHistory } from './contractHistoryView.js';
 import { approvedContractContactIds,contractApproverIds,approvalLabels, contractApprovalState } from '../../domain/contractApproval.js';
 import { currentExecutionActor } from '../wbs/executionActor.js';
 import { fieldRow, openWbsSheet } from '../wbs/wbsSheet.js';
@@ -243,27 +243,20 @@ export function renderContractCard(p,c,{onChanged=()=>{},finance=false,approval,
         if(selected.id==='signed')return openSignedSheet(p,statusRecord,{onChanged,finance:finance||!!approval});
         openStatusSheet({title:selected.label,showSave:false,reuseHistoryOnReplace:true,historyKey:'contract-status:'+c.id,
           body(root){
-            root.classList.add('contract-status-sheet');
-            const note=text=>{const line=document.createElement('p');line.textContent=text;root.append(line);};
-            if(selected.done){
-              const events=statusRecord.approvalHistory||[];
-              const actions={created:'create',completed:'complete',approved:'approve',finance:'send_finance','finance-approved':'approve_finance'};
-              const event=events.findLast(entry=>entry.action===actions[selected.id]) || (selected.id==='created'?statusRecord.creationEvent:null);
-              const submitted=selected.id==='completed' && contractApproverIds(statusRecord).length;
-              note(({created:'قرارداد ایجاد شد',completed:submitted?'اعلام تکمیل شد و برای تأیید ارسال شد':'تکمیل قرارداد اعلام شد',approved:'تأییدها تکمیل شد',finance:'قرارداد به بخش مالی ارسال شد','finance-approved':'بخش مالی قرارداد را تأیید کرد'})[selected.id]);
-              const at=event?.at || ({created:statusRecord.createdAt,completed:statusRecord.completedAt,finance:statusRecord.sentToAccountingAt,'finance-approved':statusRecord.accountingDecision?.at})[selected.id];
-              const person=event?.actor || ({created:statusRecord.createdBy,completed:statusRecord.completedBy,finance:statusRecord.sentToAccountingBy,'finance-approved':statusRecord.accountingDecision?.actor})[selected.id];
-              if(at || person?.name)note([person?.name,at && new Date(at).toLocaleString('fa-IR',{timeZone:'Asia/Tehran'})].filter(Boolean).join(' · '));
+            root.classList.add('contract-status-sheet','contract-history-sheet','contract-advance-stage-sheet');
+            const note=(status,person)=>appendDocumentStageStatus(root,status,person);
+            const actions={created:['create'],completed:['complete','submit','reject','reject_finance'],approved:['approve','revoke','edit_review'],finance:['send_finance','withdraw_finance'],'finance-approved':['approve_finance','reject_finance','revoke_finance']};
+            const history=selected.done && appendDocumentStageHistory(root,statusRecord,{actions:actions[selected.id]||[]});
+            if(selected.done && !history){
+              note(({created:'قرارداد ایجاد شد',completed:'تکمیل قرارداد اعلام شد',approved:'تأییدها تکمیل شد',finance:'قرارداد به بخش مالی ارسال شد','finance-approved':'بخش مالی قرارداد را تأیید کرد'})[selected.id]);
             }
             if(selected.id==='approved'){
               const ids=contractApproverIds(statusRecord),done=approvedContractContactIds(statusRecord);
               for(const id of ids){
                 const person=(p.contacts||[]).find(c=>String(c.id)===id);
                 const name=person?.name || [person?.firstName,person?.lastName].filter(Boolean).join(' ') || 'مسئول تأیید';
-                note(name+' · '+(done.includes(id)?'تأیید کرد':'در انتظار تأیید'));
+                note(done.includes(id)?'تأیید کرد':'در انتظار تأیید',name);
               }
-              const history=statusRecord.approvalHistory||[];
-              for(const entry of history.slice(history.findLastIndex(e=>e.action==='submit')+1).filter(e=>e.action==='edit_review' && e.reason))note([entry.actor?.name,'دلیل ویرایش',entry.reason].filter(Boolean).join(' · '));
             }
             if(!selected.done || (selected.id==='finance' && !finance && !approval) || (selected.id==='finance-approved' && finance))statusSheetBody(root,selected);
             mountDocumentStageFooter(root);

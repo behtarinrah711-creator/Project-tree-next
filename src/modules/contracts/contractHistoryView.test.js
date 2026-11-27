@@ -77,3 +77,14 @@ test('advance stage history isolates the creation and rejection events and forma
  assert.equal(payment.children[1].children[0].children[1].textContent,'حسابدار');
  assert.equal(payment.children[1].children[1].textContent,'۱۲٬۰۰۰ تومان');
 });
+
+test('existing statements and on-account requests show their own creation history',()=>{
+ const createdAt=100,createdBy={name:'ثبت‌کننده'};
+ for(const [record,label] of [
+   [{statementType:'temporary'},'صورت‌وضعیت ایجاد شد'],
+   [{statementType:'advance',paymentPurpose:'on-account'},'درخواست علی‌الحساب ثبت شد'],
+ ]){
+   const view=renderContractHistory(documentRef,{...record,createdAt,createdBy},{compact:true,actions:['create']});
+   assert.deepEqual(view.children[1].children[0].children.slice(0,2).map(node=>node.textContent),[label,createdBy.name]);
+ }
+});

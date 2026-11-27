@@ -95,8 +95,13 @@ test('only contract writers can register documents and linked records remain vis
       contractApproverContactIds:['me','other'],approvedContactIds:['me'],submittedBy:{id:'reviewer'}};
     assert.equal(shortcut({...contract,accountingStatus:'sent'}),undefined);
     const status=readStatusSheet(openStatusSheet=>renderContractCard(project,pending,{openStatusSheet}),make);
-    assert.deepEqual(status.children.map(node=>node.textContent),
-      ['مسئول تأیید · تأیید کرد','مسئول تأیید · در انتظار تأیید','پس‌گرفتن از تأیید']);
+    const [approvedReviewer,pendingReviewer,withdraw] = status.children;
+    assert.equal(status.children.length,3);
+    for(const [card,label] of [[approvedReviewer,'تأیید کرد'],[pendingReviewer,'در انتظار تأیید']]){
+      assert.equal(card.className,'contract-history-entry');
+      assert.deepEqual(card.children[0].children.map(node=>node.textContent),[label,'مسئول تأیید']);
+    }
+    assert.equal(withdraw.textContent,'پس‌گرفتن از تأیید');
     window.KarhaSaosaWorkspaceAccess={p:{role:'member',permissions:{modules:{contracts:'view',accounting:'full'}}}};
     assert.equal(shortcut(contract),undefined);
     project.contractAddenda=[
