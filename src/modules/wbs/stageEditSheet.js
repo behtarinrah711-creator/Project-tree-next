@@ -1,5 +1,8 @@
 import { openStageMilestoneSheet, workMilestoneField } from './stageMilestoneSheet.js';
 import { stageMilestones } from '../../domain/wbs/stageMilestones.js';
+import { renderWorkFormHistory } from './workFormHistory.js';
+import { workFormHistoryEntry } from '../../domain/wbs/workFormHistory.js';
+import { currentExecutionActor } from './executionActor.js';
 import {confirmSaosaWorkspaceSave,isSaosaHost,saosaWorkspaceSaveDiagnostic} from '../../cloud/saosaWorkspaceSync.js';
 import {projectRepository} from '../../data/projectRepository.js';
 import {workPath} from '../../domain/wbs/costline.js';
@@ -103,6 +106,7 @@ export function openStageEditSheet({projectId,stage,onChanged,onDelete,readOnly=
         remove.addEventListener('click',onDelete);
         root.appendChild(remove);
       }
+      if(isWork(stage))root.append(renderWorkFormHistory(document,stage));
     },
     onSave(root){
       if(saving)return false;
@@ -113,9 +117,14 @@ export function openStageEditSheet({projectId,stage,onChanged,onDelete,readOnly=
       if(!title || !Number.isFinite(weight) || weight<=0 || (cost && (!Number.isFinite(amount)||amount<0))) return false;
       const latest=wbsApi.get(projectId,stage.id);
       const costPatch=cost && showsManualCost(latest)?{manualCost:amount}:{};
-      const saved=wbsApi.updateItem(projectId,stage.id,{
-        text:title,progressWeight:weight,description:root.querySelector('[name="description"]').value.trim(),...costPatch,
-      });
+      const patch={text:title,progressWeight:weight,description:root.querySelector('[name="description"]').value.trim(),...costPatch};
+      const at=Date.now();
+      if(latest && isWork(latest)){
+        const project=projectRepository.find(projectId);
+        const event=workFormHistoryEntry(project,latest,patch,currentExecutionActor(project),at);
+        if(event)patch.formHistory=[...(latest.formHistory||[]),event];
+      }
+      const saved=wbsApi.updateItem(projectId,stage.id,patch,()=>at);
       if(!saved)return false;
       milestoneField?.save(projectId,stage.id);
       if(isSaosaHost()){
