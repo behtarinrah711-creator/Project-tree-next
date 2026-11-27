@@ -1,3 +1,5 @@
+import { openStageMilestoneSheet, workMilestoneField } from './stageMilestoneSheet.js';
+import { stageMilestones } from '../../domain/wbs/stageMilestones.js';
 import {confirmSaosaWorkspaceSave,isSaosaHost,saosaWorkspaceSaveDiagnostic} from '../../cloud/saosaWorkspaceSync.js';
 import {projectRepository} from '../../data/projectRepository.js';
 import {workPath} from '../../domain/wbs/costline.js';
@@ -43,6 +45,7 @@ function showsManualCost(item){
 export function openStageEditSheet({projectId,stage,onChanged,onDelete,readOnly=false}={}){
   let titleEditor;
   let saving=false;
+  let milestoneField;
   const overlay=openWbsSheet({
     title:'مرحله:',presentation:'stage-create',autoFocus:false,readOnly,
     body(root){
@@ -63,6 +66,35 @@ export function openStageEditSheet({projectId,stage,onChanged,onDelete,readOnly=
       description.rows=2;
       root.appendChild(fieldRow('توضیح اختیاری',description));
       root.classList.add('wbs-stage-edit-body');
+      const project=projectRepository.find(projectId);
+      if(stage.kind==='stage' && project?.tasks?.some(item=>item.id===stage.id)){
+        const section=document.createElement('section');
+        const heading=document.createElement('h3');
+        heading.className='wbs-task-form-section';heading.textContent='نقاط عطف';
+        const list=document.createElement('div');
+        const open=milestoneId=>openStageMilestoneSheet({projectId,stageId:stage.id,milestoneId,readOnly,keepParent:true,
+          onChanged:()=>{paint();onChanged?.();}});
+        const paint=()=>{
+          list.replaceChildren();
+          for(const point of stageMilestones(wbsApi.get(projectId,stage.id))){
+            const button=document.createElement('button');
+            button.type='button';button.className='wbs-info-row';
+            button.textContent='◆ '+point.title+' · '+point.dueDate;
+            button.onclick=()=>open(point.id);
+            list.append(button);
+          }
+        };
+        const add=document.createElement('button');
+        add.type='button';add.className='wbs-choice';add.textContent='+ افزودن نقطهٔ عطف';
+        add.onclick=()=>open();
+        paint();
+        section.append(heading,list);
+        if(!readOnly)section.append(add);
+        root.append(section);
+      }else if(isWork(stage)){
+        milestoneField=workMilestoneField(project,stage.id,stage.id);
+        if(milestoneField)root.append(milestoneField.row);
+      }
       if(onDelete && !readOnly){
         const remove=document.createElement('button');
         remove.type='button';
@@ -85,6 +117,7 @@ export function openStageEditSheet({projectId,stage,onChanged,onDelete,readOnly=
         text:title,progressWeight:weight,description:root.querySelector('[name="description"]').value.trim(),...costPatch,
       });
       if(!saved)return false;
+      milestoneField?.save(projectId,stage.id);
       if(isSaosaHost()){
         saving=true;
         const button=overlay.querySelector('.wbs-sheet-save');
