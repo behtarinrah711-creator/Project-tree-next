@@ -588,6 +588,9 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
           const project=snapshot?.projects?.find(row=>String(row.id)===String(projectId));
           const confirmed=findInTree(project?.tasks||[],work.id)?.item.workTasks?.find(row=>String(row.id)===String(task.id));
           if(!confirmed || confirmed.updatedAt!==result.task.updatedAt)throw new Error('HTTP 200 · work_edit_not_confirmed');
+          if(confirmed.scheduleStart!==result.task.scheduleStart || confirmed.scheduleEnd!==result.task.scheduleEnd){
+            throw new Error('HTTP 200 · work_schedule_not_confirmed');
+          }
           if(overlay.isConnected)closeWbsSheet();
           onChanged?.();
         }).catch(error=>{

@@ -1,3 +1,4 @@
+import {mergeTaskRecords} from '../../sync/taskRecordMerge.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildEffectiveNetwork, calculateCpm, rescheduleAutomaticTasks, effectiveDependencyLinks, plannedProgress, projectScheduleAnalysis, temporalDelay, validatePredecessors } from './scheduling.js';
@@ -139,4 +140,17 @@ test('automatic scheduling propagates through tasks and preserves legacy manual 
   assert.equal(first.tasks[0].workTasks[1].scheduleEnd,'1405/01/09');
   assert.equal(first.tasks[0].workTasks[2],manual);
   assert.equal(rescheduleAutomaticTasks(first),first);
+});
+
+test('recalculated dependent dates survive a merge with older project data',()=>{
+  const stairs={id:'stairs',scheduleStart:'1405/09/15',scheduleEnd:'1405/09/24'};
+  const flashing={id:'flashing',scheduleMode:'auto',scheduleDuration:3,updatedAt:100,
+    scheduleStart:'1405/09/13',scheduleEnd:'1405/09/15',
+    dependencies:[{predecessorId:'stairs',type:'FS',lagDays:1}]};
+  const project={tasks:[{id:'work',kind:'work',workTasks:[stairs,flashing]}]};
+  const recalculated=rescheduleAutomaticTasks(project,()=>100);
+  const merged=mergeTaskRecords([project.tasks,recalculated.tasks]);
+  const savedFlashing=merged[0].workTasks.find(task=>task.id==='flashing');
+  assert.deepEqual([savedFlashing.scheduleStart,savedFlashing.scheduleEnd],['1405/09/26','1405/09/28']);
+  assert.equal(savedFlashing.updatedAt,101);
 });
