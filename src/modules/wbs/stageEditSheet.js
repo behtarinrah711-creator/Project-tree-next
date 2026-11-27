@@ -1,11 +1,13 @@
 import {confirmSaosaWorkspaceSave,isSaosaHost,saosaWorkspaceSaveDiagnostic} from '../../cloud/saosaWorkspaceSync.js';
+import {projectRepository} from '../../data/projectRepository.js';
+import {workPath} from '../../domain/wbs/costline.js';
 import {findInTree} from '../../domain/wbs/normalize.js';
 import { wbsApi } from '../../domain/wbs/wbsApi.js';
 import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { isWork, lineTotal, progressWeightOf } from '../../domain/wbs/normalize.js';
 import { toEnglishDigits } from '../../ui/digits.js';
 import { openNumpadGeneric } from '../../ui/numpad.js';
-import { closeWbsSheet, fieldRow, openWbsSheet } from './wbsSheet.js';
+import { closeWbsSheet, fieldRow, openWbsSheet, workPathRow } from './wbsSheet.js';
 
 function numericRow(root, name, label, value, money=false){
   const control=document.createElement('button');
@@ -44,6 +46,14 @@ export function openStageEditSheet({projectId,stage,onChanged,onDelete,readOnly=
   const overlay=openWbsSheet({
     title:'مرحله:',presentation:'stage-create',autoFocus:false,readOnly,
     body(root){
+      if(isWork(stage)){
+        const tasks = projectRepository.find(projectId)?.tasks;
+        const location = findInTree(tasks || [], stage.id);
+        if(location){
+          const path = location.parent ? workPath(tasks, location.parent.id) : 'ریشهٔ پروژه';
+          if(path)root.append(workPathRow(path));
+        }
+      }
       if(showsManualCost(stage)) numericRow(root,'manualCost',isWork(stage)?'مبلغ':'هزینه',stage.manualCost ?? (activeWorkTasks(stage).length?0:lineTotal(stage)),true);
       numericRow(root,'progressWeight','وزن مرحله',progressWeightOf(stage));
       const description=document.createElement('textarea');
