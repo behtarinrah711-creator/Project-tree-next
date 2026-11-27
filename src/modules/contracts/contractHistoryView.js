@@ -84,17 +84,18 @@ function stageHeading(documentRef,status,person){
 }
 
 export function appendDocumentStageStatus(root,status,person){
-  const row=root.ownerDocument.createElement('div');row.className='contract-history-entry';
-  row.appendChild(stageHeading(root.ownerDocument,status,person));
-  root.appendChild(row);
+  const documentRef=root.ownerDocument ?? document;
+  const row=documentRef.createElement('div');row.className='contract-history-entry';
+  row.appendChild(stageHeading(documentRef,status,person));
+  root.append(row);
 }
 
 export function appendDocumentStageHistory(root,record,options){
-  const details=renderContractHistory(root.ownerDocument,record,{compact:true,...options});
+  const details=renderContractHistory(root.ownerDocument ?? document,record,{compact:true,...options});
   details.open=true;
-  details.firstElementChild.hidden=true;
-  const entry=details.querySelector('.contract-history-entry');
-  if(entry)root.appendChild(details);
+  details.children[0].hidden=true;
+  const entry=Array.from(details.children).find(item=>item.className?.split(' ').includes('contract-history-entry'));
+  if(entry)root.append(details);
   return entry;
 }
 
