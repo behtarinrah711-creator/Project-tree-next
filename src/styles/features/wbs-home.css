@@ -317,3 +317,7 @@ body:has(.wbs-home-root){background:#fff;}
 :is(.wbs-stage-create-overlay,.wbs-work-create-overlay,.wbs-sheet-centered-header) .sheet-head .close-btn{position:relative;z-index:1;font-size:calc(19.333px + 3px);}
 
 .wbs-row .wbs-title{font-weight:700;}
+
+.wbs-stage-milestone-diamonds{display:inline-flex;flex-wrap:wrap;max-width:35%;align-items:center;}
+.wbs-stage-milestone-diamond{border:0;background:transparent;color:#8f3128;cursor:pointer;min-width:28px;min-height:32px;padding:0;}
+.wbs-gantt-milestone-due{stroke:#8f3128;stroke-width:2;stroke-dasharray:3 2;}
