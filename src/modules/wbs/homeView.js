@@ -2,7 +2,8 @@ import {createExportButton} from './viewHeader.js';
 import {openProjectTreeExport} from './projectTreeExportView.js';
 import {requestPlanningItemDelete} from './planningItemDelete.js';
 import { canWriteProjectModule, projectPermissionState } from '../roleManagement/permissionState.js';
-import { buildTimelineRows } from './timelineRows.js';
+import { openExecutionBranchFilter, selectableWbsTree } from './executionBranchFilter.js';
+import { buildTimelineRows, timelineRowsByElement } from './timelineRows.js';
 import { openWorkCreationSheet } from './workCreationSheet.js';
 import { openStageEditSheet as openStageEditor } from './stageEditSheet.js';
 import { stageCreationPlaceholder } from '../../domain/wbs/stagePresentation.js';
@@ -81,6 +82,7 @@ function materialIcon(path){
 
 let currentView = 'tree';
 const selectedViews = new Map();
+const timelineBranchByProject = new Map();
 const executionSearches = new Map();
 function normalizeExecutionSearch(value){return String(value||'').replace(/[يى]/g,'ی').replace(/ك/g,'ک').replace(/\u200c/g,' ').trim().toLowerCase();}
 function applyExecutionSearch(root,query){
@@ -359,18 +361,72 @@ function jalaliLabelFromDay(day){
   return `${new Intl.NumberFormat('fa-IR', { useGrouping:false }).format(j.jm)}/${new Intl.NumberFormat('fa-IR', { useGrouping:false }).format(j.jd)}`;
 }
 
-function flattenTimeline(items){
-  return buildTimelineRows(items, projectIdOf());
+function renderTimelineBranchFilter(project,items,rerender){
+  const filterTree = selectableWbsTree({...project,tasks:items});
+  const nodes = new Map();
+  const visit = node => {
+    nodes.set(node.id,node);
+    node.children.forEach(visit);
+  };
+  visit(filterTree);
+  const selected = nodes.get(timelineBranchByProject.get(project.id));
+  const keys = new Set();
+  const collect = node => {
+    keys.add(node.id);
+    node.children.forEach(collect);
+  };
+  if(selected)collect(selected);
+
+  const toolbar = document.createElement('div');
+  toolbar.className = 'wbs-gantt-branch-filter today-task-secondary';
+  toolbar.setAttribute('role','group');
+  toolbar.setAttribute('aria-label','فیلتر نمودار گانت');
+  const choose = id => {
+    if(id){
+      timelineBranchByProject.set(project.id,id);
+      const expanded = getExpandedIds(project.id);
+      const expand = node => {
+        if(!node.children.length)return;
+        expanded.add(node.id.slice(node.id.lastIndexOf(':')+1));
+        node.children.forEach(expand);
+      };
+      expand(nodes.get(id));
+    }else{
+      timelineBranchByProject.delete(project.id);
+    }
+    rerender();
+  };
+  const trigger = document.createElement('button');
+  trigger.type = 'button';
+  trigger.className = 'wbs-tree-mode-tab today-task-filter'+(selected?' active':'');
+  trigger.textContent = 'همه مراحل';
+  trigger.onclick = () => openExecutionBranchFilter(project,filterTree,choose,selected);
+  toolbar.append(trigger);
+  if(selected){
+    const chip = document.createElement('button');
+    chip.type = 'button';
+    chip.className = 'today-active-filter-tag';
+    chip.setAttribute('aria-label','حذف فیلتر '+selected.title);
+    const label = document.createElement('span');
+    label.textContent = selected.title;
+    const clear = document.createElement('span');
+    clear.textContent = '×';
+    clear.setAttribute('aria-hidden','true');
+    chip.append(label,clear);
+    chip.onclick = () => choose('');
+    toolbar.append(chip);
+  }
+  return {toolbar,branchKeys:selected?keys:undefined};
 }
 
-function renderTimeline(items){
-  const rows = flattenTimeline(items);
-  const lookup=interruptionScheduleLookup(projectOf()?.tasks);
+function renderTimeline(project,items,branchKeys){
+  const rows = buildTimelineRows(items,project.id,{branchKeys});
+  const lookup=interruptionScheduleLookup(project.tasks);
   for(const entry of rows)entry.segments=plannedPauseSegments(entry.item,entry.range,lookup);
-  const analysis = projectScheduleAnalysis(projectOf());
-  if(Number.isFinite(analysis.projectFinish)) rows.push({
+  const analysis = branchKeys ? null : projectScheduleAnalysis(project);
+  if(Number.isFinite(analysis?.projectFinish)) rows.push({
     item:{ id:PROJECT_FINISH_MILESTONE_ID, kind:'milestone', text:'پایان پروژه', systemMilestone:true },
-    kind:'milestone', depth:0, sourceDepth:0,
+    kind:'milestone', depth:0, sourceDepth:0, shadeLevel:0,
     range:{ start:analysis.projectFinish, end:analysis.projectFinish },
   });
   const scheduled = rows.filter(x => x.range);
@@ -381,6 +437,7 @@ function renderTimeline(items){
   const width = days * dayWidth;
   const shell = document.createElement('section');
   shell.className = 'wbs-gantt';
+  timelineRowsByElement.set(shell,rows);
   const names = document.createElement('div');
   names.className = 'wbs-gantt-names';
   names.innerHTML = '<div class="wbs-gantt-corner">کارها</div>';
@@ -782,7 +839,10 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     canDelete:canDeletePlanning(activePlanningLevel),
   }));
   else if(!items.length) tree.innerHTML = `<div class="empty-state">${baseMode ? 'کاری ثبت نشده است.' : 'مرحله یا کاری ثبت نشده است.'}</div>`;
-  else if(currentView === 'timeline') tree.appendChild(renderTimeline(items));
+  else if(currentView === 'timeline'){
+    const {toolbar,branchKeys} = renderTimelineBranchFilter(project,items,rerender);
+    tree.append(toolbar,renderTimeline(project,items,branchKeys));
+  }
   else items.forEach(item => tree.appendChild(renderRow(item, codes, effectiveView, 0, currentView === 'tree')));
   root.appendChild(tree);
 
