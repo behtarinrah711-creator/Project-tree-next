@@ -142,7 +142,7 @@ function yearStart(day){
 
 function rawTimelineRange(entries, baselineDay = null){
   const scheduled = entries.filter(entry => entry.range);
-  const points = scheduled.flatMap(entry => [entry.range.start, entry.range.end]);
+  const points = scheduled.flatMap(entry => [entry.range.start, entry.range.end, entry.item.due].filter(Number.isFinite));
   if(Number.isFinite(baselineDay)) points.push(baselineDay);
   if(points.length){
     return { start:Math.min(...points), end:Math.max(...points) };
@@ -263,7 +263,7 @@ function rowCanvas(documentRef, line, entry, domain, scale, buckets, canvasWidth
     height:rowHeight,
     viewBox:`0 0 ${canvasWidth} ${rowHeight}`,
     preserveAspectRatio:'none',
-    'aria-hidden':'true',
+    ...(entry.item.kind==='milestone' && !entry.item.systemMilestone?{}:{'aria-hidden':'true'}),
   });
   buckets.slice(1).forEach(bucket => {
     const x = (bucket.start - domain.start) * dayWidth;
@@ -276,11 +276,20 @@ function rowCanvas(documentRef, line, entry, domain, scale, buckets, canvasWidth
     action.classList.add(colorClass(entry.item));
     const x = Math.max(0, (entry.range.start - domain.start) * dayWidth);
     const naturalWidth = (entry.range.end - entry.range.start + 1) * dayWidth;
-    const width = Math.max(8, Math.min(canvasWidth - x, naturalWidth));
+    const milestone=entry.item.kind==='milestone';
+    const width = milestone?16:Math.max(8, Math.min(canvasWidth - x, naturalWidth));
     const stage = isStage(entry.item);
-    const height = stage ? 10 : 20;
+    const height = milestone?16:stage?10:20;
     const y = (rowHeight - height) / 2;
-    const foreign = svgElement(documentRef, 'foreignObject', { x, y, width, height });
+    if(Number.isFinite(entry.item.due) && entry.item.due!==entry.range.start){
+      const dueX=Math.max(0,Math.min(canvasWidth-1,(entry.item.due-domain.start)*dayWidth));
+      const due=svgElement(documentRef,'line',{class:'wbs-gantt-milestone-due',x1:dueX,x2:dueX,y1:8,y2:rowHeight-8});
+      const title=svgElement(documentRef,'title');
+      title.textContent='موعد: '+entry.item.dueDate;
+      due.append(title);
+      svg.append(due);
+    }
+    const foreign = svgElement(documentRef, 'foreignObject', { x:milestone?Math.max(0,x-8):x, y, width, height });
     foreign.setAttribute('class', 'wbs-gantt-scale-foreign');
     foreign.appendChild(action);
     svg.appendChild(foreign);
@@ -297,7 +306,7 @@ function rowCanvas(documentRef, line, entry, domain, scale, buckets, canvasWidth
 
 function scaleSignature(entries, domain, scale, lines){
   const rowShape = lines.map(line => line.classList.contains('is-two-line') ? '2' : '1').join('');
-  const ranges = entries.map(entry => entry.range ? `${entry.item.id}:${entry.range.start}-${entry.range.end}` : `${entry.item.id}:x`).join('|');
+  const ranges = entries.map(entry => entry.range ? `${entry.item.id}:${entry.range.start}-${entry.range.end}-${entry.item.due??''}` : `${entry.item.id}:x`).join('|');
   return `${scale.id}:${domain.start}:${domain.endExclusive}:${rowShape}:${ranges}`;
 }
 
@@ -397,7 +406,7 @@ function enhance(windowRef, documentRef){
   gantt.classList.toggle('hide-gantt-baseline', !config.baseline);
   const timeline = timelineByElement.get(gantt);
   if(!timeline) return;
-  const {project,entries} = timeline;
+  const {project,entries,analysis} = timeline;
 
   paintCorner(gantt, project, windowRef, documentRef);
   const root = gantt.closest('.wbs-home-root');
@@ -411,7 +420,7 @@ function enhance(windowRef, documentRef){
   paintProgress(gantt, entries);
   applyTimelineDetails(gantt, entries, documentRef);
   applyTimelineStickyHeader(gantt, windowRef, documentRef);
-  applyTimelineDependencies(gantt, entries, project, documentRef);
+  applyTimelineDependencies(gantt, entries, project, documentRef, analysis);
   applyTimelineCpm(gantt, entries, project, config, documentRef);
 }
 
