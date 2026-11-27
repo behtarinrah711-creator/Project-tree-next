@@ -561,6 +561,7 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   const status=current.reasonId==='officialHoliday'?'holiday':current.status;
   const activeStop=executionInterruption(entity,today);
   const stopReport=interruptionReportOf(entity,today)||activeStop;
+  const reportBlocked=!!stopReport && stopReport.resumedOn!==today;
   const saved=!!todayReportOf(entity,today);
   const canEditToday=!approval && today===tehranTodayJalali() && canWriteProjectModule(project.id,'execution:today');
   const actor=canEditToday?currentExecutionActor(project):null;
@@ -568,13 +569,13 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
   const report=documentRef.createElement(canReport || stopReport?'button':'span');
   report.className='today-report-circle is-'+status+(saved?' is-saved':'');
   report.innerHTML='<svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3h8l4 4v14H6zM14 3v5h4M9 12h6m-6 4h6"/></svg> گزارش';
-  report.setAttribute('aria-label',stopReport?'گزارش این روز در توقف ثبت شده است':
+  report.setAttribute('aria-label',reportBlocked?'گزارش این روز در توقف ثبت شده است':
     (status==='holiday'?'تعطیل رسمی':DAILY_EXECUTION_LABELS[status])+'، '+(saved?'گزارش ثبت شده':'بدون گزارش'));
   if(report.tagName==='BUTTON')report.type='button';
-  if(stopReport){report.disabled=true;report.title='گزارش این روز در توقف ثبت شده است';}
+  if(reportBlocked){report.disabled=true;report.title='گزارش این روز در توقف ثبت شده است';}
   report.onclick=event=>{
     event.stopPropagation();
-    if(!canReport || stopReport)return;
+    if(!canReport || reportBlocked)return;
     openDailyExecutionReport({projectId:project.id,item,actor,day:today,statusControls:true,
       onChanged,onReturn:returnToCalendar,onSubmitted(updated){if(item.kind==='standalone')standaloneMode='pending';else activeMode=timeState(updated,tehranTodayJalali());}});
   };
@@ -600,7 +601,15 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
         }
         if(stopReport.attributedContacts?.length)root.append(detailRow(documentRef,'طرف‌های منتسب',stopReport.attributedContacts.map(person=>person.name).join('، ')));
         appendReportPhotos(root,stopReport.photos);
-        if(!activeStop || !canReport)return;
+        if(!canReport)return;
+        if(stopReport.type==='planned_pause' && !stopReport.resumedOn){
+          root.append(linkButton(documentRef,'wbs-input','ویرایش توقف'));
+          root.lastElementChild.onclick=()=>{
+            dismiss();
+            openExecutionInterruption(project,item,actor,onChanged,returnToCalendar,{editing:stopReport});
+          };
+        }
+        if(!activeStop)return;
         const resume=linkButton(documentRef,'wbs-input','ازسرگیری کار');
         const feedback=documentRef.createElement('p');
         feedback.setAttribute('role','alert');
@@ -608,7 +617,11 @@ function renderTodaySummary(documentRef,project,item,today,onChanged,returnToCal
           const result=todayApi.saveInterruption(project.id,refOf(item),{id:activeStop.id,resume:true},actor);
           if(!result.ok){
             feedback.textContent=result.code==='resume_predecessor_pending'
-              ?'هنوز شرایط شروع مجدد بر اساس پیش‌نیاز و تاریخ تنظیم‌شده برقرار نیست.'
+              ?({missing:'پیش‌نیاز شروع مجدد در پروژه پیدا نشد. توقف را ویرایش کنید.',
+                date_missing:'تاریخ معتبر برای شروع مجدد ثبت نشده است.',
+                date_pending:'تاریخ مجاز ازسرگیری هنوز نرسیده است. تاریخ ادامهٔ توقف: '+formatDate(result.resumeOn),
+                completion_pending:'پیش‌نیاز شروع مجدد هنوز تکمیل نشده است.',
+                start_pending:'شروع واقعیِ پیش‌نیاز هنوز ثبت نشده است.'})[result.reason]
               :'ازسرگیری ثبت نشد. دسترسی و وضعیت کار را بررسی کنید.';
             return;
           }
