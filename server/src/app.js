@@ -278,11 +278,20 @@ export function projectTasksChanged(previous,next){
 }
 
 export function projectFundingChanged(previous,next){
-  return JSON.stringify([
-    previous?.fundingReceipts||[], previous?.fundingAllocations||[], Number(previous?.fundingLedgerVersion)||0,
-  ])!==JSON.stringify([
-    next?.fundingReceipts||[], next?.fundingAllocations||[], Number(next?.fundingLedgerVersion)||0,
-  ]);
+  const ledger=project=>[
+    project?.fundingReceipts||[], project?.fundingAllocations||[], Number(project?.fundingLedgerVersion)||0,
+  ];
+  if(!isDeepStrictEqual(ledger(previous),ledger(next)))return true;
+
+  const plans=new Map();
+  const details=item=>[item?.costFundingRoute||'',item?.costPaymentMethod||'',
+    item?.fundingAccrual||'spread',item?.costPaymentPlan||[]];
+  const visit=(items,predicate)=>(items||[]).some(item=>item && item.id &&
+    (predicate(item) || visit(item.subtasks,predicate) || visit(item.workTasks,predicate)));
+  visit(previous?.tasks,item=>{plans.set(String(item.id),details(item));return false;});
+  return visit(next?.tasks,item=>!item.trashed && !isDeepStrictEqual(
+    plans.get(String(item.id)) || details(null), details(item),
+  ));
 }
 
 export function projectPayloadChanged(previous,next){

@@ -62,3 +62,27 @@ test('long weekly charts suggest a coarser scale without restricting work-only e
   assert.equal(chartLimitMessage(works,{...settings,overview:false}),'');
   assert.equal(chartLimitMessage(works,{...settings,rangeId:'week2'}),'');
 });
+
+test('export intersects a WBS branch with individual funding route shares',()=>{
+  const day='1405/01/03';
+  const split={id:'work',kind:'work',text:'نصب اسپلیت',quantity:1,unitCost:1000,
+    scheduleStart:day,scheduleEnd:day,costFundingRoute:'petty',
+    costPaymentPlan:[{date:day,amount:300,route:'owner',method:'check'}]};
+  const project={name:'آزمایش',tasks:[
+    {id:'suite',kind:'stage',text:'سوئیت نگهبانی',subtasks:[split]},
+    {...split,id:'other',text:'کار شاخهٔ دیگر'},
+  ],fundingReceipts:[{id:'r1',amount:200,depositDate:day}],
+    fundingAllocations:[{taskId:'work',day:jalaliDayNumber(day),amount:200}]};
+  const options={rangeId:'month',start:jalaliDayNumber(day),end:jalaliDayNumber(day),
+    details:true,receipts:true,branchId:'branch:suite'};
+  const owner=costlineDocument(project,{...options,route:'owner'});
+  const petty=costlineDocument(project,{...options,route:'petty'});
+  assert.match(owner,/سوئیت نگهبانی · مستقیم کارفرما/);
+  assert.match(owner,/<td>۳۰۰<\/td><td>۶۰<\/td><td>۲۴۰<\/td>/);
+  assert.match(petty,/<td>۷۰۰<\/td><td>۱۴۰<\/td><td>۵۶۰<\/td>/);
+  for(const report of [owner,petty]){
+    assert.match(report,/نصب اسپلیت/);
+    assert.doesNotMatch(report,/کار شاخهٔ دیگر|دریافتی‌های کل پروژه/);
+  }
+  assert.match(costlineDocument(project,{...options,branchId:''}),/کار شاخهٔ دیگر/);
+});
