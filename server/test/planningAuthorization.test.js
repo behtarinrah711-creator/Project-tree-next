@@ -22,6 +22,13 @@ test('funding writes require cost estimate edit access',()=>{
   assert.equal(canWriteProjectCostline({modules:{'planning:tree':'full','planning:costline':'view'}}),false);
   assert.equal(canWriteProjectCostline({modules:{'planning:costline':'create'}}),true);
   assert.equal(projectFundingChanged({fundingReceipts:[]},{fundingReceipts:[{id:'r1',amount:10}]}),true);
+  const task={id:'work',text:'کار'};
+  const project=work=>({tasks:[{id:'stage',workTasks:[work]}]});
+  assert.equal(projectFundingChanged(project(task),project({...task,text:'عنوان جدید'})),false);
+  assert.equal(projectFundingChanged(project(task),project({...task,costFundingRoute:'owner'})),true);
+  assert.equal(projectFundingChanged(project(task),project({...task,costPaymentMethod:'check'})),true);
+  assert.equal(projectFundingChanged(project(task),project({...task,fundingAccrual:'end'})),true);
+  assert.equal(projectFundingChanged(project(task),project({...task,costPaymentPlan:[{route:'petty'}]})),true);
 });
 
 test('task mutation classifier distinguishes edits from removals',()=>{
