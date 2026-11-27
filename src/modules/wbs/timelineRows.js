@@ -43,25 +43,28 @@ export function buildTimelineRows(items, projectId, {
   const visit = (nodes, depth = 0, visibleDepth = 0, rootId = null) => (nodes || []).filter(node => node && !node.trashed).forEach(item => {
     const branchRootId = rootId || item.id;
     const kind = isStage(item) ? 'stage' : 'work';
-    const shown = (!branchKeys || branchKeys.has('branch:'+item.id)) && visible({item, kind, depth});
+    const tasks = activeWorkTasks(item);
+    const hasDirectSubwork = kind === 'work' && tasks.some(task => task.isSubwork && !task.parentTaskId);
+    const shown = !hasDirectSubwork && (!branchKeys || branchKeys.has('branch:'+item.id)) && visible({item, kind, depth});
     if(shown) rows.push({item, kind, grouping:true, depth:visibleDepth, sourceDepth:depth,
       range:scheduleRangeOf(item), shadeLevel:Math.max(1, maxDepth - depth + 1), rootId:branchRootId});
     const childDepth = visibleDepth + (shown ? 1 : 0);
     if(shown && !expanded(item.id)) return;
     visit(item.subtasks, depth + 1, childDepth, branchRootId);
-    const tasks=activeWorkTasks(item);
-    const addTask=(task,sourceDepth,rowDepth)=>{
-      const children=tasks.filter(child=>child.parentTaskId===task.id);
-      const taskItem={...task,kind:'workTask',text:task.title,parentWork:item,...(children.length?{subworkChildren:children}:{})};
-      const taskShown=(!branchKeys || branchKeys.has('task:'+item.id+':'+task.id))
-        && visible({item:taskItem,kind:'workTask',depth:sourceDepth});
-      if(taskShown)rows.push({item:taskItem,kind:'workTask',...(children.length?{grouping:true}:{}),
-        depth:rowDepth,sourceDepth,range:scheduleRangeOf(taskItem),shadeLevel:0,rootId:branchRootId});
-      if(!taskShown || expanded(task.id)){
-        for(const child of children)addTask(child,sourceDepth+1,rowDepth+Number(taskShown));
+    const addTask=(task,sourceDepth)=>{
+      const children=tasks.filter(child=>String(child.parentTaskId || '')===String(task.id));
+      if(children.length){
+        for(const child of children)addTask(child,sourceDepth+1);
+        return;
+      }
+      const taskItem={...task,kind:'workTask',text:task.title,parentWork:item};
+      if((!branchKeys || branchKeys.has('task:'+item.id+':'+task.id))
+        && visible({item:taskItem,kind:'workTask',depth:sourceDepth})){
+        rows.push({item:taskItem,kind:'workTask',depth:childDepth,sourceDepth,
+          range:scheduleRangeOf(taskItem),shadeLevel:0,rootId:branchRootId});
       }
     };
-    for(const task of tasks.filter(task=>!task.parentTaskId))addTask(task,depth+1,childDepth);
+    for(const task of tasks.filter(task=>!task.parentTaskId))addTask(task,depth+1);
   });
   visit(items);
   return sortTimelineRows(rows, orderMode);
