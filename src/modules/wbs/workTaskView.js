@@ -1,6 +1,6 @@
 import { projectResponsibleIds } from '../projectSettings/projectDetailsDomain.js';
 import { responsibleContactPicker } from '../../ui/responsibleContactPicker.js';
-import {flattenDependencyCandidates,jalaliDayNumber,requiredScheduleStart,scheduleDate,scheduleRangeOf} from '../../domain/wbs/scheduling.js';
+import {flattenDependencyCandidates,jalaliDayNumber,projectWithPlannedSchedule,requiredScheduleStart,scheduleDate,scheduleRangeOf} from '../../domain/wbs/scheduling.js';
 import {confirmSaosaWorkspaceSave,isSaosaHost,saosaWorkspaceSaveDiagnostic} from '../../cloud/saosaWorkspaceSync.js';
 import {workPath} from '../../domain/wbs/costline.js';
 import {findInTree} from '../../domain/wbs/normalize.js';
@@ -337,7 +337,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       let selectedEnd=task?.scheduleEnd||'';
       let manualStart=task?.scheduleStart||'',manualEnd=selectedEnd;
       let wasAutomatic=preferredMode==='auto';
-      const sourceItems=new Map(flattenDependencyCandidates(projectRepository.find(projectId)?.tasks)
+      const sourceItems=new Map(flattenDependencyCandidates(projectWithPlannedSchedule(projectDefaults)?.tasks)
         .map(row=>[row.id,row.kind==='workTask'?{...row.item,kind:'workTask'}:row.item]));
       const mode=optionButton({name:'taskScheduleMode',value:preferredMode||'manual',clearLabel:'روش زمان‌بندی',
         options:[{id:'manual',name:'دستی'},{id:'auto',name:'خودکار براساس پیش‌نیاز'}],

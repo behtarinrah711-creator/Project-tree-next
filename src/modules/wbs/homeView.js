@@ -3,7 +3,7 @@ import {openProjectTreeExport} from './projectTreeExportView.js';
 import {requestPlanningItemDelete} from './planningItemDelete.js';
 import { canWriteProjectModule, projectPermissionState } from '../roleManagement/permissionState.js';
 import { openExecutionBranchFilter, selectableWbsTree } from './executionBranchFilter.js';
-import { buildTimelineRows, timelineRowsByElement } from './timelineRows.js';
+import { buildTimelineRows, timelineByElement } from './timelineRows.js';
 import { openWorkCreationSheet } from './workCreationSheet.js';
 import { openStageEditSheet as openStageEditor } from './stageEditSheet.js';
 import { stageCreationPlaceholder } from '../../domain/wbs/stagePresentation.js';
@@ -47,7 +47,7 @@ import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { stopIntervalForItem } from '../../domain/wbs/fundingReceipts.js';
 import { activeWbsScope, WBS_VIEW_SCOPES } from './viewScopes.js';
 import { openCreateWorkTaskSheet, renderWorkTasks, treeWorkTypeChip } from './workTaskView.js';
-import { PROJECT_FINISH_MILESTONE_ID, interruptionScheduleLookup, plannedPauseSegments, projectScheduleAnalysis, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
+import { PROJECT_FINISH_MILESTONE_ID, interruptionScheduleLookup, plannedPauseSegments, projectScheduleAnalysis, projectWithPlannedSchedule, scheduleRangeOf } from '../../domain/wbs/scheduling.js';
 import { canDeletePlanning, canViewPlanning, canWritePlanning, planningAccessLevel } from '../roleManagement/planningAccess.js';
 import {
   advanceExpansionLevel,
@@ -437,7 +437,7 @@ function renderTimeline(project,items,branchKeys){
   const width = days * dayWidth;
   const shell = document.createElement('section');
   shell.className = 'wbs-gantt';
-  timelineRowsByElement.set(shell,rows);
+  timelineByElement.set(shell,{project,entries:rows});
   const names = document.createElement('div');
   names.className = 'wbs-gantt-names';
   names.innerHTML = '<div class="wbs-gantt-corner">کارها</div>';
@@ -841,7 +841,9 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   else if(!items.length) tree.innerHTML = `<div class="empty-state">${baseMode ? 'کاری ثبت نشده است.' : 'مرحله یا کاری ثبت نشده است.'}</div>`;
   else if(currentView === 'timeline'){
     const {toolbar,branchKeys} = renderTimelineBranchFilter(project,items,rerender);
-    tree.append(toolbar,renderTimeline(project,items,branchKeys));
+    const scheduled = projectWithPlannedSchedule(project);
+    const visibleItems = scheduled.tasks.filter(item => item && !item.trashed && !isPendingUiDelete(item.id));
+    tree.append(toolbar,renderTimeline(scheduled,visibleItems,branchKeys));
   }
   else items.forEach(item => tree.appendChild(renderRow(item, codes, effectiveView, 0, currentView === 'tree')));
   root.appendChild(tree);
@@ -880,5 +882,9 @@ export function render(){
   const content = document.getElementById('content');
   renderWbsHome(content, projectContext.getProjectId?.() || explicitProjectId, WBS_VIEW_SCOPES[scope]);
 }
+
+globalThis.window?.addEventListener?.('karha:projects-recovered', () => {
+  if(activeWbsScope()==='planning' && document.querySelector('#content .is-timeline-view'))render();
+});
 
 export default { renderWbsHome };

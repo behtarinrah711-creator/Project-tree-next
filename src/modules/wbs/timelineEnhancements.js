@@ -1,6 +1,4 @@
-import { timelineRowsByElement } from './timelineRows.js';
-import { projectContext } from '../../core/projectContext.js';
-import { projectRepository } from '../../data/projectRepository.js';
+import { timelineByElement } from './timelineRows.js';
 import { isStage, isWork, progressOf, scheduleEndOf, scheduleStartOf } from '../../domain/wbs/normalize.js';
 import { rollupProgress } from '../../domain/wbs/estimate.js';
 import { gregorianToJalali, jalaliToGregorian } from '../../ui/jalali.js';
@@ -66,11 +64,6 @@ function rangeLabel(startDay, endDay){
 
 function scheduleRange(item){
   return scheduleRangeOf(item);
-}
-
-function activeProject(){
-  const id = projectContext.getProjectId?.() || projectContext.getActiveProjectId?.() || null;
-  return id ? projectRepository.getActiveProject(id) : null;
 }
 
 function projectLabel(project){
@@ -402,10 +395,9 @@ function enhance(windowRef, documentRef){
   gantt.classList.toggle('hide-gantt-actual', !config.actualProgress);
   gantt.classList.toggle('hide-gantt-planned', !config.plannedProgress);
   gantt.classList.toggle('hide-gantt-baseline', !config.baseline);
-  const project = activeProject();
-  if(!project) return;
-  const entries = timelineRowsByElement.get(gantt);
-  if(!entries) return;
+  const timeline = timelineByElement.get(gantt);
+  if(!timeline) return;
+  const {project,entries} = timeline;
 
   paintCorner(gantt, project, windowRef, documentRef);
   const root = gantt.closest('.wbs-home-root');

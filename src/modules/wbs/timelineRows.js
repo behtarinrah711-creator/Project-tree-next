@@ -4,7 +4,7 @@ import { activeWorkTasks } from '../../domain/wbs/workTaskModel.js';
 import { isExpanded } from './wbsExpandState.js';
 import { ganttOrderMode, isGanttLevelVisible } from './timelineViewOptions.js';
 
-export const timelineRowsByElement = new WeakMap();
+export const timelineByElement = new WeakMap();
 
 function compareTimelineDates(a, b){
   const aStart = a.range?.start;
