@@ -1,5 +1,6 @@
+import { openExecutionBranchFilter, selectableWbsTree, searchExecutionBranches } from './executionBranchFilter.js';
 import { paginateCostlinePrint } from './costlinePrintPagination.js';
-import { assignWorksToBuckets, buildBuckets, collectPlannedWorks, COSTLINE_RANGES, jalaliDayNumber, jalaliFromDay, WEEKDAYS } from '../../domain/wbs/costline.js';
+import { assignWorksToBuckets, buildBuckets, collectPlannedWorks, COSTLINE_RANGES, jalaliDayNumber, jalaliFromDay, sliceShare, scheduledPayments, FUNDING_ROUTES, WEEKDAYS } from '../../domain/wbs/costline.js';
 import { firstFundingShortage, fundingCoverage, fundingReceiptsOf, poolReceived, poolRemaining } from '../../domain/wbs/fundingReceipts.js';
 import { formatJalaliDisplay, JALALI_MONTHS, todayJalaliStr } from '../../ui/jalali.js';
 import { toPersianDigits } from '../../ui/digits.js';
@@ -81,11 +82,11 @@ function chart(buckets,max,sharedYear){
   return `<svg viewBox="0 0 ${width} ${staggerLabels ? 209 : 195}" role="img" aria-label="نمودار برآورد هزینه" font-size="11" fill="#202124">${ticks}${bars}</svg>`;
 }
 
-function selectedReportBuckets(works,{rangeId,originWeekday,start,end}){
+function selectedReportBuckets(works,{rangeId,originWeekday,start,end,route=null}){
   const periods=buildBuckets({rangeId,originWeekday,works})
     .filter(bucket=>bucket.startDay<=end && bucket.endDay>=start)
     .map(bucket=>({...bucket,startDay:Math.max(start,bucket.startDay),endDay:Math.min(end,bucket.endDay)}));
-  return assignWorksToBuckets(periods,works).filter(bucket=>bucket.total>0);
+  return assignWorksToBuckets(periods,works,route).filter(bucket=>bucket.total>0);
 }
 
 export function chartLimitMessage(works,settings,count=selectedReportBuckets(works,settings).length){
@@ -97,25 +98,54 @@ export function chartLimitMessage(works,settings,count=selectedReportBuckets(wor
   return `این بازه ${money(count)} ستون دارد. حداکثر ${money(CHART_PERIOD_LIMIT)} ستون در نمودار جا می‌شود. ${fix}`;
 }
 
-export function costlineDocument(project,{rangeId,originWeekday,start,end,overview=true,packages=true,details,receipts}){
-  const works=collectPlannedWorks(project.tasks,{includeUndated:true});
-  const dated=works.filter(work=>jalaliDayNumber(work.start)!=null);
-  const buckets=selectedReportBuckets(dated,{rangeId,originWeekday,start,end});
+function reportBranch(tree,id){
+  return id?searchExecutionBranches(tree,'').find(({node})=>node.id===id):null;
+}
+
+function worksInBranch(works,branch){
+  if(!branch)return works;
+  const keys=new Set();
+  const include=node=>{keys.add(node.id);node.children.forEach(include);};
+  include(branch.node);
+  return works.filter(work=>keys.has('branch:'+work.itemId) || keys.has('task:'+work.itemId+':'+work.id));
+}
+
+function routeAllocation(work,bucket,covered,route){
+  if(route===null)return covered;
+  const total=sliceShare(work,bucket);
+  if(total<=0)return 0;
+  let before=0;
+  for(const [key] of FUNDING_ROUTES){
+    const through=before+sliceShare(work,bucket,key);
+    if(key===route)return Math.floor(covered*through/total)-Math.floor(covered*before/total);
+    before=through;
+  }
+  return 0;
+}
+
+export function costlineDocument(project,{rangeId,originWeekday,start,end,overview=true,packages=true,details,receipts,branchId,route=null}){
+  const branch=reportBranch(selectableWbsTree(project),branchId);
+  const works=worksInBranch(collectPlannedWorks(project.tasks,{includeUndated:true}),branch);
+  const dated=works.filter(work=>jalaliDayNumber(work.start)!=null || scheduledPayments(work).length);
+  const buckets=selectedReportBuckets(dated,{rangeId,originWeekday,start,end,route});
   const coveredIn=fundingCoverage(project);
   for(const bucket of buckets){
     bucket.label=reportDateRange(bucket.startDay,bucket.endDay);
     for(const work of bucket.works){
-      work.allocated=coveredIn(work.id,bucket);
-      work.shortageDay=firstFundingShortage(work,bucket,work.allocated);
+      const covered=Math.min(sliceShare(work,bucket),coveredIn(work.id,bucket));
+      work.allocated=routeAllocation(work,bucket,covered,route);
+      work.shortageDay=route===null?firstFundingShortage(work,bucket,work.allocated):null;
     }
     bucket.allocated=bucket.works.reduce((sum,work)=>sum+workFunding(work),0);
   }
   const need=buckets.reduce((sum,bucket)=>sum+bucket.total,0);
   const allocated=buckets.reduce((sum,bucket)=>sum+bucket.allocated,0);
   const range=ranges.find(item=>item.id===rangeId);
+  const scope=[branch?.path.join(' ← '),route!==null?FUNDING_ROUTES.find(([key])=>key===route)?.[1]:''].filter(Boolean);
   const title=`<h1>گزارش برآورد هزینه و تأمین بودجه ${esc(project.name)}</h1>
 <div class="cost-meta"><p>تاریخ تهیه ${esc(formatJalaliDisplay(todayJalaliStr()))} | ${rangeId==='week2'?'دوره‌های دوهفته‌ای':esc(range?.label)}${range?.days>1 ? ` | مبدأ ${WEEKDAYS[originWeekday]}` : ''}</p>
-${Number.isFinite(start)&&Number.isFinite(end)?`<p class="cost-report-range">بازهٔ گزارش ${reportDateRange(start,end)}</p>`:''}</div>`;
+${Number.isFinite(start)&&Number.isFinite(end)?`<p class="cost-report-range">بازهٔ گزارش ${reportDateRange(start,end)}</p>`:''}</div>
+${scope.length?`<p>${esc(scope.join(' · '))}</p>`:''}`;
   let html=`<article class="nb-export-document cost-report">`;
   const max=Math.max(1,...buckets.map(bucket=>bucket.total));
   let cumulative=0;
@@ -139,17 +169,19 @@ ${table(['دوره',...columns,'تخصیص تجمعی (تومان)'],rows,i+grou
   if((overview || details) && !buckets.length) html+='<p>در این بازه برآورد دوره‌ای وجود ندارد.</p>';
   if(packages && buckets.length && (!overview || buckets.length>1)) html+=`<section class="cost-packages">
 ${buckets.map(bucket=>`<h2>${bucket.label} | تفکیک بسته های کاری</h2>${table(['بستهٔ کاری',...columns],packageRows(bucket.works),['جمع این بازه',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
-  const undated=works.filter(work=>jalaliDayNumber(work.start)==null);
+  const undated=works.filter(work=>jalaliDayNumber(work.start)==null && (route===null || (work.fundingRoute||'')===route))
+    .map(work=>({...work,amount:work.amount-scheduledPayments(work).reduce((sum,payment)=>sum+payment.amount,0)}))
+    .filter(work=>work.amount>0);
   if((overview || details) && undated.length) html+=`<section><h2>برآوردهای بدون تاریخ شروع</h2>${table(['مسیر کار','نام کار','برآورد کل (تومان)'],undated.map(work=>[work.path,work.text,money(work.amount)]))}</section>`;
   if(details && buckets.some(bucket=>bucket.works.length)) html+=`<section class="cost-appendix cost-details">${buckets.filter(bucket=>bucket.works.length).map(bucket=>`<h2>${bucket.label} | لیست کارها</h2>${table(['مسیر درخت','نام کار','زمان کار',...detailColumns],detailRows(bucket.works),['جمع این دوره',...costs(bucket.total,bucket.allocated)])}`).join('')}</section>`;
-  if(receipts) html+=`<section class="cost-appendix"><h2>دریافتی‌های کل پروژه</h2>${table(['شماره','تاریخ','مبلغ (تومان)'],fundingReceiptsOf(project).map((receipt,index)=>[money(index+1),reportDateRange(jalaliDayNumber(receipt.depositDate),null),money(receipt.amount)]))}
+  if(receipts && !branch && route===null) html+=`<section class="cost-appendix"><h2>دریافتی‌های کل پروژه</h2>${table(['شماره','تاریخ','مبلغ (تومان)'],fundingReceiptsOf(project).map((receipt,index)=>[money(index+1),reportDateRange(jalaliDayNumber(receipt.depositDate),null),money(receipt.amount)]))}
 <p>مجموع دریافتی ${money(poolReceived(project))} تومان · ماندهٔ تخصیص‌نیافته ${money(poolRemaining(project))} تومان</p></section>`;
   return html+'</article>';
 }
 
 let view, controls;
 
-export async function openCostlineExport(project,{rangeId,originWeekday,trigger}){
+export async function openCostlineExport(project,{rangeId,originWeekday,trigger,branch:initialBranch}){
   const { getContractPageStyles }=await import('../contracts/contractTemplateFormModule.js');
   if(!view){
     const source=document.getElementById('notebookExportPage');
@@ -174,6 +206,8 @@ export async function openCostlineExport(project,{rangeId,originWeekday,trigger}
 <label>تا تاریخ <button type="button" data-end></button></label>
 <label>مقیاس <select data-range>${ranges.map(range=>`<option value="${range.id}">${range.label}</option>`).join('')}</select></label>
 <label>مبدأ دورهٔ پرداخت <select data-origin>${WEEKDAYS.map((day,index)=>`<option value="${index}">${day}</option>`).join('')}</select></label>
+<label>مرحله <button type="button" data-branch></button></label>
+<label>مسیر تأمین <select data-route><option value="all">همه مسیرها</option>${FUNDING_ROUTES.map(([value,label])=>`<option value="${value}">${label}</option>`).join('')}</select></label>
 <small class="hint" role="status" data-chart-limit></small>`;
     options.after(controls);
     const back=document.createElement('button');
@@ -194,6 +228,12 @@ export async function openCostlineExport(project,{rangeId,originWeekday,trigger}
   const full=buildBuckets({rangeId,originWeekday,works});
   const startButton=controls.querySelector('[data-start]'), endButton=controls.querySelector('[data-end]');
   const range=controls.querySelector('[data-range]'), origin=controls.querySelector('[data-origin]');
+  const branchButton=controls.querySelector('[data-branch]'), route=controls.querySelector('[data-route]');
+  const tree=selectableWbsTree(project);
+  let branch=reportBranch(tree,initialBranch);
+  branchButton.onclick=()=>openExecutionBranchFilter(project,tree,id=>{branch=reportBranch(tree,id);paint();},branch?.node);
+  route.value='all';
+  route.onchange=()=>paint();
   const options=controls.previousElementSibling;
   const overview=options.querySelector('[data-overview]');
   const packages=options.querySelector('[data-packages]');
@@ -203,14 +243,18 @@ export async function openCostlineExport(project,{rangeId,originWeekday,trigger}
   packages.onchange=()=>{packagePreference=packages.checked;};
   let start=full[0]?.startDay ?? -Infinity, end=full.at(-1)?.endDay ?? Infinity;
   const warning=controls.querySelector('[data-chart-limit]');
-  const selection=()=>({rangeId:range.value,originWeekday:Number(origin.value),start,end,overview:overview.checked});
+  const selection=()=>({rangeId:range.value,originWeekday:Number(origin.value),start,end,overview:overview.checked,branchId:branch?.node.id,route:route.value==='all'?null:route.value});
   const paint=()=>{
     startButton.textContent=Number.isFinite(start)?date(start):'انتخاب کنید';
     endButton.textContent=Number.isFinite(end)?date(end):'انتخاب کنید';
     origin.disabled=!(ranges.find(item=>item.id===range.value)?.days>1);
     const current=selection();
-    const count=selectedReportBuckets(works,current).length;
-    warning.textContent=chartLimitMessage(works,current,count);
+    branchButton.textContent=branch?.path.join(' ← ') || 'همه مراحل';
+    receipts.disabled=Boolean(branch) || current.route!==null;
+    if(receipts.disabled)receipts.checked=false;
+    const scopedWorks=worksInBranch(works,branch);
+    const count=selectedReportBuckets(scopedWorks,current).length;
+    warning.textContent=chartLimitMessage(scopedWorks,current,count);
     warning.classList.toggle('hidden',!warning.textContent);
     packages.disabled=count===0 || (count===1 && overview.checked);
     packages.checked=!packages.disabled && packagePreference;

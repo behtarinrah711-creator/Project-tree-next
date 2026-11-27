@@ -13,6 +13,17 @@ export const COSTLINE_RANGES = [
   { id: 'quarter', label: '۳ ماهه', days: null, shade: 1 },
 ];
 
+export const FUNDING_ROUTES = [
+  ['owner','مستقیم کارفرما'], ['petty','شارژ تنخواه'], ['','مشخص نشده'],
+];
+export const PAYMENT_METHODS = [
+  ['','مشخص نشده'], ['transfer','واریز'], ['cash','نقدی'], ['check','چک'],
+];
+export const FUNDING_ACCRUAL = [
+  ['spread','پخش روی مدت'], ['start','ابتدای کار'], ['end','انتهای کار'],
+];
+const fundingRoute = value=>FUNDING_ROUTES.some(([key])=>key===value)?value:'';
+
 export const WEEKDAYS = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
 
 const faNumber = value => new Intl.NumberFormat('fa-IR', { useGrouping:false, maximumFractionDigits:2 }).format(value);
@@ -80,6 +91,8 @@ export function collectPlannedWorks(tasksRoot, { includeUndated = false } = {}){
         type:unit.type || '',
         amount,
         paymentPlan:Array.isArray(unit.costPaymentPlan) ? unit.costPaymentPlan : [],
+        fundingRoute:fundingRoute(unit.costFundingRoute),
+        paymentMethod:unit.costPaymentMethod || '',
         accrual:unit.fundingAccrual || "spread",
         start,
         end:scheduleEndOf(unit),
@@ -208,21 +221,22 @@ export function buildBuckets({ rangeId = 'week', originWeekday = 4, works = [] }
   return buckets;
 }
 
-export function scheduledPayments(work){
+export function scheduledPayments(work,{withIndex=false}={}){
   let remaining = work.amount;
   const payments = [];
-  for(const payment of work.paymentPlan || []){
+  for(const [index,payment] of (work.paymentPlan || []).entries()){
+    if(!payment)continue;
     const day = jalaliDayNumber(payment.date);
     const value = Number(payment.amount);
     if(day == null || !Number.isSafeInteger(value) || value <= 0 || remaining <= 0)continue;
     const amount = Math.min(remaining,value);
     remaining -= amount;
-    payments.push({...payment,day,amount});
+    payments.push({...payment,day,amount,...(withIndex?{index}:{})});
   }
   return payments;
 }
 
-export function sliceShare(work, bucket){
+export function sliceShare(work, bucket, route=null){
   const amount = Number(work.amount) || 0;
   const start = jalaliDayNumber(work.start);
   const end = jalaliDayNumber(work.end) ?? start;
@@ -231,9 +245,11 @@ export function sliceShare(work, bucket){
   let scheduled = 0;
   for(const payment of scheduledPayments(work)){
     remaining -= payment.amount;
-    if(payment.day >= bucket.startDay && payment.day <= bucket.endDay)scheduled += payment.amount;
+    if((route===null || route===fundingRoute(payment.route)) &&
+      payment.day >= bucket.startDay && payment.day <= bucket.endDay)scheduled += payment.amount;
   }
-  return scheduled + scheduledWorkShare(work,bucket,remaining,start,end);
+  return scheduled + (route===null || route===fundingRoute(work.fundingRoute)
+    ? scheduledWorkShare(work,bucket,remaining,start,end) : 0);
 }
 
 function scheduledWorkShare(work,bucket,amount,start,end){
@@ -250,14 +266,14 @@ function scheduledWorkShare(work,bucket,amount,start,end){
   return Math.floor(amount * through / duration) - Math.floor(amount * before / duration);
 }
 
-export function assignWorksToBuckets(buckets, works){
+export function assignWorksToBuckets(buckets, works, route=null){
   buckets.forEach(bucket => {
     bucket.works = [];
     bucket.total = 0;
   });
   works.forEach(work => {
     buckets.forEach(bucket => {
-      const share = sliceShare(work, bucket);
+      const share = sliceShare(work, bucket, route);
       if(share <= 0) return;
       bucket.works.push({ ...work, sliceAmount: share });
       bucket.total += share;

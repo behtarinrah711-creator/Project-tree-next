@@ -281,3 +281,18 @@ test('odd-job creation, edit and deletion preserve ordered history on the saved 
   assert.deepEqual(saved.executionHistory.map(({type,at})=>[type,at]),
     [['odd_job_created',10],['odd_job_edited',20],['odd_job_deleted',30]]);
 });
+
+test('work form saves record old and new values and history survives soft deletion',()=>{
+  const store=installFixture();
+  const created=workTaskApi.create('p1','w1',draft(),()=>100);
+  const {id}=created.task;
+  const saved=workTaskApi.update('p1','w1',id,{scheduleEnd:'1405/06/05',assigneeContactIds:['c2'],assigneeContactId:'c2'},()=>200,{fromForm:true});
+  assert.equal(saved.ok,true);
+  assert.equal(saved.task.formHistory.length,1);
+  assert.match(saved.task.formHistory[0].reason,/1405\/06\/03.*1405\/06\/05/);
+  assert.match(saved.task.formHistory[0].reason,/مهندس احمدی.*مهندس محمدی/);
+  assert.equal(workTaskApi.remove('p1','w1',id,()=>300).ok,true);
+  const record=store.getSnapshot().projects[0].tasks[0].subtasks[0].workTasks.find(task=>task.id===id);
+  assert.equal(record.trashed,true);
+  assert.deepEqual(record.formHistory.map(event=>event.action),['work_form_saved','work_form_deleted']);
+});
