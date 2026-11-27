@@ -1,3 +1,4 @@
+import {projectWithPlannedSchedule, requiredScheduleStart, scheduleDate, scheduleRangeOf} from '../../domain/wbs/scheduling.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { buildTimelineRows, sortTimelineRows } from './timelineRows.js';
@@ -89,4 +90,24 @@ test('WBS filters reach selected descendants even if unrelated ancestors are col
     ['selected','task','child','other-task']);
   assert.deepEqual(ids(new Set(['task:selected:task','task:selected:child'])),['task','child']);
   assert.deepEqual(ids(),['parent']);
+});
+
+
+test('Gantt uses the same automatic dates as the form even with stale saved dates and an actual start',()=>{
+  const stairs={id:'stairs',scheduleStart:'1405/09/15',scheduleEnd:'1405/09/24'};
+  const flashing={id:'flashing',scheduleMode:'auto',scheduleDuration:3,actualStart:'1405/09/13',updatedAt:100,
+    scheduleStart:'1405/09/13',scheduleEnd:'1405/09/15',
+    dependencies:[{predecessorId:'stairs',type:'FS',lagDays:1}]};
+  const painting={id:'paint',scheduleMode:'auto',scheduleDuration:2,predecessorIds:['flashing']};
+  const project={tasks:[{id:'work',kind:'work',workTasks:[stairs,flashing,painting]}]};
+  const scheduled=projectWithPlannedSchedule(project);
+  const rows=buildTimelineRows(scheduled.tasks,'p',{visible:()=>true,expanded:()=>true});
+  const row=rows.find(row=>row.item.id==='flashing');
+  const formStart=requiredScheduleStart(flashing,3,()=>scheduleRangeOf({...stairs,kind:'workTask'}));
+  assert.deepEqual([row.range.startDate,row.range.endDate],[scheduleDate(formStart),'1405/09/28']);
+  assert.equal(row.range.startDate,'1405/09/26');
+  assert.equal(rows.find(row=>row.item.id==='paint').range.startDate,'1405/09/29');
+  assert.equal(row.item.actualStart,'1405/09/13');
+  assert.equal(row.item.updatedAt,100);
+  assert.equal(flashing.scheduleStart,'1405/09/13');
 });
