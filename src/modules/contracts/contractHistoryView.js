@@ -5,7 +5,7 @@ const historyDate=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{timeZone:'Asia/T
 const historyTime=new Intl.DateTimeFormat('fa-IR',{timeZone:'Asia/Tehran',hour:'2-digit',minute:'2-digit',hourCycle:'h23'});
 const moment=new Intl.DateTimeFormat('fa-IR-u-ca-persian',{timeZone:'Asia/Tehran',year:'numeric',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'});
 
-export function renderContractHistory(documentRef,contract,{finance=false,compact=false,actions,payment,showPaymentAmount=true}={}){
+export function renderContractHistory(documentRef,contract,{finance=false,compact=false,actions,payment,showPaymentAmount=true,eventLabels={}}={}){
   const details=documentRef.createElement('details');details.className='contract-history';
   const summary=documentRef.createElement('summary');summary.textContent='تاریخچه';details.appendChild(summary);
   details.onclick=event=>event.stopPropagation();
@@ -40,7 +40,7 @@ export function renderContractHistory(documentRef,contract,{finance=false,compac
     if(['reject','reject_finance','revoke_finance'].includes(entry.action))row.className+=' is-rejected';
     const date=new Date(entry.at);
     const creationLabel=isAdvance ? (isOnAccountPayment(contract)?'درخواست علی‌الحساب ثبت شد':'درخواست پیش‌پرداخت ثبت شد') : contract.statementType?'صورت‌وضعیت ایجاد شد':isAddendum?'الحاقیه ایجاد شد':'قرارداد ایجاد شد';
-    const label=entry.action==='correct_paid_contract'?'عنوان قرارداد پرداخت‌شده اصلاح شد':entry.action==='create' ? creationLabel : isAddendum && entry.action==='complete' ? 'تکمیل الحاقیه اعلام شد' : labels[entry.action];
+    const label=entry.action==='correct_paid_contract'?'عنوان قرارداد پرداخت‌شده اصلاح شد':entry.action==='create' ? creationLabel : isAddendum && entry.action==='complete' ? 'تکمیل الحاقیه اعلام شد' : eventLabels[entry.action] || labels[entry.action];
     const actor=entry.actor?.name || (isAddendum?'نام ثبت نشده':'کاربر');
     const validTime=entry.at && Number.isFinite(date.getTime());
     if(compact){
