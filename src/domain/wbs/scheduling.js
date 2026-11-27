@@ -390,7 +390,7 @@ export function requiredScheduleStart(item,duration,lookup){
   return bounds.includes(null)?null:Math.max(...bounds);
 }
 
-export function rescheduleAutomaticTasks(project){
+export function rescheduleAutomaticTasks(project, clock = Date.now){
   const rows=flattenDependencyCandidates(project.tasks);
   if(!rows.some(row=>row.kind==='workTask' && row.item.scheduleMode==='auto'))return project;
   const byId=new Map(rows.map(row=>[row.id,row]));
@@ -431,9 +431,15 @@ export function rescheduleAutomaticTasks(project){
   }
   for(const row of rows)resolve(row.id);
   if(!changes.size)return project;
+  const updatedAt=clock();
   const apply=items=>items.map(item=>{
     if(!item||item.trashed)return item;
-    const workTasks=item.workTasks?.map(task=>changes.has(String(task?.id))?{...task,...changes.get(String(task.id))}:task);
+    const workTasks=item.workTasks?.map(task=>{
+      const dates=changes.get(String(task?.id));
+      if(!dates)return task;
+      const previousRevision=Number(task.updatedAt) || Date.parse(task.updatedAt) || 0;
+      return {...task,...dates,updatedAt:Math.max(updatedAt,previousRevision+1)};
+    });
     const subtasks=item.subtasks && apply(item.subtasks);
     return {...item,...(workTasks?{workTasks}:{}),...(subtasks?{subtasks}:{})};
   });
