@@ -154,3 +154,22 @@ test('recalculated dependent dates survive a merge with older project data',()=>
   assert.deepEqual([savedFlashing.scheduleStart,savedFlashing.scheduleEnd],['1405/09/26','1405/09/28']);
   assert.equal(savedFlashing.updatedAt,101);
 });
+
+test('a stage milestone limits float to its own delivery deadline',()=>{
+  const split={id:'split',kind:'work',text:'نصب اسپلیت',scheduleStart:'1405/09/11',scheduleEnd:'1405/09/13'};
+  const final={id:'other',kind:'work',scheduleStart:'1405/10/01',scheduleEnd:'1405/10/25'};
+  const milestone={id:'handover',title:'تحویل سوئیت',dueDate:'1405/09/15',predecessorIds:['split']};
+  const stage={id:'suite',kind:'stage',subtasks:[{id:'floor',kind:'stage',subtasks:[split]}],milestones:[milestone]};
+  let analysis=projectScheduleAnalysis({tasks:[stage,final]});
+  assert.equal(analysis.rows.get('split').totalFloat,2);
+  assert.equal(analysis.stageMilestones[0].forecast,analysis.stageMilestones[0].due-2);
+  split.scheduleEnd='1405/09/17';
+  analysis=projectScheduleAnalysis({tasks:[stage,final]});
+  assert.equal(analysis.rows.get('split').totalFloat,-2);
+  assert.equal(analysis.stageMilestones[0].forecast,analysis.stageMilestones[0].due+2);
+  milestone.predecessorIds=[];
+  analysis=projectScheduleAnalysis({tasks:[stage,final]});
+  assert.equal(analysis.stageMilestones[0].forecast,null);
+  assert.equal(analysis.stageMilestones[0].day,analysis.stageMilestones[0].due);
+  assert.ok(analysis.rows.get('split').totalFloat>2);
+});
