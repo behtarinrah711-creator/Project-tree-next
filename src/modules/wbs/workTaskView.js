@@ -1,3 +1,4 @@
+import { workMilestoneField } from './stageMilestoneSheet.js';
 import { projectResponsibleIds } from '../projectSettings/projectDetailsDomain.js';
 import { responsibleContactPicker } from '../../ui/responsibleContactPicker.js';
 import {flattenDependencyCandidates,jalaliDayNumber,projectWithPlannedSchedule,requiredScheduleStart,scheduleDate,scheduleRangeOf} from '../../domain/wbs/scheduling.js';
@@ -237,6 +238,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
   const contractor=linkedContract ? contactRepository.get(projectId,linkedContract.contractorId || linkedContract.contactId) : null;
   let titleEditor;
   let saving=false;
+  let milestoneField;
   const overlay=openWbsSheet({
     title:subwork?'زیرکار:':'کار:', presentation:'stage-create', autoFocus:false,
     historyKey:`wbs-work-task:${projectId}:${task?.id || work.id}`,
@@ -511,6 +513,10 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       root.append(amountContainer,fieldRow('وزن',numericButton('taskWeight',task?.weight || 1)));
       if(!saveStandalone)updateSchedule('initial');
 
+      if(!saveStandalone){
+        milestoneField=workMilestoneField(projectDefaults,work.id,task?.id,optionButton);
+        if(milestoneField)root.append(milestoneField.row);
+      }
       if(editing && !readOnly){
         if(canDelete){
           const remove = documentRef.createElement('button');
@@ -578,6 +584,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
           : 'اطلاعات کار را کامل و معتبر وارد کنید');
         return false;
       }
+      if(!saveStandalone)milestoneField?.save(projectId,result.task.id);
       if(editing && !saveStandalone && isSaosaHost()){
         saving=true;
         const button=overlay.querySelector('.wbs-sheet-save');
