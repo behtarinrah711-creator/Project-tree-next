@@ -1,5 +1,6 @@
 import { openStageMilestoneSheet, stageMilestoneDiamond } from './stageMilestoneSheet.js';
 import { stageMilestones } from '../../domain/wbs/stageMilestones.js';
+import { captureGanttScroll, restoreGanttScroll } from './timelineStickyHeader.js';
 import {createExportButton} from './viewHeader.js';
 import {openProjectTreeExport} from './projectTreeExportView.js';
 import {requestPlanningItemDelete} from './planningItemDelete.js';
@@ -731,6 +732,10 @@ export function renderWbsHome(target = document.getElementById('content'), proje
   }
   explicitProjectId = projectId || explicitProjectId;
   const project = projectOf();
+  const previousGantt=target.querySelector('.wbs-gantt');
+  const previousTimeline=timelineByElement.get(previousGantt);
+  const ganttScroll=previousTimeline && previousTimeline.project.id===project?.id
+    ? captureGanttScroll(previousGantt,target) : null;
   target.innerHTML = '';
   if(!project || project.archived || project.trashed){
     target.innerHTML = '<div class="workspace-no-project">برای ورود به Workspace، از منوی سه‌خطی بالای صفحه یک پروژه را انتخاب کنید.</div>';
@@ -877,7 +882,9 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     const {toolbar,branchKeys} = renderTimelineBranchFilter(project,items,rerender);
     const scheduled = projectWithPlannedSchedule(project);
     const visibleItems = scheduled.tasks.filter(item => item && !item.trashed && !isPendingUiDelete(item.id));
-    tree.append(toolbar,renderTimeline(scheduled,visibleItems,branchKeys));
+    const gantt=renderTimeline(scheduled,visibleItems,branchKeys);
+    restoreGanttScroll(gantt,ganttScroll);
+    tree.append(toolbar,gantt);
   }
   else items.forEach(item => tree.appendChild(renderRow(item, codes, effectiveView, 0, currentView === 'tree')));
   root.appendChild(tree);

@@ -10,6 +10,34 @@ function geometrySignature(gantt){
   return gantt.dataset.timescaleSignature || '';
 }
 
+const pendingScroll = new WeakMap();
+
+function horizontalViewport(gantt,windowRef){
+  return gantt.querySelector(isMobile(windowRef)?'.wbs-gantt-body-scroll':'.wbs-gantt-scroll');
+}
+
+function timelineGeometry(gantt){
+  const [,start,end]=geometrySignature(gantt).split(':').map(Number);
+  const width=Number(gantt.querySelector('.wbs-gantt-scale-header-canvas')?.getAttribute('width'));
+  return end>start && width>0 ? {start,dayWidth:width/(end-start)} : null;
+}
+
+export function captureGanttScroll(gantt,container,windowRef=window){
+  if(!gantt)return null;
+  if(pendingScroll.has(gantt))return pendingScroll.get(gantt);
+  const viewport=horizontalViewport(gantt,windowRef);
+  const geometry=timelineGeometry(gantt);
+  if(!viewport || !geometry)return null;
+  return {
+    container,top:container.scrollTop,
+    day:geometry.start+(rightmostScroll(viewport)-viewport.scrollLeft)/geometry.dayWidth,
+  };
+}
+
+export function restoreGanttScroll(gantt,position){
+  if(position)pendingScroll.set(gantt,position);
+}
+
 function geometryReady(gantt){
   return Boolean(
     gantt.classList.contains('is-scale-enhanced') &&
@@ -34,17 +62,25 @@ function syncLayout(gantt, windowRef, { initialize = false } = {}){
   gantt.dataset.stickyHeaderMode = mode;
   gantt.dataset.stickyHeaderSignature = signature;
 
+  const viewport=mobile?bodyScroll:timelineScroll;
+  const position=pendingScroll.get(gantt);
+  if(position){
+    const geometry=timelineGeometry(gantt);
+    if(geometry){
+      const max=rightmostScroll(viewport);
+      const left=max-(position.day-geometry.start)*geometry.dayWidth;
+      viewport.scrollLeft=Math.max(0,Math.min(max,left));
+      position.container.scrollTop=position.top;
+      pendingScroll.delete(gantt);
+    }
+  }else if(initialize || modeChanged || geometryChanged){
+    viewport.scrollLeft=rightmostScroll(viewport);
+  }
   if(mobile){
-    if(initialize || modeChanged || geometryChanged){
-      bodyScroll.scrollLeft = rightmostScroll(bodyScroll);
-    }
-    sticky.scrollLeft = bodyScroll.scrollLeft;
+    sticky.scrollLeft=bodyScroll.scrollLeft;
   }else{
-    sticky.scrollLeft = 0;
-    if(initialize || modeChanged || geometryChanged){
-      timelineScroll.scrollLeft = rightmostScroll(timelineScroll);
-    }
-    timeScroll.scrollLeft = timelineScroll.scrollLeft;
+    sticky.scrollLeft=0;
+    timeScroll.scrollLeft=timelineScroll.scrollLeft;
   }
 }
 
