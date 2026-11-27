@@ -95,12 +95,12 @@ export function interruptionTimeline(documentRef,item,project,container,{draft,l
   return true;
 }
 
-export function openExecutionInterruption(project,item,actor,refresh,onReturn,{plannedOnly=false}={}){
+export function openExecutionInterruption(project,item,actor,refresh,onReturn,{plannedOnly=false,editing=null}={}){
   const current=tehranTodayJalali();
-  const draft={multiday:true,day:current,role:'unknown',contactIds:[]};
+  const draft={multiday:true,day:current,role:'unknown',contactIds:[],...editing};
   const contacts=(project.contacts||[]).filter(contact=>contact && !contact.trashed);
   const ref={kind:item.kind,id:item.id,workId:item.workId};
-  const photos=[];
+  const photos=[...(editing?.photos||[])];
   let uploader,feedback,saved=false;
   const errors=new Map();
   function registerField(key,row,control){
@@ -137,10 +137,10 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
   const renderForm=(root,planned,title)=>{
     draft.type=planned?'planned_pause':'execution_obstacle';
     const count=(item.entity.executionHistory||[]).filter(entry=>entry?.type==='planned_pause').length;
-    sheet.querySelector('.sheet-caption').textContent=planned?title+' '+new Intl.NumberFormat('fa-IR').format(count+1):title;
+    sheet.querySelector('.sheet-caption').textContent=planned&&!editing?title+' '+new Intl.NumberFormat('fa-IR').format(count+1):title;
     sheet.querySelector('.wbs-sheet-save').hidden=false;
     root.replaceChildren();
-    const reason=button('انتخاب دلیل',()=>openSearchPicker({
+    const reason=button(draft.reason||'انتخاب دلیل',()=>openSearchPicker({
       title:'دلیل توقف',contextKey:'execution-stop-reason',
       items:Object.entries(INACTIVE_REASONS).map(([id,name])=>({id,name})),
       onSelect:selected=>{draft.reasonId=selected.id;draft.reason=selected.name;reason.textContent=selected.name;fieldError('reason','');},
@@ -167,6 +167,7 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
     const startRow=date('تاریخ شروع توقف','day');
     dates.append(startRow,resumeRow);
     root.append(dates);
+    if(editing)startRow.querySelector('button').disabled=true;
     registerField('day',dates,startRow.querySelector('button'));
     registerField('resumeOn',errors.get('day').message,resumeRow.querySelector('button'));
     const forecast=document.createElement('div');
@@ -180,18 +181,19 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
       const automatic=button('خودکار',()=>{draft.resumeMode='auto';fieldError('mode','');fieldError('resumeOn','');fieldError('dependency','');refreshResume();});
       modes.append(manual,automatic);root.append(modes);
       registerField('mode',modes,manual);
-      draft.resumeMode='manual';
+      draft.resumeMode ||= draft.resumePredecessorId?'auto':'manual';
       const range=scheduleRangeOf({...item.entity,kind:item.kind==='task'||item.kind==='standalone'?'workTask':item.kind});
       const duration=button('',()=>openNumpadGeneric(draft.resumeDurationDays??'',value=>{
         durationOverride=Number(value);
         fieldError('duration','');
         refreshResume();
       },{suffix:' روز',group:false,maxLen:5,validate:value=>/^\d+$/.test(value)&&Number(value)>0?'':'مدت باقی‌مانده را وارد کنید'}));
-      let durationOverride=null;
+      let durationOverride=editing?.resumeDurationDays??null;
       const durationRow=fieldRow('مدت باقی‌ماندهٔ اجرا',duration);
       root.append(durationRow);
       registerField('duration',durationRow,duration);
       const dependency=predecessorField({project,consumerId:item.id,single:true,
+        initial:draft.resumePredecessorId?[{predecessorId:draft.resumePredecessorId,type:draft.resumeRelationType,lagDays:draft.resumeLagDays}]:[],
         excludeIds:[String(item.workId||'')],allowCandidate:row=>row.kind!=='stage',
         onChange:()=>{fieldError('dependency','');refreshResume();}});
       const scheduleFeedback=document.createElement('p');
@@ -239,6 +241,7 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
     const description=document.createElement('textarea');
     description.className='wbs-input';description.rows=3;
     description.required=true;
+    description.value=draft.description||'';
     description.addEventListener('input',()=>{draft.description=description.value;fieldError('description','');});
     const descriptionRow=fieldRow('توضیحات (الزامی)',description);
     root.append(descriptionRow);
@@ -312,7 +315,7 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
       const planned=draft.type==='planned_pause';
       const auto=draft.resumeMode==='auto';
       const issues=[];
-      if(!Object.hasOwn(INACTIVE_REASONS,draft.reasonId))issues.push(['reason','دلیل توقف را انتخاب کنید.']);
+      if(!Object.hasOwn(INACTIVE_REASONS,draft.reasonId) && draft.reason!==editing?.reason)issues.push(['reason','دلیل توقف را انتخاب کنید.']);
       if(jalaliDayNumber(draft.day)===null)issues.push(['day','تاریخ شروع توقف را انتخاب کنید.']);
       else if(!planned && jalaliDayNumber(draft.day)>jalaliDayNumber(current))issues.push(['day','تاریخ توقف غیرمجاز نمی‌تواند بعد از امروز باشد.']);
       if(!auto && planned && !draft.resumeOn)issues.push(['resumeOn','تاریخ شروع مجدد کار را انتخاب کنید.']);
@@ -327,7 +330,7 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
         reveal(errors.get(issues[0][0]).control);
         return false;
       }
-      const result=todayApi.saveInterruption(project.id,ref,{...draft,photos,isDailyReport:true},actor);
+      const result=todayApi.saveInterruption(project.id,ref,{...draft,photos,isDailyReport:editing?.isDailyReport??true},actor);
       if(!result.ok){
         const issue=({
           reason_required:['reason','دلیل توقف را دوباره انتخاب کنید.'],
@@ -363,7 +366,8 @@ export function openExecutionInterruption(project,item,actor,refresh,onReturn,{p
       return true;
     },
   });
-  if(plannedOnly)renderForm(formRoot,true,'ثبت توقف مجاز');
+  if(editing)renderForm(formRoot,true,'ویرایش توقف مجاز');
+  else if(plannedOnly)renderForm(formRoot,true,'ثبت توقف مجاز');
   else sheet.querySelector('.wbs-sheet-save').hidden=true;
 }
 

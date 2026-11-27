@@ -203,3 +203,25 @@ test('daily status requires a reason when inactive and records same-day changes 
   ]);
   assert.equal((entity(store).executionReports||[]).length,0);
 });
+
+test('an open stop can be repaired after moving the work dates and resumed without blocking the next report',()=>{
+  const store=install(false);
+  const actor={id:'a',contactId:'a',name:'الف'};
+  const now=Date.parse('2026-11-27T12:00:00Z');
+  const day=tehranTodayJalali(new Date(now));
+  const snapshot=store.getSnapshot();
+  const task=entity(store);
+  Object.assign(task,{assigneeContactId:'a',scheduleStart:'1405/10/01',scheduleEnd:'1405/10/05',executionHistory:[{
+    id:'stop',type:'planned_pause',day:'1405/09/03',resumeOn:'1405/09/24',resumeMode:'auto',
+    resumePredecessorId:'missing',multiday:true,reason:'آماده نبودن پیش‌نیاز',description:'شرح توقف',
+  }]});
+  store.replaceSnapshot(snapshot);
+  const old=entity(store).executionHistory[0];
+  assert.equal(todayApi.saveInterruption('p1',ref,{id:'stop',resume:true},actor,()=>now).reason,'missing');
+  const edited=todayApi.saveInterruption('p1',ref,{...old,resumeOn:day,resumeMode:'manual',resumePredecessorId:''},actor,()=>now);
+  assert.equal(edited.ok,true);
+  assert.equal(todayApi.saveReport('p1',ref,'گزارش اجرا در کارگاه',actor,()=>now).code,'interruption_exists');
+  assert.equal(todayApi.saveInterruption('p1',ref,{id:'stop',resume:true},actor,()=>now).ok,true);
+  assert.equal(todayApi.saveReport('p1',ref,'گزارش اجرا در کارگاه',actor,()=>now).ok,true);
+  assert.equal(entity(store).executionHistory.find(entry=>entry.id==='stop').resumedOn,day);
+});
