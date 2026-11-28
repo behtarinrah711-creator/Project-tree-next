@@ -99,7 +99,8 @@ function paintGanttTitles(page,canvas,windowRef){
   if(!context)return;
   const bounds=page.getBoundingClientRect();
   context.save();
-  context.scale(canvas.width/bounds.width,canvas.height/bounds.height);
+  // html2canvas leaves its capture offset on the context. Title positions use page coordinates.
+  context.setTransform(canvas.width/bounds.width,0,0,canvas.height/bounds.height,0,0);
   context.textAlign='center';
   context.textBaseline='middle';
   const graphemes=new Intl.Segmenter('fa',{granularity:'grapheme'});
