@@ -137,6 +137,15 @@ export async function downloadGanttPdf({documentRef,windowRef,html,styles,settin
   documentRef.body.append(capture);
   try{
     await documentRef.fonts?.ready;
+    const range=documentRef.createRange();
+    let nameWidth=0;
+    for(const cell of capture.querySelectorAll('.gantt-print-names > div')){
+      range.selectNodeContents(cell);
+      const style=windowRef.getComputedStyle(cell);
+      const padding=parseFloat(style.paddingLeft)+parseFloat(style.paddingRight);
+      nameWidth=Math.max(nameWidth,range.getBoundingClientRect().width+padding);
+    }
+    capture.querySelector('style').textContent+=`.gantt-pdf-capture{--gantt-label-width:${Math.ceil(nameWidth)+2}px}`;
     const pages=[...capture.querySelectorAll('.gantt-print')];
     if(!pages.length)throw new Error('The Gantt export has no pages');
     const signature=capture.querySelector('.signature');
