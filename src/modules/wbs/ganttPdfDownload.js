@@ -101,7 +101,7 @@ function paintGanttTitles(page,canvas,windowRef){
   context.save();
   // html2canvas leaves its capture offset on the context. Title positions use page coordinates.
   context.setTransform(canvas.width/bounds.width,0,0,canvas.height/bounds.height,0,0);
-  context.textAlign='center';
+  context.textAlign='right';
   context.textBaseline='middle';
   const graphemes=new Intl.Segmenter('fa',{granularity:'grapheme'});
   for(const label of page.querySelectorAll('.gantt-print-title')){
@@ -123,7 +123,7 @@ function paintGanttTitles(page,canvas,windowRef){
     }
     const box=label.getBoundingClientRect();
     context.fillStyle=style.color;
-    context.fillText(title,box.left-bounds.left+box.width/2,box.top-bounds.top+box.height/2);
+    context.fillText(title,box.right-bounds.left-parseFloat(style.paddingRight),box.top-bounds.top+box.height/2);
   }
   context.restore();
 }
