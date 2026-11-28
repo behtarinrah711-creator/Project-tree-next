@@ -64,11 +64,11 @@ export function executionStatus(entity){
   return 'not_started';
 }
 
-export function timeState(entity, today){
+export function timeState(entity, today,{includeInterruptions=true}={}){
   if(['pending_approval','approved'].includes(executionStatus(entity))) return 'pending';
-  const interruption=entity && executionInterruption(entity,today);
+  const interruption=includeInterruptions && entity && executionInterruption(entity,today);
   if(interruption)return interruption.type==='planned_pause'?'waiting':'blocked';
-  if((entity?.executionHistory||[]).some(entry=>entry?.type==='planned_pause' && !entry.resumedOn && entry.resumeOn===today))return 'today';
+  if(includeInterruptions && (entity?.executionHistory||[]).some(entry=>entry?.type==='planned_pause' && !entry.resumedOn && entry.resumeOn===today))return 'today';
   const start = entity?.scheduleStart || '';
   const end = entity?.scheduleEnd || '';
   const endDay = jalaliDayNumber(end);
