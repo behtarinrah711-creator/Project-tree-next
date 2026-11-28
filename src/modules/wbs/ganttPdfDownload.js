@@ -94,26 +94,37 @@ function showGanttPdfPreview(documentRef,windowRef,images,settings){
   }
 }
 
-function fitGanttTitles(capture,documentRef,windowRef){
-  const context=documentRef.createElement('canvas').getContext('2d');
+function paintGanttTitles(page,canvas,windowRef){
+  const context=canvas.getContext('2d');
   if(!context)return;
+  const bounds=page.getBoundingClientRect();
+  context.save();
+  context.scale(canvas.width/bounds.width,canvas.height/bounds.height);
+  context.textAlign='center';
+  context.textBaseline='middle';
   const graphemes=new Intl.Segmenter('fa',{granularity:'grapheme'});
-  for(const label of capture.querySelectorAll('.gantt-print-title')){
+  for(const label of page.querySelectorAll('.gantt-print-title')){
     const style=windowRef.getComputedStyle(label);
     context.font=`${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
     context.direction='rtl';
     const width=label.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight);
-    const title=label.textContent;
-    if(width<=0 || context.measureText(title).width<=width)continue;
-    const chars=Array.from(graphemes.segment(title),part=>part.segment);
-    let low=0,high=chars.length;
-    while(low<high){
-      const middle=Math.ceil((low+high)/2);
-      if(context.measureText(chars.slice(0,middle).join('')+'…').width<=width)low=middle;
-      else high=middle-1;
+    if(width<=0)continue;
+    let title=label.textContent;
+    if(context.measureText(title).width>width){
+      const chars=Array.from(graphemes.segment(title),part=>part.segment);
+      let low=0,high=chars.length;
+      while(low<high){
+        const middle=Math.ceil((low+high)/2);
+        if(context.measureText(chars.slice(0,middle).join('')+'…').width<=width)low=middle;
+        else high=middle-1;
+      }
+      title=chars.slice(0,low).join('').trimEnd()+'…';
     }
-    label.textContent=chars.slice(0,low).join('').trimEnd()+'…';
+    const box=label.getBoundingClientRect();
+    context.fillStyle=style.color;
+    context.fillText(title,box.left-bounds.left+box.width/2,box.top-bounds.top+box.height/2);
   }
+  context.restore();
 }
 
 export async function downloadGanttPdf({documentRef,windowRef,html,styles,settings}){
@@ -125,7 +136,6 @@ export async function downloadGanttPdf({documentRef,windowRef,html,styles,settin
   documentRef.body.append(capture);
   try{
     await documentRef.fonts?.ready;
-    fitGanttTitles(capture,documentRef,windowRef);
     const pages=[...capture.querySelectorAll('.gantt-print')];
     if(!pages.length)throw new Error('The Gantt export has no pages');
     const signature=capture.querySelector('.signature');
@@ -133,6 +143,7 @@ export async function downloadGanttPdf({documentRef,windowRef,html,styles,settin
     const images=[];
     for(const page of pages){
       const canvas=await windowRef.html2canvas(page,{scale:2,backgroundColor:'#fff',useCORS:true,logging:false,windowWidth:Math.ceil(page.getBoundingClientRect().width)});
+      paintGanttTitles(page,canvas,windowRef);
       const jpg=windowRef.atob(canvas.toDataURL('image/jpeg',.94).split(',')[1]);
       images.push({bytes:Uint8Array.from(jpg,char=>char.charCodeAt(0)),pixelWidth:canvas.width,pixelHeight:canvas.height});
     }
