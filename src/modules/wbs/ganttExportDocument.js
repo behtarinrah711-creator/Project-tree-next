@@ -29,8 +29,8 @@ export const ganttPrintStyles = `.gantt-print{width:100%}
 .gantt-print-chart-body{position:relative;overflow:hidden}
 .gantt-print-detail{position:absolute;direction:rtl;white-space:nowrap;font-size:9px;line-height:11px;text-align:right;color:#253655;background:#fff;padding:0 2px}
 .gantt-print-title{box-sizing:border-box;text-align:center;overflow:hidden;text-overflow:ellipsis;background:transparent;font-weight:600}
-.gantt-print-progress{color:#fff;background:#247450;border-radius:3px;font-weight:700;line-height:14px}
-.gantt-print-progress.is-planned{background:#354e67}
+.gantt-print-progress{color:#111;background:transparent;font-weight:700;line-height:14px}
+.gantt-print-progress.is-filled{color:#fff}
 .gantt-print-labels>div{height:${rowHeight}px;line-height:37px;border-bottom:1px solid #d8dfe5;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-inline:6px}
 .gantt-print-labels>div:first-child,.gantt-print-axis{height:27px;line-height:26px;background:#eef3f8;font-weight:600}
 .gantt-print-axis{position:relative;direction:rtl;box-sizing:border-box;border-bottom:1px solid #9aa7b1}
@@ -91,6 +91,9 @@ function dependencyLines(rows,links,distance,start,end,page){
 export function ganttExportDocument({project,entries,analysis},settings){
   const {start,end,scale,title,showTitle,showDates,showProgress,showDependencies,showFloat}=settings;
   const rowsPerPage=pageLayout(settings).rows;
+  const plannedFill=settings.colorPrint?'#edf5ff':'#fff';
+  const completedFill=settings.colorPrint?'#142b53':'#222';
+  const border=settings.colorPrint?'#142b53':'#333';
   const rows=ganttExportRows(entries,start,end);
   const axis=ganttExportAxis(start,end,scale);
   const distance=day=>chartWidth*(Math.max(start,Math.min(end+1,day))-start)/(end-start+1);
@@ -118,10 +121,11 @@ export function ganttExportDocument({project,entries,analysis},settings){
       const milestone=entry.kind==='milestone';
       const progress=Math.max(0,Math.min(100,actualProgress(entry.item)||0));
       let remaining=spans.reduce((days,span)=>days+span.end-span.start+1,0)*progress/100;
-      let progressAnchor=null;
-      let visibleAnchor=null;
-      const fill=entry.kind==='stage'?'#405b79':'#1679a3';
-      const rect=(right,left,color)=>`<rect x="${left}" y="${y}" width="${right-left}" height="${barHeight}" rx="3" fill="${color}"/>`;
+      let filledSpan=null;
+      let openSpan=null;
+      let visibleEdge=null;
+      const wider=(span,left,right)=>!span || right-left>span.width?{center:(left+right)/2,width:right-left}:span;
+      const rect=(right,left,fill,stroke='none')=>`<rect x="${left}" y="${y}" width="${right-left}" height="${barHeight}" fill="${fill}" stroke="${stroke}" stroke-width="1"/>`;
       const bars=spans.map(span=>{
         const completed=Math.min(remaining,span.end-span.start+1);
         remaining-=completed;
@@ -132,13 +136,12 @@ export function ganttExportDocument({project,entries,analysis},settings){
           const mid=y+barHeight/2;
           return `<path d="M ${center} ${mid-5} l 5 5 -5 5 -5 -5 z" fill="#253655"/>`;
         }
-        visibleAnchor??=center;
-        const doneLeft=x(span.start+completed);
-        if(showProgress && right>doneLeft){
-          progressAnchor??=(right+doneLeft)/2;
-          return rect(right,left,fill)+rect(right,doneLeft,'#247450');
-        }
-        return rect(right,left,fill);
+        visibleEdge=visibleEdge===null?left:Math.min(visibleEdge,left);
+        const doneLeft=showProgress?x(span.start+completed):right;
+        if(right>doneLeft)filledSpan=wider(filledSpan,doneLeft,right);
+        if(doneLeft>left)openSpan=wider(openSpan,left,doneLeft);
+        return rect(right,left,plannedFill)+
+          (right>doneLeft?rect(right,doneLeft,completedFill):'')+rect(right,left,'none',border);
       }).join('');
       const anchor=day=>Math.max(0,Math.min(91,percent(distance(day))));
       const dateLabel=(value,day)=>`<span class="gantt-print-detail" style="right:${anchor(day)}%;top:${top+27}px">${escape(value)}</span>`;
@@ -156,11 +159,14 @@ export function ganttExportDocument({project,entries,analysis},settings){
       const titleCenter=percent((distance(first)+distance(finish+1))/2);
       const titleWidth=Math.min(55,Math.max(20,percent(distance(finish+1)-distance(first))));
       const titleRight=Math.max(0,Math.min(100-titleWidth,titleCenter-titleWidth/2));
-      const titleLabel=`<span class="gantt-print-detail gantt-print-title" style="right:${titleRight}%;width:${titleWidth}%;top:${top}px">${escape(title)}</span>`;
-      const hasProgress=progressAnchor!==null;
-      const progressRight=Math.max(0,Math.min(100,percent(chartWidth-(progressAnchor??visibleAnchor??0))));
-      const progressShift=progressRight<6?0:progressRight>94?100:50;
-      const progressLabel=showProgress&&!milestone?`<span class="gantt-print-detail gantt-print-progress${hasProgress?'':' is-planned'}" style="right:${progressRight}%;top:${y}px;transform:translateX(${progressShift}%)">${number.format(progress)}٪</span>`:'';
+      const titleLabel=`<span class="gantt-print-detail gantt-print-title" data-html2canvas-ignore style="right:${titleRight}%;width:${titleWidth}%;top:${top}px">${escape(title)}</span>`;
+      const text=`${number.format(progress)}٪`;
+      const minLabelWidth=text.length*9;
+      const insideFill=filledSpan?.width>=minLabelWidth;
+      const insideOpen=!insideFill && openSpan?.width>=minLabelWidth;
+      const progressX=insideFill?filledSpan.center:insideOpen?openSpan.center:
+        Math.max(minLabelWidth/2,visibleEdge-minLabelWidth/2-2);
+      const progressLabel=showProgress&&!milestone?`<span class="gantt-print-detail gantt-print-progress${insideFill?' is-filled':''}" style="right:${percent(chartWidth-progressX)}%;top:${y}px;transform:translateX(50%)">${text}</span>`:'';
       return {bars,details:titleLabel+progressLabel+dates};
     });
     return `<section class="gantt-print" dir="rtl">
