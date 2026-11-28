@@ -221,7 +221,8 @@ function renderSelection(body,state){
     function paintDates(){start.paintDate();end.paintDate();}
     paintDates();
     timelineOptions.append(titleField,
-      select('کاغذ افقی',[['A3','A3'],['A4','A4']],settings.paper,value=>{settings.paper=value;}),
+      select('اندازهٔ کاغذ',[['A3','A3'],['A4','A4']],settings.paper,value=>{settings.paper=value;}),
+      select('جهت کاغذ',[['landscape','افقی'],['portrait','عمودی']],settings.orientation,value=>{settings.orientation=value;}),
       select('مقیاس زمانی',[['week','هفتگی'],['week2','دوهفته‌ای'],['month','ماهانه']],settings.scale,value=>{settings.scale=value;}),
       start.control,end.control);
     for(const [key,label] of [['showTitle','نمایش عنوان'],['showDates','نمایش تاریخ شروع و پایان'],['showProgress','درصد پیشرفت واقعی'],['showDependencies','خطوط پیش‌نیاز'],['showFloat','شناوری']]){
@@ -352,7 +353,7 @@ export function openProjectTreeExport(project,{trigger,expandedIds,expandIcon,br
   const ranges=timeline?.(()=>true).entries.filter(entry=>entry.range) || [];
   const start=ranges.reduce((min,entry)=>Math.min(min,entry.range.start),Infinity);
   const end=ranges.reduce((max,entry)=>Math.max(max,entry.segments?.at(-1)?.end ?? entry.range.end),-Infinity);
-  const gantt={title:'نمودار گانت | '+project.name,start,end,paper:'A3',scale:'week',
+  const gantt={title:'نمودار گانت | '+project.name,start,end,paper:'A3',orientation:'landscape',scale:'week',
     showTitle:true,showDates:true,showProgress:true,showDependencies:ganttOptions.dependencies,showFloat:ganttOptions.float};
   const opened=view.open({projectId:project.id,title:'خروجی درخت پروژه | '+project.name,nodes,open,timeline,gantt,treeLayouts,
     projectName:project.name,layout:sourceView==='timeline'?'gantt':'list',plotSize:'A3',showProgress:false,showCost:false,drag:true,expandIcon,branchIcon},{trigger});
