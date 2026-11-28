@@ -1,8 +1,13 @@
 const sizes = { A4:[297,210], A3:[420,297] };
+function paperDimensions(paper,orientation){
+  const [width,height]=sizes[paper] || sizes.A3;
+  return orientation==='portrait'?[height,width]:[width,height];
+}
+
 const pt = mm => (mm*72/25.4).toFixed(3);
 
-export function ganttPdfBlob(images,paper){
-  const [width,height]=sizes[paper] || sizes.A3;
+export function ganttPdfBlob(images,paper,orientation){
+  const [width,height]=paperDimensions(paper,orientation);
   const encoder=new TextEncoder();
   const chunks=[];
   const offsets=[0];
@@ -39,7 +44,7 @@ export function ganttPdfBlob(images,paper){
 
 export async function downloadGanttPdf({documentRef,windowRef,html,styles,settings}){
   const capture=documentRef.createElement('div');
-  const [width]=sizes[settings.paper] || sizes.A3;
+  const [width]=paperDimensions(settings.paper,settings.orientation);
   capture.style.cssText=`position:fixed;left:-10000px;top:0;width:${width-24}mm;background:#fff`;
   capture.innerHTML=`<style>${styles}</style>${html}`;
   documentRef.body.append(capture);
@@ -55,7 +60,7 @@ export async function downloadGanttPdf({documentRef,windowRef,html,styles,settin
       const jpg=windowRef.atob(canvas.toDataURL('image/jpeg',.94).split(',')[1]);
       images.push({bytes:Uint8Array.from(jpg,char=>char.charCodeAt(0)),pixelWidth:canvas.width,pixelHeight:canvas.height});
     }
-    const url=windowRef.URL.createObjectURL(ganttPdfBlob(images,settings.paper));
+    const url=windowRef.URL.createObjectURL(ganttPdfBlob(images,settings.paper,settings.orientation));
     const link=documentRef.createElement('a');
     link.href=url;
     link.download=`${settings.title || 'نمودار گانت'}.pdf`;
