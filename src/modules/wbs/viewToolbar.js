@@ -20,6 +20,7 @@ import {
 import { expandIconMarkup, materialIconMarkup } from '../../ui/materialIcons.js';
 import { ganttMenuPosition } from './ganttMenuGeometry.js';
 import { createViewToolbar } from './viewHeader.js';
+import { timelineByElement } from './timelineRows.js';
 
 const CONFIG_ICON = 'M120-840h320v320H120v-320Zm400 0h320v320H520v-320ZM120-440h320v320H120v-320Zm520 0h80v120h120v80H720v120h-80v-120H520v-80h120v-120Zm-40-320v160h160v-160H600Zm-400 0v160h160v-160H200Zm0 400v160h160v-160H200Z';
 const LEVEL_ICON = 'M80-200v-80h240v-240h240v-240h320v80H640v240H400v240H80Z';
@@ -268,6 +269,12 @@ export function ensureViewToolbar(root, viewId){
 
   const actions = header.querySelector('.wbs-view-actions');
   if(!actions) return;
+  const exportButton=actions.querySelector('.wbs-export-tool');
+  const openExport=timelineByElement.get(gantt)?.openExport;
+  if(exportButton){
+    exportButton.disabled=!openExport;
+    exportButton.onclick=openExport?()=>openExport(exportButton):null;
+  }
 
   let expand = root.querySelector('.wbs-tree-toggle');
   if(!expand) expand = createExpandButton(root.ownerDocument, project);
