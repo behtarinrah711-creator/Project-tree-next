@@ -218,6 +218,20 @@ function renderActivity(container,{activities,value,onSelect,workId,documentRef}
   paint();container.appendChild(fieldRow('فعالیت',selection.wrap));
 }
 
+export function workFormResponsibleIds(project,task,{contractLocked=false}={}){
+  const emptyRoles=task?.clearedResponsibilityRoles || [];
+  const resolve=(role,ids,locked=false)=>ids.length || locked || task?.isSubwork || emptyRoles.includes(role)
+    ? [...ids] : projectResponsibleIds(project,role);
+  const assignees=task?.assigneeContactIds?.length?task.assigneeContactIds
+    :task?.assigneeContactId?[String(task.assigneeContactId)]:[];
+  return {
+    followUp:resolve('followUp',assignees),
+    finance:resolve('finance',task?.financeContactIds || []),
+    workApproval:resolve('workApproval',executionApproverIds(task),task?.completionState==='pending_approval'),
+    contractApproval:resolve('contractApproval',task?.contractApproverContactIds || [],contractLocked),
+  };
+}
+
 function taskForm({ projectId, work, task = null, onChanged, readOnly=false, canDelete=true, saveStandalone }){
   const projectDefaults = projectRepository.find(projectId);
   const parentTitles = [];
@@ -236,6 +250,8 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
   const subwork=task?.isSubwork===true;
   const documentRef = document;
   const linkedContract=task ? linkedContractForWork(projectId,work.id,task.id) : null;
+  const reviewersLocked=['pending','approved'].includes(linkedContract?.approvalStatus);
+  const initialResponsibilities=workFormResponsibleIds(projectDefaults,task,{contractLocked:reviewersLocked});
   const contractor=linkedContract ? contactRepository.get(projectId,linkedContract.contractorId || linkedContract.contactId) : null;
   let titleEditor;
   let saving=false;
@@ -254,7 +270,6 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       };
       if(!subwork)section('مشخصات کار');
       const contacts = contactRepository.list(projectId).filter(contact => contact && !contact.trashed);
-      const defaults=role=>task?[]:projectResponsibleIds(projectDefaults,role);
       const activities=activityRepository.list(projectId).filter(activity=>activity && !activity.trashed);
       let counterpartyContactId = task?.counterpartyContactId ?? contractor?.id ?? '';
       let activityId=task?.activityId || '';
@@ -429,13 +444,13 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       }
       if(!subwork)section('مسئولان');
 
-      let assigneeIds=task?.assigneeContactIds ?? (task?.assigneeContactId?[String(task.assigneeContactId)]:defaults('followUp'));
+      let assigneeIds=initialResponsibilities.followUp;
       if(!subwork)root.append(fieldRow('مسئول پیگیری کار',responsibleContactPicker({
         contacts,ids:assigneeIds,label:'مسئول پیگیری کار',contextKey:'wbs-task-assignee:'+work.id,
         readOnly,onChange:ids=>{assigneeIds=ids;},
       })));
       root._assigneeIds=()=>assigneeIds;
-      let financeIds=task?.financeContactIds ?? defaults('finance');
+      let financeIds=initialResponsibilities.finance;
       if(!subwork)root.append(fieldRow('مسئول مالی',responsibleContactPicker({
         contacts,ids:financeIds,label:'مسئول مالی',contextKey:'wbs-task-finance:'+work.id,
         readOnly,onChange:ids=>{financeIds=ids;},
@@ -443,7 +458,7 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       root._financeIds=()=>financeIds;
 
       const approvers=documentRef.createElement('div');
-      let approverIds=task?executionApproverIds(task):defaults('workApproval');
+      let approverIds=initialResponsibilities.workApproval;
       const approversLocked=readOnly || task?.completionState==='pending_approval';
       const paintApprovers=()=>{
         approvers.replaceChildren();
@@ -474,22 +489,20 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
       root._executionApproverIds=()=>approverIds;
 
       const contractApprovers=documentRef.createElement('div');
-      let contractApproverContactIds=[...(task?.contractApproverContactIds ?? defaults('contractApproval'))];
-      const reviewersLocked=['pending','approved'].includes(linkedContract?.approvalStatus);
+      let contractApproverContactIds=initialResponsibilities.contractApproval;
       paintContractApprovers=()=>{
         contractApprovers.replaceChildren();
-        if(!togglesContainer.querySelector('[name="hasContract"]')?.checked)return;
         const controls=documentRef.createElement('div');
         contractApproverContactIds.forEach(id=>{
           const selected=contacts.find(contact=>String(contact.id)===String(id));
           const row=documentRef.createElement('div');row.className='wbs-contract-approver';
           const name=documentRef.createElement('span');name.textContent=selected?contactName(selected):'مخاطب حذف‌شده';
-          const remove=documentRef.createElement('button');remove.type='button';remove.textContent='×';remove.disabled=reviewersLocked;
+          const remove=documentRef.createElement('button');remove.type='button';remove.textContent='×';remove.disabled=readOnly || reviewersLocked;
           remove.setAttribute('aria-label','برداشتن مسئول تأیید قرارداد');
           remove.addEventListener('click',()=>{contractApproverContactIds=contractApproverContactIds.filter(value=>value!==id);paintContractApprovers();});
           row.append(name,remove);controls.appendChild(row);
         });
-        const select=documentRef.createElement('button');select.type='button';select.className='wbs-input';select.disabled=reviewersLocked;
+        const select=documentRef.createElement('button');select.type='button';select.className='wbs-input';select.disabled=readOnly || reviewersLocked;
         select.textContent=contractApproverContactIds.length?'افزودن مسئول تأیید قرارداد':'انتخاب مسئول تأیید قرارداد';
         select.addEventListener('click',()=>openSearchPicker({
           title:'انتخاب مسئول تأیید قرارداد',listTitle:'مخاطبین',selectedTitle:'مسئول تأیید قرارداد',
@@ -500,7 +513,6 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         }));
         controls.appendChild(select);contractApprovers.appendChild(fieldRow('مسئول تأیید قرارداد',controls));
       };
-      togglesContainer.addEventListener('change',paintContractApprovers);
       if(!subwork)root.appendChild(contractApprovers);paintContractApprovers();
       root._contractApproverIds=()=>contractApproverContactIds;
 
@@ -541,6 +553,12 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         documentRef.defaultView?.KarhaUI?.showToast?.(dependencyCheck.code === 'cycle' ? 'وابستگی دوری مجاز نیست' : 'انتخاب پیش‌نیاز تکراری یا نامعتبر است');
         return false;
       }
+      const responsibilities={
+        followUp:root._assigneeIds(),finance:root._financeIds(),
+        workApproval:root._executionApproverIds(),contractApproval:root._contractApproverIds(),
+      };
+      const clearedResponsibilityRoles=Object.keys(responsibilities).filter(role=>
+        !responsibilities[role].length && (initialResponsibilities[role].length || task?.clearedResponsibilityRoles?.includes(role)));
       const draft = {
         title:(titleEditor.textContent || '').trim(),
         type:(root.querySelector('[name="taskType"]')?.value ?? task?.type ?? ''),
@@ -549,14 +567,15 @@ function taskForm({ projectId, work, task = null, onChanged, readOnly=false, can
         ...(!saveStandalone?{scheduleMode:root.querySelector('[name="taskScheduleMode"]').value||'manual',
           scheduleDuration:Number(root.querySelector('[name="taskDuration"]').dataset.value)}:{}),
         priority:root.querySelector('[name="taskPriority"]').value||'normal',
-        assigneeContactIds:root._assigneeIds(),
-        financeContactIds:root._financeIds(),
-        assigneeContactId:root._assigneeIds()[0] || '',
+        assigneeContactIds:responsibilities.followUp,
+        financeContactIds:responsibilities.finance,
+        assigneeContactId:responsibilities.followUp[0] || '',
+        clearedResponsibilityRoles,
         activityId:root.querySelector('[name="taskActivity"]')?.dataset.value || '',
         contractTemplateId:root.querySelector('[name="taskContractTemplate"]')?.dataset.value || '',
         counterpartyContactId:root.querySelector('[name="taskCounterparty"]')?.dataset.value || '',
-        executionApproverContactIds:root._executionApproverIds(),
-        contractApproverContactIds:root._contractApproverIds(),
+        executionApproverContactIds:responsibilities.workApproval,
+        contractApproverContactIds:responsibilities.contractApproval,
         contractorContactId:'',
         weight:Number(root.querySelector('[name="taskWeight"]').dataset.value),
         amount:Number(root.querySelector('[name="taskAmount"]')?.dataset.value) || 0,

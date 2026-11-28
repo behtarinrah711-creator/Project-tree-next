@@ -62,7 +62,7 @@ function validate(projectId, workId, input){
     contractTemplateId:input.hasContract ? contractTemplateId : '',
     activityId, activityIds:activityId ? [activityId] : [], activities:activityId ? [activityId] : [],
     requiresManagementApproval:Boolean(approvalContactId),
-    approvalContactId, ...(Array.isArray(input.executionApproverContactIds)?{executionApproverContactIds}:{}), contractApproverContactIds:input.hasContract?contractApproverContactIds:[],
+    approvalContactId, ...(Array.isArray(input.executionApproverContactIds)?{executionApproverContactIds}:{}), contractApproverContactIds,
   } };
 }
 
