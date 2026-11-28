@@ -2,6 +2,7 @@ import { actualProgress, effectiveDependencyLinks, PROJECT_FINISH_MILESTONE_ID, 
 import { buildBuckets } from '../../domain/wbs/costline.js';
 import { toPersianDigits } from '../../ui/digits.js';
 import { formatJalaliDisplay } from '../../ui/jalali.js';
+import { ganttPaperMargin, paperDimensions } from './ganttPdfDownload.js';
 import { formatTimelineDate } from './timelineDetailsFormatting.js';
 import { allocateDependencyLane, dependencyGeometry, dependencyPath } from './timelineDependencies.js';
 
@@ -11,18 +12,27 @@ const date = day => formatJalaliDisplay(scheduleDate(day));
 const rowHeight = 38;
 const barHeight = 14;
 const chartWidth = 760;
-const pageLayouts = {
-  landscape:{ A4:{rows:16,buckets:16}, A3:{rows:24,buckets:24} },
-  portrait:{ A4:{rows:24,buckets:11}, A3:{rows:36,buckets:16} },
-};
-const pageLayout=({paper,orientation})=>
-  pageLayouts[orientation==='portrait'?'portrait':'landscape'][paper==='A4'?'A4':'A3'];
+const bucketLimits = { landscape:{ A4:16, A3:24 }, portrait:{ A4:11, A3:16 } };
+const titleHeight = 26;
+const metadataHeight = 16;
+const axisHeight = 27;
+const titleGap = 4;
+const metadataGap = 6;
+const gridBorder = 2;
+
+function rowsPerSheet({paper,orientation,showTitle}){
+  const [,height]=paperDimensions(paper,orientation);
+  const printableHeight=(height-2*ganttPaperMargin)*96/25.4;
+  const headerHeight=metadataHeight+metadataGap+axisHeight+gridBorder+
+    (showTitle?titleHeight+titleGap:0);
+  return Math.floor((printableHeight-headerHeight)/rowHeight);
+}
 
 export const ganttPrintStyles = `.gantt-print{width:100%}
 .gantt-print{font-family:IRANSansX,Tahoma,sans-serif;direction:rtl;text-align:right;box-sizing:border-box;break-inside:avoid;font-size:11px}
 .gantt-print+.gantt-print{break-before:page}
-.gantt-print h1{margin:0 0 4px;font-size:18px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
-.gantt-print p{margin:0 0 6px}
+.gantt-print h1{margin:0 0 ${titleGap}px;font-size:18px;line-height:${titleHeight}px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.gantt-print p{margin:0 0 ${metadataGap}px;line-height:${metadataHeight}px}
 .gantt-print-grid{display:flex;direction:rtl;border:1px solid #9aa7b1}
 .gantt-print-labels{width:28%;box-sizing:border-box;border-inline-end:1px solid #9aa7b1;min-width:0}
 .gantt-print-chart{width:72%;min-width:0}
@@ -32,7 +42,7 @@ export const ganttPrintStyles = `.gantt-print{width:100%}
 .gantt-print-progress{color:#111;background:transparent;font-weight:700;line-height:14px}
 .gantt-print-progress.is-filled{color:#fff}
 .gantt-print-labels>div{height:${rowHeight}px;line-height:37px;border-bottom:1px solid #d8dfe5;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-inline:6px}
-.gantt-print-labels>div:first-child,.gantt-print-axis{height:27px;line-height:26px;background:#eef3f8;font-weight:600}
+.gantt-print-labels>div:first-child,.gantt-print-axis{height:${axisHeight}px;line-height:26px;background:#eef3f8;font-weight:600}
 .gantt-print-axis{position:relative;direction:rtl;box-sizing:border-box;border-bottom:1px solid #9aa7b1}
 .gantt-print-axis span{position:absolute;height:100%;text-align:right;padding-inline:2px;line-height:26px;border-right:1px solid #d8dfe5;box-sizing:border-box;white-space:nowrap;overflow:hidden;font-size:10px}
 .gantt-print-grid svg{width:100%;display:block;overflow:hidden}
@@ -58,7 +68,8 @@ export function ganttExportRows(entries,start,end){
 export function validateGanttExport(entries,settings){
   const {start,end,scale}=settings;
   if(!Number.isFinite(start) || !Number.isFinite(end) || start>end)return 'بازهٔ تاریخ نمودار را مشخص کنید';
-  const limit=pageLayout(settings).buckets;
+  const orientation=settings.orientation==='portrait'?'portrait':'landscape';
+  const limit=bucketLimits[orientation][settings.paper==='A4'?'A4':'A3'];
   const minDays={week:7,week2:14,month:31}[scale] || 7;
   if(end-start+1>limit*minDays || ganttExportAxis(start,end,scale).length>limit)
     return 'برای خوانایی نمودار، بازهٔ تاریخ را کوتاه‌تر یا مقیاس زمانی را درشت‌تر کنید';
@@ -90,7 +101,7 @@ function dependencyLines(rows,links,distance,start,end,page){
 
 export function ganttExportDocument({project,entries,analysis},settings){
   const {start,end,scale,title,showTitle,showDates,showProgress,showDependencies,showFloat}=settings;
-  const rowsPerPage=pageLayout(settings).rows;
+  const rowsPerPage=rowsPerSheet(settings);
   const plannedFill=settings.colorPrint?'#edf5ff':'#fff';
   const completedFill=settings.colorPrint?'#142b53':'#222';
   const border=settings.colorPrint?'#142b53':'#333';
