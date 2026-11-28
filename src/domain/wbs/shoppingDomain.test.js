@@ -37,3 +37,12 @@ test('overdue purchase stays overdue after it is sent back without management ap
   purchase.scheduleEnd=today;
   assert.equal(shoppingItemsForMode(source,'today',today).some(item=>item.id==='leaf-buy'),true);
 });
+
+test('a paused purchase stays in its scheduled purchase tabs',()=>{
+  const source=structuredClone(project);
+  source.tasks[0].subtasks[0].executionHistory=[{
+    type:'execution_obstacle',day:'1405/06/01',multiday:true,
+  }];
+  assert.equal(shoppingItemsForMode(source,'future','1405/06/09')[0].id,'leaf-buy');
+  assert.equal(shoppingItemsForMode(source,'overdue','1405/06/14')[0].id,'leaf-buy');
+});

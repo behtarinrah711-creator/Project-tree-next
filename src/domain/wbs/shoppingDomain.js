@@ -18,10 +18,10 @@ export function collectShoppingItems(project, today = tehranTodayJalali(), {incl
       if(tasks.length){
         tasks.filter(task => task.type === 'خرید' && (includeApproved || executionStatus(task) !== 'approved')).forEach(task => result.push({
           id:String(task.id), kind:'task', entity:task, work:node, workId:String(node.id),
-          path:[...ancestors, title].filter(Boolean), mode:timeState(task, today), amount:purchaseAmount(task),
+          path:[...ancestors, title].filter(Boolean), mode:timeState(task,today,{includeInterruptions:false}), amount:purchaseAmount(task),
         }));
       }else if(isWork(node) && node.type === 'خرید' && (includeApproved || executionStatus(node) !== 'approved')){
-        result.push({ id:String(node.id), kind:'work', entity:node, work:node, workId:String(node.id), path:[...ancestors].filter(Boolean), mode:timeState(node, today), amount:purchaseAmount(node) });
+        result.push({ id:String(node.id), kind:'work', entity:node, work:node, workId:String(node.id), path:[...ancestors].filter(Boolean), mode:timeState(node,today,{includeInterruptions:false}), amount:purchaseAmount(node) });
       }
     }
     walk(node.subtasks, [...ancestors, title]);
