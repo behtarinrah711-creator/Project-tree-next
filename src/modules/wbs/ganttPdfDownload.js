@@ -4,6 +4,7 @@ function paperDimensions(paper,orientation){
   return orientation==='portrait'?[height,width]:[width,height];
 }
 
+const margin = 8;
 const pt = mm => (mm*72/25.4).toFixed(3);
 
 export function ganttPdfBlob(images,paper,orientation){
@@ -28,11 +29,11 @@ export function ganttPdfBlob(images,paper,orientation){
   object(2,`<< /Type /Pages /Count ${images.length} /Kids [${images.map((_,i)=>`${3+i*3} 0 R`).join(' ')}] >>`);
   images.forEach(({bytes,pixelWidth,pixelHeight},index)=>{
     const page=3+index*3;
-    const imageWidth=Math.min(width-24,(height-24)*pixelWidth/pixelHeight);
+    const imageWidth=Math.min(width-2*margin,(height-2*margin)*pixelWidth/pixelHeight);
     const imageHeight=imageWidth*pixelHeight/pixelWidth;
     object(page,`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pt(width)} ${pt(height)}] /Resources << /XObject << /Chart ${page+1} 0 R >> >> /Contents ${page+2} 0 R >>`);
     object(page+1,`<< /Type /XObject /Subtype /Image /Width ${pixelWidth} /Height ${pixelHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`,bytes,'\nendstream');
-    const stream=`q ${pt(imageWidth)} 0 0 ${pt(imageHeight)} ${pt(width-12-imageWidth)} ${pt(height-12-imageHeight)} cm /Chart Do Q\n`;
+    const stream=`q ${pt(imageWidth)} 0 0 ${pt(imageHeight)} ${pt(width-margin-imageWidth)} ${pt(height-margin-imageHeight)} cm /Chart Do Q\n`;
     object(page+2,`<< /Length ${stream.length} >>\nstream\n${stream}endstream`);
   });
   const xref=length;
@@ -93,15 +94,38 @@ function showGanttPdfPreview(documentRef,windowRef,images,settings){
   }
 }
 
+function fitGanttTitles(capture,documentRef,windowRef){
+  const context=documentRef.createElement('canvas').getContext('2d');
+  if(!context)return;
+  const graphemes=new Intl.Segmenter('fa',{granularity:'grapheme'});
+  for(const label of capture.querySelectorAll('.gantt-print-title')){
+    const style=windowRef.getComputedStyle(label);
+    context.font=`${style.fontWeight} ${style.fontSize} ${style.fontFamily}`;
+    context.direction='rtl';
+    const width=label.clientWidth-parseFloat(style.paddingLeft)-parseFloat(style.paddingRight);
+    const title=label.textContent;
+    if(width<=0 || context.measureText(title).width<=width)continue;
+    const chars=Array.from(graphemes.segment(title),part=>part.segment);
+    let low=0,high=chars.length;
+    while(low<high){
+      const middle=Math.ceil((low+high)/2);
+      if(context.measureText(chars.slice(0,middle).join('')+'…').width<=width)low=middle;
+      else high=middle-1;
+    }
+    label.textContent=chars.slice(0,low).join('').trimEnd()+'…';
+  }
+}
+
 export async function downloadGanttPdf({documentRef,windowRef,html,styles,settings}){
   const pdfSettings={...settings};
   const capture=documentRef.createElement('div');
   const [width]=paperDimensions(pdfSettings.paper,pdfSettings.orientation);
   capture.className='gantt-pdf-capture';
-  capture.innerHTML=`<style>.gantt-pdf-capture{position:fixed;left:-10000px;top:0;width:${width-24}mm;background:#fff}${styles}</style>${html}`;
+  capture.innerHTML=`<style>.gantt-pdf-capture{position:fixed;left:-10000px;top:0;width:${width-2*margin}mm;background:#fff}${styles}</style>${html}`;
   documentRef.body.append(capture);
   try{
     await documentRef.fonts?.ready;
+    fitGanttTitles(capture,documentRef,windowRef);
     const pages=[...capture.querySelectorAll('.gantt-print')];
     if(!pages.length)throw new Error('The Gantt export has no pages');
     const signature=capture.querySelector('.signature');
