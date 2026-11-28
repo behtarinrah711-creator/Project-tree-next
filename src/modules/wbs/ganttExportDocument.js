@@ -12,8 +12,8 @@ const rowHeight = 38;
 const barHeight = 14;
 const chartWidth = 760;
 const pageLayouts = {
-  landscape:{ A4:{rows:14,buckets:16}, A3:{rows:22,buckets:24} },
-  portrait:{ A4:{rows:22,buckets:11}, A3:{rows:34,buckets:16} },
+  landscape:{ A4:{rows:16,buckets:16}, A3:{rows:24,buckets:24} },
+  portrait:{ A4:{rows:24,buckets:11}, A3:{rows:36,buckets:16} },
 };
 const pageLayout=({paper,orientation})=>
   pageLayouts[orientation==='portrait'?'portrait':'landscape'][paper==='A4'?'A4':'A3'];
