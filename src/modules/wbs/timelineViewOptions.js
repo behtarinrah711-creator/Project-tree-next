@@ -43,9 +43,9 @@ export function ganttLevelOptions(items){
   return options;
 }
 
-export function isGanttLevelVisible(entry){
+export function isGanttLevelVisible(entry,levelState=levels){
   const key = levelKey(entry);
-  return key ? levels.get(key) !== false : true;
+  return key ? levelState.get(key) !== false : true;
 }
 
 export function setGanttLevelVisible(key, value){ levels.set(String(key), Boolean(value)); }
