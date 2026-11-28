@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { bindTaskReorder } from './workTaskView.js';
+import { bindTaskReorder, workFormResponsibleIds } from './workTaskView.js';
 
 function pointerEvent(type, pointerId = 1){
   const event = new Event(type, { cancelable:true });
@@ -116,4 +116,15 @@ test('task drag cleanup also runs when the browser cancels the mobile gesture', 
   documentRef.dispatchEvent(pointerEvent('pointercancel', 3));
 
   assert.equal(first.classList.contains('is-dragging'), false);
+});
+
+test('work forms use all project defaults for new and unassigned work while preserving overrides',()=>{
+  const defaults={followUp:['a','b'],finance:['b'],workApproval:['b','a'],contractApproval:['a','b']};
+  const project={contacts:[{id:'a'},{id:'b'}],settings:{projectDetails:{responsibilities:defaults}}};
+  assert.deepEqual(workFormResponsibleIds(project,null),defaults);
+  assert.deepEqual(workFormResponsibleIds(project,{assigneeContactIds:[],financeContactIds:[],
+    executionApproverContactIds:[],contractApproverContactIds:[]}),defaults);
+  assert.deepEqual(workFormResponsibleIds(project,{
+    assigneeContactId:'b',clearedResponsibilityRoles:['finance'],completionState:'pending_approval',
+  },{contractLocked:true}),{followUp:['b'],finance:[],workApproval:[],contractApproval:[]});
 });
