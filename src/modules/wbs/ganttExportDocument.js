@@ -34,8 +34,10 @@ export const ganttPrintStyles = `.gantt-print{width:100%}
 .gantt-print h1{margin:0 0 ${titleGap}px;font-size:18px;line-height:${titleHeight}px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .gantt-print p{margin:0 0 ${metadataGap}px;line-height:${metadataHeight}px}
 .gantt-print-grid{display:flex;direction:rtl;border:1px solid #9aa7b1}
-.gantt-print-labels{width:28%;box-sizing:border-box;border-inline-end:1px solid #9aa7b1;min-width:0}
-.gantt-print-chart{width:72%;min-width:0}
+.gantt-print-names{width:min(38%,var(--gantt-label-width,28%))}
+.gantt-print-labels{flex:none;box-sizing:border-box;border-inline-end:1px solid #9aa7b1;min-width:0}
+.gantt-print-chart{flex:1;min-width:0}
+.gantt-print-float{width:50px;flex:none;text-align:center}
 .gantt-print-chart-body{position:relative;overflow:hidden}
 .gantt-print-detail{position:absolute;direction:rtl;white-space:nowrap;font-size:9px;line-height:11px;text-align:right;color:#253655;background:#fff;padding:0 2px}
 .gantt-print-title{box-sizing:border-box;text-align:right;line-height:${barHeight}px;overflow:hidden;text-overflow:ellipsis;background:transparent;font-weight:600}
@@ -120,6 +122,10 @@ export function ganttExportDocument({project,entries,analysis},settings){
       const title=escape(entry.item.text);
       return `<div style="padding-inline-start:${6+Math.min(entry.depth,4)*7}px" title="${title}">${title}</div>`;
     }).join('');
+    const floatColumn=showFloat?`<div class="gantt-print-labels gantt-print-float"><div>شناوری</div>${visible.map(entry=>{
+      const value=analysis.rows.get(String(entry.item.id))?.totalFloat;
+      return `<div>${Number.isFinite(value)?number.format(value)+' روز':'—'}</div>`;
+    }).join('')}</div>`:'';
     const grid=axis.map(bucket=>`<path d="M ${x(bucket.startDay)} 0 V ${height}"/>`).join('')+
       visible.map((_,index)=>`<path d="M 0 ${(index+1)*rowHeight} H ${chartWidth}"/>`).join('');
     const plotRows=visible.map((entry,index)=>{
@@ -165,8 +171,7 @@ export function ganttExportDocument({project,entries,analysis},settings){
           :wide?dateLabel(startLabel,entry.range.start)+dateLabel(finishLabel,finish+1)
           :dateLabel(`${startLabel} تا ${finishLabel}`,entry.range.start);
       }
-      const float=analysis.rows.get(String(entry.item.id))?.totalFloat;
-      const title=[entry.item.text,showFloat&&Number.isFinite(float)?`شناوری ${number.format(float)} روز`:''].filter(Boolean).join(' · ');
+      const title=entry.item.text;
       const text=`${number.format(progress)}٪`;
       const minLabelWidth=text.length*9;
       const insideFill=filledSpan?.width>=minLabelWidth;
@@ -184,7 +189,7 @@ export function ganttExportDocument({project,entries,analysis},settings){
       ${showTitle?`<h1>${escape(title)}</h1>`:''}
       <p>${showDates?`${date(start)} تا ${date(end)} · `:''}صفحه ${number.format(page+1)} از ${number.format(pages)}</p>
       <div class="gantt-print-grid">
-        <div class="gantt-print-labels"><div>مرحله و کار</div>${labels}</div>
+        <div class="gantt-print-labels gantt-print-names"><div>مرحله و کار</div>${labels}</div>${floatColumn}
         <div class="gantt-print-chart"><div class="gantt-print-axis">${axisHtml}</div><div class="gantt-print-chart-body">
           <svg width="${chartWidth}" height="${height}" style="height:${height}px" viewBox="0 0 ${chartWidth} ${height}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
             <defs><marker id="gantt-arrow-${page}" viewBox="0 0 6 6" refX="6" refY="3" markerWidth="5" markerHeight="5" orient="auto"><path d="M 0 0 L 6 3 L 0 6 Z" fill="#566576"/></marker></defs>
