@@ -1,10 +1,10 @@
 const sizes = { A4:[297,210], A3:[420,297] };
-function paperDimensions(paper,orientation){
+export function paperDimensions(paper,orientation){
   const [width,height]=sizes[paper] || sizes.A3;
   return orientation==='portrait'?[height,width]:[width,height];
 }
 
-const margin = 8;
+export const ganttPaperMargin = 8;
 const pt = mm => (mm*72/25.4).toFixed(3);
 
 export function ganttPdfBlob(images,paper,orientation){
@@ -29,11 +29,11 @@ export function ganttPdfBlob(images,paper,orientation){
   object(2,`<< /Type /Pages /Count ${images.length} /Kids [${images.map((_,i)=>`${3+i*3} 0 R`).join(' ')}] >>`);
   images.forEach(({bytes,pixelWidth,pixelHeight},index)=>{
     const page=3+index*3;
-    const imageWidth=Math.min(width-2*margin,(height-2*margin)*pixelWidth/pixelHeight);
+    const imageWidth=Math.min(width-2*ganttPaperMargin,(height-2*ganttPaperMargin)*pixelWidth/pixelHeight);
     const imageHeight=imageWidth*pixelHeight/pixelWidth;
     object(page,`<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pt(width)} ${pt(height)}] /Resources << /XObject << /Chart ${page+1} 0 R >> >> /Contents ${page+2} 0 R >>`);
     object(page+1,`<< /Type /XObject /Subtype /Image /Width ${pixelWidth} /Height ${pixelHeight} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${bytes.length} >>\nstream\n`,bytes,'\nendstream');
-    const stream=`q ${pt(imageWidth)} 0 0 ${pt(imageHeight)} ${pt(width-margin-imageWidth)} ${pt(height-margin-imageHeight)} cm /Chart Do Q\n`;
+    const stream=`q ${pt(imageWidth)} 0 0 ${pt(imageHeight)} ${pt(width-ganttPaperMargin-imageWidth)} ${pt(height-ganttPaperMargin-imageHeight)} cm /Chart Do Q\n`;
     object(page+2,`<< /Length ${stream.length} >>\nstream\n${stream}endstream`);
   });
   const xref=length;
@@ -133,7 +133,7 @@ export async function downloadGanttPdf({documentRef,windowRef,html,styles,settin
   const capture=documentRef.createElement('div');
   const [width]=paperDimensions(pdfSettings.paper,pdfSettings.orientation);
   capture.className='gantt-pdf-capture';
-  capture.innerHTML=`<style>.gantt-pdf-capture{position:fixed;left:-10000px;top:0;width:${width-2*margin}mm;background:#fff}${styles}</style>${html}`;
+  capture.innerHTML=`<style>.gantt-pdf-capture{position:fixed;left:-10000px;top:0;width:${width-2*ganttPaperMargin}mm;background:#fff}${styles}</style>${html}`;
   documentRef.body.append(capture);
   try{
     await documentRef.fonts?.ready;
