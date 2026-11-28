@@ -162,7 +162,9 @@ function renderSelection(body,state){
   const layout=make('label','wbs-tree-export-layout');
   const layoutSelect=make('select');
   layoutSelect.setAttribute('aria-label','نوع خروجی');
-  for(const [value,label] of [['list','زیر هم'],['diagram','درختی عمودی'],['horizontal','درختی افقی'],...(state.timeline?[['gantt','نمودار واقعی گانت']]:[])]){
+  const layouts=state.treeLayouts?[['list','زیر هم'],['diagram','درختی عمودی'],['horizontal','درختی افقی']]:[];
+  if(state.timeline)layouts.push(['gantt','نمودار واقعی گانت']);
+  for(const [value,label] of layouts){
     const option=make('option','',label);
     option.value=value;layoutSelect.append(option);
   }
@@ -312,8 +314,11 @@ function renderSelection(body,state){
   paint();
 }
 
-export function openProjectTreeExport(project,{trigger,expandedIds,expandIcon,branchIcon,timeline}){
-  if(!canViewPlanning(planningAccessLevel(project.id,'tree')))return false;
+export function openProjectTreeExport(project,{trigger,expandedIds,expandIcon,branchIcon,timeline,sourceView='tree'}){
+  if(!canViewPlanning(planningAccessLevel(project.id,sourceView)))return false;
+  const treeLayouts=canViewPlanning(planningAccessLevel(project.id,'tree'));
+  if(!canViewPlanning(planningAccessLevel(project.id,'timeline')))timeline=undefined;
+  if(sourceView==='timeline' && !timeline)return false;
   if(!view){
     const source=document.getElementById('notebookExportPage');
     if(!source)return false;
@@ -328,11 +333,12 @@ export function openProjectTreeExport(project,{trigger,expandedIds,expandIcon,br
     document.body.append(page);
     view=installNotebookExportView({
       idPrefix:'projectTreeExport',historyKey:'project-tree-export',documentBuilder:treeDocument,renderSelection,
-      validatePrint:state=>!canViewPlanning(planningAccessLevel(state.projectId,'tree'))?'دسترسی به درخت پروژه ندارید'
-        :!visibleTreeExportRows(state.nodes,state.open).length?'حداقل یک ردیف قابل نمایش را انتخاب کنید'
-        :state.layout!=='gantt'?''
-        :!canViewPlanning(planningAccessLevel(state.projectId,'timeline'))?'دسترسی به نمودار گانت ندارید'
-        :validateGanttExport(selectedTimeline(state).entries,state.gantt),
+      validatePrint:state=>{
+        const gantt=state.layout==='gantt';
+        if(!canViewPlanning(planningAccessLevel(state.projectId,gantt?'timeline':'tree')))return 'دسترسی به این خروجی ندارید';
+        if(!visibleTreeExportRows(state.nodes,state.open).length)return 'حداقل یک ردیف قابل نمایش را انتخاب کنید';
+        return gantt?validateGanttExport(selectedTimeline(state).entries,state.gantt):'';
+      },
       extraStyles:`${diagramStyles}${ganttPrintStyles}@page{size:A4;margin:14mm}@media print{body{padding:0}}tr{break-inside:avoid}${notebookPaperFrameStyles('-9mm')}`,
     });
   }
@@ -340,15 +346,14 @@ export function openProjectTreeExport(project,{trigger,expandedIds,expandIcon,br
   const open=new Set();
   const expand=items=>items.forEach(node=>{if(expandedIds.has(String(node.id)))open.add(node.key);expand(node.children);});
   expand(nodes);
-  if(!canViewPlanning(planningAccessLevel(project.id,'timeline')))timeline=undefined;
   const ganttOptions=ganttConfig();
   const ranges=timeline?.(()=>true).entries.filter(entry=>entry.range) || [];
   const start=ranges.reduce((min,entry)=>Math.min(min,entry.range.start),Infinity);
   const end=ranges.reduce((max,entry)=>Math.max(max,entry.segments?.at(-1)?.end ?? entry.range.end),-Infinity);
   const gantt={title:'نمودار گانت | '+project.name,start,end,paper:'A3',scale:'week',
     showTitle:true,showDates:true,showProgress:true,showDependencies:ganttOptions.dependencies,showFloat:ganttOptions.float};
-  const opened=view.open({projectId:project.id,title:'خروجی درخت پروژه | '+project.name,nodes,open,timeline,gantt,
-    projectName:project.name,layout:'list',plotSize:'A3',showProgress:false,showCost:false,drag:true,expandIcon,branchIcon},{trigger});
+  const opened=view.open({projectId:project.id,title:'خروجی درخت پروژه | '+project.name,nodes,open,timeline,gantt,treeLayouts,
+    projectName:project.name,layout:sourceView==='timeline'?'gantt':'list',plotSize:'A3',showProgress:false,showCost:false,drag:true,expandIcon,branchIcon},{trigger});
   document.getElementById('projectTreeExportNote').closest('.export-note-wrap').hidden=true;
   return opened;
 }
