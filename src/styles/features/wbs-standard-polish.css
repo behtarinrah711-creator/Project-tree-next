@@ -267,10 +267,10 @@
 }
 .gantt-pdf-preview-page img {
   position: absolute;
-  inset-block-start: calc(1200% / var(--paper-height));
-  inset-inline-start: calc(1200% / var(--paper-width));
-  width: calc(100% - 2400% / var(--paper-width));
-  height: calc(100% - 2400% / var(--paper-height));
+  inset-block-start: calc(800% / var(--paper-height));
+  inset-inline-start: calc(800% / var(--paper-width));
+  width: calc(100% - 1600% / var(--paper-width));
+  height: calc(100% - 1600% / var(--paper-height));
   object-fit: contain;
   object-position: right top;
 }

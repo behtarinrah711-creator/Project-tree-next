@@ -422,8 +422,8 @@ function renderTimelineBranchFilter(project,items,rerender){
   return {toolbar,branchKeys:selected?keys:undefined};
 }
 
-function timelineContent(project,items,{branchKeys,expanded,visible}={}){
-  const rows = buildTimelineRows(items,project.id,{branchKeys,expanded,visible});
+function timelineContent(project,items,{branchKeys,expanded,visible,showWorkParents}={}){
+  const rows = buildTimelineRows(items,project.id,{branchKeys,expanded,visible,showWorkParents});
   const lookup=interruptionScheduleLookup(project.tasks);
   for(const entry of rows)entry.segments=plannedPauseSegments(entry.item,entry.range,lookup);
   const analysis = projectScheduleAnalysis(project);
@@ -861,10 +861,10 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     exportButton.className += ' wbs-tree-export-tool';
     exportButton.onclick=()=>openProjectTreeExport(project,{
       trigger:exportButton,expandedIds:getExpandedIds(project.id),
-      timeline:(expanded,visible)=>{
+      timeline:(expanded,visible,showWorkParents)=>{
         const scheduled=projectWithPlannedSchedule(project);
         const items=scheduled.tasks.filter(item=>item && !item.trashed && !isPendingUiDelete(item.id));
-        return timelineContent(scheduled,items,{expanded,visible});
+        return timelineContent(scheduled,items,{expanded,visible,showWorkParents});
       },
       expandIcon:materialIcon(EXPAND_ICON),branchIcon:materialIcon(BRANCH_ARROW_ICON),
     });
@@ -897,7 +897,7 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     timelineByElement.get(gantt).openExport=trigger=>openProjectTreeExport(project,{
       trigger,sourceView:'timeline',expandedIds:getExpandedIds(project.id),
       expandIcon:materialIcon(EXPAND_ICON),branchIcon:materialIcon(BRANCH_ARROW_ICON),
-      timeline:(expanded,visible)=>timelineContent(scheduled,visibleItems,{branchKeys,expanded,visible}),
+      timeline:(expanded,visible,showWorkParents)=>timelineContent(scheduled,visibleItems,{branchKeys,expanded,visible,showWorkParents}),
     });
     restoreGanttScroll(gantt,ganttScroll);
     tree.append(toolbar,gantt);

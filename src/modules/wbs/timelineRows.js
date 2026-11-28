@@ -32,6 +32,7 @@ export function buildTimelineRows(items, projectId, {
   branchKeys,
   expanded = itemId => isExpanded(projectId, itemId),
   orderMode = ganttOrderMode(),
+  showWorkParents = false,
 } = {}){
   let maxDepth = 0;
   const measure = (nodes, depth = 0) => (nodes || []).filter(node => node && !node.trashed).forEach(node => {
@@ -45,7 +46,8 @@ export function buildTimelineRows(items, projectId, {
     const kind = isStage(item) ? 'stage' : 'work';
     const tasks = activeWorkTasks(item);
     const hasDirectSubwork = kind === 'work' && tasks.some(task => task.isSubwork && !task.parentTaskId);
-    const shown = !hasDirectSubwork && (!branchKeys || branchKeys.has('branch:'+item.id)) && visible({item, kind, depth});
+    const parentKind=hasDirectSubwork && showWorkParents?'workTask':kind;
+    const shown = (!hasDirectSubwork || showWorkParents) && (!branchKeys || branchKeys.has('branch:'+item.id)) && visible({item, kind:parentKind, depth});
     if(shown) rows.push({item, kind, grouping:true, depth:visibleDepth, sourceDepth:depth,
       range:scheduleRangeOf(item), shadeLevel:Math.max(1, maxDepth - depth + 1), rootId:branchRootId});
     const childDepth = visibleDepth + (shown ? 1 : 0);
@@ -55,7 +57,7 @@ export function buildTimelineRows(items, projectId, {
       const children=tasks.filter(child=>String(child.parentTaskId || '')===String(task.id));
       if(children.length){
         for(const child of children)addTask(child,sourceDepth+1);
-        return;
+        if(!showWorkParents)return;
       }
       const taskItem={...task,kind:'workTask',text:task.title,parentWork:item};
       if((!branchKeys || branchKeys.has('task:'+item.id+':'+task.id))

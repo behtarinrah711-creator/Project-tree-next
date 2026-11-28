@@ -5,7 +5,7 @@ import {activeWorkTasks,isTaskComplete,taskProgressOf} from '../../domain/wbs/wo
 import {canViewPlanning,planningAccessLevel} from '../roleManagement/planningAccess.js';
 import {bindRowDrag} from './wbsDrag.js';
 import {ganttExportDocument,ganttPrintStyles,validateGanttExport} from './ganttExportDocument.js';
-import {jalaliDayNumber,scheduleDate} from '../../domain/wbs/scheduling.js';
+import {actualProgress,jalaliDayNumber,scheduleDate} from '../../domain/wbs/scheduling.js';
 import {formatJalaliDisplay} from '../../ui/jalali.js';
 import {downloadGanttPdf} from './ganttPdfDownload.js';
 import {ganttConfig,ganttLevelOptions,ganttLevelState,isGanttLevelVisible} from './timelineViewOptions.js';
@@ -104,12 +104,14 @@ function selectedTimeline(state){
     visit(node.children);
   });
   visit(state.nodes);
-  const timeline=state.timeline(id=>expanded.has(String(id)),entry=>isGanttLevelVisible(entry,state.ganttLevels));
+  const showSubwork=state.ganttLevels.get('subwork')!==false;
+  const timeline=state.timeline(id=>expanded.has(String(id)),entry=>
+    entry.kind==='workTask' && entry.item.isSubwork ? showSubwork : isGanttLevelVisible(entry,state.ganttLevels),!showSubwork);
   const visibleStages=new Set(timeline.entries.filter(entry=>entry.kind==='stage' || entry.kind==='work')
     .filter(entry=>selected.has(String(entry.item.id))).map(entry=>String(entry.item.id)));
   const entries=timeline.entries.filter(({item,kind})=>kind==='milestone'
     ? visibleStages.has(String(item.stageId))
-    : selected.has(String(item.id)));
+    : selected.has(String(item.id)) && (!state.gantt.hideCompleted || kind==='stage' || actualProgress(item)<100));
   const finish=timeline.entries.find(({item})=>item.systemMilestone);
   if(finish && visibleStages.size && entries.some(entry=>entry.range) && timeline.entries.every(({item})=>item.systemMilestone || selected.has(String(item.stageId ?? item.id)))){
     entries.push(finish);
@@ -232,7 +234,7 @@ function renderSelection(body,state){
       select('جهت کاغذ',[['landscape','افقی'],['portrait','عمودی']],settings.orientation,value=>{settings.orientation=value;}),
       select('مقیاس زمانی',[['week','هفتگی'],['week2','دوهفته‌ای'],['month','ماهانه']],settings.scale,value=>{settings.scale=value;}),
       start.control,end.control);
-    for(const [key,label] of [['showTitle','نمایش عنوان'],['showDates','نمایش تاریخ شروع و پایان'],['showProgress','درصد پیشرفت واقعی'],['showDependencies','خطوط پیش‌نیاز'],['showFloat','شناوری']]){
+    for(const [key,label] of [['showTitle','نمایش عنوان'],['showDates','نمایش تاریخ شروع و پایان'],['showProgress','درصد پیشرفت واقعی'],['colorPrint','چاپ رنگی'],['hideCompleted','پنهان کردن کارهای انجام‌شده'],['showDependencies','خطوط پیش‌نیاز'],['showFloat','شناوری']]){
       timelineOptions.append(check(label,settings[key],value=>{settings[key]=value;}));
     }
     const levelPicker=make('fieldset');
