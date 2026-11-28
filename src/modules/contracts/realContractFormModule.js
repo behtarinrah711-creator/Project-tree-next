@@ -154,7 +154,7 @@ export function ftNumberRow(root, label, value, onChange, opts = {}) {
     const normalized = helper('toEnglishDigits', String(value)) ?? value;
     const raw = String(normalized).replace(/[^\d.]/g, '');
     const shown = opts.group === false
-      ? (helper('toPersianDigits', raw) ?? raw)
+      ? (helper('toPersianDigits', raw) ?? raw).replace('.', '٫')
       : (helper('formatCost', raw) ?? raw);
     display = (opts.prefix || '') + shown + (opts.suffix ? ` ${opts.suffix}` : '');
   }
@@ -172,6 +172,7 @@ export function ftNumberRow(root, label, value, onChange, opts = {}) {
       maxLen: opts.maxLen || 16,
       group: opts.group !== false,
       allowDecimal: !!opts.allowDecimal,
+      validate: opts.validate,
       prefix: opts.prefix || ''
     });
   }, { placeholder: opts.placeholder || 'وارد کنید' });
@@ -575,9 +576,10 @@ function renderContractForm() {
     if(state.remeasurement)ftTextRow(form,'مبلغ کل قرارداد','پس از متره مشخص می‌شود',null,{readonly:true});
     else ftAmountSummary(form,'مبلغ کل قرارداد',state.amount);
     ftNumberRow(form, 'درصد حسن انجام کار', state.retentionPercent, value => {
-      const normalized = helper('toEnglishDigits', String(value)) ?? value;
-      state.retentionPercent = String(normalized).replace(/[^\d]/g, '');
-    }, { prefix: '٪', maxLen: 3, group: false, placeholder: 'وارد کنید' });
+      state.retentionPercent = value===''?'':String(Number(value));
+    }, { prefix:'٪', maxLen:7, group:false, allowDecimal:true,
+      validate:raw=>raw!=='' && (!Number.isFinite(Number(raw)) || Number(raw)>100)?'درصد حسن انجام کار باید بین صفر تا صد باشد':'',
+      placeholder:'وارد کنید' });
 
     const retentionAmount = (Number(state.amount) || 0) * (Number(state.retentionPercent) || 0) / 100;
     const netAmount = Math.max(0, (Number(state.amount) || 0) - retentionAmount);

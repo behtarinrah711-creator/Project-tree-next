@@ -9,7 +9,7 @@ let installed = false;
 export function openNumpadGeneric(initial, onDone, opts, { documentRef = document, windowRef = window } = {}){
   numpadOnDone = onDone;
   numpadOpts = Object.assign({ suffix: ' تومان', prefix: '', maxLen: 16, group: true }, opts || {});
-  const raw = toEnglishDigits(String(initial==null?'':initial)).replace(numpadOpts.allowDecimal ? /[^\d.]/g : /[^\d]/g,'');
+  const raw = toEnglishDigits(String(initial==null?'':initial)).replaceAll('٫','.').replace(numpadOpts.allowDecimal ? /[^\d.]/g : /[^\d]/g,'');
   numpadBuffer = raw;
   let decimal=documentRef.getElementById('numpadDecimal');
   if(!decimal && numpadOpts.allowDecimal){
@@ -74,7 +74,7 @@ function showNumpadError(message, { documentRef = document } = {}){
 
 function applyPastedText(text, { documentRef = document } = {}){
   if(!text) return;
-  const cleaned = toEnglishDigits(String(text)).replace(numpadOpts.allowDecimal ? /[^\d.]/g : /[^\d]/g, '');
+  const cleaned = toEnglishDigits(String(text)).replaceAll('٫','.').replace(numpadOpts.allowDecimal ? /[^\d.]/g : /[^\d]/g, '');
   if(!cleaned){
     showNumpadError('محتوای قابل‌چسباندن عددی یافت نشد', { documentRef });
     return;
