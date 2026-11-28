@@ -8,7 +8,7 @@ import {ganttExportDocument,ganttPrintStyles,validateGanttExport} from './ganttE
 import {jalaliDayNumber,scheduleDate} from '../../domain/wbs/scheduling.js';
 import {formatJalaliDisplay} from '../../ui/jalali.js';
 import {downloadGanttPdf} from './ganttPdfDownload.js';
-import {ganttConfig} from './timelineViewOptions.js';
+import {ganttConfig,ganttLevelOptions,ganttLevelState,isGanttLevelVisible} from './timelineViewOptions.js';
 
 const number=new Intl.NumberFormat('fa-IR');
 const escape=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -97,14 +97,21 @@ const diagramStyles=`${plotStyles}
 `;
 
 function selectedTimeline(state){
-  const expanded=new Set(visibleTreeExportRows(state.nodes,state.open)
-    .filter(({node})=>state.open.has(node.key)).map(({node})=>String(node.id)));
-  const selected=new Set(visibleTreeExportRows(state.nodes,state.open).map(({node})=>String(node.id)));
-  const timeline=state.timeline(id=>expanded.has(String(id)));
-  const entries=timeline.entries.filter(({item,kind})=>selected.has(String(item.id))
-    || kind==='milestone' && selected.has(String(item.stageId)));
+  const expanded=new Set(),selected=new Set();
+  const visit=nodes=>nodes.forEach(node=>{
+    if(state.open.has(node.key))expanded.add(String(node.id));
+    if(node.selected)selected.add(String(node.id));
+    visit(node.children);
+  });
+  visit(state.nodes);
+  const timeline=state.timeline(id=>expanded.has(String(id)),entry=>isGanttLevelVisible(entry,state.ganttLevels));
+  const visibleStages=new Set(timeline.entries.filter(entry=>entry.kind==='stage' || entry.kind==='work')
+    .filter(entry=>selected.has(String(entry.item.id))).map(entry=>String(entry.item.id)));
+  const entries=timeline.entries.filter(({item,kind})=>kind==='milestone'
+    ? visibleStages.has(String(item.stageId))
+    : selected.has(String(item.id)));
   const finish=timeline.entries.find(({item})=>item.systemMilestone);
-  if(finish && entries.some(entry=>entry.range) && timeline.entries.every(({item})=>item.systemMilestone || selected.has(String(item.stageId ?? item.id)))){
+  if(finish && visibleStages.size && entries.some(entry=>entry.range) && timeline.entries.every(({item})=>item.systemMilestone || selected.has(String(item.stageId ?? item.id)))){
     entries.push(finish);
   }
   return {...timeline,entries};
@@ -228,6 +235,12 @@ function renderSelection(body,state){
     for(const [key,label] of [['showTitle','نمایش عنوان'],['showDates','نمایش تاریخ شروع و پایان'],['showProgress','درصد پیشرفت واقعی'],['showDependencies','خطوط پیش‌نیاز'],['showFloat','شناوری']]){
       timelineOptions.append(check(label,settings[key],value=>{settings[key]=value;}));
     }
+    const levelPicker=make('fieldset');
+    levelPicker.append(make('legend','','سطح‌های نمودار'));
+    for(const {key,label} of state.ganttLevelOptions){
+      levelPicker.append(check(label,state.ganttLevels.get(key)!==false,value=>{state.ganttLevels.set(key,value);}));
+    }
+    timelineOptions.append(levelPicker);
   }
   layoutSelect.onchange=()=>{
     state.layout=layoutSelect.value;
@@ -350,12 +363,14 @@ export function openProjectTreeExport(project,{trigger,expandedIds,expandIcon,br
   const expand=items=>items.forEach(node=>{if(expandedIds.has(String(node.id)))open.add(node.key);expand(node.children);});
   expand(nodes);
   const ganttOptions=ganttConfig();
-  const ranges=timeline?.(()=>true).entries.filter(entry=>entry.range) || [];
+  const levelOptions=timeline?ganttLevelOptions(project.tasks):[];
+  const ganttLevels=ganttLevelState();
+  const ranges=timeline?.(()=>true,()=>true).entries.filter(entry=>entry.range) || [];
   const start=ranges.reduce((min,entry)=>Math.min(min,entry.range.start),Infinity);
   const end=ranges.reduce((max,entry)=>Math.max(max,entry.segments?.at(-1)?.end ?? entry.range.end),-Infinity);
   const gantt={title:'نمودار گانت | '+project.name,start,end,paper:'A3',orientation:'landscape',scale:'week',
     showTitle:true,showDates:true,showProgress:true,showDependencies:ganttOptions.dependencies,showFloat:ganttOptions.float};
-  const opened=view.open({projectId:project.id,title:'خروجی درخت پروژه | '+project.name,nodes,open,timeline,gantt,treeLayouts,
+  const opened=view.open({projectId:project.id,title:'خروجی درخت پروژه | '+project.name,nodes,open,timeline,gantt,treeLayouts,ganttLevels,ganttLevelOptions:levelOptions,
     projectName:project.name,layout:sourceView==='timeline'?'gantt':'list',plotSize:'A3',showProgress:false,showCost:false,drag:true,expandIcon,branchIcon},{trigger});
   document.getElementById('projectTreeExportNote').closest('.export-note-wrap').hidden=true;
   return opened;
