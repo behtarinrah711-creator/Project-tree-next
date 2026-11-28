@@ -1,3 +1,4 @@
+import { toEnglishDigits } from '../../ui/digits.js';
 import { MANAGEMENT_CONTRACT_TEMPLATE_ID } from '../../data/defaultProjectCatalogue.js';
 import { syncContractAmount, numericValue, ensureAgreedRows, hasPaymentRowData, isUnmeasuredRow } from './contractPricing.js';
 import { syncPaymentStages } from './paymentStagesModule.js';
@@ -77,10 +78,12 @@ export function saveRealContract(projectId, draft, helpers={}){
   if(!isManagement && !allowEmpty && !draft.remeasurement && (!String(draft.amount||'').trim()||Number(draft.amount)<=0)){
     toast('مبلغ کل قرارداد را وارد کنید');return {ok:false,incomplete:true};
   }
-  if(!isManagement && (Number(draft.retentionPercent)<0||Number(draft.retentionPercent)>100)){
+  const retentionInput=toEnglishDigits(String(draft.retentionPercent??'')).trim().replaceAll('٫','.');
+  const retentionPercent=Number(retentionInput);
+  if(!isManagement && (retentionInput && !/^\d+(?:\.\d*)?$/.test(retentionInput) || !Number.isFinite(retentionPercent) || retentionPercent>100)){
     toast('درصد حسن انجام کار باید بین صفر تا صد باشد');return {ok:false,incomplete:true};
   }
-  if(!isManagement && Number(draft.retentionPercent)>0 && !draft.retentionDuration && !deferred('retentionDuration')){toast('مدت نگهداری حسن انجام کار را انتخاب کنید');return {ok:false,incomplete:true};}
+  if(!isManagement && retentionPercent>0 && !draft.retentionDuration && !deferred('retentionDuration')){toast('مدت نگهداری حسن انجام کار را انتخاب کنید');return {ok:false,incomplete:true};}
 
   const s=JSON.parse(JSON.stringify(draft));
   if(Array.isArray(s.advanceRows))s.advanceRows=s.advanceRows.filter(hasPaymentRowData);
@@ -104,7 +107,7 @@ export function saveRealContract(projectId, draft, helpers={}){
     s.paymentMethod='';
   }
   s.amount=isManagement || s.remeasurement ? null : toEnglish(s.amount||'').replace(/[^\d]/g,'');
-  s.retentionPercent=toEnglish(s.retentionPercent||'').replace(/[^\d]/g,'');
+  s.retentionPercent=isManagement || !retentionInput?'':String(retentionPercent);
   const finalRetention=(Number(s.amount)||0)*(Number(s.retentionPercent)||0)/100;
   s.retentionAmount=String(Math.round(finalRetention));
   s.amountAfterRetention=String(Math.max(0,Math.round((Number(s.amount)||0)-finalRetention)));
