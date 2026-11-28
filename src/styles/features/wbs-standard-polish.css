@@ -214,3 +214,63 @@
 #projectTreeExportPage .wbs-tree-export-actions{gap:clamp(4px,2vw,12px);}
 #projectTreeExportPage .wbs-tree-export-layout{flex:0 1 auto;min-width:0;}
 #projectTreeExportPage .wbs-tree-export-layout select{min-width:0;max-width:100%;min-height:42px;font:inherit;}
+
+.gantt-pdf-preview {
+  box-sizing: border-box;
+  width: min(96vw, 960px);
+  max-height: 94dvh;
+  padding: 0;
+  border: 1px solid #cbd5e1;
+  border-radius: 12px;
+  background: #eef1f5;
+  color: #182230;
+}
+.gantt-pdf-preview::backdrop { background: rgb(0 0 0 / 55%); }
+.gantt-pdf-preview header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: #fff;
+}
+.gantt-pdf-preview h2 { flex: 1 1 140px; margin: 0; font-size: 1rem; }
+.gantt-pdf-preview header :is(button, a) {
+  padding: 7px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #182230;
+  font: inherit;
+  text-decoration: none;
+  cursor: pointer;
+}
+.gantt-pdf-preview header a { background: #101b57; color: #fff; }
+.gantt-pdf-preview-pages {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  --paper-width: 420;
+  --paper-height: 297;
+}
+.gantt-pdf-preview-pages[data-paper="A4"] { --paper-width: 297; --paper-height: 210; }
+.gantt-pdf-preview-pages[data-orientation="portrait"] { --paper-width: 297; --paper-height: 420; }
+.gantt-pdf-preview-pages[data-paper="A4"][data-orientation="portrait"] { --paper-width: 210; --paper-height: 297; }
+.gantt-pdf-preview-page {
+  position: relative;
+  aspect-ratio: var(--paper-width) / var(--paper-height);
+  background: #fff;
+  box-shadow: 0 1px 4px rgb(0 0 0 / 20%);
+}
+.gantt-pdf-preview-page img {
+  position: absolute;
+  inset-block-start: calc(1200% / var(--paper-height));
+  inset-inline-start: calc(1200% / var(--paper-width));
+  width: calc(100% - 2400% / var(--paper-width));
+  height: calc(100% - 2400% / var(--paper-height));
+  object-fit: contain;
+  object-position: right top;
+}
