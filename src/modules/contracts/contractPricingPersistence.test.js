@@ -22,6 +22,13 @@ test('final save and reopen retain separate pricing/payment rows and calculated 
     const reopened=makeRealContractDraft(stored);
     assert.deepEqual(reopened.amountRows,draft.amountRows);assert.deepEqual(reopened.paymentRows,draft.paymentRows);
     assert.equal(reopened.paymentStageCount,3);assert.equal(reopened.retentionBasis,'تحویل موقت');
+    draft.retentionPercent='۱۰٫۵';
+    assert.equal(saveRealContract('p',draft).ok,true);
+    assert.equal(stored.retentionPercent,'10.5');
+    assert.equal(stored.retentionAmount,'21000000');
+    assert.equal(makeRealContractDraft(stored).retentionPercent,'10.5');
+    assert.equal(stored.paymentStages[0].paymentAmount,44750000);
+    assert.equal(saveRealContract('p',{...draft,retentionPercent:'100.5'}).ok,false);
     draft.paymentRows[0].quantity='';
     assert.equal(saveRealContract('p',draft,{todayJalaliStr:()=> '1405/08/07'}).ok,false);
   }finally{projectRepository.getActiveProject=oldProject;contractApi.save=oldSave;}
