@@ -247,8 +247,11 @@ export const todayApi = {
         return {ok:false,code:'locked'};
       }
     }
-    const stopReport=interruptionReportOf(entity,reportDay);
-    if((stopReport && stopReport.resumedOn!==reportDay) || executionInterruption(entity||{},reportDay))return {ok:false,code:'interruption_exists'};
+    const purchaseProgress=ref.kind!=='standalone' && entity?.type==='خرید' && completeAt100 && !dailyStatus;
+    if(!purchaseProgress){
+      const stopReport=interruptionReportOf(entity,reportDay);
+      if((stopReport && stopReport.resumedOn!==reportDay) || executionInterruption(entity||{},reportDay))return {ok:false,code:'interruption_exists'};
+    }
     const change=dailyStatus?dailyStatusChange(entity,dailyStatus.status,dailyStatus.reasonId,text,by,at,reportDay):{ok:true};
     if(!change.ok)return change;
     const attachments = Array.isArray(files) ? { photos:[...files] } : {};
