@@ -422,8 +422,8 @@ function renderTimelineBranchFilter(project,items,rerender){
   return {toolbar,branchKeys:selected?keys:undefined};
 }
 
-function renderTimeline(project,items,branchKeys){
-  const rows = buildTimelineRows(items,project.id,{branchKeys});
+function timelineContent(project,items,{branchKeys,expanded}={}){
+  const rows = buildTimelineRows(items,project.id,{branchKeys,expanded});
   const lookup=interruptionScheduleLookup(project.tasks);
   for(const entry of rows)entry.segments=plannedPauseSegments(entry.item,entry.range,lookup);
   const analysis = projectScheduleAnalysis(project);
@@ -444,6 +444,12 @@ function renderTimeline(project,items,branchKeys){
     kind:'milestone', depth:0, sourceDepth:0, shadeLevel:0,
     range:{ start:analysis.projectFinish, end:analysis.projectFinish },
   });
+  return {project,entries:rows,analysis};
+}
+
+function renderTimeline(project,items,branchKeys){
+  const content=timelineContent(project,items,{branchKeys});
+  const rows=content.entries;
   const scheduled = rows.filter(x => x.range);
   const min = scheduled.length ? Math.min(...scheduled.map(x => x.range.start)) : 0;
   const max = scheduled.length ? Math.max(...scheduled.map(x => x.segments?.at(-1)?.end ?? x.range.end)) : min + 27;
@@ -452,7 +458,7 @@ function renderTimeline(project,items,branchKeys){
   const width = days * dayWidth;
   const shell = document.createElement('section');
   shell.className = 'wbs-gantt';
-  timelineByElement.set(shell,{project,entries:rows,analysis});
+  timelineByElement.set(shell,content);
   const names = document.createElement('div');
   names.className = 'wbs-gantt-names';
   names.innerHTML = '<div class="wbs-gantt-corner">کارها</div>';
@@ -855,6 +861,11 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     exportButton.className += ' wbs-tree-export-tool';
     exportButton.onclick=()=>openProjectTreeExport(project,{
       trigger:exportButton,expandedIds:getExpandedIds(project.id),
+      timeline:expanded=>{
+        const scheduled=projectWithPlannedSchedule(project);
+        const items=scheduled.tasks.filter(item=>item && !item.trashed && !isPendingUiDelete(item.id));
+        return timelineContent(scheduled,items,{expanded});
+      },
       expandIcon:materialIcon(EXPAND_ICON),branchIcon:materialIcon(BRANCH_ARROW_ICON),
     });
     toolbar.appendChild(exportButton);
