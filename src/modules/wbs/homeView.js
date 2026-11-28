@@ -894,6 +894,11 @@ export function renderWbsHome(target = document.getElementById('content'), proje
     const scheduled = projectWithPlannedSchedule(project);
     const visibleItems = scheduled.tasks.filter(item => item && !item.trashed && !isPendingUiDelete(item.id));
     const gantt=renderTimeline(scheduled,visibleItems,branchKeys);
+    timelineByElement.get(gantt).openExport=trigger=>openProjectTreeExport(project,{
+      trigger,sourceView:'timeline',expandedIds:getExpandedIds(project.id),
+      expandIcon:materialIcon(EXPAND_ICON),branchIcon:materialIcon(BRANCH_ARROW_ICON),
+      timeline:expanded=>timelineContent(scheduled,visibleItems,{branchKeys,expanded}),
+    });
     restoreGanttScroll(gantt,ganttScroll);
     tree.append(toolbar,gantt);
   }
