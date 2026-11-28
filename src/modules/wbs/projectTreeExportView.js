@@ -4,6 +4,10 @@ import {isStage,lineTotal,progressOf,taskCostOf} from '../../domain/wbs/normaliz
 import {activeWorkTasks,isTaskComplete,taskProgressOf} from '../../domain/wbs/workTaskModel.js';
 import {canViewPlanning,planningAccessLevel} from '../roleManagement/planningAccess.js';
 import {bindRowDrag} from './wbsDrag.js';
+import {ganttExportDocument,ganttPrintStyles,validateGanttExport} from './ganttExportDocument.js';
+import {jalaliDayNumber,scheduleDate} from '../../domain/wbs/scheduling.js';
+import {formatJalaliDisplay} from '../../ui/jalali.js';
+import {ganttConfig} from './timelineViewOptions.js';
 
 const number=new Intl.NumberFormat('fa-IR');
 const escape=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -91,7 +95,23 @@ const diagramStyles=`${plotStyles}
 .project-tree-diagram > ul > li{break-inside:auto}
 `;
 
-export function treeDocument({title,nodes,open,showProgress,showCost,layout,projectName,plotSize='A3'}){
+function selectedTimeline(state){
+  const expanded=new Set(visibleTreeExportRows(state.nodes,state.open)
+    .filter(({node})=>state.open.has(node.key)).map(({node})=>String(node.id)));
+  const selected=new Set(visibleTreeExportRows(state.nodes,state.open).map(({node})=>String(node.id)));
+  const timeline=state.timeline(id=>expanded.has(String(id)));
+  const entries=timeline.entries.filter(({item,kind})=>selected.has(String(item.id))
+    || kind==='milestone' && selected.has(String(item.stageId)));
+  const finish=timeline.entries.find(({item})=>item.systemMilestone);
+  if(finish && entries.some(entry=>entry.range) && timeline.entries.every(({item})=>item.systemMilestone || selected.has(String(item.stageId ?? item.id)))){
+    entries.push(finish);
+  }
+  return {...timeline,entries};
+}
+
+export function treeDocument(state){
+  const {title,nodes,open,showProgress,showCost,layout,projectName,plotSize='A3'}=state;
+  if(layout==='gantt')return ganttExportDocument(selectedTimeline(state),state.gantt);
   if(layout==='diagram' || layout==='horizontal'){
     const branches=items=>items.map(node=>{
       const children=open.has(node.key)?branches(node.children):'';
@@ -142,7 +162,7 @@ function renderSelection(body,state){
   const layout=make('label','wbs-tree-export-layout');
   const layoutSelect=make('select');
   layoutSelect.setAttribute('aria-label','نوع خروجی');
-  for(const [value,label] of [['list','زیر هم'],['diagram','درختی عمودی'],['horizontal','درختی افقی']]){
+  for(const [value,label] of [['list','زیر هم'],['diagram','درختی عمودی'],['horizontal','درختی افقی'],...(state.timeline?[['gantt','نمودار واقعی گانت']]:[])]){
     const option=make('option','',label);
     option.value=value;layoutSelect.append(option);
   }
@@ -156,11 +176,60 @@ function renderSelection(body,state){
   paperSelect.value=state.plotSize;
   paperSelect.onchange=()=>{state.plotSize=paperSelect.value;};
   paper.append(paperSelect);
-  paper.hidden=state.layout!=='horizontal';
+  const timelineOptions=make('div','export-options');
+  const select=(label,items,value,change)=>{
+    const wrap=make('label','',label+' ');
+    const input=make('select');
+    for(const [key,name] of items){
+      const option=make('option','',name);
+      option.value=key;input.append(option);
+    }
+    input.value=value;
+    input.onchange=()=>change(input.value);
+    wrap.append(input);
+    return wrap;
+  };
+  function showLayout(){
+    paper.hidden=state.layout!=='horizontal';
+    const isGantt=state.layout==='gantt';
+    timelineOptions.classList.toggle('hidden',!isGantt);
+    options.classList.toggle('hidden',isGantt);
+    doc.querySelector('#projectTreeExportToolbar .export-jpg-btn').classList.toggle('hidden',isGantt);
+  }
+  if(state.timeline){
+    const settings=state.gantt;
+    const titleField=make('label','','عنوان خروجی ');
+    const titleInput=make('input');
+    titleInput.type='text';titleInput.value=settings.title;titleInput.maxLength=160;
+    titleInput.oninput=()=>{settings.title=titleInput.value;};
+    titleField.append(titleInput);
+    const dateButton=(label,key)=>{
+      const control=button('','',()=>window.KarhaUI?.openJalaliPicker?.(formatDay(key),value=>{
+        const day=jalaliDayNumber(value);
+        if(!Number.isFinite(day))return;
+        settings[key]=day;
+        paintDates();
+      }));
+      const formatDay=name=>Number.isFinite(settings[name])?scheduleDate(settings[name]):'';
+      const paintDate=()=>{control.textContent=label+' '+(formatJalaliDisplay(formatDay(key)) || 'انتخاب کنید');};
+      return {control,paintDate};
+    };
+    const start=dateButton('از تاریخ','start'),end=dateButton('تا تاریخ','end');
+    function paintDates(){start.paintDate();end.paintDate();}
+    paintDates();
+    timelineOptions.append(titleField,
+      select('کاغذ افقی',[['A3','A3'],['A4','A4']],settings.paper,value=>{settings.paper=value;}),
+      select('مقیاس زمانی',[['week','هفتگی'],['week2','دوهفته‌ای'],['month','ماهانه']],settings.scale,value=>{settings.scale=value;}),
+      start.control,end.control);
+    for(const [key,label] of [['showTitle','نمایش عنوان'],['showDates','نمایش تاریخ شروع و پایان'],['showProgress','درصد پیشرفت واقعی'],['showDependencies','خطوط پیش‌نیاز'],['showFloat','شناوری']]){
+      timelineOptions.append(check(label,settings[key],value=>{settings[key]=value;}));
+    }
+  }
   layoutSelect.onchange=()=>{
     state.layout=layoutSelect.value;
-    paper.hidden=state.layout!=='horizontal';
+    showLayout();
   };
+  showLayout();
   layout.append(layoutSelect);
   const tree=make('div','wbs-tree wbs-export-tree');
   const selectAll=check('انتخاب همه',false,checked=>{
@@ -187,7 +256,7 @@ function renderSelection(body,state){
     check('قیمت',state.showCost,value=>{state.showCost=value;paint();}));
   actions.append(selectAll,dragToggle,toggle,layout);
   doc.getElementById('projectTreeExportToolbar').prepend(options);
-  body.append(actions,paper,tree);
+  body.append(actions,paper,timelineOptions,tree);
 
   function paint(){
     const all=state.nodes.map(selectionState);
@@ -243,7 +312,7 @@ function renderSelection(body,state){
   paint();
 }
 
-export function openProjectTreeExport(project,{trigger,expandedIds,expandIcon,branchIcon}){
+export function openProjectTreeExport(project,{trigger,expandedIds,expandIcon,branchIcon,timeline}){
   if(!canViewPlanning(planningAccessLevel(project.id,'tree')))return false;
   if(!view){
     const source=document.getElementById('notebookExportPage');
@@ -260,15 +329,25 @@ export function openProjectTreeExport(project,{trigger,expandedIds,expandIcon,br
     view=installNotebookExportView({
       idPrefix:'projectTreeExport',historyKey:'project-tree-export',documentBuilder:treeDocument,renderSelection,
       validatePrint:state=>!canViewPlanning(planningAccessLevel(state.projectId,'tree'))?'دسترسی به درخت پروژه ندارید'
-        :visibleTreeExportRows(state.nodes,state.open).length?'':'حداقل یک ردیف قابل نمایش را انتخاب کنید',
-      extraStyles:`${diagramStyles}@page{size:A4;margin:14mm}@media print{body{padding:0}}tr{break-inside:avoid}${notebookPaperFrameStyles('-9mm')}`,
+        :!visibleTreeExportRows(state.nodes,state.open).length?'حداقل یک ردیف قابل نمایش را انتخاب کنید'
+        :state.layout!=='gantt'?''
+        :!canViewPlanning(planningAccessLevel(state.projectId,'timeline'))?'دسترسی به نمودار گانت ندارید'
+        :validateGanttExport(selectedTimeline(state).entries,state.gantt),
+      extraStyles:`${diagramStyles}${ganttPrintStyles}@page{size:A4;margin:14mm}@media print{body{padding:0}}tr{break-inside:avoid}${notebookPaperFrameStyles('-9mm')}`,
     });
   }
   const nodes=treeExportNodes(project.tasks);
   const open=new Set();
   const expand=items=>items.forEach(node=>{if(expandedIds.has(String(node.id)))open.add(node.key);expand(node.children);});
   expand(nodes);
-  const opened=view.open({projectId:project.id,title:'خروجی درخت پروژه | '+project.name,nodes,open,
+  if(!canViewPlanning(planningAccessLevel(project.id,'timeline')))timeline=undefined;
+  const ganttOptions=ganttConfig();
+  const ranges=timeline?.(()=>true).entries.filter(entry=>entry.range) || [];
+  const start=ranges.reduce((min,entry)=>Math.min(min,entry.range.start),Infinity);
+  const end=ranges.reduce((max,entry)=>Math.max(max,entry.segments?.at(-1)?.end ?? entry.range.end),-Infinity);
+  const gantt={title:'نمودار گانت | '+project.name,start,end,paper:'A3',scale:'week',
+    showTitle:true,showDates:true,showProgress:true,showDependencies:ganttOptions.dependencies,showFloat:ganttOptions.float};
+  const opened=view.open({projectId:project.id,title:'خروجی درخت پروژه | '+project.name,nodes,open,timeline,gantt,
     projectName:project.name,layout:'list',plotSize:'A3',showProgress:false,showCost:false,drag:true,expandIcon,branchIcon},{trigger});
   document.getElementById('projectTreeExportNote').closest('.export-note-wrap').hidden=true;
   return opened;
