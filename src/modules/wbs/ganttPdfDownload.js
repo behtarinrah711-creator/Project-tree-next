@@ -45,8 +45,8 @@ export function ganttPdfBlob(images,paper,orientation){
 export async function downloadGanttPdf({documentRef,windowRef,html,styles,settings}){
   const capture=documentRef.createElement('div');
   const [width]=paperDimensions(settings.paper,settings.orientation);
-  capture.style.cssText=`position:fixed;left:-10000px;top:0;width:${width-24}mm;background:#fff`;
-  capture.innerHTML=`<style>${styles}</style>${html}`;
+  capture.className='gantt-pdf-capture';
+  capture.innerHTML=`<style>.gantt-pdf-capture{position:fixed;left:-10000px;top:0;width:${width-24}mm;background:#fff}${styles}</style>${html}`;
   documentRef.body.append(capture);
   try{
     await documentRef.fonts?.ready;
