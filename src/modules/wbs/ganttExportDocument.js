@@ -10,13 +10,14 @@ const number = new Intl.NumberFormat('fa-IR', { maximumFractionDigits:1 });
 const date = day => formatJalaliDisplay(scheduleDate(day));
 const rowHeight = 32;
 const chartWidth = 760;
-const rowsPerPage = { A4:17, A3:27 };
-const bucketLimits = { A4:16, A3:24 };
+const pageLayouts = {
+  landscape:{ A4:{rows:17,buckets:16}, A3:{rows:27,buckets:24} },
+  portrait:{ A4:{rows:27,buckets:11}, A3:{rows:41,buckets:16} },
+};
+const pageLayout=({paper,orientation})=>
+  pageLayouts[orientation==='portrait'?'portrait':'landscape'][paper==='A4'?'A4':'A3'];
 
-export const ganttPrintStyles = `@page gantt-A4{size:A4 landscape;margin:12mm}
-@page gantt-A3{size:A3 landscape;margin:12mm}
-.gantt-print-A4{page:gantt-A4;width:273mm}
-.gantt-print-A3{page:gantt-A3;width:396mm}
+export const ganttPrintStyles = `.gantt-print{width:100%}
 .gantt-print{font-family:IRANSansX,Tahoma,sans-serif;direction:rtl;text-align:right;box-sizing:border-box;break-inside:avoid;font-size:11px}
 .gantt-print+.gantt-print{break-before:page}
 .gantt-print h1{margin:0 0 4px;font-size:18px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
@@ -51,9 +52,10 @@ export function ganttExportRows(entries,start,end){
   return entries.filter(entry=>!entry.range || segments(entry).some(segment=>segment.start<=end && segment.end>=start));
 }
 
-export function validateGanttExport(entries,{start,end,scale,paper}){
+export function validateGanttExport(entries,settings){
+  const {start,end,scale}=settings;
   if(!Number.isFinite(start) || !Number.isFinite(end) || start>end)return 'بازهٔ تاریخ نمودار را مشخص کنید';
-  const limit=bucketLimits[paper] || bucketLimits.A3;
+  const limit=pageLayout(settings).buckets;
   const minDays={week:7,week2:14,month:31}[scale] || 7;
   if(end-start+1>limit*minDays || ganttExportAxis(start,end,scale).length>limit)
     return 'برای خوانایی نمودار، بازهٔ تاریخ را کوتاه‌تر یا مقیاس زمانی را درشت‌تر کنید';
@@ -85,17 +87,17 @@ function dependencyLines(rows,links,distance,start,end,page){
 
 export function ganttExportDocument({project,entries,analysis},settings){
   const {start,end,scale,title,showTitle,showDates,showProgress,showDependencies,showFloat}=settings;
-  const paper=settings.paper==='A4'?'A4':'A3';
+  const rowsPerPage=pageLayout(settings).rows;
   const rows=ganttExportRows(entries,start,end);
   const axis=ganttExportAxis(start,end,scale);
   const distance=day=>chartWidth*(Math.max(start,Math.min(end+1,day))-start)/(end-start+1);
   const x=day=>chartWidth-distance(day);
   const percent=value=>value/chartWidth*100;
   const links=showDependencies?dependencyLinks(project,analysis):[];
-  const pages=Math.ceil(rows.length/rowsPerPage[paper]);
+  const pages=Math.ceil(rows.length/rowsPerPage);
   const axisHtml=axis.map(bucket=>`<span style="right:${percent(distance(bucket.startDay))}%;width:${percent(distance(bucket.endDay+1)-distance(bucket.startDay))}%">${escape(toPersianDigits(scheduleDate(bucket.startDay)))}</span>`).join('');
   return Array.from({length:pages},(_,page)=>{
-    const visible=rows.slice(page*rowsPerPage[paper],(page+1)*rowsPerPage[paper]);
+    const visible=rows.slice(page*rowsPerPage,(page+1)*rowsPerPage);
     const height=visible.length*rowHeight;
     const labels=visible.map(entry=>{
       const title=escape(entry.item.text);
@@ -142,7 +144,7 @@ export function ganttExportDocument({project,entries,analysis},settings){
         showFloat&&Number.isFinite(float)?`شناوری ${number.format(float)} روز`:''].filter(Boolean).join(' · ');
       return dates+(metrics?label(metrics,range.start,0,'gantt-print-progress'):'');
     }).join('');
-    return `<section class="gantt-print gantt-print-${paper}" dir="rtl">
+    return `<section class="gantt-print" dir="rtl">
       ${showTitle?`<h1>${escape(title)}</h1>`:''}
       <p>${showDates?`${date(start)} تا ${date(end)} · `:''}صفحه ${number.format(page+1)} از ${number.format(pages)}</p>
       <div class="gantt-print-grid">
