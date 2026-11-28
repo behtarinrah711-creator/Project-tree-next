@@ -8,11 +8,12 @@ import { allocateDependencyLane, dependencyGeometry, dependencyPath } from './ti
 const escape = value => String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const number = new Intl.NumberFormat('fa-IR', { maximumFractionDigits:1 });
 const date = day => formatJalaliDisplay(scheduleDate(day));
-const rowHeight = 32;
+const rowHeight = 38;
+const barHeight = 14;
 const chartWidth = 760;
 const pageLayouts = {
-  landscape:{ A4:{rows:17,buckets:16}, A3:{rows:27,buckets:24} },
-  portrait:{ A4:{rows:27,buckets:11}, A3:{rows:41,buckets:16} },
+  landscape:{ A4:{rows:14,buckets:16}, A3:{rows:22,buckets:24} },
+  portrait:{ A4:{rows:22,buckets:11}, A3:{rows:34,buckets:16} },
 };
 const pageLayout=({paper,orientation})=>
   pageLayouts[orientation==='portrait'?'portrait':'landscape'][paper==='A4'?'A4':'A3'];
@@ -27,8 +28,10 @@ export const ganttPrintStyles = `.gantt-print{width:100%}
 .gantt-print-chart{width:72%;min-width:0}
 .gantt-print-chart-body{position:relative;overflow:hidden}
 .gantt-print-detail{position:absolute;direction:rtl;white-space:nowrap;font-size:9px;line-height:11px;text-align:right;color:#253655;background:#fff;padding:0 2px}
-.gantt-print-progress{font-weight:700}
-.gantt-print-labels>div{height:${rowHeight}px;line-height:31px;border-bottom:1px solid #d8dfe5;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-inline:6px}
+.gantt-print-title{box-sizing:border-box;text-align:center;overflow:hidden;text-overflow:ellipsis;background:transparent;font-weight:600}
+.gantt-print-progress{color:#fff;background:#247450;border-radius:3px;font-weight:700;line-height:14px}
+.gantt-print-progress.is-planned{background:#354e67}
+.gantt-print-labels>div{height:${rowHeight}px;line-height:37px;border-bottom:1px solid #d8dfe5;box-sizing:border-box;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding-inline:6px}
 .gantt-print-labels>div:first-child,.gantt-print-axis{height:27px;line-height:26px;background:#eef3f8;font-weight:600}
 .gantt-print-axis{position:relative;direction:rtl;box-sizing:border-box;border-bottom:1px solid #9aa7b1}
 .gantt-print-axis span{position:absolute;height:100%;text-align:right;padding-inline:2px;line-height:26px;border-right:1px solid #d8dfe5;box-sizing:border-box;white-space:nowrap;overflow:hidden;font-size:10px}
@@ -105,45 +108,61 @@ export function ganttExportDocument({project,entries,analysis},settings){
     }).join('');
     const grid=axis.map(bucket=>`<path d="M ${x(bucket.startDay)} 0 V ${height}"/>`).join('')+
       visible.map((_,index)=>`<path d="M 0 ${(index+1)*rowHeight} H ${chartWidth}"/>`).join('');
-    const bars=visible.map((entry,index)=>{
-      const y=(index+.5)*rowHeight;
-      return segments(entry).map(segment=>{
-        if(segment.start>end || segment.end<start)return '';
-        const left=x(segment.end+1), right=x(segment.start);
-        if(entry.kind==='milestone'){
-          const center=(left+right)/2;
-          return `<path d="M ${center} ${y-5} l 5 5 -5 5 -5 -5 z" fill="#253655"/>`;
-        }
-        const fill=entry.kind==='stage'?'#405b79':'#1679a3';
-        const progress=Math.max(0,Math.min(100,actualProgress(entry.item)||0));
-        const completed=(right-left)*progress/100;
-        return `<rect x="${left}" y="${y-4}" width="${right-left}" height="8" rx="2" fill="${fill}"/>`+
-          (showProgress&&completed?`<rect x="${right-completed}" y="${y-4}" width="${completed}" height="8" rx="2" fill="#247450"/>`:'');
-      }).join('');
-    }).join('');
-    const details=visible.map((entry,index)=>{
-      const range=entry.range;
-      if(!range)return `<span class="gantt-print-detail" style="right:4px;top:${index*rowHeight+10}px">بدون تاریخ</span>`;
+    const plotRows=visible.map((entry,index)=>{
       const top=index*rowHeight;
-      const finish=segments(entry).at(-1).end;
-      const anchor=(day)=>Math.max(0,Math.min(91,percent(distance(day))));
-      const label=(value,day,y,classes='')=>`<span class="gantt-print-detail ${classes}" style="right:${anchor(day)}%;top:${top+y}px">${escape(value)}</span>`;
-      const progress=actualProgress(entry.item)||0;
+      if(!entry.range)return {bars:'',details:`<span class="gantt-print-detail" style="right:4px;top:${top+10}px">بدون تاریخ</span>`};
+      const y=top+(rowHeight-barHeight)/2;
+      const spans=segments(entry);
+      const first=spans[0].start;
+      const finish=spans.at(-1).end;
       const milestone=entry.kind==='milestone';
-      const float=analysis.rows.get(String(entry.item.id))?.totalFloat;
-      const startLabel=formatTimelineDate(scheduleDate(range.start));
+      const progress=Math.max(0,Math.min(100,actualProgress(entry.item)||0));
+      let remaining=spans.reduce((days,span)=>days+span.end-span.start+1,0)*progress/100;
+      let progressAnchor=null;
+      let visibleAnchor=null;
+      const fill=entry.kind==='stage'?'#405b79':'#1679a3';
+      const rect=(right,left,color)=>`<rect x="${left}" y="${y}" width="${right-left}" height="${barHeight}" rx="3" fill="${color}"/>`;
+      const bars=spans.map(span=>{
+        const completed=Math.min(remaining,span.end-span.start+1);
+        remaining-=completed;
+        if(span.start>end || span.end<start)return '';
+        const left=x(span.end+1),right=x(span.start);
+        const center=(left+right)/2;
+        if(milestone){
+          const mid=y+barHeight/2;
+          return `<path d="M ${center} ${mid-5} l 5 5 -5 5 -5 -5 z" fill="#253655"/>`;
+        }
+        visibleAnchor??=center;
+        const doneLeft=x(span.start+completed);
+        if(showProgress && right>doneLeft){
+          progressAnchor??=(right+doneLeft)/2;
+          return rect(right,left,fill)+rect(right,doneLeft,'#247450');
+        }
+        return rect(right,left,fill);
+      }).join('');
+      const anchor=day=>Math.max(0,Math.min(91,percent(distance(day))));
+      const dateLabel=(value,day)=>`<span class="gantt-print-detail" style="right:${anchor(day)}%;top:${top+27}px">${escape(value)}</span>`;
+      const startLabel=formatTimelineDate(scheduleDate(entry.range.start));
       const finishLabel=formatTimelineDate(scheduleDate(finish));
       let dates='';
       if(showDates){
-        const wide=anchor(finish+1)-anchor(range.start)>=12;
-        dates=milestone||startLabel===finishLabel?label(finishLabel,range.start,21)
-          :wide?label(startLabel,range.start,21)+label(finishLabel,finish+1,21)
-          :label(`${startLabel} تا ${finishLabel}`,range.start,21);
+        const wide=anchor(finish+1)-anchor(entry.range.start)>=12;
+        dates=milestone||startLabel===finishLabel?dateLabel(finishLabel,entry.range.start)
+          :wide?dateLabel(startLabel,entry.range.start)+dateLabel(finishLabel,finish+1)
+          :dateLabel(`${startLabel} تا ${finishLabel}`,entry.range.start);
       }
-      const metrics=[showProgress&&!milestone?`${number.format(progress)}٪`:'',
-        showFloat&&Number.isFinite(float)?`شناوری ${number.format(float)} روز`:''].filter(Boolean).join(' · ');
-      return dates+(metrics?label(metrics,range.start,0,'gantt-print-progress'):'');
-    }).join('');
+      const float=analysis.rows.get(String(entry.item.id))?.totalFloat;
+      const title=[entry.item.text,showFloat&&Number.isFinite(float)?`شناوری ${number.format(float)} روز`:''].filter(Boolean).join(' · ');
+      const titleCenter=percent((distance(first)+distance(finish+1))/2);
+      const titleWidth=Math.min(55,Math.max(20,percent(distance(finish+1)-distance(first))));
+      const titleRight=Math.max(0,Math.min(100-titleWidth,titleCenter-titleWidth/2));
+      const titleLabel=`<span class="gantt-print-detail gantt-print-title" style="right:${titleRight}%;width:${titleWidth}%;top:${top}px">${escape(title)}</span>`;
+      const hasProgress=progressAnchor!==null;
+      const progressRight=Math.max(0,Math.min(100,percent(chartWidth-(progressAnchor??visibleAnchor??0))));
+      const progressShift=progressRight<6?0:progressRight>94?100:50;
+      const progressLabel=showProgress&&!milestone?`<span class="gantt-print-detail gantt-print-progress${hasProgress?'':' is-planned'}" style="right:${progressRight}%;top:${y}px;transform:translateX(${progressShift}%)">${number.format(progress)}٪</span>`:'';
+      return {bars,details:titleLabel+progressLabel+dates};
+    });
     return `<section class="gantt-print" dir="rtl">
       ${showTitle?`<h1>${escape(title)}</h1>`:''}
       <p>${showDates?`${date(start)} تا ${date(end)} · `:''}صفحه ${number.format(page+1)} از ${number.format(pages)}</p>
@@ -152,9 +171,9 @@ export function ganttExportDocument({project,entries,analysis},settings){
         <div class="gantt-print-chart"><div class="gantt-print-axis">${axisHtml}</div><div class="gantt-print-chart-body">
           <svg width="${chartWidth}" height="${height}" style="height:${height}px" viewBox="0 0 ${chartWidth} ${height}" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg">
             <defs><marker id="gantt-arrow-${page}" viewBox="0 0 6 6" refX="6" refY="3" markerWidth="5" markerHeight="5" orient="auto"><path d="M 0 0 L 6 3 L 0 6 Z" fill="#566576"/></marker></defs>
-            <g stroke="#d8dfe5" stroke-width=".7" fill="none">${grid}</g>${bars}<g transform="translate(${chartWidth} 0) scale(-1 1)">${dependencyLines(visible,links,distance,start,end,page)}</g>
+            <g stroke="#d8dfe5" stroke-width=".7" fill="none">${grid}</g>${plotRows.map(row=>row.bars).join('')}<g transform="translate(${chartWidth} 0) scale(-1 1)">${dependencyLines(visible,links,distance,start,end,page)}</g>
           </svg>
-          ${details}
+          ${plotRows.map(row=>row.details).join('')}
         </div></div>
       </div>
     </section>`;
