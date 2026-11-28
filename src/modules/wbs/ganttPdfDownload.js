@@ -42,9 +42,61 @@ export function ganttPdfBlob(images,paper,orientation){
   return new Blob(chunks,{type:'application/pdf'});
 }
 
+function showGanttPdfPreview(documentRef,windowRef,images,settings){
+  const {paper,orientation,title}=settings;
+  const dialog=documentRef.createElement('dialog');
+  dialog.className='gantt-pdf-preview';
+  dialog.dir='rtl';
+  dialog.setAttribute('aria-label','پیش‌نمایش PDF گانت');
+  const pdfUrl=windowRef.URL.createObjectURL(ganttPdfBlob(images,paper,orientation));
+  const urls=[pdfUrl];
+  const header=documentRef.createElement('header');
+  const heading=documentRef.createElement('h2');
+  heading.textContent='پیش‌نمایش PDF گانت';
+  const close=documentRef.createElement('button');
+  close.type='button';
+  close.textContent='بازگشت';
+  close.onclick=()=>dialog.close();
+  const save=documentRef.createElement('a');
+  save.href=pdfUrl;
+  save.download=`${title || 'نمودار گانت'}.pdf`;
+  save.textContent='ذخیرهٔ PDF';
+  header.append(heading,close,save);
+  const pages=documentRef.createElement('div');
+  pages.className='gantt-pdf-preview-pages';
+  pages.dataset.paper=paper==='A4'?'A4':'A3';
+  pages.dataset.orientation=orientation==='portrait'?'portrait':'landscape';
+  const number=new Intl.NumberFormat('fa-IR');
+  images.forEach(({bytes},index)=>{
+    const page=documentRef.createElement('div');
+    page.className='gantt-pdf-preview-page';
+    const image=documentRef.createElement('img');
+    const url=windowRef.URL.createObjectURL(new Blob([bytes],{type:'image/jpeg'}));
+    urls.push(url);
+    image.src=url;
+    image.alt=`صفحهٔ ${number.format(index+1)} از ${number.format(images.length)}`;
+    page.append(image);
+    pages.append(page);
+  });
+  dialog.append(header,pages);
+  const cleanup=()=>{
+    dialog.remove();
+    urls.forEach(url=>windowRef.URL.revokeObjectURL(url));
+  };
+  dialog.addEventListener('close',cleanup,{once:true});
+  documentRef.body.append(dialog);
+  try {
+    dialog.showModal();
+  } catch(error) {
+    cleanup();
+    throw error;
+  }
+}
+
 export async function downloadGanttPdf({documentRef,windowRef,html,styles,settings}){
+  const pdfSettings={...settings};
   const capture=documentRef.createElement('div');
-  const [width]=paperDimensions(settings.paper,settings.orientation);
+  const [width]=paperDimensions(pdfSettings.paper,pdfSettings.orientation);
   capture.className='gantt-pdf-capture';
   capture.innerHTML=`<style>.gantt-pdf-capture{position:fixed;left:-10000px;top:0;width:${width-24}mm;background:#fff}${styles}</style>${html}`;
   documentRef.body.append(capture);
@@ -60,12 +112,7 @@ export async function downloadGanttPdf({documentRef,windowRef,html,styles,settin
       const jpg=windowRef.atob(canvas.toDataURL('image/jpeg',.94).split(',')[1]);
       images.push({bytes:Uint8Array.from(jpg,char=>char.charCodeAt(0)),pixelWidth:canvas.width,pixelHeight:canvas.height});
     }
-    const url=windowRef.URL.createObjectURL(ganttPdfBlob(images,settings.paper,settings.orientation));
-    const link=documentRef.createElement('a');
-    link.href=url;
-    link.download=`${settings.title || 'نمودار گانت'}.pdf`;
-    link.click();
-    windowRef.setTimeout(()=>windowRef.URL.revokeObjectURL(url),1000);
+    showGanttPdfPreview(documentRef,windowRef,images,pdfSettings);
   } finally {
     capture.remove();
   }
