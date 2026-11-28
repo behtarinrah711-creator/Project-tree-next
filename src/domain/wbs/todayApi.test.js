@@ -225,3 +225,18 @@ test('an open stop can be repaired after moving the work dates and resumed witho
   assert.equal(todayApi.saveReport('p1',ref,'گزارش اجرا در کارگاه',actor,()=>now).ok,true);
   assert.equal(entity(store).executionHistory.find(entry=>entry.id==='stop').resumedOn,day);
 });
+
+test('purchase progress can be saved before and after scheduled dates despite a work stop',()=>{
+  const store=install();
+  const purchase=entity(store);
+  Object.assign(purchase,{type:'خرید',assigneeContactId:'a',executionHistory:[{
+    id:'stop',type:'execution_obstacle',multiday:true,day:'1405/05/01',
+  }]});
+  const save=(contactId,date,progress)=>todayApi.saveReport('p1',ref,'گزارش خرید',{id:contactId,contactId},
+    ()=>Date.parse(date),progress,{completeAt100:true});
+  assert.equal(save('b','2026-08-17T10:00:00Z',20).code,'forbidden');
+  assert.equal(save('a','2026-08-17T10:00:00Z',20).entity.progress,20);
+  assert.equal(save('a','2026-09-20T10:00:00Z',100).entity.completionState,'pending_approval');
+  assert.equal(entity(store).executionReports.length,2);
+  assert.equal(save('a','2026-09-21T10:00:00Z',100).code,'locked');
+});
