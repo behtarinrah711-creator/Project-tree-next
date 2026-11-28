@@ -234,7 +234,7 @@ function renderSelection(body,state){
       select('جهت کاغذ',[['landscape','افقی'],['portrait','عمودی']],settings.orientation,value=>{settings.orientation=value;}),
       select('مقیاس زمانی',[['week','هفتگی'],['week2','دوهفته‌ای'],['month','ماهانه']],settings.scale,value=>{settings.scale=value;}),
       start.control,end.control);
-    for(const [key,label] of [['showTitle','نمایش عنوان'],['showDates','نمایش تاریخ شروع و پایان'],['showProgress','درصد پیشرفت واقعی'],['hideCompleted','پنهان کردن کارهای انجام‌شده'],['showDependencies','خطوط پیش‌نیاز'],['showFloat','شناوری']]){
+    for(const [key,label] of [['showTitle','نمایش عنوان'],['showDates','نمایش تاریخ شروع و پایان'],['showProgress','درصد پیشرفت واقعی'],['colorPrint','چاپ رنگی'],['hideCompleted','پنهان کردن کارهای انجام‌شده'],['showDependencies','خطوط پیش‌نیاز'],['showFloat','شناوری']]){
       timelineOptions.append(check(label,settings[key],value=>{settings[key]=value;}));
     }
     const levelPicker=make('fieldset');
