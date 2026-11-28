@@ -7,6 +7,7 @@ import {bindRowDrag} from './wbsDrag.js';
 import {ganttExportDocument,ganttPrintStyles,validateGanttExport} from './ganttExportDocument.js';
 import {jalaliDayNumber,scheduleDate} from '../../domain/wbs/scheduling.js';
 import {formatJalaliDisplay} from '../../ui/jalali.js';
+import {downloadGanttPdf} from './ganttPdfDownload.js';
 import {ganttConfig} from './timelineViewOptions.js';
 
 const number=new Intl.NumberFormat('fa-IR');
@@ -333,6 +334,7 @@ export function openProjectTreeExport(project,{trigger,expandedIds,expandIcon,br
     document.body.append(page);
     view=installNotebookExportView({
       idPrefix:'projectTreeExport',historyKey:'project-tree-export',documentBuilder:treeDocument,renderSelection,
+      downloadPdf:state=>state.layout==='gantt'?options=>downloadGanttPdf({...options,styles:ganttPrintStyles,settings:state.gantt}):null,
       validatePrint:state=>{
         const gantt=state.layout==='gantt';
         if(!canViewPlanning(planningAccessLevel(state.projectId,gantt?'timeline':'tree')))return 'دسترسی به این خروجی ندارید';
